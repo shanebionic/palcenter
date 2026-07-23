@@ -41,7 +41,7 @@ export class ServerStatusService {
 
       return {
         connection: this.sanitize(connection),
-        status: this.onlineStatus(connection, result),
+        status: this.onlineStatus(connection, result, settings),
         configuration: this.configuration(connection, settings),
       };
     } catch {
@@ -59,9 +59,12 @@ export class ServerStatusService {
         connection.baseUrl,
         connection.adminPassword,
       );
-      const result = await client.testConnection();
+      const [result, settings] = await Promise.all([
+        client.testConnection(),
+        client.getSettings().catch(() => null),
+      ]);
 
-      return this.onlineStatus(connection, result);
+      return this.onlineStatus(connection, result, settings);
     } catch {
       return this.offlineStatus(connection);
     }
@@ -70,6 +73,7 @@ export class ServerStatusService {
   private onlineStatus(
     connection: StoredConnection,
     result: ConnectionTestResult,
+    settings: PalworldServerSettings | null,
   ): ServerStatus {
     return {
       id: connection.id,
@@ -81,6 +85,8 @@ export class ServerStatusService {
       fps: result.metrics.serverfps,
       version: result.info.version,
       responseTimeMs: result.latencyMs,
+      uptimeSeconds: result.metrics.uptime ?? null,
+      passwordProtected: settings?.bUseAuth ?? null,
       lastUpdated: new Date().toISOString(),
     };
   }
@@ -96,6 +102,8 @@ export class ServerStatusService {
       fps: null,
       version: null,
       responseTimeMs: null,
+      uptimeSeconds: null,
+      passwordProtected: null,
       lastUpdated: new Date().toISOString(),
     };
   }

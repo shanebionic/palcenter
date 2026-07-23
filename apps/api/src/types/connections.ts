@@ -102,6 +102,8 @@ export interface ServerStatus {
   fps: number | null;
   version: string | null;
   responseTimeMs: number | null;
+  uptimeSeconds: number | null;
+  passwordProtected: boolean | null;
   lastUpdated: string;
 }
 
