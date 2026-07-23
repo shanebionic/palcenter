@@ -42,6 +42,18 @@ $env:PALCENTER_IMAGE = "ghcr.io/shanebionic/palcenter:<version>"
 docker compose up -d
 ```
 
+Official images support `linux/amd64` and `linux/arm64`. Available tags are:
+
+- `latest` — the most recently published release
+- `vX.Y.Z` — an immutable release version, such as `v1.0.0`
+
+Pull an image directly with:
+
+```sh
+docker pull ghcr.io/shanebionic/palcenter:latest
+docker pull ghcr.io/shanebionic/palcenter:v1.0.0
+```
+
 ## Persistent data
 
 The Compose deployment stores PalCenter data in the named volume
@@ -173,3 +185,35 @@ pnpm check-types
 pnpm lint
 pnpm build
 ```
+
+## Creating a release
+
+GitHub Actions validates every pull request and branch push by installing locked
+dependencies, running TypeScript checks and linting, and creating production
+builds. A separate workflow also builds the production Dockerfile for
+`linux/amd64` and `linux/arm64` without publishing it.
+
+PalCenter releases use semantic version tags prefixed with `v`. Before creating a
+release, ensure the intended commit is on `main` and its GitHub Actions checks
+have passed. Then create and push the tag:
+
+```sh
+git switch main
+git pull --ff-only
+git tag -a v1.0.0 -m "PalCenter v1.0.0"
+git push origin v1.0.0
+```
+
+Pushing the tag runs validation again. If validation succeeds, GitHub Actions:
+
+1. Builds the existing production Dockerfile for `linux/amd64` and
+   `linux/arm64`.
+2. Authenticates to GHCR with the workflow's short-lived `GITHUB_TOKEN`.
+3. Publishes `ghcr.io/shanebionic/palcenter:v1.0.0`.
+4. Updates `ghcr.io/shanebionic/palcenter:latest` to the same image.
+5. Creates the matching GitHub release with generated release notes, or updates
+   it if it already exists.
+
+No registry password or personal access token is stored in the repository.
+Repository Actions settings must allow GitHub Actions and grant workflows
+read/write permissions so the release job can publish packages and releases.
