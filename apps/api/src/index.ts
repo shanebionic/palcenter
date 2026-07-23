@@ -4,6 +4,7 @@ import { z } from "zod";
 import { PalworldRestError } from "./clients/palworld-rest-client.js";
 import { JsonConnectionRepository } from "./repositories/json-connection-repository.js";
 import { ConnectionManager } from "./services/connection-manager.js";
+import { ServerStatusService } from "./services/server-status-service.js";
 
 const environmentSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
@@ -22,6 +23,7 @@ await app.register(cors, {
 
 const repository = new JsonConnectionRepository(environment.CONFIG_DIR);
 const connectionManager = new ConnectionManager(repository);
+const serverStatusService = new ServerStatusService(repository);
 
 await connectionManager.initialize();
 
@@ -35,6 +37,10 @@ app.get("/api/servers", async () => ({
   servers: await connectionManager.list(),
 }));
 
+app.get("/api/servers/status", async () => ({
+  servers: await serverStatusService.list(),
+}));
+
 const connectionInputSchema = z.object({
   name: z.string().trim().min(1).max(80),
   baseUrl: z.string().url(),
@@ -42,14 +48,9 @@ const connectionInputSchema = z.object({
 });
 
 app.post("/api/servers/test", async (request) => {
-  const input = connectionInputSchema
-    .omit({ name: true })
-    .parse(request.body);
+  const input = connectionInputSchema.omit({ name: true }).parse(request.body);
 
-  return connectionManager.test(
-    input.baseUrl,
-    input.adminPassword,
-  );
+  return connectionManager.test(input.baseUrl, input.adminPassword);
 });
 
 app.post("/api/servers", async (request, reply) => {
@@ -96,9 +97,8 @@ app.setErrorHandler((error, _request, reply) => {
 
   return reply.code(500).send({
     error: "internal_error",
-    message: error instanceof Error
-      ? error.message
-      : "An unexpected error occurred.",
+    message:
+      error instanceof Error ? error.message : "An unexpected error occurred.",
   });
 });
 
@@ -108,9 +108,7 @@ try {
     port: environment.PORT,
   });
 
-  app.log.info(
-    `PalCenter API listening on port ${environment.PORT}`,
-  );
+  app.log.info(`PalCenter API listening on port ${environment.PORT}`);
 } catch (error) {
   app.log.error(error);
   process.exit(1);

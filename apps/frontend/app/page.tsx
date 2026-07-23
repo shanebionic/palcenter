@@ -6,7 +6,9 @@ import {
   Card,
   Container,
   Group,
+  Loader,
   SimpleGrid,
+  Skeleton,
   Stack,
   Text,
   Title,
@@ -15,32 +17,32 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
 import { AddServerDialog } from "../components/AddServerDialog";
 import { EmptyState } from "../components/EmptyState";
+import { ServerCard, type ServerStatus } from "../components/ServerCard";
 
 const apiUrl =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ??
   "http://localhost:3001";
 
-interface Server {
-  id: string;
-  name: string;
-  baseUrl: string;
-}
-
 interface ServersResponse {
-  servers: Server[];
+  servers: ServerStatus[];
 }
 
 export default function HomePage() {
   const [dialogOpened, dialog] = useDisclosure(false);
-  const [servers, setServers] = useState<Server[]>([]);
+  const [servers, setServers] = useState<ServerStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadServers = useCallback(async () => {
+  const loadServers = useCallback(async (background = false) => {
+    if (background) {
+      setRefreshing(true);
+    }
+
     setError(null);
 
     try {
-      const response = await fetch(`${apiUrl}/api/servers`, {
+      const response = await fetch(`${apiUrl}/api/servers/status`, {
         cache: "no-store",
       });
 
@@ -58,11 +60,35 @@ export default function HomePage() {
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadServers();
+    let cancelled = false;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+
+    const poll = async () => {
+      await loadServers(true);
+
+      if (!cancelled) {
+        timeout = setTimeout(poll, 5_000);
+      }
+    };
+
+    void loadServers().then(() => {
+      if (!cancelled) {
+        timeout = setTimeout(poll, 5_000);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
   }, [loadServers]);
 
   return (
@@ -76,22 +102,45 @@ export default function HomePage() {
           <Button onClick={dialog.open}>Add Server</Button>
         </Group>
 
-        {error && <Alert color="red">{error}</Alert>}
+        <Group justify="space-between" mih={24}>
+          {error ? (
+            <Alert color="red" style={{ flex: 1 }}>
+              {error}
+            </Alert>
+          ) : (
+            <span />
+          )}
+          {refreshing && (
+            <Group gap="xs">
+              <Loader size="xs" />
+              <Text size="xs" c="dimmed">
+                Refreshing
+              </Text>
+            </Group>
+          )}
+        </Group>
 
         {!loading && servers.length === 0 && (
           <EmptyState onAddServer={dialog.open} />
         )}
 
+        {loading && (
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+            {[0, 1, 2].map((item) => (
+              <Card key={item} withBorder radius="md" p="lg">
+                <Stack>
+                  <Skeleton height={28} width="60%" />
+                  <Skeleton height={16} width="80%" />
+                  <Skeleton height={110} />
+                </Stack>
+              </Card>
+            ))}
+          </SimpleGrid>
+        )}
+
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
           {servers.map((server) => (
-            <Card key={server.id} withBorder shadow="sm" radius="md" p="lg">
-              <Stack gap="xs">
-                <Title order={3}>{server.name}</Title>
-                <Text size="sm" c="dimmed">
-                  {server.baseUrl}
-                </Text>
-              </Stack>
-            </Card>
+            <ServerCard key={server.id} server={server} />
           ))}
         </SimpleGrid>
       </Stack>
@@ -99,7 +148,7 @@ export default function HomePage() {
       <AddServerDialog
         opened={dialogOpened}
         onClose={dialog.close}
-        onSaved={loadServers}
+        onSaved={() => loadServers()}
       />
     </Container>
   );

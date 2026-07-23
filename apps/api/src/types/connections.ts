@@ -43,3 +43,16 @@ export interface ConnectionTestResult {
   metrics: PalworldServerMetrics;
   latencyMs: number;
 }
+
+export interface ServerStatus {
+  id: string;
+  name: string;
+  status: "online" | "offline";
+  serverName: string | null;
+  players: number | null;
+  maxPlayers: number | null;
+  fps: number | null;
+  version: string | null;
+  responseTimeMs: number | null;
+  lastUpdated: string;
+}
