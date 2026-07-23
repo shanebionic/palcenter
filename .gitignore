@@ -15,6 +15,10 @@ node_modules
 # Testing
 coverage
 
+# Runtime configuration
+apps/api/data/servers.json
+apps/api/data/servers.json.tmp
+
 # Turbo
 .turbo
 
