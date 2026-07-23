@@ -11,9 +11,7 @@ import type {
   ServerWorkspaceData,
 } from "../types/servers";
 
-const apiUrl =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ??
-  "http://localhost:3001";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ?? "";
 
 interface ServersResponse<T> {
   servers: T[];

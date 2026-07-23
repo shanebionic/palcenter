@@ -1,159 +1,175 @@
-# Turborepo starter
+# PalCenter
 
-This Turborepo starter is maintained by the Turborepo core team.
+PalCenter is a web-based management console for remote Palworld dedicated
+servers. It connects to existing servers through the official Palworld REST API.
 
-## Using this example
+PalCenter does not install, host, update, or control Palworld containers. It does
+not need access to Palworld save files or the filesystem of a Palworld host.
 
-Run the following command:
+## Docker Compose deployment
 
-```sh
-npx create-turbo@latest
-```
+Requirements:
 
-## What's inside?
+- Docker Engine with Docker Compose
+- Network access from the PalCenter host to each Palworld REST API
+- Palworld REST API enabled on each managed server
 
-This Turborepo includes the following packages/apps:
-
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Create a directory for the deployment and save
+[`docker-compose.yml`](./docker-compose.yml) in it. Then run:
 
 ```sh
-cd my-turborepo
-turbo build
+docker compose up -d
 ```
 
-Without global `turbo`, use your package manager:
+Open `http://<palcenter-host>:3000` in a browser. The API is also available on
+port `3001`; for example:
 
 ```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
+curl http://<palcenter-host>:3001/api/health
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+Compose pulls `ghcr.io/shanebionic/palcenter:latest` by default. To deploy a
+specific image tag:
 
 ```sh
-turbo build --filter=docs
+PALCENTER_IMAGE=ghcr.io/shanebionic/palcenter:<version> docker compose up -d
 ```
 
-Without global `turbo`:
+On PowerShell:
+
+```powershell
+$env:PALCENTER_IMAGE = "ghcr.io/shanebionic/palcenter:<version>"
+docker compose up -d
+```
+
+## Persistent data
+
+The Compose deployment stores PalCenter data in the named volume
+`palcenter-data`. The `/app/data` directory contains:
+
+- `servers.json` — remote Palworld connection configuration
+- `notifications.json` — notification provider configuration
+- `history.sqlite` — historical metrics and server events
+
+These files survive container replacement and image upgrades. Do not run
+`docker compose down --volumes` unless you intentionally want to delete all
+PalCenter data.
+
+To verify the deployment volume, add a server and a notification provider in
+PalCenter, allow at least one history sample to be collected, and recreate the
+container without deleting the volume:
 
 ```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+docker compose up -d --force-recreate
+docker compose exec palcenter sh -c \
+  'test -s /app/data/servers.json &&
+   test -s /app/data/notifications.json &&
+   test -s /app/data/history.sqlite'
 ```
 
-### Develop
+Reload PalCenter and confirm the server, notification provider, and monitoring
+history remain available.
 
-To develop all apps and packages, run the following command:
+To use a host directory instead of the named volume, replace the volume mapping
+with:
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+```yaml
+volumes:
+  - ./data:/app/data
+```
+
+On Linux, ensure UID `1000` can write to that directory:
 
 ```sh
-cd my-turborepo
-turbo dev
+mkdir -p data
+sudo chown 1000:1000 data
+chmod 700 data
 ```
 
-Without global `turbo`, use your package manager:
+The data directory contains Palworld admin passwords and notification
+credentials. Restrict filesystem access, include the directory in your backup
+plan, and never publish its contents.
+
+## Environment variables
+
+| Variable                             | Default                                | Purpose                                           |
+| ------------------------------------ | -------------------------------------- | ------------------------------------------------- |
+| `PALCENTER_IMAGE`                    | `ghcr.io/shanebionic/palcenter:latest` | Compose image tag                                 |
+| `PALCENTER_WEB_PORT`                 | `3000`                                 | Frontend host port used by Compose                |
+| `PALCENTER_API_PORT`                 | `3001`                                 | API host port used by Compose                     |
+| `PALCENTER_HISTORY_INTERVAL_SECONDS` | `30`                                   | Historical sampling interval; minimum 5 seconds   |
+| `WEB_PORT`                           | `3000`                                 | Frontend port when running the image directly     |
+| `API_PORT`                           | `3001`                                 | API port when running the image directly          |
+| `CONFIG_DIR`                         | `/app/data`                            | Persistent data directory inside the container    |
+| `HISTORY_INTERVAL_SECONDS`           | `30`                                   | Historical sampling interval inside the container |
+
+Example with alternate host ports:
 
 ```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
+PALCENTER_WEB_PORT=8080 PALCENTER_API_PORT=8081 docker compose up -d
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+Then open `http://<palcenter-host>:8080`.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Connecting remote Palworld servers
+
+In PalCenter, select **Add Server** and enter:
+
+- A display name
+- The remote REST URL, including the REST port
+- The Palworld administrator password
+
+Example REST URL:
+
+```text
+http://10.10.10.45:8212
+```
+
+The address must be reachable from the PalCenter container. When Palworld runs
+on another host, use that host's LAN address or DNS name—not `localhost`.
+
+No Palworld directories, save files, SteamCMD installation, or Docker socket
+mounts should be added to the PalCenter container.
+
+## Image build
+
+Build the production image from the repository root:
 
 ```sh
-turbo dev --filter=web
+docker build -t ghcr.io/shanebionic/palcenter:local .
 ```
 
-Without global `turbo`:
+Run it directly:
 
 ```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+docker run -d \
+  --name palcenter \
+  -p 3000:3000 \
+  -p 3001:3001 \
+  -v palcenter-data:/app/data \
+  ghcr.io/shanebionic/palcenter:local
 ```
 
-### Remote Caching
+The image uses Node.js 22 (22.13 or newer), runs as the unprivileged `node` user,
+contains only production runtime dependencies, and starts both the frontend and
+API.
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+## Local development
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+PalCenter requires Node.js 22.13 or newer and pnpm 9.
 
 ```sh
-cd my-turborepo
-turbo login
+pnpm install
+pnpm dev
 ```
 
-Without global `turbo`, use your package manager:
+The frontend runs at `http://localhost:3000` and proxies `/api` requests to the
+API at `http://localhost:3001`.
+
+Useful validation commands:
 
 ```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
+pnpm check-types
+pnpm lint
+pnpm build
 ```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)

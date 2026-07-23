@@ -1,0 +1,18 @@
+services:
+  palcenter:
+    image: ${PALCENTER_IMAGE:-ghcr.io/shanebionic/palcenter:latest}
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${PALCENTER_WEB_PORT:-3000}:3000"
+      - "${PALCENTER_API_PORT:-3001}:3001"
+    environment:
+      WEB_PORT: 3000
+      API_PORT: 3001
+      CONFIG_DIR: /app/data
+      HISTORY_INTERVAL_SECONDS: ${PALCENTER_HISTORY_INTERVAL_SECONDS:-30}
+    volumes:
+      - palcenter-data:/app/data
+
+volumes:
+  palcenter-data:
