@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { ServerWorkspaceData } from "../types/servers";
+import { ServerAdministration } from "./ServerAdministration";
 import { ServerOverview } from "./ServerOverview";
 
 const apiUrl =
@@ -159,7 +160,10 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
                 <ComingSoon />
               </Tabs.Panel>
               <Tabs.Panel value="administration">
-                <ComingSoon />
+                <ServerAdministration
+                  serverId={server.connection.id}
+                  serverName={server.connection.name}
+                />
               </Tabs.Panel>
               <Tabs.Panel value="settings">
                 <ComingSoon />

@@ -4,6 +4,10 @@ import { z } from "zod";
 import { PalworldRestError } from "./clients/palworld-rest-client.js";
 import { JsonConnectionRepository } from "./repositories/json-connection-repository.js";
 import { ConnectionManager } from "./services/connection-manager.js";
+import {
+  ServerAdminService,
+  ServerNotFoundError,
+} from "./services/server-admin-service.js";
 import { ServerStatusService } from "./services/server-status-service.js";
 
 const environmentSchema = z.object({
@@ -23,6 +27,7 @@ await app.register(cors, {
 
 const repository = new JsonConnectionRepository(environment.CONFIG_DIR);
 const connectionManager = new ConnectionManager(repository);
+const serverAdminService = new ServerAdminService(repository);
 const serverStatusService = new ServerStatusService(repository);
 
 await connectionManager.initialize();
@@ -90,6 +95,67 @@ app.delete("/api/servers/:id", async (request, reply) => {
   return reply.code(204).send();
 });
 
+const serverIdSchema = z.object({
+  id: z.string().min(1),
+});
+
+const messageSchema = z.string().trim().min(1).max(500);
+
+app.post("/api/servers/:id/admin/announce", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  const input = z.object({ message: messageSchema }).parse(request.body);
+
+  await serverAdminService.announce(parameters.id, input.message);
+
+  return {
+    success: true,
+    message: "Announcement sent.",
+  };
+});
+
+app.post("/api/servers/:id/admin/save", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+
+  await serverAdminService.saveWorld(parameters.id);
+
+  return {
+    success: true,
+    message: "World saved.",
+  };
+});
+
+app.post("/api/servers/:id/admin/shutdown", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  const input = z
+    .object({
+      waitTime: z.number().int().min(0).max(86_400),
+      message: z.string().trim().max(500).optional(),
+    })
+    .parse(request.body);
+
+  await serverAdminService.shutdown(
+    parameters.id,
+    input.waitTime,
+    input.message || undefined,
+  );
+
+  return {
+    success: true,
+    message: "Server shutdown scheduled.",
+  };
+});
+
+app.post("/api/servers/:id/admin/stop", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+
+  await serverAdminService.stop(parameters.id);
+
+  return {
+    success: true,
+    message: "Server force stop requested.",
+  };
+});
+
 app.setErrorHandler((error, _request, reply) => {
   app.log.error(error);
 
@@ -109,6 +175,13 @@ app.setErrorHandler((error, _request, reply) => {
         error.statusCode === 401
           ? "authentication_failed"
           : "server_unreachable",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof ServerNotFoundError) {
+    return reply.code(404).send({
+      error: "server_not_found",
       message: error.message,
     });
   }

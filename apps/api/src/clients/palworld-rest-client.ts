@@ -46,6 +46,35 @@ export class PalworldRestClient {
     return this.request<PalworldServerSettings>("/settings");
   }
 
+  async announce(message: string): Promise<void> {
+    await this.request<void>("/announce", {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+  }
+
+  async saveWorld(): Promise<void> {
+    await this.request<void>("/save", {
+      method: "POST",
+    });
+  }
+
+  async shutdown(waitTime: number, message?: string): Promise<void> {
+    await this.request<void>("/shutdown", {
+      method: "POST",
+      body: JSON.stringify({
+        waittime: waitTime,
+        ...(message ? { message } : {}),
+      }),
+    });
+  }
+
+  async stop(): Promise<void> {
+    await this.request<void>("/stop", {
+      method: "POST",
+    });
+  }
+
   private async request<T>(
     endpoint: string,
     init: RequestInit = {},
