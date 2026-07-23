@@ -18,15 +18,8 @@ import { useCallback, useEffect, useState } from "react";
 import { AddServerDialog } from "../components/AddServerDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ServerCard } from "../components/ServerCard";
+import { getServerStatus } from "../lib/api";
 import type { ServerStatus } from "../types/servers";
-
-const apiUrl =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ??
-  "http://localhost:3001";
-
-interface ServersResponse {
-  servers: ServerStatus[];
-}
 
 export default function HomePage() {
   const [dialogOpened, dialog] = useDisclosure(false);
@@ -43,16 +36,7 @@ export default function HomePage() {
     setError(null);
 
     try {
-      const response = await fetch(`${apiUrl}/api/servers/status`, {
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Unable to load servers (HTTP ${response.status}).`);
-      }
-
-      const result = (await response.json()) as ServersResponse;
-      setServers(result.servers);
+      setServers(await getServerStatus());
     } catch (requestError) {
       setError(
         requestError instanceof Error

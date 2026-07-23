@@ -13,43 +13,19 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
+import {
+  addServer,
+  testServer,
+  type ConnectionTestResult,
+  type ServerConnectionInput,
+} from "../lib/api";
 
-const apiUrl =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ??
-  "http://localhost:3001";
-
-interface ServerFormValues {
-  name: string;
-  baseUrl: string;
-  adminPassword: string;
-}
-
-interface ConnectionTestResult {
-  info: {
-    servername: string;
-    version: string;
-  };
-  metrics: {
-    currentplayernum: number;
-    maxplayernum: number;
-    serverfps: number;
-  };
-  latencyMs: number;
-}
-
-interface ApiError {
-  message?: string;
-}
+type ServerFormValues = ServerConnectionInput;
 
 interface AddServerDialogProps {
   opened: boolean;
   onClose: () => void;
   onSaved: () => Promise<void>;
-}
-
-async function readError(response: Response): Promise<string> {
-  const error = (await response.json().catch(() => ({}))) as ApiError;
-  return error.message ?? `Request failed with HTTP ${response.status}.`;
 }
 
 export function AddServerDialog({
@@ -111,20 +87,11 @@ export function AddServerDialog({
     setTestResult(null);
 
     try {
-      const response = await fetch(`${apiUrl}/api/servers/test`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          baseUrl: values.baseUrl,
-          adminPassword: values.adminPassword,
-        }),
+      const result = await testServer({
+        baseUrl: values.baseUrl,
+        adminPassword: values.adminPassword,
       });
 
-      if (!response.ok) {
-        throw new Error(await readError(response));
-      }
-
-      const result = (await response.json()) as ConnectionTestResult;
       setTestResult(result);
       setTestedCredentials(credentialKey(values));
     } catch (requestError) {
@@ -149,16 +116,7 @@ export function AddServerDialog({
     setError(null);
 
     try {
-      const response = await fetch(`${apiUrl}/api/servers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        throw new Error(await readError(response));
-      }
-
+      await addServer(values);
       await onSaved();
       close();
     } catch (requestError) {

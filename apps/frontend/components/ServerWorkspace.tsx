@@ -17,13 +17,10 @@ import {
 } from "@mantine/core";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { getServer } from "../lib/api";
 import type { ServerWorkspaceData } from "../types/servers";
 import { ServerAdministration } from "./ServerAdministration";
 import { ServerOverview } from "./ServerOverview";
-
-const apiUrl =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ??
-  "http://localhost:3001";
 
 interface ServerWorkspaceProps {
   serverId: string;
@@ -55,21 +52,7 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
       setError(null);
 
       try {
-        const response = await fetch(`${apiUrl}/api/servers/${serverId}`, {
-          cache: "no-store",
-        });
-
-        if (response.status === 404) {
-          throw new Error("This server no longer exists.");
-        }
-
-        if (!response.ok) {
-          throw new Error(
-            `Unable to load the server (HTTP ${response.status}).`,
-          );
-        }
-
-        setServer((await response.json()) as ServerWorkspaceData);
+        setServer(await getServer(serverId));
       } catch (requestError) {
         setError(
           requestError instanceof Error

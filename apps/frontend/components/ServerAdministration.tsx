@@ -14,27 +14,15 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
-
-const apiUrl =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ??
-  "http://localhost:3001";
+import { announce, saveWorld, shutdown, stop } from "../lib/api";
 
 const messageLimit = 500;
 
 type AdminAction = "save" | "shutdown" | "stop";
 
-interface ApiError {
-  message?: string;
-}
-
 interface ServerAdministrationProps {
   serverId: string;
   serverName: string;
-}
-
-async function readError(response: Response): Promise<string> {
-  const error = (await response.json().catch(() => ({}))) as ApiError;
-  return error.message ?? `Request failed with HTTP ${response.status}.`;
 }
 
 export function ServerAdministration({
@@ -47,27 +35,23 @@ export function ServerAdministration({
   const [pendingAction, setPendingAction] = useState<AdminAction | null>(null);
   const [submitting, setSubmitting] = useState<string | null>(null);
 
-  const request = async (
-    action: "announce" | AdminAction,
-    body?: Record<string, unknown>,
-  ) => {
+  const request = async (action: "announce" | AdminAction) => {
     setSubmitting(action);
 
     try {
-      const response = await fetch(
-        `${apiUrl}/api/servers/${serverId}/admin/${action}`,
-        {
-          method: "POST",
-          headers: body ? { "Content-Type": "application/json" } : undefined,
-          body: body ? JSON.stringify(body) : undefined,
-        },
-      );
+      const result =
+        action === "announce"
+          ? await announce(serverId, announcement.trim())
+          : action === "save"
+            ? await saveWorld(serverId)
+            : action === "shutdown"
+              ? await shutdown(
+                  serverId,
+                  typeof waitTime === "number" ? waitTime : Number(waitTime),
+                  shutdownMessage.trim() || undefined,
+                )
+              : await stop(serverId);
 
-      if (!response.ok) {
-        throw new Error(await readError(response));
-      }
-
-      const result = (await response.json()) as { message: string };
       notifications.show({
         color: "green",
         title: "Action completed",
@@ -94,7 +78,7 @@ export function ServerAdministration({
       return;
     }
 
-    if (await request("announce", { message })) {
+    if (await request("announce")) {
       setAnnouncement("");
     }
   };
@@ -105,12 +89,7 @@ export function ServerAdministration({
     }
 
     if (pendingAction === "shutdown") {
-      const seconds =
-        typeof waitTime === "number" ? waitTime : Number(waitTime);
-      await request("shutdown", {
-        waitTime: seconds,
-        ...(shutdownMessage.trim() ? { message: shutdownMessage.trim() } : {}),
-      });
+      await request("shutdown");
     }
 
     if (pendingAction === "stop") {
