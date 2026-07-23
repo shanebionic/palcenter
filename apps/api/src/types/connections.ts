@@ -141,7 +141,8 @@ export type ServerEventType =
   | "server_offline"
   | "server_restarted"
   | "player_joined"
-  | "player_left";
+  | "player_left"
+  | "player_banned";
 
 export interface ServerEvent {
   id: number;

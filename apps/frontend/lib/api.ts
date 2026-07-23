@@ -1,5 +1,8 @@
 import type {
   ConnectedPlayer,
+  NotificationConfiguration,
+  NotificationConfigurationInput,
+  NotificationConfigurationUpdate,
   PublicConnection,
   ServerStatus,
   ServerEvent,
@@ -31,6 +34,10 @@ interface HistoryResponse {
 
 interface EventsResponse {
   events: ServerEvent[];
+}
+
+interface NotificationsResponse {
+  providers: NotificationConfiguration[];
 }
 
 export interface ServerConnectionInput {
@@ -240,6 +247,46 @@ export function unbanPlayer(
   playerId: string,
 ): Promise<AdminActionResponse> {
   return playerAction(serverId, playerId, "unban");
+}
+
+export async function getNotifications(): Promise<NotificationConfiguration[]> {
+  const result = await request<NotificationsResponse>("/api/notifications", {
+    cache: "no-store",
+  });
+  return result.providers;
+}
+
+export function createNotification(
+  input: NotificationConfigurationInput,
+): Promise<NotificationConfiguration> {
+  return jsonRequest<NotificationConfiguration>("/api/notifications", input);
+}
+
+export function updateNotification(
+  id: string,
+  input: NotificationConfigurationUpdate,
+): Promise<NotificationConfiguration> {
+  return request<NotificationConfiguration>(
+    `/api/notifications/${encodeURIComponent(id)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export function deleteNotification(id: string): Promise<void> {
+  return request<void>(`/api/notifications/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export function testNotification(id: string): Promise<AdminActionResponse> {
+  return request<AdminActionResponse>(
+    `/api/notifications/${encodeURIComponent(id)}/test`,
+    { method: "POST" },
+  );
 }
 
 function playerAction(

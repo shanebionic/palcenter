@@ -25,6 +25,7 @@ export class ServerHistoryService {
     private readonly statuses: ServerStatusService,
     private readonly players: PlayerService,
     private readonly intervalMs: number,
+    private readonly onEvents: (events: ServerEvent[]) => Promise<void>,
   ) {}
 
   start(onError: (error: unknown) => void): void {
@@ -85,7 +86,7 @@ export class ServerHistoryService {
       ),
     );
 
-    this.history.saveSample(
+    const persistedEvents = this.history.saveSample(
       {
         serverId: status.id,
         status: status.status,
@@ -99,6 +100,10 @@ export class ServerHistoryService {
       events,
       currentPlayers,
     );
+
+    if (persistedEvents.length > 0) {
+      await this.onEvents(persistedEvents);
+    }
   }
 
   private statusEvents(

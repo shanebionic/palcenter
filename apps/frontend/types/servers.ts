@@ -96,7 +96,8 @@ export type ServerEventType =
   | "server_offline"
   | "server_restarted"
   | "player_joined"
-  | "player_left";
+  | "player_left"
+  | "player_banned";
 
 export interface ServerEvent {
   id: number;
@@ -106,3 +107,61 @@ export interface ServerEvent {
   playerName: string | null;
   occurredAt: string;
 }
+
+interface NotificationConfigurationBase {
+  id: string;
+  name: string;
+  enabled: boolean;
+  events: ServerEventType[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiscordNotificationConfiguration extends NotificationConfigurationBase {
+  type: "discord";
+  webhookConfigured: boolean;
+}
+
+export interface NtfyNotificationConfiguration extends NotificationConfigurationBase {
+  type: "ntfy";
+  serverUrl: string;
+  topic: string;
+}
+
+export type NotificationConfiguration =
+  | DiscordNotificationConfiguration
+  | NtfyNotificationConfiguration;
+
+export type NotificationConfigurationInput =
+  | {
+      type: "discord";
+      name: string;
+      enabled: boolean;
+      events: ServerEventType[];
+      webhookUrl: string;
+    }
+  | {
+      type: "ntfy";
+      name: string;
+      enabled: boolean;
+      events: ServerEventType[];
+      serverUrl: string;
+      topic: string;
+    };
+
+export type NotificationConfigurationUpdate =
+  | {
+      type: "discord";
+      name: string;
+      enabled: boolean;
+      events: ServerEventType[];
+      webhookUrl?: string;
+    }
+  | {
+      type: "ntfy";
+      name: string;
+      enabled: boolean;
+      events: ServerEventType[];
+      serverUrl: string;
+      topic: string;
+    };

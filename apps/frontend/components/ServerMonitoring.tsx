@@ -46,11 +46,17 @@ function eventLabel(event: ServerEvent): string {
       return `${event.playerName ?? "A player"} joined`;
     case "player_left":
       return `${event.playerName ?? "A player"} left`;
+    case "player_banned":
+      return `${event.playerName ?? "A player"} was banned`;
   }
 }
 
 function eventColor(type: ServerEvent["type"]): string {
-  if (type === "server_offline" || type === "player_left") {
+  if (
+    type === "server_offline" ||
+    type === "player_left" ||
+    type === "player_banned"
+  ) {
     return "red";
   }
 

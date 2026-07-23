@@ -116,10 +116,11 @@ export class SqliteHistoryRepository implements HistoryRepository {
     metric: NewServerMetric,
     events: NewServerEvent[],
     players: ObservedPlayer[],
-  ): void {
+  ): ServerEvent[] {
     this.database.exec("BEGIN IMMEDIATE");
 
     try {
+      const persistedEvents: ServerEvent[] = [];
       this.database
         .prepare(
           `INSERT INTO server_metrics (
@@ -145,13 +146,17 @@ export class SqliteHistoryRepository implements HistoryRepository {
       );
 
       for (const event of events) {
-        insertEvent.run(
+        const result = insertEvent.run(
           event.serverId,
           event.type,
           event.playerId,
           event.playerName,
           event.occurredAt,
         );
+        persistedEvents.push({
+          id: Number(result.lastInsertRowid),
+          ...event,
+        });
       }
 
       this.database
@@ -168,10 +173,32 @@ export class SqliteHistoryRepository implements HistoryRepository {
       }
 
       this.database.exec("COMMIT");
+      return persistedEvents;
     } catch (error) {
       this.database.exec("ROLLBACK");
       throw error;
     }
+  }
+
+  appendEvent(event: NewServerEvent): ServerEvent {
+    const result = this.database
+      .prepare(
+        `INSERT INTO server_events (
+          server_id, type, player_id, player_name, occurred_at
+        ) VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(
+        event.serverId,
+        event.type,
+        event.playerId,
+        event.playerName,
+        event.occurredAt,
+      );
+
+    return {
+      id: Number(result.lastInsertRowid),
+      ...event,
+    };
   }
 
   listMetrics(serverId: string, limit: number): ServerMetric[] {

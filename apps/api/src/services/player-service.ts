@@ -1,6 +1,12 @@
 import { PalworldRestClient } from "../clients/palworld-rest-client.js";
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
-import type { ConnectedPlayer } from "../types/connections.js";
+import type { ConnectedPlayer, ServerEvent } from "../types/connections.js";
+
+type RecordPlayerBan = (
+  serverId: string,
+  playerId: string,
+  playerName: string | null,
+) => Promise<ServerEvent>;
 
 export class PlayerServerNotFoundError extends Error {
   constructor() {
@@ -10,7 +16,10 @@ export class PlayerServerNotFoundError extends Error {
 }
 
 export class PlayerService {
-  constructor(private readonly repository: ConnectionRepository) {}
+  constructor(
+    private readonly repository: ConnectionRepository,
+    private readonly recordPlayerBan?: RecordPlayerBan,
+  ) {}
 
   async list(serverId: string): Promise<ConnectedPlayer[]> {
     const client = await this.clientFor(serverId);
@@ -32,7 +41,18 @@ export class PlayerService {
 
   async ban(serverId: string, userId: string): Promise<void> {
     const client = await this.clientFor(serverId);
+    const playerName = await client
+      .getPlayers()
+      .then(
+        (result) =>
+          result.players.find((player) => player.userId === userId)?.name ??
+          null,
+      )
+      .catch(() => null);
+
     await client.banPlayer(userId);
+
+    await this.recordPlayerBan?.(serverId, userId, playerName);
   }
 
   async unban(serverId: string, userId: string): Promise<void> {

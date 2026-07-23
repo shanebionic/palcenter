@@ -16,7 +16,8 @@ export interface HistoryRepository {
     metric: NewServerMetric,
     events: NewServerEvent[],
     players: ObservedPlayer[],
-  ): void;
+  ): ServerEvent[];
+  appendEvent(event: NewServerEvent): ServerEvent;
   listMetrics(serverId: string, limit: number): ServerMetric[];
   listEvents(serverId: string, limit: number): ServerEvent[];
 }
@@ -28,5 +29,6 @@ export function isServerEventType(value: string): value is ServerEventType {
     "server_restarted",
     "player_joined",
     "player_left",
+    "player_banned",
   ].includes(value);
 }

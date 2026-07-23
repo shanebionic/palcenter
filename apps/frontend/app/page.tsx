@@ -14,6 +14,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AddServerDialog } from "../components/AddServerDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -84,7 +85,12 @@ export default function HomePage() {
             <Title order={1}>PalCenter</Title>
             <Text c="dimmed">Remote Palworld Server Manager</Text>
           </div>
-          <Button onClick={dialog.open}>Add Server</Button>
+          <Group>
+            <Button component={Link} href="/notifications" variant="light">
+              Notifications
+            </Button>
+            <Button onClick={dialog.open}>Add Server</Button>
+          </Group>
         </Group>
 
         <Group justify="space-between" mih={24}>

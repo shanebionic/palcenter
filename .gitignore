@@ -18,6 +18,8 @@ coverage
 # Runtime configuration
 apps/api/data/servers.json
 apps/api/data/servers.json.tmp
+apps/api/data/notifications.json
+apps/api/data/notifications.json.tmp
 apps/api/data/history.sqlite
 apps/api/data/history.sqlite-shm
 apps/api/data/history.sqlite-wal
