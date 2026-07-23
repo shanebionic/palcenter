@@ -49,6 +49,31 @@ export interface PalworldServerSettings {
   CrossplayPlatforms?: string | string[];
 }
 
+export interface PalworldPlayer {
+  name: string;
+  accountName: string;
+  playerId: string;
+  userId: string;
+  ip?: string;
+  ping: number;
+  location_x: number;
+  location_y: number;
+  level: number;
+  building_count: number;
+}
+
+export interface PalworldPlayersResponse {
+  players: PalworldPlayer[];
+}
+
+export interface ConnectedPlayer {
+  name: string;
+  playerId: string;
+  userId: string;
+  ip: string | null;
+  status: "online";
+}
+
 export interface ConnectionTestResult {
   info: PalworldServerInfo;
   metrics: PalworldServerMetrics;

@@ -35,3 +35,11 @@ export interface ServerWorkspaceData {
   status: ServerStatus;
   configuration: ServerConfiguration;
 }
+
+export interface ConnectedPlayer {
+  name: string;
+  playerId: string;
+  userId: string;
+  ip: string | null;
+  status: "online";
+}

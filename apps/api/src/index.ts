@@ -5,6 +5,10 @@ import { PalworldRestError } from "./clients/palworld-rest-client.js";
 import { JsonConnectionRepository } from "./repositories/json-connection-repository.js";
 import { ConnectionManager } from "./services/connection-manager.js";
 import {
+  PlayerServerNotFoundError,
+  PlayerService,
+} from "./services/player-service.js";
+import {
   ServerAdminService,
   ServerNotFoundError,
 } from "./services/server-admin-service.js";
@@ -27,6 +31,7 @@ await app.register(cors, {
 
 const repository = new JsonConnectionRepository(environment.CONFIG_DIR);
 const connectionManager = new ConnectionManager(repository);
+const playerService = new PlayerService(repository);
 const serverAdminService = new ServerAdminService(repository);
 const serverStatusService = new ServerStatusService(repository);
 
@@ -156,6 +161,52 @@ app.post("/api/servers/:id/admin/stop", async (request) => {
   };
 });
 
+const playerParametersSchema = z.object({
+  id: z.string().min(1),
+  playerId: z.string().min(1),
+});
+
+app.get("/api/servers/:id/players", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+
+  return {
+    players: await playerService.list(parameters.id),
+  };
+});
+
+app.post("/api/servers/:id/players/:playerId/kick", async (request) => {
+  const parameters = playerParametersSchema.parse(request.params);
+
+  await playerService.kick(parameters.id, parameters.playerId);
+
+  return {
+    success: true,
+    message: "Player kicked.",
+  };
+});
+
+app.post("/api/servers/:id/players/:playerId/ban", async (request) => {
+  const parameters = playerParametersSchema.parse(request.params);
+
+  await playerService.ban(parameters.id, parameters.playerId);
+
+  return {
+    success: true,
+    message: "Player banned.",
+  };
+});
+
+app.post("/api/servers/:id/players/:playerId/unban", async (request) => {
+  const parameters = playerParametersSchema.parse(request.params);
+
+  await playerService.unban(parameters.id, parameters.playerId);
+
+  return {
+    success: true,
+    message: "Player unbanned.",
+  };
+});
+
 app.setErrorHandler((error, _request, reply) => {
   app.log.error(error);
 
@@ -179,7 +230,10 @@ app.setErrorHandler((error, _request, reply) => {
     });
   }
 
-  if (error instanceof ServerNotFoundError) {
+  if (
+    error instanceof ServerNotFoundError ||
+    error instanceof PlayerServerNotFoundError
+  ) {
     return reply.code(404).send({
       error: "server_not_found",
       message: error.message,

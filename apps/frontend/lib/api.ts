@@ -1,4 +1,5 @@
 import type {
+  ConnectedPlayer,
   PublicConnection,
   ServerStatus,
   ServerWorkspaceData,
@@ -15,6 +16,10 @@ interface ServersResponse<T> {
 interface AdminActionResponse {
   success: boolean;
   message: string;
+}
+
+interface PlayersResponse {
+  players: ConnectedPlayer[];
 }
 
 export interface ServerConnectionInput {
@@ -167,6 +172,47 @@ export function shutdown(
 export function stop(serverId: string): Promise<AdminActionResponse> {
   return request<AdminActionResponse>(
     `/api/servers/${encodeURIComponent(serverId)}/admin/stop`,
+    { method: "POST" },
+  );
+}
+
+export async function getPlayers(serverId: string): Promise<ConnectedPlayer[]> {
+  const result = await request<PlayersResponse>(
+    `/api/servers/${encodeURIComponent(serverId)}/players`,
+    { cache: "no-store" },
+  );
+
+  return result.players;
+}
+
+export function kickPlayer(
+  serverId: string,
+  playerId: string,
+): Promise<AdminActionResponse> {
+  return playerAction(serverId, playerId, "kick");
+}
+
+export function banPlayer(
+  serverId: string,
+  playerId: string,
+): Promise<AdminActionResponse> {
+  return playerAction(serverId, playerId, "ban");
+}
+
+export function unbanPlayer(
+  serverId: string,
+  playerId: string,
+): Promise<AdminActionResponse> {
+  return playerAction(serverId, playerId, "unban");
+}
+
+function playerAction(
+  serverId: string,
+  playerId: string,
+  action: "kick" | "ban" | "unban",
+): Promise<AdminActionResponse> {
+  return request<AdminActionResponse>(
+    `/api/servers/${encodeURIComponent(serverId)}/players/${encodeURIComponent(playerId)}/${action}`,
     { method: "POST" },
   );
 }

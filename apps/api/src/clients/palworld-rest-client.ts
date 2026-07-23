@@ -1,5 +1,6 @@
 import type {
   ConnectionTestResult,
+  PalworldPlayersResponse,
   PalworldServerInfo,
   PalworldServerMetrics,
   PalworldServerSettings,
@@ -46,6 +47,22 @@ export class PalworldRestClient {
     return this.request<PalworldServerSettings>("/settings");
   }
 
+  async getPlayers(): Promise<PalworldPlayersResponse> {
+    return this.request<PalworldPlayersResponse>("/players");
+  }
+
+  async kickPlayer(userId: string): Promise<void> {
+    await this.playerCommand("/kick", userId);
+  }
+
+  async banPlayer(userId: string): Promise<void> {
+    await this.playerCommand("/ban", userId);
+  }
+
+  async unbanPlayer(userId: string): Promise<void> {
+    await this.playerCommand("/unban", userId);
+  }
+
   async announce(message: string): Promise<void> {
     await this.request<void>("/announce", {
       method: "POST",
@@ -72,6 +89,16 @@ export class PalworldRestClient {
   async stop(): Promise<void> {
     await this.request<void>("/stop", {
       method: "POST",
+    });
+  }
+
+  private async playerCommand(
+    endpoint: "/kick" | "/ban" | "/unban",
+    userId: string,
+  ): Promise<void> {
+    await this.request<void>(endpoint, {
+      method: "POST",
+      body: JSON.stringify({ userid: userId }),
     });
   }
 

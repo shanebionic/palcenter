@@ -21,6 +21,7 @@ import { getServer } from "../lib/api";
 import type { ServerWorkspaceData } from "../types/servers";
 import { ServerAdministration } from "./ServerAdministration";
 import { ServerOverview } from "./ServerOverview";
+import { ServerPlayers } from "./ServerPlayers";
 
 interface ServerWorkspaceProps {
   serverId: string;
@@ -140,7 +141,7 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
                 <ServerOverview server={server} />
               </Tabs.Panel>
               <Tabs.Panel value="players">
-                <ComingSoon />
+                <ServerPlayers serverId={server.connection.id} />
               </Tabs.Panel>
               <Tabs.Panel value="administration">
                 <ServerAdministration
