@@ -2,6 +2,7 @@
 
 import {
   Alert,
+  Badge,
   Button,
   Checkbox,
   Group,
@@ -10,26 +11,19 @@ import {
   Select,
   Stack,
   Switch,
+  Text,
   TextInput,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
 import { createNotification, updateNotification } from "../lib/api";
+import { notificationEventOptions } from "../lib/notification-events";
 import type {
   NotificationConfiguration,
   NotificationConfigurationInput,
   NotificationConfigurationUpdate,
   ServerEventType,
 } from "../types/servers";
-
-const eventOptions: { value: ServerEventType; label: string }[] = [
-  { value: "server_offline", label: "Server went offline" },
-  { value: "server_online", label: "Server came online" },
-  { value: "server_restarted", label: "Server restarted" },
-  { value: "player_joined", label: "Player joined" },
-  { value: "player_left", label: "Player left" },
-  { value: "player_banned", label: "Player banned" },
-];
 
 interface FormValues {
   type: "discord" | "ntfy";
@@ -52,7 +46,7 @@ const initialValues: FormValues = {
   type: "discord",
   name: "",
   enabled: true,
-  events: eventOptions.map((event) => event.value),
+  events: notificationEventOptions.map((event) => event.value),
   webhookUrl: "",
   serverUrl: "https://ntfy.sh",
   topic: "",
@@ -211,17 +205,33 @@ export function NotificationProviderDialog({
           />
 
           {form.values.type === "discord" ? (
-            <PasswordInput
-              label="Webhook URL"
-              placeholder={
-                provider?.type === "discord"
-                  ? "Leave blank to keep the current webhook"
-                  : "https://discord.com/api/webhooks/..."
-              }
-              required={provider?.type !== "discord"}
-              description="Webhook credentials are stored by the API and never returned to the browser."
-              {...form.getInputProps("webhookUrl")}
-            />
+            <Stack gap="xs">
+              {provider?.type === "discord" && provider.webhookConfigured && (
+                <Group gap="xs">
+                  <Badge color="green" variant="dot">
+                    Webhook configured
+                  </Badge>
+                  <Text size="sm" c="dimmed">
+                    Enter a new URL below only if you want to replace it.
+                  </Text>
+                </Group>
+              )}
+              <PasswordInput
+                label={
+                  provider?.type === "discord"
+                    ? "Replacement Webhook URL"
+                    : "Webhook URL"
+                }
+                placeholder={
+                  provider?.type === "discord"
+                    ? "Leave blank to keep the current webhook"
+                    : "https://discord.com/api/webhooks/..."
+                }
+                required={provider?.type !== "discord"}
+                description="Webhook credentials are stored by the API and never returned to the browser."
+                {...form.getInputProps("webhookUrl")}
+              />
+            </Stack>
           ) : (
             <>
               <TextInput
@@ -245,7 +255,7 @@ export function NotificationProviderDialog({
             {...form.getInputProps("events")}
           >
             <Stack gap="xs" mt="xs">
-              {eventOptions.map((event) => (
+              {notificationEventOptions.map((event) => (
                 <Checkbox
                   key={event.value}
                   value={event.value}

@@ -3,13 +3,12 @@
 import {
   Alert,
   Anchor,
-  Badge,
   Breadcrumbs,
   Button,
   Card,
   Container,
   Group,
-  Loader,
+  Modal,
   SimpleGrid,
   Skeleton,
   Stack,
@@ -29,6 +28,7 @@ import type {
   NotificationConfiguration,
   NotificationConfigurationUpdate,
 } from "../types/servers";
+import { NotificationProviderCard } from "./NotificationProviderCard";
 import { NotificationProviderDialog } from "./NotificationProviderDialog";
 
 function updateInput(
@@ -57,6 +57,8 @@ export function NotificationSettings() {
     null,
   );
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] =
+    useState<NotificationConfiguration | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -138,15 +140,17 @@ export function NotificationSettings() {
   };
 
   const remove = async (provider: NotificationConfiguration) => {
-    if (!window.confirm(`Delete notification provider "${provider.name}"?`)) {
-      return;
-    }
-
     setBusyId(provider.id);
 
     try {
       await deleteNotification(provider.id);
+      setPendingDelete(null);
       await load();
+      notifications.show({
+        color: "green",
+        title: "Provider deleted",
+        message: `${provider.name} was removed.`,
+      });
     } catch (requestError) {
       notifications.show({
         color: "red",
@@ -204,79 +208,15 @@ export function NotificationSettings() {
               const busy = busyId === provider.id;
 
               return (
-                <Card key={provider.id} withBorder radius="md" p="lg">
-                  <Stack>
-                    <Group justify="space-between">
-                      <div>
-                        <Title order={3}>{provider.name}</Title>
-                        <Text c="dimmed" tt="capitalize">
-                          {provider.type}
-                        </Text>
-                      </div>
-                      <Badge
-                        color={provider.enabled ? "green" : "gray"}
-                        variant="light"
-                      >
-                        {provider.enabled ? "Enabled" : "Disabled"}
-                      </Badge>
-                    </Group>
-
-                    {provider.type === "discord" ? (
-                      <Text size="sm">
-                        Webhook:{" "}
-                        {provider.webhookConfigured
-                          ? "Configured"
-                          : "Not configured"}
-                      </Text>
-                    ) : (
-                      <Text size="sm">
-                        {provider.serverUrl.replace(/\/+$/, "")}/
-                        {provider.topic}
-                      </Text>
-                    )}
-
-                    <Text size="sm" c="dimmed">
-                      {provider.events.length} event
-                      {provider.events.length === 1 ? "" : "s"} selected
-                    </Text>
-
-                    <Group mt="auto">
-                      <Button
-                        size="xs"
-                        variant="light"
-                        onClick={() => void sendTest(provider)}
-                        disabled={busy}
-                      >
-                        {busy ? <Loader size="xs" /> : "Send Test"}
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="default"
-                        onClick={() => openEdit(provider)}
-                        disabled={busy}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="subtle"
-                        onClick={() => void toggle(provider)}
-                        disabled={busy}
-                      >
-                        {provider.enabled ? "Disable" : "Enable"}
-                      </Button>
-                      <Button
-                        size="xs"
-                        color="red"
-                        variant="subtle"
-                        onClick={() => void remove(provider)}
-                        disabled={busy}
-                      >
-                        Delete
-                      </Button>
-                    </Group>
-                  </Stack>
-                </Card>
+                <NotificationProviderCard
+                  key={provider.id}
+                  provider={provider}
+                  busy={busy}
+                  onTest={() => void sendTest(provider)}
+                  onEdit={() => openEdit(provider)}
+                  onToggle={() => void toggle(provider)}
+                  onDelete={() => setPendingDelete(provider)}
+                />
               );
             })}
           </SimpleGrid>
@@ -290,6 +230,43 @@ export function NotificationSettings() {
         onClose={() => setDialogOpen(false)}
         onSaved={load}
       />
+
+      <Modal
+        opened={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        title="Delete notification provider?"
+        centered
+        closeOnClickOutside={busyId === null}
+        closeOnEscape={busyId === null}
+      >
+        <Stack>
+          <Text>
+            {pendingDelete
+              ? `Delete "${pendingDelete.name}"? It will stop receiving notifications immediately.`
+              : ""}
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setPendingDelete(null)}
+              disabled={busyId !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={busyId !== null}
+              onClick={() => {
+                if (pendingDelete) {
+                  void remove(pendingDelete);
+                }
+              }}
+            >
+              Delete Provider
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Container>
   );
 }
