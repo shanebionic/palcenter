@@ -2,6 +2,7 @@ import type {
   ConnectedPlayer,
   PublicConnection,
   ServerStatus,
+  ServerSettings,
   ServerWorkspaceData,
 } from "../types/servers";
 
@@ -116,6 +117,13 @@ export async function getServerStatus(): Promise<ServerStatus[]> {
 export function getServer(id: string): Promise<ServerWorkspaceData> {
   return request<ServerWorkspaceData>(
     `/api/servers/${encodeURIComponent(id)}`,
+    { cache: "no-store" },
+  );
+}
+
+export function getServerSettings(id: string): Promise<ServerSettings> {
+  return request<ServerSettings>(
+    `/api/servers/${encodeURIComponent(id)}/settings`,
     { cache: "no-store" },
   );
 }

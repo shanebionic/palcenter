@@ -5,7 +5,6 @@ import {
   Anchor,
   Breadcrumbs,
   Button,
-  Center,
   Container,
   Group,
   Loader,
@@ -22,20 +21,10 @@ import type { ServerWorkspaceData } from "../types/servers";
 import { ServerAdministration } from "./ServerAdministration";
 import { ServerOverview } from "./ServerOverview";
 import { ServerPlayers } from "./ServerPlayers";
+import { ServerSettings } from "./ServerSettings";
 
 interface ServerWorkspaceProps {
   serverId: string;
-}
-
-function ComingSoon() {
-  return (
-    <Center mih={240}>
-      <Stack align="center" gap="xs">
-        <Title order={3}>Coming Soon</Title>
-        <Text c="dimmed">This workspace will be implemented later.</Text>
-      </Stack>
-    </Center>
-  );
 }
 
 export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
@@ -150,7 +139,7 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
                 />
               </Tabs.Panel>
               <Tabs.Panel value="settings">
-                <ComingSoon />
+                <ServerSettings serverId={server.connection.id} />
               </Tabs.Panel>
             </Tabs>
           </>

@@ -32,7 +32,7 @@ export class PalworldRestClient {
     const startedAt = performance.now();
 
     const [info, metrics] = await Promise.all([
-      this.request<PalworldServerInfo>("/info"),
+      this.getInfo(),
       this.request<PalworldServerMetrics>("/metrics"),
     ]);
 
@@ -41,6 +41,10 @@ export class PalworldRestClient {
       metrics,
       latencyMs: Math.round(performance.now() - startedAt),
     };
+  }
+
+  async getInfo(): Promise<PalworldServerInfo> {
+    return this.request<PalworldServerInfo>("/info");
   }
 
   async getSettings(): Promise<PalworldServerSettings> {

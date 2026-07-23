@@ -12,6 +12,10 @@ import {
   ServerAdminService,
   ServerNotFoundError,
 } from "./services/server-admin-service.js";
+import {
+  ServerSettingsService,
+  SettingsServerNotFoundError,
+} from "./services/server-settings-service.js";
 import { ServerStatusService } from "./services/server-status-service.js";
 
 const environmentSchema = z.object({
@@ -33,6 +37,7 @@ const repository = new JsonConnectionRepository(environment.CONFIG_DIR);
 const connectionManager = new ConnectionManager(repository);
 const playerService = new PlayerService(repository);
 const serverAdminService = new ServerAdminService(repository);
+const serverSettingsService = new ServerSettingsService(repository);
 const serverStatusService = new ServerStatusService(repository);
 
 await connectionManager.initialize();
@@ -207,6 +212,12 @@ app.post("/api/servers/:id/players/:playerId/unban", async (request) => {
   };
 });
 
+app.get("/api/servers/:id/settings", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+
+  return serverSettingsService.get(parameters.id);
+});
+
 app.setErrorHandler((error, _request, reply) => {
   app.log.error(error);
 
@@ -232,7 +243,8 @@ app.setErrorHandler((error, _request, reply) => {
 
   if (
     error instanceof ServerNotFoundError ||
-    error instanceof PlayerServerNotFoundError
+    error instanceof PlayerServerNotFoundError ||
+    error instanceof SettingsServerNotFoundError
   ) {
     return reply.code(404).send({
       error: "server_not_found",

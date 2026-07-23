@@ -43,3 +43,36 @@ export interface ConnectedPlayer {
   ip: string | null;
   status: "online";
 }
+
+export interface ServerSettings {
+  general: {
+    serverName: string | null;
+    description: string | null;
+    version: string | null;
+    region: string | null;
+  };
+  gameplay: {
+    difficulty: string | null;
+    experienceMultiplier: number | null;
+    captureRate: number | null;
+    collectionDropRate: number | null;
+    enemyDropRate: number | null;
+    daySpeed: number | null;
+    nightSpeed: number | null;
+    deathPenalty: string | null;
+  };
+  server: {
+    maxPlayers: number | null;
+    publicIp: string | null;
+    publicPort: number | null;
+    restApiPort: number | null;
+    rconEnabled: boolean | null;
+    rconPort: number | null;
+  };
+  security: {
+    passwordProtected: boolean | null;
+  };
+  crossplay: {
+    platforms: string[] | null;
+  };
+}

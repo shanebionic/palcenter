@@ -39,12 +39,24 @@ export interface PalworldServerMetrics {
 }
 
 export interface PalworldServerSettings {
+  Difficulty?: string;
+  DayTimeSpeedRate?: number;
+  NightTimeSpeedRate?: number;
+  ExpRate?: number;
+  PalCaptureRate?: number;
+  CollectionDropRate?: number;
+  EnemyDropItemRate?: number;
+  DeathPenalty?: string;
+  ServerPlayerMaxNum?: number;
+  ServerName?: string;
+  ServerDescription?: string;
   PublicIP?: string;
   PublicPort?: number;
   RCONEnabled?: boolean;
   RCONPort?: number;
   Region?: string;
   RESTAPIPort?: number;
+  bUseAuth?: boolean;
   AllowConnectPlatform?: string;
   CrossplayPlatforms?: string | string[];
 }
@@ -108,4 +120,37 @@ export interface ServerWorkspace {
   connection: PublicConnection;
   status: ServerStatus;
   configuration: ServerConfiguration;
+}
+
+export interface ServerSettingsView {
+  general: {
+    serverName: string | null;
+    description: string | null;
+    version: string | null;
+    region: string | null;
+  };
+  gameplay: {
+    difficulty: string | null;
+    experienceMultiplier: number | null;
+    captureRate: number | null;
+    collectionDropRate: number | null;
+    enemyDropRate: number | null;
+    daySpeed: number | null;
+    nightSpeed: number | null;
+    deathPenalty: string | null;
+  };
+  server: {
+    maxPlayers: number | null;
+    publicIp: string | null;
+    publicPort: number | null;
+    restApiPort: number | null;
+    rconEnabled: boolean | null;
+    rconPort: number | null;
+  };
+  security: {
+    passwordProtected: boolean | null;
+  };
+  crossplay: {
+    platforms: string[] | null;
+  };
 }
