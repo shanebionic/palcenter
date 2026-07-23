@@ -124,6 +124,39 @@ export interface ServerWorkspace {
   configuration: ServerConfiguration;
 }
 
+export interface ServerMetric {
+  id: number;
+  serverId: string;
+  status: "online" | "offline";
+  playerCount: number | null;
+  maxPlayers: number | null;
+  fps: number | null;
+  responseTimeMs: number | null;
+  uptimeSeconds: number | null;
+  capturedAt: string;
+}
+
+export type ServerEventType =
+  | "server_online"
+  | "server_offline"
+  | "server_restarted"
+  | "player_joined"
+  | "player_left";
+
+export interface ServerEvent {
+  id: number;
+  serverId: string;
+  type: ServerEventType;
+  playerId: string | null;
+  playerName: string | null;
+  occurredAt: string;
+}
+
+export interface ObservedPlayer {
+  playerId: string;
+  name: string;
+}
+
 export interface ServerSettingsView {
   general: {
     serverName: string | null;

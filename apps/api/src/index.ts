@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { z } from "zod";
 import { PalworldRestError } from "./clients/palworld-rest-client.js";
 import { JsonConnectionRepository } from "./repositories/json-connection-repository.js";
+import { SqliteHistoryRepository } from "./repositories/sqlite-history-repository.js";
 import { ConnectionManager } from "./services/connection-manager.js";
 import {
   PlayerServerNotFoundError,
@@ -13,6 +14,10 @@ import {
   ServerNotFoundError,
 } from "./services/server-admin-service.js";
 import {
+  HistoryServerNotFoundError,
+  ServerHistoryService,
+} from "./services/server-history-service.js";
+import {
   ServerSettingsService,
   SettingsServerNotFoundError,
 } from "./services/server-settings-service.js";
@@ -21,6 +26,7 @@ import { ServerStatusService } from "./services/server-status-service.js";
 const environmentSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   CONFIG_DIR: z.string().min(1).default("./data"),
+  HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
 });
 
 const environment = environmentSchema.parse(process.env);
@@ -34,13 +40,29 @@ await app.register(cors, {
 });
 
 const repository = new JsonConnectionRepository(environment.CONFIG_DIR);
+const historyRepository = new SqliteHistoryRepository(environment.CONFIG_DIR);
 const connectionManager = new ConnectionManager(repository);
 const playerService = new PlayerService(repository);
 const serverAdminService = new ServerAdminService(repository);
 const serverSettingsService = new ServerSettingsService(repository);
 const serverStatusService = new ServerStatusService(repository);
+const serverHistoryService = new ServerHistoryService(
+  repository,
+  historyRepository,
+  serverStatusService,
+  playerService,
+  environment.HISTORY_INTERVAL_SECONDS * 1_000,
+);
 
 await connectionManager.initialize();
+historyRepository.initialize();
+serverHistoryService.start((error) => {
+  app.log.error(error, "Historical metric collection failed.");
+});
+
+app.addHook("onClose", async () => {
+  serverHistoryService.stop();
+});
 
 app.get("/api/health", async () => ({
   status: "ok",
@@ -218,6 +240,28 @@ app.get("/api/servers/:id/settings", async (request) => {
   return serverSettingsService.get(parameters.id);
 });
 
+const historyQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
+
+app.get("/api/servers/:id/history", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  const query = historyQuerySchema.parse(request.query);
+
+  return {
+    metrics: await serverHistoryService.metrics(parameters.id, query.limit),
+  };
+});
+
+app.get("/api/servers/:id/events", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  const query = historyQuerySchema.parse(request.query);
+
+  return {
+    events: await serverHistoryService.events(parameters.id, query.limit),
+  };
+});
+
 app.setErrorHandler((error, _request, reply) => {
   app.log.error(error);
 
@@ -244,7 +288,8 @@ app.setErrorHandler((error, _request, reply) => {
   if (
     error instanceof ServerNotFoundError ||
     error instanceof PlayerServerNotFoundError ||
-    error instanceof SettingsServerNotFoundError
+    error instanceof SettingsServerNotFoundError ||
+    error instanceof HistoryServerNotFoundError
   ) {
     return reply.code(404).send({
       error: "server_not_found",

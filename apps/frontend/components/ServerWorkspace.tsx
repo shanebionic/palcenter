@@ -20,6 +20,7 @@ import { getServer } from "../lib/api";
 import type { ServerWorkspaceData } from "../types/servers";
 import { ServerAdministration } from "./ServerAdministration";
 import { ServerOverview } from "./ServerOverview";
+import { ServerMonitoring } from "./ServerMonitoring";
 import { ServerPlayers } from "./ServerPlayers";
 import { ServerSettings } from "./ServerSettings";
 
@@ -124,6 +125,7 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
                 <Tabs.Tab value="players">Players</Tabs.Tab>
                 <Tabs.Tab value="administration">Administration</Tabs.Tab>
                 <Tabs.Tab value="settings">Settings</Tabs.Tab>
+                <Tabs.Tab value="monitoring">Monitoring</Tabs.Tab>
               </Tabs.List>
 
               <Tabs.Panel value="overview" pt="lg">
@@ -140,6 +142,9 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
               </Tabs.Panel>
               <Tabs.Panel value="settings">
                 <ServerSettings serverId={server.connection.id} />
+              </Tabs.Panel>
+              <Tabs.Panel value="monitoring">
+                <ServerMonitoring serverId={server.connection.id} />
               </Tabs.Panel>
             </Tabs>
           </>

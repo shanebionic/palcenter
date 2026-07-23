@@ -2,6 +2,8 @@ import type {
   ConnectedPlayer,
   PublicConnection,
   ServerStatus,
+  ServerEvent,
+  ServerMetric,
   ServerSettings,
   ServerWorkspaceData,
 } from "../types/servers";
@@ -21,6 +23,14 @@ interface AdminActionResponse {
 
 interface PlayersResponse {
   players: ConnectedPlayer[];
+}
+
+interface HistoryResponse {
+  metrics: ServerMetric[];
+}
+
+interface EventsResponse {
+  events: ServerEvent[];
 }
 
 export interface ServerConnectionInput {
@@ -126,6 +136,24 @@ export function getServerSettings(id: string): Promise<ServerSettings> {
     `/api/servers/${encodeURIComponent(id)}/settings`,
     { cache: "no-store" },
   );
+}
+
+export async function getServerHistory(id: string): Promise<ServerMetric[]> {
+  const result = await request<HistoryResponse>(
+    `/api/servers/${encodeURIComponent(id)}/history`,
+    { cache: "no-store" },
+  );
+
+  return result.metrics;
+}
+
+export async function getServerEvents(id: string): Promise<ServerEvent[]> {
+  const result = await request<EventsResponse>(
+    `/api/servers/${encodeURIComponent(id)}/events`,
+    { cache: "no-store" },
+  );
+
+  return result.events;
 }
 
 export function addServer(
