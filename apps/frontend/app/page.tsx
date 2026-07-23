@@ -17,7 +17,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
 import { AddServerDialog } from "../components/AddServerDialog";
 import { EmptyState } from "../components/EmptyState";
-import { ServerCard, type ServerStatus } from "../components/ServerCard";
+import { ServerCard } from "../components/ServerCard";
+import type { ServerStatus } from "../types/servers";
 
 const apiUrl =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ??

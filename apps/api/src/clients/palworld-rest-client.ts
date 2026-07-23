@@ -2,6 +2,7 @@ import type {
   ConnectionTestResult,
   PalworldServerInfo,
   PalworldServerMetrics,
+  PalworldServerSettings,
 } from "../types/connections.js";
 
 export class PalworldRestError extends Error {
@@ -18,10 +19,7 @@ export class PalworldRestClient {
   private readonly apiUrl: string;
   private readonly authorization: string;
 
-  constructor(
-    baseUrl: string,
-    adminPassword: string,
-  ) {
+  constructor(baseUrl: string, adminPassword: string) {
     this.apiUrl = `${baseUrl.replace(/\/+$/, "")}/v1/api`;
     this.authorization = `Basic ${Buffer.from(
       `admin:${adminPassword}`,
@@ -42,6 +40,10 @@ export class PalworldRestClient {
       metrics,
       latencyMs: Math.round(performance.now() - startedAt),
     };
+  }
+
+  async getSettings(): Promise<PalworldServerSettings> {
+    return this.request<PalworldServerSettings>("/settings");
   }
 
   private async request<T>(

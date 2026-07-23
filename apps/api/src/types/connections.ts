@@ -38,6 +38,17 @@ export interface PalworldServerMetrics {
   uptime: number;
 }
 
+export interface PalworldServerSettings {
+  PublicIP?: string;
+  PublicPort?: number;
+  RCONEnabled?: boolean;
+  RCONPort?: number;
+  Region?: string;
+  RESTAPIPort?: number;
+  AllowConnectPlatform?: string;
+  CrossplayPlatforms?: string | string[];
+}
+
 export interface ConnectionTestResult {
   info: PalworldServerInfo;
   metrics: PalworldServerMetrics;
@@ -55,4 +66,21 @@ export interface ServerStatus {
   version: string | null;
   responseTimeMs: number | null;
   lastUpdated: string;
+}
+
+export interface ServerConfiguration {
+  restUrl: string;
+  publicIp: string | null;
+  publicPort: number | null;
+  restPort: number | null;
+  rconEnabled: boolean | null;
+  rconPort: number | null;
+  region: string | null;
+  crossplayPlatforms: string | null;
+}
+
+export interface ServerWorkspace {
+  connection: PublicConnection;
+  status: ServerStatus;
+  configuration: ServerConfiguration;
 }

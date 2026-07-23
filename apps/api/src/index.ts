@@ -41,6 +41,24 @@ app.get("/api/servers/status", async () => ({
   servers: await serverStatusService.list(),
 }));
 
+app.get("/api/servers/:id", async (request, reply) => {
+  const parameters = z
+    .object({
+      id: z.string().min(1),
+    })
+    .parse(request.params);
+  const server = await serverStatusService.get(parameters.id);
+
+  if (!server) {
+    return reply.code(404).send({
+      error: "server_not_found",
+      message: "The requested server does not exist.",
+    });
+  }
+
+  return server;
+});
+
 const connectionInputSchema = z.object({
   name: z.string().trim().min(1).max(80),
   baseUrl: z.string().url(),
