@@ -44,6 +44,13 @@ export interface AuthSession {
   authenticated: boolean;
   user: UserProfile;
   version: string;
+  application: {
+    name: string;
+    description: string;
+    version: string;
+    releaseChannel: string;
+    deployment: string;
+  };
 }
 
 export interface ServerConnectionInput {

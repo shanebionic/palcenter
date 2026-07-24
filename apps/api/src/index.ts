@@ -1,5 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { PalworldRestError } from "./clients/palworld-rest-client.js";
 import { NotificationDeliveryError } from "./providers/notification-provider.js";
@@ -58,11 +59,24 @@ const booleanEnvironmentValue = z
   .enum(["true", "false"])
   .transform((value) => value === "true");
 
+const packageVersion = z
+  .object({ version: z.string().trim().min(1).max(50) })
+  .parse(
+    JSON.parse(
+      readFileSync(new URL("../../../package.json", import.meta.url), "utf8"),
+    ),
+  ).version;
+
 const environmentSchema = z.object({
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3001),
   CONFIG_DIR: z.string().min(1).default("./data"),
   HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
-  PALCENTER_VERSION: z.string().trim().min(1).max(50).default("development"),
+  PALCENTER_VERSION: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().trim().min(1).max(50).default(packageVersion),
+  ),
+  PALCENTER_DEPLOYMENT: z.string().trim().min(1).max(50).default("Local"),
   PALCENTER_SESSION_SECRET: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().min(32).max(1_024).optional(),
@@ -102,6 +116,16 @@ if (!parsedEnvironment.success) {
 }
 
 const environment = parsedEnvironment.data;
+const applicationMetadata = {
+  name: "PalCenter",
+  description: "Server Command Center",
+  version: environment.PALCENTER_VERSION,
+  releaseChannel:
+    environment.NODE_ENV === "production"
+      ? "Production Release"
+      : "Development",
+  deployment: environment.PALCENTER_DEPLOYMENT,
+} as const;
 
 const app = Fastify({
   bodyLimit: 64 * 1_024,
@@ -437,6 +461,7 @@ app.post("/api/auth/setup", async (request, reply) => {
     authenticated: true,
     user,
     version: environment.PALCENTER_VERSION,
+    application: applicationMetadata,
   });
 });
 
@@ -473,6 +498,7 @@ app.post("/api/auth/login", async (request, reply) => {
     authenticated: true,
     user: result.user,
     version: environment.PALCENTER_VERSION,
+    application: applicationMetadata,
   };
 });
 
@@ -492,6 +518,7 @@ app.get("/api/auth/session", async (request, reply) => {
     authenticated: true,
     user: session.user,
     version: environment.PALCENTER_VERSION,
+    application: applicationMetadata,
   };
 });
 

@@ -21,7 +21,13 @@ import {
 interface AboutPalCenterModalProps {
   opened: boolean;
   onClose: () => void;
-  version: string;
+  application: {
+    name: string;
+    description: string;
+    version: string;
+    releaseChannel: string;
+    deployment: string;
+  };
 }
 
 const repositoryUrl = "https://github.com/shanebionic/palcenter";
@@ -50,7 +56,7 @@ function ExternalLink({
 export function AboutPalCenterModal({
   opened,
   onClose,
-  version,
+  application,
 }: AboutPalCenterModalProps) {
   return (
     <Modal
@@ -71,14 +77,24 @@ export function AboutPalCenterModal({
             radius="xl"
           />
           <Text fw={800} size="xl" c="gray.0">
-            PalCenter
+            {application.name}
           </Text>
           <Text size="sm" c="dimmed">
-            Server Command Center
+            {application.description}
           </Text>
           <Badge color="cyan" variant="light">
-            Version {version}
+            {application.version.startsWith("v")
+              ? application.version
+              : `v${application.version}`}
           </Badge>
+          <Group gap="xs" justify="center">
+            <Badge color="blue" variant="dot">
+              {application.releaseChannel}
+            </Badge>
+            <Badge color="gray" variant="dot">
+              Deployment: {application.deployment}
+            </Badge>
+          </Group>
         </Stack>
 
         <Divider />

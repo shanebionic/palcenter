@@ -120,7 +120,7 @@ export function AccountActions() {
       <AboutPalCenterModal
         opened={aboutOpened}
         onClose={() => setAboutOpened(false)}
-        version={session.version}
+        application={session.application}
       />
     </>
   );

@@ -31,9 +31,10 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile --prod --filter @palcenter/api
 
 FROM node:22-bookworm-slim AS runtime
-ARG PALCENTER_VERSION=development
+ARG PALCENTER_VERSION
 ENV NODE_ENV="production" \
     PALCENTER_VERSION="${PALCENTER_VERSION}" \
+    PALCENTER_DEPLOYMENT="Docker" \
     API_PORT="3001" \
     WEB_PORT="3000" \
     CONFIG_DIR="/app/data" \
@@ -41,6 +42,7 @@ ENV NODE_ENV="production" \
 WORKDIR /app
 
 COPY --from=production-dependencies /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./package.json
 COPY --from=production-dependencies /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
