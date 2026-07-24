@@ -7,7 +7,7 @@ interface BrandProps {
 
 export function Brand({ compact = false }: BrandProps) {
   return (
-    <Link href="/">
+    <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>
       <Group gap="sm" wrap="nowrap">
         <Image
           src="/assets/palcenter-logo.png"
@@ -18,11 +18,11 @@ export function Brand({ compact = false }: BrandProps) {
         />
         {!compact && (
           <Stack gap={0}>
-            <Text fw={800} size="lg" lh={1.15}>
+            <Text fw={800} size="lg" lh={1.15} c="cyan.4">
               PalCenter
             </Text>
             <Text size="xs" c="dimmed">
-              Server Command
+              Server Command Center
             </Text>
           </Stack>
         )}
