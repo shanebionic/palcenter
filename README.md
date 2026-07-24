@@ -17,7 +17,6 @@ PalCenter does not host or run the Palworld server itself. It connects to an exi
 
 ---
 
-=======
 ## Support PalCenter
 
 PalCenter is free and open-source software. If you find it useful, consider supporting continued development, testing, documentation, and future improvements.
