@@ -1,8 +1,11 @@
 # PalCenter
 
-![PalCenter Logo](assets/palcenter.png)
+![PalCenter logo](assets/palcenter.png)
 
-PalCenter is a self-hosted dashboard for managing and monitoring Palworld dedicated servers.
+**Palworld Server Command Center**
+
+PalCenter is a self-hosted web console for managing and monitoring existing
+Palworld dedicated servers.
 
 It connects to your existing Palworld server through the official REST API and provides a simple web interface for:
 
@@ -15,9 +18,21 @@ It connects to your existing Palworld server through the official REST API and p
 
 PalCenter does not host or run the Palworld server itself. It connects to an existing dedicated server.
 
----
+## Installation
 
-## Quick Start
+### Unraid Community Applications
+
+For Unraid, the recommended installation method is the official Community
+Applications template:
+
+1. Open **Apps → Community Applications** in the Unraid Web UI.
+2. Search for **PalCenter**.
+3. Select PalCenter, review the application settings, and install it.
+4. Start the container and open `http://<unraid-ip>:3000`.
+
+The template runs PalCenter as the non-root `nobody:users` account (`99:100`)
+and maps `/mnt/user/appdata/palcenter` to `/app/data`. See the
+[Unraid deployment guide](docs/UNRAID.md) for details.
 
 ### Docker Compose
 
@@ -49,7 +64,7 @@ docker compose up -d
 
 Open:
 
-```
+```text
 http://YOUR_SERVER_IP:3000
 ```
 
@@ -73,36 +88,29 @@ does not start as root and does not change ownership of mounted data. The host
 directory must already be writable by the selected UID/GID. Keep `1000:1000`
 when using the default Docker-managed volume.
 
-See the [Unraid deployment guide](docs/UNRAID.md) for the standard
-`99:100` configuration.
-
----
-
 ## Requirements
 
 - Docker
 - An existing Palworld dedicated server
 - Palworld REST API enabled
 
----
-
 ## Documentation
 
-Full usage documentation and guides are available in the wiki.
+Full installation, administration, backup, and troubleshooting guides are
+available in the [PalCenter Wiki](https://github.com/shanebionic/palcenter/wiki).
 
----
+## Contributing and support
 
-## Support
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before
+opening a pull request.
 
-Report issues:
-
-https://github.com/shanebionic/palcenter/issues
-
----
+Report bugs or request features through the
+[issue tracker](https://github.com/shanebionic/palcenter/issues). For security
+vulnerabilities, follow [SECURITY.md](SECURITY.md) instead of opening a public
+issue.
 
 ## License
 
 PalCenter is licensed under the MIT License.
 
 See [LICENSE](LICENSE) for details.
-```
