@@ -20,7 +20,7 @@ export function Brand({ compact = false }: BrandProps) {
             PalCenter
           </Text>
           <Text size="xs" c="dimmed">
-            Server Command Center
+            Palworld Server Command Center
           </Text>
         </Stack>
       )}

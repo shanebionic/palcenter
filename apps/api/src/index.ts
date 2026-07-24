@@ -118,7 +118,7 @@ if (!parsedEnvironment.success) {
 const environment = parsedEnvironment.data;
 const applicationMetadata = {
   name: "PalCenter",
-  description: "Server Command Center",
+  description: "Palworld Server Command Center",
   version: environment.PALCENTER_VERSION,
   releaseChannel:
     environment.NODE_ENV === "production"
