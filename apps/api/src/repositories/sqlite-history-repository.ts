@@ -12,6 +12,10 @@ import type {
   ServerEvent,
   ServerMetric,
 } from "../types/connections.js";
+import {
+  tightenFilePermissionsSync,
+  type StoragePermissionWarningHandler,
+} from "../services/storage-initialization-service.js";
 
 interface MetricRow {
   id: number;
@@ -53,10 +57,13 @@ export class SqliteHistoryRepository implements HistoryRepository {
   private database: DatabaseSync | null = null;
   private readonly databasePath: string;
 
-  constructor(configDirectory: string) {
+  constructor(
+    configDirectory: string,
+    private readonly onPermissionWarning: StoragePermissionWarningHandler = () =>
+      undefined,
+  ) {
     const directory = path.resolve(configDirectory);
     fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
-    fs.chmodSync(directory, 0o700);
     this.databasePath = path.join(directory, "history.sqlite");
     this.open();
   }
@@ -339,7 +346,7 @@ export class SqliteHistoryRepository implements HistoryRepository {
 
   private open(): void {
     this.database = new DatabaseSync(this.databasePath);
-    fs.chmodSync(this.databasePath, 0o600);
+    tightenFilePermissionsSync(this.databasePath, this.onPermissionWarning);
   }
 
   private requireDatabase(): DatabaseSync {

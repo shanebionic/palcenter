@@ -49,6 +49,10 @@ import {
   UserSafetyError,
   UserService,
 } from "./services/user-service.js";
+import {
+  initializeStorageDirectory,
+  type StoragePermissionWarningHandler,
+} from "./services/storage-initialization-service.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -143,11 +147,42 @@ await app.register(cors, {
   },
 });
 
-const repository = new JsonConnectionRepository(environment.CONFIG_DIR);
-const historyRepository = new SqliteHistoryRepository(environment.CONFIG_DIR);
-const userRepository = new SqliteUserRepository(environment.CONFIG_DIR);
+const storagePermissionWarningHandler: StoragePermissionWarningHandler = ({
+  error,
+  target,
+}) => {
+  app.log.warn(
+    { err: error, target },
+    "Storage is writable, but PalCenter could not tighten its permissions. Host-managed bind mount permissions will be used.",
+  );
+};
+
+try {
+  await initializeStorageDirectory(
+    environment.CONFIG_DIR,
+    storagePermissionWarningHandler,
+  );
+} catch (error) {
+  app.log.fatal({ err: error }, "PalCenter storage initialization failed.");
+  process.exit(1);
+  throw error;
+}
+
+const repository = new JsonConnectionRepository(
+  environment.CONFIG_DIR,
+  storagePermissionWarningHandler,
+);
+const historyRepository = new SqliteHistoryRepository(
+  environment.CONFIG_DIR,
+  storagePermissionWarningHandler,
+);
+const userRepository = new SqliteUserRepository(
+  environment.CONFIG_DIR,
+  storagePermissionWarningHandler,
+);
 const systemConfigurationRepository = new SystemConfigurationRepository(
   environment.CONFIG_DIR,
+  storagePermissionWarningHandler,
 );
 let systemConfigurationResult;
 
@@ -162,6 +197,7 @@ try {
 }
 const notificationRepository = new JsonNotificationRepository(
   environment.CONFIG_DIR,
+  storagePermissionWarningHandler,
 );
 const passwordService = new PasswordService();
 const userService = new UserService(userRepository, passwordService);

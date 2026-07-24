@@ -2,6 +2,10 @@ import { randomBytes, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import {
+  tightenFilePermissions,
+  type StoragePermissionWarningHandler,
+} from "../services/storage-initialization-service.js";
 
 const systemConfigurationSchema = z
   .object({
@@ -27,7 +31,11 @@ export class SystemConfigurationRepository {
   private readonly directory: string;
   private readonly filePath: string;
 
-  constructor(configDirectory: string) {
+  constructor(
+    configDirectory: string,
+    private readonly onPermissionWarning: StoragePermissionWarningHandler = () =>
+      undefined,
+  ) {
     this.directory = path.resolve(configDirectory);
     this.filePath = path.join(this.directory, "system.json");
   }
@@ -36,7 +44,6 @@ export class SystemConfigurationRepository {
     environmentSecret?: string,
   ): Promise<SystemConfigurationResult> {
     await fs.mkdir(this.directory, { recursive: true, mode: 0o700 });
-    await fs.chmod(this.directory, 0o700);
 
     try {
       return {
@@ -84,13 +91,14 @@ export class SystemConfigurationRepository {
       };
     }
 
+    await tightenFilePermissions(this.filePath, this.onPermissionWarning);
     return { configuration, source };
   }
 
   async read(): Promise<SystemConfiguration> {
     const text = await fs.readFile(this.filePath, "utf8");
     const configuration = systemConfigurationSchema.parse(JSON.parse(text));
-    await fs.chmod(this.filePath, 0o600);
+    await tightenFilePermissions(this.filePath, this.onPermissionWarning);
     return configuration;
   }
 

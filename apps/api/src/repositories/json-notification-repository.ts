@@ -7,6 +7,10 @@ import type {
   NotificationFile,
 } from "../types/notifications.js";
 import type { NotificationRepository } from "./notification-repository.js";
+import {
+  tightenFilePermissions,
+  type StoragePermissionWarningHandler,
+} from "../services/storage-initialization-service.js";
 
 const baseSchema = z.object({
   id: z.string().min(1),
@@ -37,7 +41,11 @@ const notificationFileSchema = z.object({
 export class JsonNotificationRepository implements NotificationRepository {
   private readonly filePath: string;
 
-  constructor(configDirectory: string) {
+  constructor(
+    configDirectory: string,
+    private readonly onPermissionWarning: StoragePermissionWarningHandler = () =>
+      undefined,
+  ) {
     this.filePath = path.join(
       path.resolve(configDirectory),
       "notifications.json",
@@ -47,12 +55,12 @@ export class JsonNotificationRepository implements NotificationRepository {
   async initialize(): Promise<void> {
     const directory = path.dirname(this.filePath);
     await fs.mkdir(directory, { recursive: true, mode: 0o700 });
-    await fs.chmod(directory, 0o700);
 
     try {
       await fs.access(this.filePath);
-      await fs.chmod(this.filePath, 0o600);
-    } catch {
+      await tightenFilePermissions(this.filePath, this.onPermissionWarning);
+    } catch (error) {
+      if (!this.isMissing(error)) throw error;
       await this.write({ version: 1, providers: [] });
     }
   }
@@ -124,6 +132,14 @@ export class JsonNotificationRepository implements NotificationRepository {
       { encoding: "utf8", mode: 0o600 },
     );
     await fs.rename(temporaryPath, this.filePath);
-    await fs.chmod(this.filePath, 0o600);
+    await tightenFilePermissions(this.filePath, this.onPermissionWarning);
+  }
+
+  private isMissing(error: unknown): boolean {
+    return (
+      error instanceof Error &&
+      "code" in error &&
+      (error as NodeJS.ErrnoException).code === "ENOENT"
+    );
   }
 }

@@ -18,16 +18,16 @@ runtime settings are listed in the main [README](../README.md). Set
 `PALCENTER_SESSION_COOKIE_SECURE=true` only when users reach PalCenter through
 an HTTPS reverse proxy.
 
-Create the host data directory before starting the container:
+Map an existing Unraid appdata directory as read/write:
 
 ```sh
 mkdir -p /mnt/user/appdata/palcenter
-chown 1000:1000 /mnt/user/appdata/palcenter
-chmod 700 /mnt/user/appdata/palcenter
 ```
 
-The container runs as UID `1000` and creates sensitive data files with mode
-`0600`. Do not expose the appdata share publicly.
+No manual `chmod` or `chown` is required. The container remains non-root and
+verifies that the mapping is writable. If Unraid does not allow permission
+tightening, PalCenter logs a warning and uses the host-managed permissions.
+Do not expose the appdata share publicly.
 
 ## First start
 
