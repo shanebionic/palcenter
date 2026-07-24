@@ -15,8 +15,8 @@ It connects to your existing Palworld server through the official REST API and p
 
 PalCenter does not host or run the Palworld server itself. It connects to an existing dedicated server.
 
-<<<<<<< Updated upstream
 ---
+
 =======
 ## Support PalCenter
 
@@ -24,8 +24,9 @@ PalCenter is free and open-source software. If you find it useful, consider supp
 
 [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=github)](https://github.com/sponsors/shanebionic)
 
+---
+
 ## Installation
->>>>>>> Stashed changes
 
 ## Quick Start
 
