@@ -25,14 +25,17 @@ PalCenter does not host or run the Palworld server itself. It connects to an exi
 For Unraid, the recommended installation method is the official Community
 Applications template:
 
-1. Open **Apps → Community Applications** in the Unraid Web UI.
-2. Search for **PalCenter**.
-3. Select PalCenter, review the application settings, and install it.
-4. Start the container and open `http://<unraid-ip>:3000`.
+## Support PalCenter
 
-The template runs PalCenter as the non-root `nobody:users` account (`99:100`)
-and maps `/mnt/user/appdata/palcenter` to `/app/data`. See the
-[Unraid deployment guide](docs/UNRAID.md) for details.
+PalCenter is free and open-source software. If you find it useful, consider supporting continued development, testing, documentation, and future improvements.
+
+[![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=github)](https://github.com/sponsors/shanebionic)
+
+---
+
+## Installation
+
+## Quick Start
 
 ### Docker Compose
 
