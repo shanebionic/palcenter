@@ -17,6 +17,7 @@ export class HistoryServerNotFoundError extends Error {}
 
 export class ServerHistoryService {
   private timer: ReturnType<typeof setInterval> | null = null;
+  private collectionPromise: Promise<void> | null = null;
   private collecting = false;
 
   constructor(
@@ -29,18 +30,30 @@ export class ServerHistoryService {
   ) {}
 
   start(onError: (error: unknown) => void): void {
-    const run = () => void this.collect().catch(onError);
+    const run = () => {
+      if (this.collectionPromise) {
+        return;
+      }
+
+      this.collectionPromise = this.collect()
+        .catch(onError)
+        .finally(() => {
+          this.collectionPromise = null;
+        });
+    };
 
     run();
     this.timer = setInterval(run, this.intervalMs);
     this.timer.unref();
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
     }
+
+    await this.collectionPromise;
   }
 
   async metrics(serverId: string, limit: number): Promise<ServerMetric[]> {

@@ -38,6 +38,12 @@ interface NotificationsResponse {
   providers: NotificationConfiguration[];
 }
 
+export interface AuthSession {
+  authenticated: boolean;
+  username: string;
+  version: string;
+}
+
 export interface ServerConnectionInput {
   name: string;
   baseUrl: string;
@@ -79,7 +85,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl}${path}`, init);
+    response = await fetch(`${apiUrl}${path}`, {
+      ...init,
+      credentials: "include",
+    });
   } catch (error) {
     throw new Error(
       error instanceof Error
@@ -90,6 +99,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const error: unknown = await response.json().catch(() => null);
+
+    if (
+      response.status === 401 &&
+      typeof error === "object" &&
+      error !== null &&
+      "error" in error &&
+      error.error === "authentication_required" &&
+      typeof window !== "undefined"
+    ) {
+      const next = `${window.location.pathname}${window.location.search}`;
+      window.location.assign(`/login?next=${encodeURIComponent(next)}`);
+    }
 
     throw new Error(
       errorMessage(error) ?? `Request failed with HTTP ${response.status}.`,
@@ -108,6 +129,28 @@ function jsonRequest<T>(path: string, body: unknown): Promise<T> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+export function login(
+  username: string,
+  password: string,
+): Promise<AuthSession> {
+  return jsonRequest<AuthSession>("/api/auth/login", {
+    username,
+    password,
+  });
+}
+
+export function getSession(): Promise<AuthSession> {
+  return request<AuthSession>("/api/auth/session", {
+    cache: "no-store",
+  });
+}
+
+export function logout(): Promise<{ authenticated: false }> {
+  return request<{ authenticated: false }>("/api/auth/logout", {
+    method: "POST",
   });
 }
 

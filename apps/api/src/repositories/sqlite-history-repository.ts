@@ -39,6 +39,16 @@ interface PlayerRow {
   player_name: string;
 }
 
+interface UserVersionRow {
+  user_version: number;
+}
+
+interface IntegrityCheckRow {
+  quick_check: string;
+}
+
+const schemaVersion = 1;
+
 export class SqliteHistoryRepository implements HistoryRepository {
   private readonly database: DatabaseSync;
 
@@ -51,6 +61,31 @@ export class SqliteHistoryRepository implements HistoryRepository {
   initialize(): void {
     this.database.exec(`
       PRAGMA journal_mode = WAL;
+      PRAGMA synchronous = NORMAL;
+      PRAGMA busy_timeout = 5000;
+      PRAGMA foreign_keys = ON;
+    `);
+
+    const versionRow = this.database
+      .prepare("PRAGMA user_version")
+      .get() as unknown as UserVersionRow | undefined;
+
+    if (!versionRow) {
+      throw new Error("Unable to read the history.sqlite schema version.");
+    }
+
+    const version = versionRow.user_version;
+
+    if (version > schemaVersion) {
+      throw new Error(
+        `history.sqlite uses schema version ${version}, but this PalCenter version supports up to ${schemaVersion}.`,
+      );
+    }
+
+    this.database.exec("BEGIN IMMEDIATE");
+
+    try {
+      this.database.exec(`
       CREATE TABLE IF NOT EXISTS server_metrics (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         server_id TEXT NOT NULL,
@@ -82,7 +117,31 @@ export class SqliteHistoryRepository implements HistoryRepository {
         player_name TEXT NOT NULL,
         PRIMARY KEY (server_id, player_id)
       );
-    `);
+      PRAGMA user_version = 1;
+      `);
+      this.database.exec("COMMIT");
+    } catch (error) {
+      this.database.exec("ROLLBACK");
+      throw error;
+    }
+
+    const integrity = this.database
+      .prepare("PRAGMA quick_check")
+      .get() as unknown as IntegrityCheckRow | undefined;
+
+    if (!integrity || integrity.quick_check !== "ok") {
+      throw new Error(
+        `history.sqlite failed its integrity check: ${integrity?.quick_check ?? "no result"}`,
+      );
+    }
+  }
+
+  check(): void {
+    this.database.prepare("SELECT 1").get();
+  }
+
+  close(): void {
+    this.database.close();
   }
 
   latestMetric(serverId: string): ServerMetric | null {

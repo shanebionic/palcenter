@@ -29,24 +29,90 @@ import {
   SettingsServerNotFoundError,
 } from "./services/server-settings-service.js";
 import { ServerStatusService } from "./services/server-status-service.js";
+import { AuthenticationService } from "./services/authentication-service.js";
 import { notificationEventTypes } from "./types/notifications.js";
+
+const booleanEnvironmentValue = z
+  .enum(["true", "false"])
+  .transform((value) => value === "true");
 
 const environmentSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   CONFIG_DIR: z.string().min(1).default("./data"),
   HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+  PALCENTER_VERSION: z.string().trim().min(1).max(50).default("development"),
+  PALCENTER_ADMIN_USERNAME: z.string().trim().min(1).max(80).default("admin"),
+  PALCENTER_ADMIN_PASSWORD: z.string().min(12),
+  PALCENTER_SESSION_SECRET: z.string().min(32),
+  PALCENTER_SESSION_DURATION_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(300)
+    .max(604_800)
+    .default(43_200),
+  PALCENTER_SESSION_COOKIE_SECURE: booleanEnvironmentValue.default("false"),
+  PALCENTER_CORS_ORIGINS: z.string().default(""),
+  PALCENTER_TRUST_PROXY: booleanEnvironmentValue.default("false"),
+  LOG_LEVEL: z
+    .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
+    .default("info"),
 });
 
-const environment = environmentSchema.parse(process.env);
+const parsedEnvironment = environmentSchema.safeParse(process.env);
+
+if (!parsedEnvironment.success) {
+  console.error("PalCenter configuration is invalid.");
+
+  for (const issue of parsedEnvironment.error.issues) {
+    console.error(
+      `- ${issue.path.join(".") || "environment"}: ${issue.message}`,
+    );
+  }
+
+  process.exit(1);
+}
+
+const environment = parsedEnvironment.data;
 
 const app = Fastify({
-  logger: true,
+  bodyLimit: 64 * 1_024,
+  trustProxy: environment.PALCENTER_TRUST_PROXY,
+  logger: {
+    level: environment.LOG_LEVEL,
+    redact: {
+      paths: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        "res.headers.set-cookie",
+        "req.body.adminPassword",
+        "req.body.password",
+        "req.body.webhookUrl",
+      ],
+      censor: "[REDACTED]",
+    },
+  },
 });
+
+const allowedOrigins = new Set(
+  environment.PALCENTER_CORS_ORIGINS.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
 
 await app.register(cors, {
-  origin: true,
+  credentials: true,
+  origin(origin, callback) {
+    callback(null, !origin || allowedOrigins.has(origin));
+  },
 });
 
+const authenticationService = new AuthenticationService({
+  username: environment.PALCENTER_ADMIN_USERNAME,
+  password: environment.PALCENTER_ADMIN_PASSWORD,
+  sessionSecret: environment.PALCENTER_SESSION_SECRET,
+  sessionDurationSeconds: environment.PALCENTER_SESSION_DURATION_SECONDS,
+  secureCookie: environment.PALCENTER_SESSION_COOKIE_SECURE,
+});
 const repository = new JsonConnectionRepository(environment.CONFIG_DIR);
 const historyRepository = new SqliteHistoryRepository(environment.CONFIG_DIR);
 const notificationRepository = new JsonNotificationRepository(
@@ -89,22 +155,155 @@ const serverHistoryService = new ServerHistoryService(
   (events) => notificationService.handle(events),
 );
 
-await connectionManager.initialize();
-await notificationRepository.initialize();
-historyRepository.initialize();
+try {
+  await connectionManager.initialize();
+  await notificationRepository.initialize();
+  historyRepository.initialize();
+} catch (error) {
+  app.log.fatal({ err: error }, "PalCenter data initialization failed.");
+  process.exit(1);
+}
+
 serverHistoryService.start((error) => {
-  app.log.error(error, "Historical metric collection failed.");
+  app.log.error({ err: error }, "Historical metric collection failed.");
 });
 
 app.addHook("onClose", async () => {
-  serverHistoryService.stop();
+  await serverHistoryService.stop();
+  historyRepository.close();
 });
 
-app.get("/api/health", async () => ({
-  status: "ok",
-  application: "PalCenter",
-  version: "0.1.0",
-}));
+const publicApiRoutes = new Set([
+  "/api/health",
+  "/api/auth/login",
+  "/api/auth/session",
+]);
+
+app.addHook("onRequest", async (request, reply) => {
+  const path = request.url.split("?")[0];
+  const origin = request.headers.origin;
+  const isStateChanging = !["GET", "HEAD", "OPTIONS"].includes(request.method);
+  const requestOrigin = `${request.protocol}://${request.headers.host}`;
+
+  if (
+    isStateChanging &&
+    origin &&
+    origin !== requestOrigin &&
+    !allowedOrigins.has(origin)
+  ) {
+    return reply.code(403).send({
+      error: "origin_not_allowed",
+      message: "The request origin is not allowed.",
+    });
+  }
+
+  if (
+    request.method === "OPTIONS" ||
+    !path.startsWith("/api/") ||
+    publicApiRoutes.has(path)
+  ) {
+    return;
+  }
+
+  if (!authenticationService.sessionFromCookie(request.headers.cookie)) {
+    return reply.code(401).send({
+      error: "authentication_required",
+      message: "Sign in to access PalCenter.",
+    });
+  }
+});
+
+app.addHook("onSend", async (_request, reply, payload) => {
+  reply.header("Cache-Control", "no-store");
+  reply.header("X-Content-Type-Options", "nosniff");
+  reply.header("X-Frame-Options", "DENY");
+  reply.header("Referrer-Policy", "no-referrer");
+  return payload;
+});
+
+const loginSchema = z
+  .object({
+    username: z.string().min(1).max(80),
+    password: z.string().min(1).max(1_024),
+  })
+  .strict();
+
+app.post("/api/auth/login", async (request, reply) => {
+  if (authenticationService.isRateLimited(request.ip)) {
+    return reply.code(429).send({
+      error: "too_many_login_attempts",
+      message: "Too many login attempts. Try again in 15 minutes.",
+    });
+  }
+
+  const input = loginSchema.parse(request.body);
+  const session = authenticationService.login(
+    input.username,
+    input.password,
+    request.ip,
+  );
+
+  if (!session) {
+    return reply.code(401).send({
+      error: "invalid_credentials",
+      message: "The username or password is incorrect.",
+    });
+  }
+
+  reply.header("Set-Cookie", authenticationService.sessionCookie(session));
+  return {
+    authenticated: true,
+    username: environment.PALCENTER_ADMIN_USERNAME,
+    version: environment.PALCENTER_VERSION,
+  };
+});
+
+app.get("/api/auth/session", async (request, reply) => {
+  const session = authenticationService.sessionFromCookie(
+    request.headers.cookie,
+  );
+
+  if (!session) {
+    return reply.code(401).send({
+      authenticated: false,
+      message: "Authentication is required.",
+    });
+  }
+
+  return {
+    authenticated: true,
+    username: session.username,
+    version: environment.PALCENTER_VERSION,
+  };
+});
+
+app.post("/api/auth/logout", async (_request, reply) => {
+  reply.header("Set-Cookie", authenticationService.clearSessionCookie());
+  return { authenticated: false };
+});
+
+app.get("/api/health", async (_request, reply) => {
+  try {
+    await repository.list();
+    await notificationRepository.list();
+    historyRepository.check();
+
+    return {
+      status: "ok",
+      application: "PalCenter",
+      version: environment.PALCENTER_VERSION,
+      storage: "ready",
+    };
+  } catch (error) {
+    app.log.error({ err: error }, "Health check failed.");
+    return reply.code(503).send({
+      status: "degraded",
+      application: "PalCenter",
+      version: environment.PALCENTER_VERSION,
+      storage: "unavailable",
+    });
+  }
+});
 
 app.get("/api/servers", async () => ({
   servers: await connectionManager.list(),
@@ -132,11 +331,29 @@ app.get("/api/servers/:id", async (request, reply) => {
   return server;
 });
 
-const connectionInputSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  baseUrl: z.string().url(),
-  adminPassword: z.string().min(1),
-});
+const httpUrlSchema = z
+  .string()
+  .max(2_048)
+  .url()
+  .refine((value) => {
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+    );
+  }, "Enter an HTTP or HTTPS URL without embedded credentials.");
+const baseHttpUrlSchema = httpUrlSchema.refine((value) => {
+  const url = new URL(value);
+  return !url.search && !url.hash;
+}, "Base URLs cannot include query parameters or fragments.");
+const connectionInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    baseUrl: baseHttpUrlSchema,
+    adminPassword: z.string().min(1).max(1_024),
+  })
+  .strict();
 
 app.post("/api/servers/test", async (request) => {
   const input = connectionInputSchema.omit({ name: true }).parse(request.body);
@@ -171,7 +388,10 @@ const messageSchema = z.string().trim().min(1).max(500);
 
 app.post("/api/servers/:id/admin/announce", async (request) => {
   const parameters = serverIdSchema.parse(request.params);
-  const input = z.object({ message: messageSchema }).parse(request.body);
+  const input = z
+    .object({ message: messageSchema })
+    .strict()
+    .parse(request.body);
 
   await serverAdminService.announce(parameters.id, input.message);
 
@@ -199,6 +419,7 @@ app.post("/api/servers/:id/admin/shutdown", async (request) => {
       waitTime: z.number().int().min(0).max(86_400),
       message: z.string().trim().max(500).optional(),
     })
+    .strict()
     .parse(request.body);
 
   await serverAdminService.shutdown(
@@ -302,24 +523,20 @@ const notificationIdSchema = z.object({
   id: z.string().min(1),
 });
 const notificationEventsSchema = z.array(z.enum(notificationEventTypes)).min(1);
-const httpUrlSchema = z
-  .string()
-  .url()
-  .refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
-    message: "Only HTTP and HTTPS URLs are supported.",
-  });
-const notificationBaseSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  enabled: z.boolean(),
-  events: notificationEventsSchema,
-});
+const notificationBaseSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    enabled: z.boolean(),
+    events: notificationEventsSchema,
+  })
+  .strict();
 const discordNotificationSchema = notificationBaseSchema.extend({
   type: z.literal("discord"),
   webhookUrl: httpUrlSchema,
 });
 const ntfyNotificationSchema = notificationBaseSchema.extend({
   type: z.literal("ntfy"),
-  serverUrl: httpUrlSchema,
+  serverUrl: baseHttpUrlSchema,
   topic: z.string().trim().min(1).max(200),
 });
 const notificationInputSchema = z.discriminatedUnion("type", [
@@ -363,8 +580,11 @@ app.post("/api/notifications/:id/test", async (request) => {
   };
 });
 
-app.setErrorHandler((error, _request, reply) => {
-  app.log.error(error);
+app.setErrorHandler((error, request, reply) => {
+  app.log.error(
+    { err: error, requestId: request.id },
+    "Request processing failed.",
+  );
 
   if (error instanceof z.ZodError) {
     return reply.code(400).send({
@@ -419,10 +639,23 @@ app.setErrorHandler((error, _request, reply) => {
     });
   }
 
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "statusCode" in error &&
+    typeof error.statusCode === "number" &&
+    error.statusCode >= 400 &&
+    error.statusCode < 500
+  ) {
+    return reply.code(error.statusCode).send({
+      error: "invalid_request",
+      message: "The request could not be processed.",
+    });
+  }
+
   return reply.code(500).send({
     error: "internal_error",
-    message:
-      error instanceof Error ? error.message : "An unexpected error occurred.",
+    message: "An unexpected error occurred.",
   });
 });
 
@@ -432,8 +665,25 @@ try {
     port: environment.PORT,
   });
 
-  app.log.info(`PalCenter API listening on port ${environment.PORT}`);
+  app.log.info(
+    {
+      version: environment.PALCENTER_VERSION,
+      port: environment.PORT,
+      configDirectory: environment.CONFIG_DIR,
+      historyIntervalSeconds: environment.HISTORY_INTERVAL_SECONDS,
+      corsOrigins: allowedOrigins.size,
+      secureSessionCookie: environment.PALCENTER_SESSION_COOKIE_SECURE,
+      trustProxy: environment.PALCENTER_TRUST_PROXY,
+    },
+    "PalCenter API started.",
+  );
+
+  if (!environment.PALCENTER_SESSION_COOKIE_SECURE) {
+    app.log.warn(
+      "Session cookies are not marked Secure. Use HTTPS and enable PALCENTER_SESSION_COOKIE_SECURE in production.",
+    );
+  }
 } catch (error) {
-  app.log.error(error);
+  app.log.fatal({ err: error }, "PalCenter API failed to start.");
   process.exit(1);
 }

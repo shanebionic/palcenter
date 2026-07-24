@@ -19,9 +19,14 @@ async function proxyRequest(
 
   const headers = new Headers();
   const contentType = request.headers.get("content-type");
+  const cookie = request.headers.get("cookie");
 
   if (contentType) {
     headers.set("content-type", contentType);
+  }
+
+  if (cookie) {
+    headers.set("cookie", cookie);
   }
 
   try {
@@ -36,9 +41,14 @@ async function proxyRequest(
     });
     const responseHeaders = new Headers();
     const responseContentType = response.headers.get("content-type");
+    const setCookie = response.headers.get("set-cookie");
 
     if (responseContentType) {
       responseHeaders.set("content-type", responseContentType);
+    }
+
+    if (setCookie) {
+      responseHeaders.set("set-cookie", setCookie);
     }
 
     return new Response(response.body, {
@@ -46,13 +56,12 @@ async function proxyRequest(
       headers: responseHeaders,
     });
   } catch (error) {
+    console.error("PalCenter API proxy request failed.", error);
+
     return Response.json(
       {
         error: "api_unreachable",
-        message:
-          error instanceof Error
-            ? `Unable to reach the PalCenter API: ${error.message}`
-            : "Unable to reach the PalCenter API.",
+        message: "Unable to reach the PalCenter API.",
       },
       { status: 502 },
     );

@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { getServer } from "../lib/api";
 import type { ServerWorkspaceData } from "../types/servers";
+import { AccountActions } from "./AccountActions";
 import { ServerAdministration } from "./ServerAdministration";
 import { ServerOverview } from "./ServerOverview";
 import { ServerMonitoring } from "./ServerMonitoring";
@@ -95,9 +96,12 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
             </Anchor>
             <Text>{server?.connection.name ?? "Server"}</Text>
           </Breadcrumbs>
-          <Button component={Link} href="/" variant="light">
-            Back to Dashboard
-          </Button>
+          <Group>
+            <AccountActions />
+            <Button component={Link} href="/" variant="light">
+              Back to Dashboard
+            </Button>
+          </Group>
         </Group>
 
         {error && <Alert color="red">{error}</Alert>}

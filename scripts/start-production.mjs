@@ -3,6 +3,11 @@ import { spawn } from "node:child_process";
 const apiPort = process.env.API_PORT ?? "3001";
 const webPort = process.env.WEB_PORT ?? "3000";
 const configDirectory = process.env.CONFIG_DIR ?? "/app/data";
+const version = process.env.PALCENTER_VERSION ?? "development";
+
+console.info(
+  `Starting PalCenter ${version} (web=${webPort}, api=${apiPort}, data=${configDirectory}).`,
+);
 
 const processes = [
   spawn(process.execPath, ["/app/apps/api/dist/index.js"], {
@@ -58,5 +63,11 @@ for (const child of processes) {
   });
 }
 
-process.on("SIGTERM", () => stop("SIGTERM"));
-process.on("SIGINT", () => stop("SIGINT"));
+process.on("SIGTERM", () => {
+  console.info("Stopping PalCenter after SIGTERM.");
+  stop("SIGTERM");
+});
+process.on("SIGINT", () => {
+  console.info("Stopping PalCenter after SIGINT.");
+  stop("SIGINT");
+});

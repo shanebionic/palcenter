@@ -28,6 +28,7 @@ import type {
   NotificationConfiguration,
   NotificationConfigurationUpdate,
 } from "../types/servers";
+import { AccountActions } from "./AccountActions";
 import { NotificationProviderCard } from "./NotificationProviderCard";
 import { NotificationProviderDialog } from "./NotificationProviderDialog";
 
@@ -175,7 +176,10 @@ export function NotificationSettings() {
             </Anchor>
             <Text>Notifications</Text>
           </Breadcrumbs>
-          <Button onClick={openAdd}>Add Provider</Button>
+          <Group>
+            <AccountActions />
+            <Button onClick={openAdd}>Add Provider</Button>
+          </Group>
         </Group>
 
         <div>

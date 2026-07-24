@@ -199,7 +199,16 @@ export class NotificationService {
       };
     }
 
-    return { ...configuration };
+    const serverUrl = new URL(configuration.serverUrl);
+    serverUrl.username = "";
+    serverUrl.password = "";
+    serverUrl.search = "";
+    serverUrl.hash = "";
+
+    return {
+      ...configuration,
+      serverUrl: serverUrl.toString().replace(/\/$/, ""),
+    };
   }
 
   private eventMessage(

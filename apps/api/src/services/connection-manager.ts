@@ -14,9 +14,7 @@ export interface AddConnectionInput {
 }
 
 export class ConnectionManager {
-  constructor(
-    private readonly repository: ConnectionRepository,
-  ) {}
+  constructor(private readonly repository: ConnectionRepository) {}
 
   async initialize(): Promise<void> {
     await this.repository.initialize();
@@ -60,10 +58,16 @@ export class ConnectionManager {
   }
 
   private sanitize(connection: StoredConnection): PublicConnection {
+    const baseUrl = new URL(connection.baseUrl);
+    baseUrl.username = "";
+    baseUrl.password = "";
+    baseUrl.search = "";
+    baseUrl.hash = "";
+
     return {
       id: connection.id,
       name: connection.name,
-      baseUrl: connection.baseUrl,
+      baseUrl: baseUrl.toString().replace(/\/$/, ""),
       createdAt: connection.createdAt,
       updatedAt: connection.updatedAt,
     };

@@ -17,6 +17,7 @@ import { useDisclosure } from "@mantine/hooks";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AddServerDialog } from "../components/AddServerDialog";
+import { AccountActions } from "../components/AccountActions";
 import { EmptyState } from "../components/EmptyState";
 import { ServerCard } from "../components/ServerCard";
 import { getServerStatus } from "../lib/api";
@@ -86,6 +87,7 @@ export default function HomePage() {
             <Text c="dimmed">Remote Palworld Server Manager</Text>
           </div>
           <Group>
+            <AccountActions />
             <Button component={Link} href="/notifications" variant="light">
               Notifications
             </Button>
