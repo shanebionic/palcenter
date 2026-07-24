@@ -158,9 +158,16 @@ function unavailableStorageError(
   target: string,
   cause: unknown,
 ): StorageAccessError {
+  const uid = process.getuid?.();
+  const gid = process.getgid?.();
+  const identity =
+    uid === undefined || gid === undefined
+      ? "the configured container user"
+      : `container UID ${uid} and GID ${gid}`;
+
   return new StorageAccessError(
     `PalCenter storage "${target}" is not writable by the container user. ` +
-      "Confirm the bind mount is read/write and that the host share allows container UID 1000 to create and update files.",
+      `Confirm the bind mount is read/write and that the host share allows ${identity} to create and update files.`,
     { cause },
   );
 }

@@ -1,6 +1,7 @@
 services:
   palcenter:
     image: ${PALCENTER_IMAGE:-ghcr.io/shanebionic/palcenter:latest}
+    user: "${PALCENTER_UID:-1000}:${PALCENTER_GID:-1000}"
     init: true
     restart: unless-stopped
     ports:
