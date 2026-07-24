@@ -28,7 +28,7 @@ services:
   palcenter:
     image: ghcr.io/shanebionic/palcenter:latest
     container_name: palcenter
-    user: "1000:1000"
+    user: "${PALCENTER_UID:-1000}:${PALCENTER_GID:-1000}"
     restart: unless-stopped
 
     ports:
