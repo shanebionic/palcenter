@@ -5,23 +5,26 @@ import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import { JsonConnectionRepository } from "../repositories/json-connection-repository.js";
 import { JsonNotificationRepository } from "../repositories/json-notification-repository.js";
+import { SqliteUserRepository } from "../repositories/sqlite-user-repository.js";
 import {
   createTarGzip,
   extractTarGzip,
   type ArchiveEntry,
 } from "./tar-gzip-archive.js";
+import { PasswordService } from "./password-service.js";
 
-const requiredFiles = [
+const legacyFiles = [
   "metadata.json",
   "servers.json",
   "notifications.json",
   "history.sqlite",
 ] as const;
-const formatVersion = 1;
+const currentFiles = [...legacyFiles, "users.sqlite"] as const;
+const formatVersion = 2;
 
 const metadataSchema = z
   .object({
-    formatVersion: z.literal(formatVersion),
+    formatVersion: z.union([z.literal(1), z.literal(formatVersion)]),
     palcenterVersion: z.string().min(1).max(50),
     createdAt: z.string().datetime(),
   })
@@ -34,7 +37,7 @@ export interface BackupInfo {
   backupFormatVersion: number;
   compatibleFormatVersions: number[];
   data: Record<
-    "servers" | "notifications" | "history",
+    "servers" | "notifications" | "history" | "users",
     {
       available: boolean;
       sizeBytes: number | null;
@@ -79,17 +82,18 @@ export class BackupService {
       }
     };
 
-    const [servers, notifications, history] = await Promise.all([
+    const [servers, notifications, history, users] = await Promise.all([
       status("servers.json"),
       status("notifications.json"),
       status("history.sqlite"),
+      status("users.sqlite"),
     ]);
 
     return {
       applicationVersion: this.applicationVersion,
       backupFormatVersion: formatVersion,
-      compatibleFormatVersions: [formatVersion],
-      data: { servers, notifications, history },
+      compatibleFormatVersions: [1, formatVersion],
+      data: { servers, notifications, history, users },
     };
   }
 
@@ -115,7 +119,7 @@ export class BackupService {
           },
         ];
 
-        for (const filename of requiredFiles.slice(1)) {
+        for (const filename of currentFiles.slice(1)) {
           entries.push({
             name: filename,
             contents: await fs.readFile(path.join(this.directory, filename)),
@@ -149,7 +153,12 @@ export class BackupService {
         await this.lifecycle.pause();
 
         try {
-          await this.replaceFrom(stagedDirectory);
+          await this.replaceFrom(
+            stagedDirectory,
+            metadata.formatVersion === 1
+              ? legacyFiles.slice(1)
+              : currentFiles.slice(1),
+          );
         } catch (error) {
           await this.lifecycle.resume().catch(() => undefined);
           throw error;
@@ -176,15 +185,6 @@ export class BackupService {
       );
     }
 
-    if (
-      entries.size !== requiredFiles.length ||
-      requiredFiles.some((filename) => !entries.has(filename))
-    ) {
-      throw new InvalidBackupError(
-        "Backup must contain metadata.json, servers.json, notifications.json, and history.sqlite only.",
-      );
-    }
-
     let metadata: BackupMetadata;
     try {
       metadata = metadataSchema.parse(
@@ -196,7 +196,20 @@ export class BackupService {
       );
     }
 
-    for (const filename of requiredFiles.slice(1)) {
+    const expectedFiles =
+      metadata.formatVersion === 1 ? legacyFiles : currentFiles;
+    if (
+      entries.size !== expectedFiles.length ||
+      expectedFiles.some((filename) => !entries.has(filename))
+    ) {
+      throw new InvalidBackupError(
+        metadata.formatVersion === 1
+          ? "Format v1 backup must contain its four required files only."
+          : "Backup must contain metadata, server, notification, history, and user data only.",
+      );
+    }
+
+    for (const filename of expectedFiles.slice(1)) {
       await fs.writeFile(
         path.join(stagedDirectory, filename),
         entries.get(filename)!,
@@ -208,6 +221,27 @@ export class BackupService {
       await new JsonConnectionRepository(stagedDirectory).list();
       await new JsonNotificationRepository(stagedDirectory).list();
       this.validateDatabase(path.join(stagedDirectory, "history.sqlite"));
+      if (metadata.formatVersion === formatVersion) {
+        const users = new SqliteUserRepository(stagedDirectory);
+        try {
+          users.initialize();
+          const storedUsers = users.list();
+          if (
+            users.setupRequired() ||
+            !storedUsers.some(
+              (user) => user.enabled && user.role === "administrator",
+            ) ||
+            storedUsers.some(
+              (user) =>
+                !new PasswordService().isSupportedHash(user.passwordHash),
+            )
+          ) {
+            throw new Error("Backup user data is not safe to restore.");
+          }
+        } finally {
+          users.close();
+        }
+      }
     } catch {
       throw new InvalidBackupError(
         "Backup data failed configuration or database validation.",
@@ -247,20 +281,23 @@ export class BackupService {
     }
   }
 
-  private async replaceFrom(stagedDirectory: string): Promise<void> {
+  private async replaceFrom(
+    stagedDirectory: string,
+    filenames: readonly string[],
+  ): Promise<void> {
     const token = randomUUID();
     const rollbackPaths = new Map<string, string>();
     const installed: string[] = [];
 
     try {
-      for (const filename of requiredFiles.slice(1)) {
+      for (const filename of filenames) {
         const target = path.join(this.directory, filename);
         const rollback = path.join(this.directory, `.${filename}.${token}.bak`);
         await fs.rename(target, rollback);
         rollbackPaths.set(filename, rollback);
       }
 
-      for (const filename of requiredFiles.slice(1)) {
+      for (const filename of filenames) {
         await fs.rename(
           path.join(stagedDirectory, filename),
           path.join(this.directory, filename),

@@ -14,7 +14,34 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     });
 
     if (response.ok) {
+      const session = (await response.json()) as {
+        user: { role: string; mustChangePassword: boolean };
+      };
+      if (
+        session.user.mustChangePassword &&
+        request.nextUrl.pathname !== "/profile"
+      ) {
+        return NextResponse.redirect(new URL("/profile", request.url));
+      }
+      if (
+        ["/users", "/backup", "/notifications"].some((path) =>
+          request.nextUrl.pathname.startsWith(path),
+        ) &&
+        session.user.role !== "administrator"
+      ) {
+        return NextResponse.redirect(new URL("/", request.url));
+      }
       return NextResponse.next();
+    }
+
+    const setup = await fetch(`${apiUrl}/api/auth/setup-status`, {
+      cache: "no-store",
+    });
+    if (
+      setup.ok &&
+      ((await setup.json()) as { setupRequired: boolean }).setupRequired
+    ) {
+      return NextResponse.redirect(new URL("/setup", request.url));
     }
   } catch (error) {
     console.error("Unable to validate the PalCenter session.", error);
@@ -29,5 +56,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ["/((?!api|login|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|login|setup|_next/static|_next/image|favicon.ico).*)"],
 };

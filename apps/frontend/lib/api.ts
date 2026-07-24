@@ -9,6 +9,8 @@ import type {
   ServerMetric,
   ServerSettings,
   ServerWorkspaceData,
+  UserProfile,
+  UserRole,
 } from "../types/servers";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ?? "";
@@ -40,7 +42,7 @@ interface NotificationsResponse {
 
 export interface AuthSession {
   authenticated: boolean;
-  username: string;
+  user: UserProfile;
   version: string;
 }
 
@@ -125,6 +127,28 @@ async function requestResponse(
       window.location.assign(`/login?next=${encodeURIComponent(next)}`);
     }
 
+    if (
+      response.status === 409 &&
+      typeof error === "object" &&
+      error !== null &&
+      "error" in error &&
+      error.error === "setup_required" &&
+      typeof window !== "undefined"
+    ) {
+      window.location.assign("/setup");
+    }
+
+    if (
+      response.status === 403 &&
+      typeof error === "object" &&
+      error !== null &&
+      "error" in error &&
+      error.error === "password_change_required" &&
+      typeof window !== "undefined"
+    ) {
+      window.location.assign("/profile");
+    }
+
     throw new Error(
       errorMessage(error) ?? `Request failed with HTTP ${response.status}.`,
     );
@@ -149,6 +173,21 @@ export function login(
     username,
     password,
   });
+}
+
+export function getSetupStatus(): Promise<{ setupRequired: boolean }> {
+  return request<{ setupRequired: boolean }>("/api/auth/setup-status", {
+    cache: "no-store",
+  });
+}
+
+export function completeSetup(input: {
+  username: string;
+  email: string;
+  password: string;
+  passwordConfirmation: string;
+}): Promise<AuthSession> {
+  return jsonRequest<AuthSession>("/api/auth/setup", input);
 }
 
 export function getSession(): Promise<AuthSession> {
@@ -379,6 +418,66 @@ export function restoreBackup(file: File): Promise<RestoreResult> {
       "X-PalCenter-Confirm-Restore": "replace-current-data",
     },
     body: file,
+  });
+}
+
+export function getCurrentUser(): Promise<UserProfile> {
+  return request<UserProfile>("/api/users/me", { cache: "no-store" });
+}
+
+export function changePassword(input: {
+  currentPassword: string;
+  newPassword: string;
+  passwordConfirmation: string;
+}): Promise<AdminActionResponse> {
+  return jsonRequest<AdminActionResponse>("/api/users/me/password", input);
+}
+
+export async function getUsers(): Promise<UserProfile[]> {
+  const result = await request<{ users: UserProfile[] }>("/api/users", {
+    cache: "no-store",
+  });
+  return result.users;
+}
+
+export function createUser(input: {
+  username: string;
+  email: string;
+  password: string;
+  role: UserRole;
+}): Promise<UserProfile> {
+  return jsonRequest<UserProfile>("/api/users", input);
+}
+
+export function updateUser(
+  id: string,
+  input: {
+    username: string;
+    email: string;
+    role: UserRole;
+    enabled: boolean;
+  },
+): Promise<UserProfile> {
+  return request<UserProfile>(`/api/users/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function resetUserPassword(
+  id: string,
+  password: string,
+): Promise<AdminActionResponse> {
+  return jsonRequest<AdminActionResponse>(
+    `/api/users/${encodeURIComponent(id)}/password`,
+    { password },
+  );
+}
+
+export function deleteUser(id: string): Promise<void> {
+  return request<void>(`/api/users/${encodeURIComponent(id)}`, {
+    method: "DELETE",
   });
 }
 

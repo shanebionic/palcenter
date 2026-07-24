@@ -3,7 +3,7 @@
 import { Button, Card, Stack, Text, Title } from "@mantine/core";
 
 interface EmptyStateProps {
-  onAddServer: () => void;
+  onAddServer?: () => void;
 }
 
 export function EmptyState({ onAddServer }: EmptyStateProps) {
@@ -16,9 +16,7 @@ export function EmptyState({ onAddServer }: EmptyStateProps) {
           No Palworld servers have been configured yet.
         </Text>
 
-        <Button onClick={onAddServer}>
-          Add Server
-        </Button>
+        {onAddServer && <Button onClick={onAddServer}>Add Server</Button>}
       </Stack>
     </Card>
   );

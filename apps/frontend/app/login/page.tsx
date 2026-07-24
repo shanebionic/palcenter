@@ -13,7 +13,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useEffect, useState } from "react";
-import { getSession, login } from "../../lib/api";
+import { getSession, getSetupStatus, login } from "../../lib/api";
 
 interface LoginFormValues {
   username: string;
@@ -32,7 +32,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<LoginFormValues>({
     initialValues: {
-      username: "admin",
+      username: "",
       password: "",
     },
     validate: {
@@ -42,9 +42,19 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    void getSession()
-      .then(() => window.location.replace(safeDestination()))
-      .catch(() => undefined);
+    void getSetupStatus().then((status) => {
+      if (status.setupRequired) {
+        window.location.replace("/setup");
+        return;
+      }
+      void getSession()
+        .then((session) =>
+          window.location.replace(
+            session.user.mustChangePassword ? "/profile" : safeDestination(),
+          ),
+        )
+        .catch(() => undefined);
+    });
   }, []);
 
   const submit = form.onSubmit(async (values) => {
@@ -52,8 +62,10 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await login(values.username.trim(), values.password);
-      window.location.replace(safeDestination());
+      const session = await login(values.username.trim(), values.password);
+      window.location.replace(
+        session.user.mustChangePassword ? "/profile" : safeDestination(),
+      );
     } catch (requestError) {
       setError(
         requestError instanceof Error

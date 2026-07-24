@@ -6,6 +6,7 @@ import { NotificationDeliveryError } from "./providers/notification-provider.js"
 import { JsonConnectionRepository } from "./repositories/json-connection-repository.js";
 import { JsonNotificationRepository } from "./repositories/json-notification-repository.js";
 import { SqliteHistoryRepository } from "./repositories/sqlite-history-repository.js";
+import { SqliteUserRepository } from "./repositories/sqlite-user-repository.js";
 import { ConnectionManager } from "./services/connection-manager.js";
 import {
   NotificationConfigurationError,
@@ -30,12 +31,23 @@ import {
 } from "./services/server-settings-service.js";
 import { ServerStatusService } from "./services/server-status-service.js";
 import { AuthenticationService } from "./services/authentication-service.js";
+import { AuthorizationService } from "./services/authorization-service.js";
 import {
   BackupRestoreError,
   BackupService,
   InvalidBackupError,
 } from "./services/backup-service.js";
 import { notificationEventTypes } from "./types/notifications.js";
+import { userRoles } from "./types/users.js";
+import { PasswordService } from "./services/password-service.js";
+import {
+  InvalidCurrentPasswordError,
+  SetupUnavailableError,
+  UserConflictError,
+  UserNotFoundError,
+  UserSafetyError,
+  UserService,
+} from "./services/user-service.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -46,8 +58,6 @@ const environmentSchema = z.object({
   CONFIG_DIR: z.string().min(1).default("./data"),
   HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
   PALCENTER_VERSION: z.string().trim().min(1).max(50).default("development"),
-  PALCENTER_ADMIN_USERNAME: z.string().trim().min(1).max(80).default("admin"),
-  PALCENTER_ADMIN_PASSWORD: z.string().min(12),
   PALCENTER_SESSION_SECRET: z.string().min(32),
   PALCENTER_SESSION_DURATION_SECONDS: z.coerce
     .number()
@@ -97,6 +107,10 @@ const app = Fastify({
         "res.headers.set-cookie",
         "req.body.adminPassword",
         "req.body.password",
+        "req.body.currentPassword",
+        "req.body.newPassword",
+        "req.body.passwordConfirmation",
+        "req.body.passwordHash",
         "req.body.webhookUrl",
       ],
       censor: "[REDACTED]",
@@ -125,18 +139,24 @@ await app.register(cors, {
   },
 });
 
-const authenticationService = new AuthenticationService({
-  username: environment.PALCENTER_ADMIN_USERNAME,
-  password: environment.PALCENTER_ADMIN_PASSWORD,
-  sessionSecret: environment.PALCENTER_SESSION_SECRET,
-  sessionDurationSeconds: environment.PALCENTER_SESSION_DURATION_SECONDS,
-  secureCookie: environment.PALCENTER_SESSION_COOKIE_SECURE,
-});
 const repository = new JsonConnectionRepository(environment.CONFIG_DIR);
 const historyRepository = new SqliteHistoryRepository(environment.CONFIG_DIR);
+const userRepository = new SqliteUserRepository(environment.CONFIG_DIR);
 const notificationRepository = new JsonNotificationRepository(
   environment.CONFIG_DIR,
 );
+const passwordService = new PasswordService();
+const userService = new UserService(userRepository, passwordService);
+const authenticationService = new AuthenticationService(
+  {
+    sessionSecret: environment.PALCENTER_SESSION_SECRET,
+    sessionDurationSeconds: environment.PALCENTER_SESSION_DURATION_SECONDS,
+    secureCookie: environment.PALCENTER_SESSION_COOKIE_SECURE,
+  },
+  userRepository,
+  passwordService,
+);
+const authorizationService = new AuthorizationService();
 const connectionManager = new ConnectionManager(repository);
 const notificationService = new NotificationService(
   notificationRepository,
@@ -183,9 +203,11 @@ const backupService = new BackupService(
     async pause() {
       await serverHistoryService.stop();
       historyRepository.close();
+      userRepository.close();
     },
     async resume() {
       historyRepository.reopen();
+      userRepository.reopen();
       serverHistoryService.start(historyErrorHandler);
     },
   },
@@ -195,6 +217,7 @@ try {
   await connectionManager.initialize();
   await notificationRepository.initialize();
   historyRepository.initialize();
+  userRepository.initialize();
 } catch (error) {
   app.log.fatal({ err: error }, "PalCenter data initialization failed.");
   process.exit(1);
@@ -205,12 +228,15 @@ serverHistoryService.start(historyErrorHandler);
 app.addHook("onClose", async () => {
   await serverHistoryService.stop();
   historyRepository.close();
+  userRepository.close();
 });
 
 const publicApiRoutes = new Set([
   "/api/health",
   "/api/auth/login",
   "/api/auth/session",
+  "/api/auth/setup-status",
+  "/api/auth/setup",
 ]);
 
 app.addHook("onRequest", async (request, reply) => {
@@ -231,6 +257,14 @@ app.addHook("onRequest", async (request, reply) => {
     });
   }
 
+  if (backupService.isDataUnavailable()) {
+    return reply.code(503).send({
+      error: "maintenance_in_progress",
+      message:
+        "PalCenter data is temporarily unavailable during backup maintenance.",
+    });
+  }
+
   if (
     request.method === "OPTIONS" ||
     !path.startsWith("/api/") ||
@@ -239,7 +273,17 @@ app.addHook("onRequest", async (request, reply) => {
     return;
   }
 
-  if (!authenticationService.sessionFromCookie(request.headers.cookie)) {
+  if (userService.setupRequired()) {
+    return reply.code(409).send({
+      error: "setup_required",
+      message: "Complete the PalCenter first-run setup.",
+    });
+  }
+
+  const session = authenticationService.sessionFromCookie(
+    request.headers.cookie,
+  );
+  if (!session) {
     return reply.code(401).send({
       error: "authentication_required",
       message: "Sign in to access PalCenter.",
@@ -247,16 +291,32 @@ app.addHook("onRequest", async (request, reply) => {
   }
 
   if (
-    backupService.isDataUnavailable() &&
-    path !== "/api/backup" &&
-    path !== "/api/backup/restore"
+    session.user.mustChangePassword &&
+    path !== "/api/users/me" &&
+    path !== "/api/users/me/password" &&
+    path !== "/api/auth/logout"
   ) {
-    return reply.code(503).send({
-      error: "maintenance_in_progress",
-      message:
-        "PalCenter data is temporarily unavailable during backup maintenance.",
+    return reply.code(403).send({
+      error: "password_change_required",
+      message: "Change your temporary password before continuing.",
     });
   }
+
+  if (
+    path !== "/api/users/me" &&
+    path !== "/api/users/me/password" &&
+    path !== "/api/auth/logout" &&
+    !authorizationService.can(
+      session.user.role,
+      authorizationService.permissionFor(request.method, path),
+    )
+  ) {
+    return reply.code(403).send({
+      error: "insufficient_permissions",
+      message: "Your account does not have permission for this action.",
+    });
+  }
+
 });
 
 app.addHook("onSend", async (_request, reply, payload) => {
@@ -273,8 +333,64 @@ const loginSchema = z
     password: z.string().min(1).max(1_024),
   })
   .strict();
+const usernameSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(80)
+  .regex(
+    /^[a-zA-Z0-9._-]+$/,
+    "Use letters, numbers, periods, underscores, or hyphens.",
+  );
+const emailSchema = z.string().trim().toLowerCase().email().max(254);
+const passwordSchema = z
+  .string()
+  .min(12)
+  .max(1_024)
+  .refine(
+    (value) =>
+      /[a-z]/.test(value) &&
+      /[A-Z]/.test(value) &&
+      /\d/.test(value) &&
+      /[^a-zA-Z0-9]/.test(value),
+    "Use upper- and lowercase letters, a number, and a symbol.",
+  );
+
+app.get("/api/auth/setup-status", async () => ({
+  setupRequired: userService.setupRequired(),
+}));
+
+app.post("/api/auth/setup", async (request, reply) => {
+  const input = z
+    .object({
+      username: usernameSchema,
+      email: emailSchema,
+      password: passwordSchema,
+      passwordConfirmation: z.string(),
+    })
+    .strict()
+    .refine((value) => value.password === value.passwordConfirmation, {
+      path: ["passwordConfirmation"],
+      message: "Passwords do not match.",
+    })
+    .parse(request.body);
+  const user = await userService.setup(input);
+  const token = authenticationService.createSessionFor(user.id);
+  reply.header("Set-Cookie", authenticationService.sessionCookie(token));
+  return reply.code(201).send({
+    authenticated: true,
+    user,
+    version: environment.PALCENTER_VERSION,
+  });
+});
 
 app.post("/api/auth/login", async (request, reply) => {
+  if (userService.setupRequired()) {
+    return reply.code(409).send({
+      error: "setup_required",
+      message: "Complete the PalCenter first-run setup.",
+    });
+  }
   if (authenticationService.isRateLimited(request.ip)) {
     return reply.code(429).send({
       error: "too_many_login_attempts",
@@ -283,23 +399,23 @@ app.post("/api/auth/login", async (request, reply) => {
   }
 
   const input = loginSchema.parse(request.body);
-  const session = authenticationService.login(
+  const result = await authenticationService.login(
     input.username,
     input.password,
     request.ip,
   );
 
-  if (!session) {
+  if (!result) {
     return reply.code(401).send({
       error: "invalid_credentials",
       message: "The username or password is incorrect.",
     });
   }
 
-  reply.header("Set-Cookie", authenticationService.sessionCookie(session));
+  reply.header("Set-Cookie", authenticationService.sessionCookie(result.token));
   return {
     authenticated: true,
-    username: environment.PALCENTER_ADMIN_USERNAME,
+    user: result.user,
     version: environment.PALCENTER_VERSION,
   };
 });
@@ -318,7 +434,7 @@ app.get("/api/auth/session", async (request, reply) => {
 
   return {
     authenticated: true,
-    username: session.username,
+    user: session.user,
     version: environment.PALCENTER_VERSION,
   };
 });
@@ -333,12 +449,14 @@ app.get("/api/health", async (_request, reply) => {
     await repository.list();
     await notificationRepository.list();
     historyRepository.check();
+    userRepository.check();
 
     return {
       status: "ok",
       application: "PalCenter",
       version: environment.PALCENTER_VERSION,
       storage: "ready",
+      setupRequired: userService.setupRequired(),
     };
   } catch (error) {
     app.log.error({ err: error }, "Health check failed.");
@@ -349,6 +467,93 @@ app.get("/api/health", async (_request, reply) => {
       storage: "unavailable",
     });
   }
+});
+
+const currentUser = (cookie: string | undefined) => {
+  const session = authenticationService.sessionFromCookie(cookie);
+  if (!session) throw new Error("Authenticated session is unavailable.");
+  return session.user;
+};
+
+app.get("/api/users/me", async (request) =>
+  userService.get(currentUser(request.headers.cookie).id),
+);
+
+app.post("/api/users/me/password", async (request, reply) => {
+  const input = z
+    .object({
+      currentPassword: z.string().min(1).max(1_024),
+      newPassword: passwordSchema,
+      passwordConfirmation: z.string(),
+    })
+    .strict()
+    .refine((value) => value.newPassword === value.passwordConfirmation, {
+      path: ["passwordConfirmation"],
+      message: "Passwords do not match.",
+    })
+    .parse(request.body);
+  await userService.changePassword(
+    currentUser(request.headers.cookie).id,
+    input.currentPassword,
+    input.newPassword,
+  );
+  reply.header("Set-Cookie", authenticationService.clearSessionCookie());
+  return {
+    success: true,
+    message: "Password changed. Sign in again with your new password.",
+  };
+});
+
+const userIdSchema = z.object({ id: z.string().min(1) });
+const userIdentitySchema = z.object({
+  username: usernameSchema,
+  email: emailSchema,
+});
+const userCreateSchema = userIdentitySchema
+  .extend({
+    password: passwordSchema,
+    role: z.enum(userRoles),
+  })
+  .strict();
+const userUpdateSchema = userIdentitySchema
+  .extend({
+    role: z.enum(userRoles),
+    enabled: z.boolean(),
+  })
+  .strict();
+
+app.get("/api/users", async () => ({ users: userService.list() }));
+
+app.post("/api/users", async (request, reply) => {
+  const input = userCreateSchema.parse(request.body);
+  return reply.code(201).send(await userService.create(input));
+});
+
+app.patch("/api/users/:id", async (request) => {
+  const parameters = userIdSchema.parse(request.params);
+  return userService.update(
+    parameters.id,
+    userUpdateSchema.parse(request.body),
+  );
+});
+
+app.post("/api/users/:id/password", async (request) => {
+  const parameters = userIdSchema.parse(request.params);
+  const input = z
+    .object({ password: passwordSchema })
+    .strict()
+    .parse(request.body);
+  await userService.resetPassword(parameters.id, input.password);
+  return {
+    success: true,
+    message: "Temporary password assigned. The user must change it at sign-in.",
+  };
+});
+
+app.delete("/api/users/:id", async (request, reply) => {
+  const parameters = userIdSchema.parse(request.params);
+  userService.delete(parameters.id);
+  return reply.code(204).send();
 });
 
 app.get("/api/servers", async () => ({
@@ -736,6 +941,25 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof BackupRestoreError) {
     return reply.code(500).send({
       error: "restore_failed",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof UserNotFoundError) {
+    return reply.code(404).send({
+      error: "user_not_found",
+      message: error.message,
+    });
+  }
+
+  if (
+    error instanceof UserConflictError ||
+    error instanceof UserSafetyError ||
+    error instanceof InvalidCurrentPasswordError ||
+    error instanceof SetupUnavailableError
+  ) {
+    return reply.code(400).send({
+      error: "user_operation_failed",
       message: error.message,
     });
   }

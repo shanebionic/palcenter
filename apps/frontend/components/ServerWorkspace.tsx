@@ -16,7 +16,7 @@ import {
 } from "@mantine/core";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { getServer } from "../lib/api";
+import { getServer, getSession } from "../lib/api";
 import type { ServerWorkspaceData } from "../types/servers";
 import { AccountActions } from "./AccountActions";
 import { ServerAdministration } from "./ServerAdministration";
@@ -34,6 +34,7 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canOperate, setCanOperate] = useState(false);
 
   const loadServer = useCallback(
     async (background = false) => {
@@ -60,6 +61,9 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
   );
 
   useEffect(() => {
+    void getSession()
+      .then((session) => setCanOperate(session.user.role !== "visitor"))
+      .catch(() => undefined);
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -126,8 +130,10 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
             <Tabs defaultValue="overview" keepMounted={false}>
               <Tabs.List>
                 <Tabs.Tab value="overview">Overview</Tabs.Tab>
-                <Tabs.Tab value="players">Players</Tabs.Tab>
-                <Tabs.Tab value="administration">Administration</Tabs.Tab>
+                {canOperate && <Tabs.Tab value="players">Players</Tabs.Tab>}
+                {canOperate && (
+                  <Tabs.Tab value="administration">Administration</Tabs.Tab>
+                )}
                 <Tabs.Tab value="settings">Settings</Tabs.Tab>
                 <Tabs.Tab value="monitoring">Monitoring</Tabs.Tab>
               </Tabs.List>
@@ -135,15 +141,19 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
               <Tabs.Panel value="overview" pt="lg">
                 <ServerOverview server={server} />
               </Tabs.Panel>
-              <Tabs.Panel value="players">
-                <ServerPlayers serverId={server.connection.id} />
-              </Tabs.Panel>
-              <Tabs.Panel value="administration">
-                <ServerAdministration
-                  serverId={server.connection.id}
-                  serverName={server.connection.name}
-                />
-              </Tabs.Panel>
+              {canOperate && (
+                <Tabs.Panel value="players">
+                  <ServerPlayers serverId={server.connection.id} />
+                </Tabs.Panel>
+              )}
+              {canOperate && (
+                <Tabs.Panel value="administration">
+                  <ServerAdministration
+                    serverId={server.connection.id}
+                    serverName={server.connection.name}
+                  />
+                </Tabs.Panel>
+              )}
               <Tabs.Panel value="settings">
                 <ServerSettings serverId={server.connection.id} />
               </Tabs.Panel>

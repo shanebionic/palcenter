@@ -167,7 +167,8 @@ export function BackupSettings() {
             <Title order={3}>Restore a backup</Title>
             <Alert color="yellow">
               A restore replaces all server connections, notification settings,
-              historical metrics, and events. Create a current backup first.
+              historical metrics, events, users, roles, and login credentials.
+              Create a current backup first.
             </Alert>
             <FileInput
               label="PalCenter backup archive"
@@ -206,7 +207,8 @@ export function BackupSettings() {
         <Stack>
           <Alert color="red">
             This replaces current configuration and history with the selected
-            backup. The archive will be validated before any data is changed.
+            backup. Format v2 also replaces every user and password hash. The
+            archive will be validated before any data is changed.
           </Alert>
           <Text fw={500}>{file?.name}</Text>
           <Group justify="flex-end">

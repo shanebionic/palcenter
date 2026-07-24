@@ -20,7 +20,7 @@ import { AddServerDialog } from "../components/AddServerDialog";
 import { AccountActions } from "../components/AccountActions";
 import { EmptyState } from "../components/EmptyState";
 import { ServerCard } from "../components/ServerCard";
-import { getServerStatus } from "../lib/api";
+import { getServerStatus, getSession, type AuthSession } from "../lib/api";
 import type { ServerStatus } from "../types/servers";
 
 export default function HomePage() {
@@ -29,6 +29,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
 
   const loadServers = useCallback(async (background = false) => {
     if (background) {
@@ -52,6 +53,9 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    void getSession()
+      .then(setSession)
+      .catch(() => undefined);
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -88,13 +92,17 @@ export default function HomePage() {
           </div>
           <Group>
             <AccountActions />
-            <Button component={Link} href="/notifications" variant="light">
-              Notifications
-            </Button>
-            <Button component={Link} href="/backup" variant="light">
-              Backup
-            </Button>
-            <Button onClick={dialog.open}>Add Server</Button>
+            {session?.user.role === "administrator" && (
+              <>
+                <Button component={Link} href="/notifications" variant="light">
+                  Notifications
+                </Button>
+                <Button component={Link} href="/backup" variant="light">
+                  Backup
+                </Button>
+                <Button onClick={dialog.open}>Add Server</Button>
+              </>
+            )}
           </Group>
         </Group>
 
@@ -117,7 +125,11 @@ export default function HomePage() {
         </Group>
 
         {!loading && servers.length === 0 && (
-          <EmptyState onAddServer={dialog.open} />
+          <EmptyState
+            onAddServer={
+              session?.user.role === "administrator" ? dialog.open : undefined
+            }
+          />
         )}
 
         {loading && (

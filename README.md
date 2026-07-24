@@ -23,15 +23,18 @@ cp .env.example .env
 openssl rand -base64 48
 ```
 
-Put a long, unique administrator password and the generated random session
-secret in `.env`. Do not commit or share this file. Then run:
+Put the generated random session secret in `.env`. User passwords are created
+in the browser and must never be added to environment files. Do not commit or
+share `.env`. Then run:
 
 ```sh
 docker compose up -d
 ```
 
-Open `http://<palcenter-host>:3000` in a browser. The API is also available on
-port `3001`; for example:
+Open `http://<palcenter-host>:3000` in a browser. On first run, PalCenter
+redirects to `/setup` and requires creation of the initial Administrator. There
+is no default username or password. The API is also available on port `3001`;
+for example:
 
 ```sh
 curl http://<palcenter-host>:3001/api/health
@@ -71,6 +74,7 @@ The Compose deployment stores PalCenter data in the named volume
 - `servers.json` — remote Palworld connection configuration
 - `notifications.json` — notification provider configuration
 - `history.sqlite` — historical metrics and server events
+- `users.sqlite` — user accounts, password hashes, roles, and authentication metadata
 
 These files survive container replacement and image upgrades. Do not run
 `docker compose down --volumes` unless you intentionally want to delete all
@@ -85,7 +89,8 @@ docker compose up -d --force-recreate
 docker compose exec palcenter sh -c \
   'test -s /app/data/servers.json &&
    test -s /app/data/notifications.json &&
-   test -s /app/data/history.sqlite'
+   test -s /app/data/history.sqlite &&
+   test -s /app/data/users.sqlite'
 ```
 
 Reload PalCenter and confirm the server, notification provider, and monitoring
@@ -108,14 +113,14 @@ chmod 700 data
 ```
 
 The data directory contains Palworld admin passwords and notification
-credentials. Restrict filesystem access, include the directory in your backup
-plan, and never publish its contents.
+credentials and password hashes. Restrict filesystem access, include the
+directory in your backup plan, and never publish its contents.
 
 ### Backup preparation
 
 Back up the complete `/app/data` directory as one unit. A valid backup must
-include `servers.json`, `notifications.json`, `history.sqlite`, and any
-`history.sqlite-wal` or `history.sqlite-shm` files present at capture time.
+include `servers.json`, `notifications.json`, `history.sqlite`, `users.sqlite`,
+and any SQLite `-wal` or `-shm` files present at capture time.
 
 For a consistent cold backup, stop PalCenter before copying or archiving the
 Docker volume:
@@ -130,7 +135,7 @@ docker compose start palcenter
 The actual volume name includes the Compose project name and may differ from
 `palcenter_palcenter-data`; use `docker volume ls` if needed. Store backups
 encrypted because they contain administrator and notification credentials.
-Verify that a backup contains all three primary data files and retain the image
+Verify that a backup contains all four primary data files and retain the image
 tag that created it.
 
 Use PalCenter's authenticated **Backup** page for routine live backups and
@@ -142,8 +147,6 @@ as a second recovery layer before major platform changes.
 
 | Variable                             | Default                                | Purpose                                                       |
 | ------------------------------------ | -------------------------------------- | ------------------------------------------------------------- |
-| `PALCENTER_ADMIN_USERNAME`           | `admin`                                | Single administrator username                                 |
-| `PALCENTER_ADMIN_PASSWORD`           | Required                               | Single administrator password; minimum 12 characters          |
 | `PALCENTER_SESSION_SECRET`           | Required                               | Random session-signing secret; minimum 32 characters          |
 | `PALCENTER_SESSION_DURATION_SECONDS` | `43200`                                | Login lifetime in seconds; allowed range 300–604800           |
 | `PALCENTER_SESSION_COOKIE_SECURE`    | `false`                                | Set `true` when the browser reaches PalCenter through HTTPS   |
@@ -187,12 +190,51 @@ For PowerShell, generate a session secret with:
 - Leave `PALCENTER_CORS_ORIGINS` empty when using the built-in same-origin web
   proxy. Add only exact trusted origins when direct browser-to-API access is
   required.
-- Use unique administrator, Palworld, Discord, and ntfy credentials. Rotate
+- Use unique user, Palworld, Discord, and ntfy credentials. Rotate
   `PALCENTER_SESSION_SECRET` to invalidate all existing PalCenter sessions.
 - Protect `.env`, Docker volume contents, backups, and container logs. PalCenter
   redacts known credential fields, but infrastructure logging should not record
   request bodies.
 - Never mount the Docker socket or Palworld save directories into PalCenter.
+
+## Users and first-run setup
+
+New installations start in setup mode because `users.sqlite` contains no
+accounts. Open PalCenter and create the first account with a username, email,
+and strong password. That account is always an Administrator, and the setup
+endpoint is permanently disabled after it succeeds.
+
+Passwords are stored only as salted, memory-hard scrypt hashes. Usernames and
+email addresses are case-insensitively unique. Available roles are:
+
+- **Administrator** — full access, including server connections,
+  notifications, backups, and user management.
+- **Moderator** — dashboard/history access plus server and player operations.
+- **Visitor** — read-only dashboard, settings, and monitoring access.
+
+Administrators manage accounts from **Users**. Newly created users receive an
+administrator-assigned temporary password and must replace it at first login.
+Role, enabled-state, and password changes invalidate that user's existing
+sessions. PalCenter prevents deleting, disabling, or demoting the final enabled
+Administrator.
+
+Every user can open **Profile** to view account information and change their
+password. Password changes require the current password and sign the user out
+afterward.
+
+### Upgrade from environment administrator credentials
+
+`PALCENTER_ADMIN_USERNAME` and `PALCENTER_ADMIN_PASSWORD` are no longer read.
+After upgrading an existing installation, keep the existing `/app/data` volume
+and remove those variables from `.env`. PalCenter preserves servers,
+notifications, and history, then enters first-run setup so the existing
+administrator can create the first database-backed account.
+
+If all Administrators become unavailable, restore a known-good format-v2
+PalCenter backup or a cold copy of the complete `/app/data` volume. There is no
+default or environment-variable bypass account. Preserve
+`PALCENTER_SESSION_SECRET`; changing it intentionally invalidates every current
+session but does not change user passwords.
 
 ## Connecting remote Palworld servers
 
@@ -230,7 +272,6 @@ docker run -d \
   -p 3000:3000 \
   -p 3001:3001 \
   -v palcenter-data:/app/data \
-  -e PALCENTER_ADMIN_PASSWORD='replace-with-a-long-random-password' \
   -e PALCENTER_SESSION_SECRET='replace-with-at-least-32-random-characters' \
   ghcr.io/shanebionic/palcenter:local
 ```
@@ -245,7 +286,6 @@ PalCenter requires Node.js 22.13 or newer and pnpm 9.
 
 ```sh
 pnpm install
-export PALCENTER_ADMIN_PASSWORD='replace-with-a-long-random-password'
 export PALCENTER_SESSION_SECRET='replace-with-at-least-32-random-characters'
 pnpm dev
 ```
@@ -321,11 +361,12 @@ Backup** exports one portable `.tar.gz` archive containing:
 - `servers.json`
 - `notifications.json`
 - `history.sqlite` (metrics and server events)
+- `users.sqlite` (users, roles, password hashes, and authentication metadata)
 - `metadata.json` (backup format, PalCenter version, and creation time)
 
-Treat the archive as a secret: it includes Palworld administrator passwords and
-notification credentials. Store it in access-controlled storage and do not
-attach it to public support requests.
+Treat the archive as a secret: it includes Palworld administrator passwords,
+notification credentials, and user password hashes. Store it in
+access-controlled storage and do not attach it to public support requests.
 
 To recover or migrate an installation, deploy PalCenter normally with its
 existing `/app/data` volume, open **Backup**, select the archive, and confirm the
@@ -334,16 +375,21 @@ configuration, and SQLite integrity before pausing collection and replacing
 live data. If restored data cannot be opened, the previous files are put back.
 No manual container file copy is required.
 
-The supported backup format is version 1. Restore archives are limited to 512
-MiB by default; set `PALCENTER_BACKUP_MAX_BYTES` to another value between 1 MiB
-and 1 GiB when a larger history database requires it. Keep a volume-level cold
-backup before major upgrades as a second recovery layer.
+The current backup format is version 2. It validates that restored user data
+contains an enabled Administrator before replacing anything. Format-v1 backups
+from Issue #16 remain restorable and preserve the installation's current users.
+Restore archives are limited to 512 MiB by default; set
+`PALCENTER_BACKUP_MAX_BYTES` to another value between 1 MiB and 1 GiB when a
+larger history database requires it. Keep a volume-level cold backup before
+major upgrades as a second recovery layer.
 
 ## Troubleshooting
 
 - **Compose reports a required variable is missing:** create `.env` from
-  `.env.example` and set both `PALCENTER_ADMIN_PASSWORD` and
-  `PALCENTER_SESSION_SECRET`.
+  `.env.example` and set `PALCENTER_SESSION_SECRET`.
+- **PalCenter redirects to setup after an upgrade:** this is the expected
+  one-time migration from environment credentials. Create the initial
+  database-backed Administrator; existing operational data remains intact.
 - **Login loops when HTTPS is not configured:** keep
   `PALCENTER_SESSION_COOKIE_SECURE=false` for local HTTP. Set it to `true` only
   when the browser uses HTTPS.
@@ -355,7 +401,7 @@ backup before major upgrades as a second recovery layer.
   preserve the entire data volume, and restore a known-good backup. Do not
   delete or edit the database manually.
 - **Restore is rejected:** use a `.tar.gz` file created by PalCenter and confirm
-  it contains all four required root files. Archives with extra files, links,
+  it contains all required root files. Archives with extra files, links,
   invalid metadata, invalid JSON, or a damaged/incompatible SQLite database are
   rejected before current data is changed.
 - **Restore is too large:** increase `PALCENTER_BACKUP_MAX_BYTES` within the

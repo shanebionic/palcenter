@@ -5,10 +5,16 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
+import { SqliteUserRepository } from "../src/repositories/sqlite-user-repository.js";
 import {
   BackupService,
   InvalidBackupError,
 } from "../src/services/backup-service.js";
+import {
+  createTarGzip,
+  extractTarGzip,
+} from "../src/services/tar-gzip-archive.js";
+import { PasswordService } from "../src/services/password-service.js";
 
 async function fixture() {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "palcenter-test-"));
@@ -72,19 +78,35 @@ async function fixture() {
     ],
     [],
   );
+  const users = new SqliteUserRepository(directory);
+  users.initialize();
+  users.createInitial({
+    id: "usr_test",
+    username: "owner",
+    email: "owner@example.com",
+    passwordHash: await new PasswordService().hash("Strong-Password-123!"),
+    role: "administrator",
+    enabled: true,
+    mustChangePassword: false,
+    createdAt: "2026-07-23T00:00:00.000Z",
+    updatedAt: "2026-07-23T00:00:00.000Z",
+  });
 
   const lifecycle = {
     async pause() {
       history.close();
+      users.close();
     },
     async resume() {
       history.reopen();
+      users.reopen();
     },
   };
 
   return {
     directory,
     history,
+    users,
     service: new BackupService(directory, "1.0.0-test", lifecycle),
   };
 }
@@ -98,7 +120,7 @@ test("creates and restores all PalCenter data", async () => {
       backup.filename,
       /^palcenter-backup-\d{4}-\d{2}-\d{2}\.tar\.gz$/,
     );
-    assert.equal(backup.metadata.formatVersion, 1);
+    assert.equal(backup.metadata.formatVersion, 2);
     const archivePath = path.join(context.directory, backup.filename);
     await fs.writeFile(archivePath, backup.contents);
     const listing = spawnSync("tar", ["-tzf", archivePath], {
@@ -110,6 +132,7 @@ test("creates and restores all PalCenter data", async () => {
       "metadata.json",
       "notifications.json",
       "servers.json",
+      "users.sqlite",
     ]);
 
     await fs.writeFile(
@@ -151,8 +174,10 @@ test("creates and restores all PalCenter data", async () => {
     assert.equal(notifications.providers.length, 1);
     assert.equal(context.history.listMetrics("srv_test", 10).length, 1);
     assert.equal(context.history.listEvents("srv_test", 10).length, 1);
+    assert.equal(context.users.list().length, 1);
   } finally {
     context.history.close();
+    context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
   }
 });
@@ -176,6 +201,48 @@ test("rejects invalid uploads without changing current data", async () => {
     context.history.check();
   } finally {
     context.history.close();
+    context.users.close();
+    await fs.rm(context.directory, { recursive: true, force: true });
+  }
+});
+
+test("restoring a format v1 backup preserves current users", async () => {
+  const context = await fixture();
+  try {
+    const current = await context.service.create();
+    const entries = extractTarGzip(current.contents);
+    entries.delete("users.sqlite");
+    entries.set(
+      "metadata.json",
+      Buffer.from(
+        JSON.stringify({
+          formatVersion: 1,
+          palcenterVersion: "1.0.0-test",
+          createdAt: new Date().toISOString(),
+        }),
+      ),
+    );
+    context.users.create({
+      id: "usr_second",
+      username: "second",
+      email: "second@example.com",
+      passwordHash: "scrypt$second-test-hash",
+      role: "visitor",
+      enabled: true,
+      mustChangePassword: true,
+      createdAt: "2026-07-23T00:00:00.000Z",
+      updatedAt: "2026-07-23T00:00:00.000Z",
+    });
+
+    await context.service.restore(
+      createTarGzip(
+        [...entries].map(([name, contents]) => ({ name, contents })),
+      ),
+    );
+    assert.equal(context.users.list().length, 2);
+  } finally {
+    context.history.close();
+    context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
   }
 });

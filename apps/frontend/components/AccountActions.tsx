@@ -1,6 +1,7 @@
 "use client";
 
-import { Badge, Button, Group, Text } from "@mantine/core";
+import { Badge, Button, Group } from "@mantine/core";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getSession, logout, type AuthSession } from "../lib/api";
 
@@ -28,10 +29,16 @@ export function AccountActions() {
     <Group gap="sm">
       {session && (
         <>
-          <Text size="sm" c="dimmed">
-            {session.username}
-          </Text>
-          <Badge variant="light">{session.version}</Badge>
+          <Button component={Link} href="/profile" size="xs" variant="subtle">
+            {session.user.username}
+          </Button>
+          <Badge variant="light">{session.user.role}</Badge>
+          <Badge variant="outline">{session.version}</Badge>
+          {session.user.role === "administrator" && (
+            <Button component={Link} href="/users" size="xs" variant="subtle">
+              Users
+            </Button>
+          )}
         </>
       )}
       <Button

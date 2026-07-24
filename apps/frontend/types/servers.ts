@@ -179,5 +179,20 @@ export interface BackupInfo {
     servers: BackupDataStatus;
     notifications: BackupDataStatus;
     history: BackupDataStatus;
+    users: BackupDataStatus;
   };
+}
+
+export type UserRole = "administrator" | "moderator" | "visitor";
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  enabled: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt: string | null;
 }

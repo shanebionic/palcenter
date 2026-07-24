@@ -23,6 +23,9 @@ apps/api/data/notifications.json.tmp
 apps/api/data/history.sqlite
 apps/api/data/history.sqlite-shm
 apps/api/data/history.sqlite-wal
+apps/api/data/users.sqlite
+apps/api/data/users.sqlite-shm
+apps/api/data/users.sqlite-wal
 
 # Turbo
 .turbo
