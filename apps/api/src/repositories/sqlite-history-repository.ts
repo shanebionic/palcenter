@@ -50,23 +50,26 @@ interface IntegrityCheckRow {
 const schemaVersion = 1;
 
 export class SqliteHistoryRepository implements HistoryRepository {
-  private readonly database: DatabaseSync;
+  private database: DatabaseSync | null = null;
+  private readonly databasePath: string;
 
   constructor(configDirectory: string) {
     const directory = path.resolve(configDirectory);
     fs.mkdirSync(directory, { recursive: true });
-    this.database = new DatabaseSync(path.join(directory, "history.sqlite"));
+    this.databasePath = path.join(directory, "history.sqlite");
+    this.open();
   }
 
   initialize(): void {
-    this.database.exec(`
+    const database = this.requireDatabase();
+    database.exec(`
       PRAGMA journal_mode = WAL;
       PRAGMA synchronous = NORMAL;
       PRAGMA busy_timeout = 5000;
       PRAGMA foreign_keys = ON;
     `);
 
-    const versionRow = this.database
+    const versionRow = database
       .prepare("PRAGMA user_version")
       .get() as unknown as UserVersionRow | undefined;
 
@@ -82,10 +85,10 @@ export class SqliteHistoryRepository implements HistoryRepository {
       );
     }
 
-    this.database.exec("BEGIN IMMEDIATE");
+    database.exec("BEGIN IMMEDIATE");
 
     try {
-      this.database.exec(`
+      database.exec(`
       CREATE TABLE IF NOT EXISTS server_metrics (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         server_id TEXT NOT NULL,
@@ -119,13 +122,13 @@ export class SqliteHistoryRepository implements HistoryRepository {
       );
       PRAGMA user_version = 1;
       `);
-      this.database.exec("COMMIT");
+      database.exec("COMMIT");
     } catch (error) {
-      this.database.exec("ROLLBACK");
+      database.exec("ROLLBACK");
       throw error;
     }
 
-    const integrity = this.database
+    const integrity = database
       .prepare("PRAGMA quick_check")
       .get() as unknown as IntegrityCheckRow | undefined;
 
@@ -137,15 +140,30 @@ export class SqliteHistoryRepository implements HistoryRepository {
   }
 
   check(): void {
-    this.database.prepare("SELECT 1").get();
+    this.requireDatabase().prepare("SELECT 1").get();
   }
 
   close(): void {
-    this.database.close();
+    this.database?.close();
+    this.database = null;
+  }
+
+  reopen(): void {
+    if (this.database) {
+      return;
+    }
+
+    this.open();
+    try {
+      this.initialize();
+    } catch (error) {
+      this.close();
+      throw error;
+    }
   }
 
   latestMetric(serverId: string): ServerMetric | null {
-    const row = this.database
+    const row = this.requireDatabase()
       .prepare(
         `SELECT * FROM server_metrics
          WHERE server_id = ?
@@ -158,7 +176,7 @@ export class SqliteHistoryRepository implements HistoryRepository {
   }
 
   activePlayers(serverId: string): ObservedPlayer[] {
-    const rows = this.database
+    const rows = this.requireDatabase()
       .prepare(
         `SELECT player_id, player_name FROM active_players
          WHERE server_id = ?`,
@@ -176,11 +194,12 @@ export class SqliteHistoryRepository implements HistoryRepository {
     events: NewServerEvent[],
     players: ObservedPlayer[],
   ): ServerEvent[] {
-    this.database.exec("BEGIN IMMEDIATE");
+    const database = this.requireDatabase();
+    database.exec("BEGIN IMMEDIATE");
 
     try {
       const persistedEvents: ServerEvent[] = [];
-      this.database
+      database
         .prepare(
           `INSERT INTO server_metrics (
             server_id, status, player_count, max_players, fps,
@@ -198,7 +217,7 @@ export class SqliteHistoryRepository implements HistoryRepository {
           metric.capturedAt,
         );
 
-      const insertEvent = this.database.prepare(
+      const insertEvent = database.prepare(
         `INSERT INTO server_events (
           server_id, type, player_id, player_name, occurred_at
         ) VALUES (?, ?, ?, ?, ?)`,
@@ -218,11 +237,11 @@ export class SqliteHistoryRepository implements HistoryRepository {
         });
       }
 
-      this.database
+      database
         .prepare("DELETE FROM active_players WHERE server_id = ?")
         .run(metric.serverId);
 
-      const insertPlayer = this.database.prepare(
+      const insertPlayer = database.prepare(
         `INSERT INTO active_players (server_id, player_id, player_name)
          VALUES (?, ?, ?)`,
       );
@@ -231,16 +250,16 @@ export class SqliteHistoryRepository implements HistoryRepository {
         insertPlayer.run(metric.serverId, player.playerId, player.name);
       }
 
-      this.database.exec("COMMIT");
+      database.exec("COMMIT");
       return persistedEvents;
     } catch (error) {
-      this.database.exec("ROLLBACK");
+      database.exec("ROLLBACK");
       throw error;
     }
   }
 
   appendEvent(event: NewServerEvent): ServerEvent {
-    const result = this.database
+    const result = this.requireDatabase()
       .prepare(
         `INSERT INTO server_events (
           server_id, type, player_id, player_name, occurred_at
@@ -261,7 +280,7 @@ export class SqliteHistoryRepository implements HistoryRepository {
   }
 
   listMetrics(serverId: string, limit: number): ServerMetric[] {
-    const rows = this.database
+    const rows = this.requireDatabase()
       .prepare(
         `SELECT * FROM server_metrics
          WHERE server_id = ?
@@ -274,7 +293,7 @@ export class SqliteHistoryRepository implements HistoryRepository {
   }
 
   listEvents(serverId: string, limit: number): ServerEvent[] {
-    const rows = this.database
+    const rows = this.requireDatabase()
       .prepare(
         `SELECT * FROM server_events
          WHERE server_id = ?
@@ -315,5 +334,17 @@ export class SqliteHistoryRepository implements HistoryRepository {
       uptimeSeconds: row.uptime_seconds,
       capturedAt: row.captured_at,
     };
+  }
+
+  private open(): void {
+    this.database = new DatabaseSync(this.databasePath);
+  }
+
+  private requireDatabase(): DatabaseSync {
+    if (!this.database) {
+      throw new Error("history.sqlite is closed.");
+    }
+
+    return this.database;
   }
 }

@@ -82,6 +82,19 @@ function errorMessage(value: unknown): string | undefined {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await requestResponse(path, init);
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
+}
+
+async function requestResponse(
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
   let response: Response;
 
   try {
@@ -117,11 +130,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
+  return response;
 }
 
 function jsonRequest<T>(path: string, body: unknown): Promise<T> {
@@ -328,6 +337,49 @@ export function testNotification(id: string): Promise<AdminActionResponse> {
     `/api/notifications/${encodeURIComponent(id)}/test`,
     { method: "POST" },
   );
+}
+
+export interface BackupDownload {
+  blob: Blob;
+  filename: string;
+}
+
+export interface RestoreResult {
+  success: true;
+  message: string;
+  metadata: {
+    formatVersion: number;
+    palcenterVersion: string;
+    createdAt: string;
+  };
+}
+
+export function getBackupInfo(): Promise<
+  import("../types/servers").BackupInfo
+> {
+  return request<import("../types/servers").BackupInfo>("/api/backup/info", {
+    cache: "no-store",
+  });
+}
+
+export async function createBackup(): Promise<BackupDownload> {
+  const response = await requestResponse("/api/backup", { method: "POST" });
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const filename =
+    /filename="([^"]+)"/.exec(disposition)?.[1] ?? "palcenter-backup.tar.gz";
+
+  return { blob: await response.blob(), filename };
+}
+
+export function restoreBackup(file: File): Promise<RestoreResult> {
+  return request<RestoreResult>("/api/backup/restore", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/gzip",
+      "X-PalCenter-Confirm-Restore": "replace-current-data",
+    },
+    body: file,
+  });
 }
 
 function playerAction(

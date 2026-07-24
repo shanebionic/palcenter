@@ -165,3 +165,19 @@ export type NotificationConfigurationUpdate =
       serverUrl: string;
       topic: string;
     };
+
+export interface BackupDataStatus {
+  available: boolean;
+  sizeBytes: number | null;
+}
+
+export interface BackupInfo {
+  applicationVersion: string;
+  backupFormatVersion: number;
+  compatibleFormatVersions: number[];
+  data: {
+    servers: BackupDataStatus;
+    notifications: BackupDataStatus;
+    history: BackupDataStatus;
+  };
+}

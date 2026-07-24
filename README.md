@@ -133,9 +133,10 @@ encrypted because they contain administrator and notification credentials.
 Verify that a backup contains all three primary data files and retain the image
 tag that created it.
 
-PalCenter does not yet provide an automated backup or restore operation. Do not
-copy a live SQLite file by itself, and do not restore files while the container
-is running. Full managed backup and restore support is reserved for Issue #16.
+Use PalCenter's authenticated **Backup** page for routine live backups and
+restores. Do not copy a live SQLite file by itself or manually replace files
+while the container is running. The cold volume procedure above remains useful
+as a second recovery layer before major platform changes.
 
 ## Environment variables
 
@@ -152,6 +153,7 @@ is running. Full managed backup and restore support is reserved for Issue #16.
 | `PALCENTER_WEB_PORT`                 | `3000`                                 | Frontend host port used by Compose                            |
 | `PALCENTER_API_PORT`                 | `3001`                                 | API host port used by Compose                                 |
 | `PALCENTER_HISTORY_INTERVAL_SECONDS` | `30`                                   | Historical sampling interval; minimum 5 seconds               |
+| `PALCENTER_BACKUP_MAX_BYTES`         | `536870912`                            | Maximum accepted restore archive size (512 MiB by default)    |
 | `WEB_PORT`                           | `3000`                                 | Frontend port when running the image directly                 |
 | `API_PORT`                           | `3001`                                 | API port when running the image directly                      |
 | `CONFIG_DIR`                         | `/app/data`                            | Persistent data directory inside the container                |
@@ -294,7 +296,7 @@ read/write permissions so the release job can publish packages and releases.
 ## Upgrading
 
 1. Record the currently deployed image tag.
-2. Create and verify a cold backup of `/app/data`.
+2. Sign in to PalCenter, open **Backup**, and download a current backup.
 3. Pull a specific release tag instead of relying on `latest`.
 4. Recreate the container without deleting its volume.
 5. Check `docker compose logs palcenter`, `/api/health`, login, server status,
@@ -311,6 +313,32 @@ refuses to open a database created by a newer unsupported schema rather than
 risk corrupting it. Do not downgrade across database schema versions without
 restoring the backup created before the upgrade.
 
+## Backup and restore
+
+Open **Backup** from the dashboard after signing in. **Create and Download
+Backup** exports one portable `.tar.gz` archive containing:
+
+- `servers.json`
+- `notifications.json`
+- `history.sqlite` (metrics and server events)
+- `metadata.json` (backup format, PalCenter version, and creation time)
+
+Treat the archive as a secret: it includes Palworld administrator passwords and
+notification credentials. Store it in access-controlled storage and do not
+attach it to public support requests.
+
+To recover or migrate an installation, deploy PalCenter normally with its
+existing `/app/data` volume, open **Backup**, select the archive, and confirm the
+restore warning. PalCenter validates the archive structure, metadata, JSON
+configuration, and SQLite integrity before pausing collection and replacing
+live data. If restored data cannot be opened, the previous files are put back.
+No manual container file copy is required.
+
+The supported backup format is version 1. Restore archives are limited to 512
+MiB by default; set `PALCENTER_BACKUP_MAX_BYTES` to another value between 1 MiB
+and 1 GiB when a larger history database requires it. Keep a volume-level cold
+backup before major upgrades as a second recovery layer.
+
 ## Troubleshooting
 
 - **Compose reports a required variable is missing:** create `.env` from
@@ -326,6 +354,12 @@ restoring the backup created before the upgrade.
 - **Startup reports a SQLite schema or integrity error:** stop the container,
   preserve the entire data volume, and restore a known-good backup. Do not
   delete or edit the database manually.
+- **Restore is rejected:** use a `.tar.gz` file created by PalCenter and confirm
+  it contains all four required root files. Archives with extra files, links,
+  invalid metadata, invalid JSON, or a damaged/incompatible SQLite database are
+  rejected before current data is changed.
+- **Restore is too large:** increase `PALCENTER_BACKUP_MAX_BYTES` within the
+  documented limit and recreate the container.
 - **Permission denied for `/app/data`:** when using a bind mount, ensure UID
   `1000` owns the directory and its permissions are restricted.
 - **Remote server is offline in PalCenter:** confirm the Palworld REST URL is

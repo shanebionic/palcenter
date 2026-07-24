@@ -30,6 +30,10 @@ export class ServerHistoryService {
   ) {}
 
   start(onError: (error: unknown) => void): void {
+    if (this.timer) {
+      return;
+    }
+
     const run = () => {
       if (this.collectionPromise) {
         return;

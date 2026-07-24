@@ -20,6 +20,9 @@ async function proxyRequest(
   const headers = new Headers();
   const contentType = request.headers.get("content-type");
   const cookie = request.headers.get("cookie");
+  const restoreConfirmation = request.headers.get(
+    "x-palcenter-confirm-restore",
+  );
 
   if (contentType) {
     headers.set("content-type", contentType);
@@ -27,6 +30,10 @@ async function proxyRequest(
 
   if (cookie) {
     headers.set("cookie", cookie);
+  }
+
+  if (restoreConfirmation) {
+    headers.set("x-palcenter-confirm-restore", restoreConfirmation);
   }
 
   try {
@@ -42,6 +49,7 @@ async function proxyRequest(
     const responseHeaders = new Headers();
     const responseContentType = response.headers.get("content-type");
     const setCookie = response.headers.get("set-cookie");
+    const contentDisposition = response.headers.get("content-disposition");
 
     if (responseContentType) {
       responseHeaders.set("content-type", responseContentType);
@@ -49,6 +57,10 @@ async function proxyRequest(
 
     if (setCookie) {
       responseHeaders.set("set-cookie", setCookie);
+    }
+
+    if (contentDisposition) {
+      responseHeaders.set("content-disposition", contentDisposition);
     }
 
     return new Response(response.body, {

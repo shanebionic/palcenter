@@ -30,6 +30,11 @@ import {
 } from "./services/server-settings-service.js";
 import { ServerStatusService } from "./services/server-status-service.js";
 import { AuthenticationService } from "./services/authentication-service.js";
+import {
+  BackupRestoreError,
+  BackupService,
+  InvalidBackupError,
+} from "./services/backup-service.js";
 import { notificationEventTypes } from "./types/notifications.js";
 
 const booleanEnvironmentValue = z
@@ -56,6 +61,12 @@ const environmentSchema = z.object({
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
+  PALCENTER_BACKUP_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_048_576)
+    .max(1_073_741_824)
+    .default(536_870_912),
 });
 
 const parsedEnvironment = environmentSchema.safeParse(process.env);
@@ -92,6 +103,14 @@ const app = Fastify({
     },
   },
 });
+
+for (const contentType of ["application/gzip", "application/octet-stream"]) {
+  app.addContentTypeParser(
+    contentType,
+    { parseAs: "buffer" },
+    (_request, body, done) => done(null, body),
+  );
+}
 
 const allowedOrigins = new Set(
   environment.PALCENTER_CORS_ORIGINS.split(",")
@@ -154,6 +173,23 @@ const serverHistoryService = new ServerHistoryService(
   environment.HISTORY_INTERVAL_SECONDS * 1_000,
   (events) => notificationService.handle(events),
 );
+const historyErrorHandler = (error: unknown) => {
+  app.log.error({ err: error }, "Historical metric collection failed.");
+};
+const backupService = new BackupService(
+  environment.CONFIG_DIR,
+  environment.PALCENTER_VERSION,
+  {
+    async pause() {
+      await serverHistoryService.stop();
+      historyRepository.close();
+    },
+    async resume() {
+      historyRepository.reopen();
+      serverHistoryService.start(historyErrorHandler);
+    },
+  },
+);
 
 try {
   await connectionManager.initialize();
@@ -164,9 +200,7 @@ try {
   process.exit(1);
 }
 
-serverHistoryService.start((error) => {
-  app.log.error({ err: error }, "Historical metric collection failed.");
-});
+serverHistoryService.start(historyErrorHandler);
 
 app.addHook("onClose", async () => {
   await serverHistoryService.stop();
@@ -209,6 +243,18 @@ app.addHook("onRequest", async (request, reply) => {
     return reply.code(401).send({
       error: "authentication_required",
       message: "Sign in to access PalCenter.",
+    });
+  }
+
+  if (
+    backupService.isDataUnavailable() &&
+    path !== "/api/backup" &&
+    path !== "/api/backup/restore"
+  ) {
+    return reply.code(503).send({
+      error: "maintenance_in_progress",
+      message:
+        "PalCenter data is temporarily unavailable during backup maintenance.",
     });
   }
 });
@@ -554,6 +600,47 @@ app.get("/api/notifications", async () => ({
   providers: await notificationService.list(),
 }));
 
+app.get("/api/backup/info", async () => backupService.info());
+
+app.post("/api/backup", async (_request, reply) => {
+  const backup = await backupService.create();
+  reply.header("Content-Type", "application/gzip");
+  reply.header(
+    "Content-Disposition",
+    `attachment; filename="${backup.filename}"`,
+  );
+  return reply.send(backup.contents);
+});
+
+app.post(
+  "/api/backup/restore",
+  { bodyLimit: environment.PALCENTER_BACKUP_MAX_BYTES },
+  async (request, reply) => {
+    if (
+      request.headers["x-palcenter-confirm-restore"] !== "replace-current-data"
+    ) {
+      return reply.code(400).send({
+        error: "restore_confirmation_required",
+        message: "Administrator restore confirmation is required.",
+      });
+    }
+
+    if (!Buffer.isBuffer(request.body) || request.body.length === 0) {
+      return reply.code(400).send({
+        error: "invalid_backup",
+        message: "Upload a PalCenter .tar.gz backup archive.",
+      });
+    }
+
+    const metadata = await backupService.restore(request.body);
+    return {
+      success: true,
+      message: "Backup restored successfully.",
+      metadata,
+    };
+  },
+);
+
 app.post("/api/notifications", async (request, reply) => {
   const input = notificationInputSchema.parse(request.body);
   return reply.code(201).send(await notificationService.create(input));
@@ -635,6 +722,20 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof NotificationDeliveryError) {
     return reply.code(502).send({
       error: "notification_delivery_failed",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof InvalidBackupError) {
+    return reply.code(400).send({
+      error: "invalid_backup",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof BackupRestoreError) {
+    return reply.code(500).send({
+      error: "restore_failed",
       message: error.message,
     });
   }

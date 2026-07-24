@@ -91,6 +91,9 @@ export default function HomePage() {
             <Button component={Link} href="/notifications" variant="light">
               Notifications
             </Button>
+            <Button component={Link} href="/backup" variant="light">
+              Backup
+            </Button>
             <Button onClick={dialog.open}>Add Server</Button>
           </Group>
         </Group>
