@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "private": true,
   "scripts": {
@@ -15,7 +15,6 @@
     "@mantine/form": "^9.4.2",
     "@mantine/hooks": "^9.4.2",
     "@mantine/notifications": "^9.4.2",
-    "@repo/ui": "workspace:*",
     "@tabler/icons-react": "^3.45.0",
     "next": "16.2.11",
     "react": "^19.2.0",

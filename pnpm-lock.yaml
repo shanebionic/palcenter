@@ -58,9 +58,6 @@ importers:
       '@mantine/notifications':
         specifier: ^9.4.2
         version: 9.4.2(@mantine/core@9.4.2(@mantine/hooks@9.4.2(react@19.2.0))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@mantine/hooks@9.4.2(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@repo/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@tabler/icons-react':
         specifier: ^3.45.0
         version: 3.45.0(react@19.2.0)

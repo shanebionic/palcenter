@@ -46,3 +46,9 @@ jobs:
 
       - name: Run production builds
         run: pnpm build
+
+      - name: Run automated tests
+        run: pnpm --filter @palcenter/api test
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod

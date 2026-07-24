@@ -16,16 +16,17 @@ Requirements:
 
 Create a directory for the deployment and save
 [`docker-compose.yml`](./docker-compose.yml) and
-[`.env.example`](./.env.example) in it. Create the deployment environment file:
+[`.env.example`](./.env.example) in it. Optionally create an environment file
+for settings you want to override:
 
 ```sh
 cp .env.example .env
-openssl rand -base64 48
 ```
 
-Put the generated random session secret in `.env`. User passwords are created
-in the browser and must never be added to environment files. Do not commit or
-share `.env`. Then run:
+No secret generation or mandatory environment variables are required.
+PalCenter creates its internal signing secret in the persistent data volume.
+User passwords are created in the browser and must never be added to
+environment files. Do not commit or share `.env`. Then run:
 
 ```sh
 docker compose up -d
@@ -75,6 +76,7 @@ The Compose deployment stores PalCenter data in the named volume
 - `notifications.json` — notification provider configuration
 - `history.sqlite` — historical metrics and server events
 - `users.sqlite` — user accounts, password hashes, roles, and authentication metadata
+- `system.json` — installation identity and internal session-signing secret
 
 These files survive container replacement and image upgrades. Do not run
 `docker compose down --volumes` unless you intentionally want to delete all
@@ -90,7 +92,8 @@ docker compose exec palcenter sh -c \
   'test -s /app/data/servers.json &&
    test -s /app/data/notifications.json &&
    test -s /app/data/history.sqlite &&
-   test -s /app/data/users.sqlite'
+   test -s /app/data/users.sqlite &&
+   test -s /app/data/system.json'
 ```
 
 Reload PalCenter and confirm the server, notification provider, and monitoring
@@ -113,8 +116,9 @@ chmod 700 data
 ```
 
 The data directory contains Palworld admin passwords and notification
-credentials and password hashes. Restrict filesystem access, include the
-directory in your backup plan, and never publish its contents.
+credentials, password hashes, and the internal signing secret. Restrict
+filesystem access, include the directory in your backup plan, and never publish
+its contents.
 
 ### Backup preparation
 
@@ -297,6 +301,8 @@ Useful validation commands:
 pnpm check-types
 pnpm lint
 pnpm build
+pnpm --filter @palcenter/api test
+pnpm audit --prod
 ```
 
 ## Creating a release
@@ -330,6 +336,15 @@ Pushing the tag runs validation again. If validation succeeds, GitHub Actions:
 No registry password or personal access token is stored in the repository.
 Repository Actions settings must allow GitHub Actions and grant workflows
 read/write permissions so the release job can publish packages and releases.
+The workflow uses [RELEASE_NOTES.md](./RELEASE_NOTES.md) as the GitHub Release
+body. Update that file and [CHANGELOG.md](./CHANGELOG.md) before creating a
+release tag.
+
+## Unraid
+
+Unraid deployment instructions, port and volume mappings, permissions,
+first-run setup, backup, and upgrade guidance are documented in
+[docs/UNRAID.md](./docs/UNRAID.md).
 
 ## Upgrading
 
