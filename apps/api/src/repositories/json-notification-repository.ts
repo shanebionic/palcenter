@@ -45,10 +45,13 @@ export class JsonNotificationRepository implements NotificationRepository {
   }
 
   async initialize(): Promise<void> {
-    await fs.mkdir(path.dirname(this.filePath), { recursive: true });
+    const directory = path.dirname(this.filePath);
+    await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+    await fs.chmod(directory, 0o700);
 
     try {
       await fs.access(this.filePath);
+      await fs.chmod(this.filePath, 0o600);
     } catch {
       await this.write({ version: 1, providers: [] });
     }
@@ -108,15 +111,19 @@ export class JsonNotificationRepository implements NotificationRepository {
   }
 
   private async write(file: NotificationFile): Promise<void> {
-    await fs.mkdir(path.dirname(this.filePath), { recursive: true });
+    await fs.mkdir(path.dirname(this.filePath), {
+      recursive: true,
+      mode: 0o700,
+    });
     const validated = notificationFileSchema.parse(file);
     const temporaryPath = `${this.filePath}.tmp`;
 
     await fs.writeFile(
       temporaryPath,
       `${JSON.stringify(validated, null, 2)}\n`,
-      "utf8",
+      { encoding: "utf8", mode: 0o600 },
     );
     await fs.rename(temporaryPath, this.filePath);
+    await fs.chmod(this.filePath, 0o600);
   }
 }

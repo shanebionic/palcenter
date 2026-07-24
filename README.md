@@ -120,7 +120,7 @@ directory in your backup plan, and never publish its contents.
 
 Back up the complete `/app/data` directory as one unit. A valid backup must
 include `servers.json`, `notifications.json`, `history.sqlite`, `users.sqlite`,
-and any SQLite `-wal` or `-shm` files present at capture time.
+`system.json`, and any SQLite `-wal` or `-shm` files present at capture time.
 
 For a consistent cold backup, stop PalCenter before copying or archiving the
 Docker volume:
@@ -135,7 +135,7 @@ docker compose start palcenter
 The actual volume name includes the Compose project name and may differ from
 `palcenter_palcenter-data`; use `docker volume ls` if needed. Store backups
 encrypted because they contain administrator and notification credentials.
-Verify that a backup contains all four primary data files and retain the image
+Verify that a backup contains all five primary data files and retain the image
 tag that created it.
 
 Use PalCenter's authenticated **Backup** page for routine live backups and
@@ -147,7 +147,7 @@ as a second recovery layer before major platform changes.
 
 | Variable                             | Default                                | Purpose                                                       |
 | ------------------------------------ | -------------------------------------- | ------------------------------------------------------------- |
-| `PALCENTER_SESSION_SECRET`           | Required                               | Random session-signing secret; minimum 32 characters          |
+| `PALCENTER_SESSION_SECRET`           | Unset                                  | One-time legacy secret migration input; minimum 32 characters |
 | `PALCENTER_SESSION_DURATION_SECONDS` | `43200`                                | Login lifetime in seconds; allowed range 300–604800           |
 | `PALCENTER_SESSION_COOKIE_SECURE`    | `false`                                | Set `true` when the browser reaches PalCenter through HTTPS   |
 | `PALCENTER_CORS_ORIGINS`             | Empty                                  | Comma-separated origins allowed to call the API from browsers |
@@ -173,13 +173,12 @@ PALCENTER_WEB_PORT=8080 PALCENTER_API_PORT=8081 docker compose up -d
 
 Then open `http://<palcenter-host>:8080`.
 
-For PowerShell, generate a session secret with:
-
-```powershell
-[Convert]::ToBase64String(
-  [Security.Cryptography.RandomNumberGenerator]::GetBytes(48)
-)
-```
+PalCenter automatically generates its internal session-signing secret during
+the first start and stores it in `/app/data/system.json`. Do not manually edit,
+copy between installations, expose, or log this file. An existing
+`PALCENTER_SESSION_SECRET` is imported only when `system.json` does not yet
+exist. Once stored configuration exists, it always takes precedence and the
+environment variable can be removed.
 
 ## Production security
 
@@ -190,8 +189,8 @@ For PowerShell, generate a session secret with:
 - Leave `PALCENTER_CORS_ORIGINS` empty when using the built-in same-origin web
   proxy. Add only exact trusted origins when direct browser-to-API access is
   required.
-- Use unique user, Palworld, Discord, and ntfy credentials. Rotate
-  `PALCENTER_SESSION_SECRET` to invalidate all existing PalCenter sessions.
+- Use unique user, Palworld, Discord, and ntfy credentials. Treat
+  `/app/data/system.json` as sensitive signing-key material.
 - Protect `.env`, Docker volume contents, backups, and container logs. PalCenter
   redacts known credential fields, but infrastructure logging should not record
   request bodies.
@@ -230,11 +229,12 @@ and remove those variables from `.env`. PalCenter preserves servers,
 notifications, and history, then enters first-run setup so the existing
 administrator can create the first database-backed account.
 
-If all Administrators become unavailable, restore a known-good format-v2
+If all Administrators become unavailable, restore a known-good format-v3
 PalCenter backup or a cold copy of the complete `/app/data` volume. There is no
-default or environment-variable bypass account. Preserve
-`PALCENTER_SESSION_SECRET`; changing it intentionally invalidates every current
-session but does not change user passwords.
+default or environment-variable bypass account. Preserve the complete data
+volume. On first startup after this upgrade, PalCenter imports an existing
+`PALCENTER_SESSION_SECRET` into `system.json`; after that, remove the
+environment variable.
 
 ## Connecting remote Palworld servers
 
@@ -272,7 +272,6 @@ docker run -d \
   -p 3000:3000 \
   -p 3001:3001 \
   -v palcenter-data:/app/data \
-  -e PALCENTER_SESSION_SECRET='replace-with-at-least-32-random-characters' \
   ghcr.io/shanebionic/palcenter:local
 ```
 
@@ -286,7 +285,6 @@ PalCenter requires Node.js 22.13 or newer and pnpm 9.
 
 ```sh
 pnpm install
-export PALCENTER_SESSION_SECRET='replace-with-at-least-32-random-characters'
 pnpm dev
 ```
 
@@ -362,10 +360,12 @@ Backup** exports one portable `.tar.gz` archive containing:
 - `notifications.json`
 - `history.sqlite` (metrics and server events)
 - `users.sqlite` (users, roles, password hashes, and authentication metadata)
+- `system.json` (installation identity and internal session-signing secret)
 - `metadata.json` (backup format, PalCenter version, and creation time)
 
 Treat the archive as a secret: it includes Palworld administrator passwords,
-notification credentials, and user password hashes. Store it in
+notification credentials, user password hashes, and the internal signing
+secret. Store it in
 access-controlled storage and do not attach it to public support requests.
 
 To recover or migrate an installation, deploy PalCenter normally with its
@@ -375,9 +375,11 @@ configuration, and SQLite integrity before pausing collection and replacing
 live data. If restored data cannot be opened, the previous files are put back.
 No manual container file copy is required.
 
-The current backup format is version 2. It validates that restored user data
-contains an enabled Administrator before replacing anything. Format-v1 backups
-from Issue #16 remain restorable and preserve the installation's current users.
+The current backup format is version 3. It validates restored user and system
+data before replacing anything. Restoring v3 reloads the restored signing key,
+so active browser sessions may need to sign in again. Format-v1 backups preserve
+the installation's current users and internal secret; format-v2 backups restore
+users but preserve the current internal secret.
 Restore archives are limited to 512 MiB by default; set
 `PALCENTER_BACKUP_MAX_BYTES` to another value between 1 MiB and 1 GiB when a
 larger history database requires it. Keep a volume-level cold backup before
@@ -385,8 +387,9 @@ major upgrades as a second recovery layer.
 
 ## Troubleshooting
 
-- **Compose reports a required variable is missing:** create `.env` from
-  `.env.example` and set `PALCENTER_SESSION_SECRET`.
+- **`system.json` cannot be created or read:** confirm `/app/data` persists and
+  is writable only by container UID `1000`. PalCenter fails closed instead of
+  silently replacing invalid stored signing data.
 - **PalCenter redirects to setup after an upgrade:** this is the expected
   one-time migration from environment credentials. Create the initial
   database-backed Administrator; existing operational data remains intact.

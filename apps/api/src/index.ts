@@ -7,6 +7,7 @@ import { JsonConnectionRepository } from "./repositories/json-connection-reposit
 import { JsonNotificationRepository } from "./repositories/json-notification-repository.js";
 import { SqliteHistoryRepository } from "./repositories/sqlite-history-repository.js";
 import { SqliteUserRepository } from "./repositories/sqlite-user-repository.js";
+import { SystemConfigurationRepository } from "./repositories/system-configuration-repository.js";
 import { ConnectionManager } from "./services/connection-manager.js";
 import {
   NotificationConfigurationError,
@@ -58,7 +59,10 @@ const environmentSchema = z.object({
   CONFIG_DIR: z.string().min(1).default("./data"),
   HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
   PALCENTER_VERSION: z.string().trim().min(1).max(50).default("development"),
-  PALCENTER_SESSION_SECRET: z.string().min(32),
+  PALCENTER_SESSION_SECRET: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(32).max(1_024).optional(),
+  ),
   PALCENTER_SESSION_DURATION_SECONDS: z.coerce
     .number()
     .int()
@@ -142,6 +146,20 @@ await app.register(cors, {
 const repository = new JsonConnectionRepository(environment.CONFIG_DIR);
 const historyRepository = new SqliteHistoryRepository(environment.CONFIG_DIR);
 const userRepository = new SqliteUserRepository(environment.CONFIG_DIR);
+const systemConfigurationRepository = new SystemConfigurationRepository(
+  environment.CONFIG_DIR,
+);
+let systemConfigurationResult;
+
+try {
+  systemConfigurationResult = await systemConfigurationRepository.initialize(
+    environment.PALCENTER_SESSION_SECRET,
+  );
+} catch (error) {
+  app.log.fatal({ err: error }, "PalCenter system configuration failed.");
+  process.exit(1);
+  throw error;
+}
 const notificationRepository = new JsonNotificationRepository(
   environment.CONFIG_DIR,
 );
@@ -149,7 +167,7 @@ const passwordService = new PasswordService();
 const userService = new UserService(userRepository, passwordService);
 const authenticationService = new AuthenticationService(
   {
-    sessionSecret: environment.PALCENTER_SESSION_SECRET,
+    sessionSecret: systemConfigurationResult.configuration.sessionSecret,
     sessionDurationSeconds: environment.PALCENTER_SESSION_DURATION_SECONDS,
     secureCookie: environment.PALCENTER_SESSION_COOKIE_SECURE,
   },
@@ -208,6 +226,9 @@ const backupService = new BackupService(
     async resume() {
       historyRepository.reopen();
       userRepository.reopen();
+      authenticationService.replaceSessionSecret(
+        (await systemConfigurationRepository.read()).sessionSecret,
+      );
       serverHistoryService.start(historyErrorHandler);
     },
   },
@@ -316,7 +337,6 @@ app.addHook("onRequest", async (request, reply) => {
       message: "Your account does not have permission for this action.",
     });
   }
-
 });
 
 app.addHook("onSend", async (_request, reply, payload) => {
@@ -450,6 +470,7 @@ app.get("/api/health", async (_request, reply) => {
     await notificationRepository.list();
     historyRepository.check();
     userRepository.check();
+    await systemConfigurationRepository.read();
 
     return {
       status: "ok",
@@ -999,6 +1020,7 @@ try {
       corsOrigins: allowedOrigins.size,
       secureSessionCookie: environment.PALCENTER_SESSION_COOKIE_SECURE,
       trustProxy: environment.PALCENTER_TRUST_PROXY,
+      systemConfigurationSource: systemConfigurationResult.source,
     },
     "PalCenter API started.",
   );
@@ -1006,6 +1028,15 @@ try {
   if (!environment.PALCENTER_SESSION_COOKIE_SECURE) {
     app.log.warn(
       "Session cookies are not marked Secure. Use HTTPS and enable PALCENTER_SESSION_COOKIE_SECURE in production.",
+    );
+  }
+
+  if (
+    environment.PALCENTER_SESSION_SECRET &&
+    systemConfigurationResult.source === "stored"
+  ) {
+    app.log.info(
+      "Stored system configuration takes precedence over PALCENTER_SESSION_SECRET.",
     );
   }
 } catch (error) {

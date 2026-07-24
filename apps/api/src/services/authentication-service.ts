@@ -34,7 +34,7 @@ export interface LoginResult {
 export const sessionCookieName = "palcenter_session";
 
 export class AuthenticationService {
-  private readonly signingKey: Buffer;
+  private signingKey: Buffer;
   private readonly loginAttempts = new Map<string, LoginAttempt>();
 
   constructor(
@@ -42,9 +42,7 @@ export class AuthenticationService {
     private readonly users: UserRepository,
     private readonly passwords: PasswordService,
   ) {
-    this.signingKey = createHmac("sha256", options.sessionSecret)
-      .update("palcenter-session-v2")
-      .digest();
+    this.signingKey = this.deriveSigningKey(options.sessionSecret);
   }
 
   async login(
@@ -89,6 +87,10 @@ export class AuthenticationService {
     const user = this.users.get(userId);
     if (!user || !user.enabled) throw new Error("Cannot create user session.");
     return this.createSession(user);
+  }
+
+  replaceSessionSecret(sessionSecret: string): void {
+    this.signingKey = this.deriveSigningKey(sessionSecret);
   }
 
   isRateLimited(remoteAddress: string): boolean {
@@ -179,6 +181,12 @@ export class AuthenticationService {
     return createHmac("sha256", this.signingKey)
       .update(value)
       .digest("base64url");
+  }
+
+  private deriveSigningKey(sessionSecret: string): Buffer {
+    return createHmac("sha256", sessionSecret)
+      .update("palcenter-session-v2")
+      .digest();
   }
 
   private constantTimeEqual(left: string, right: string): boolean {

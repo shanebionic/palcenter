@@ -49,7 +49,7 @@ COPY --from=build /app/apps/frontend/.next/static ./frontend/apps/frontend/.next
 COPY --from=build /app/apps/frontend/public ./frontend/apps/frontend/public
 COPY --chown=node:node scripts/start-production.mjs ./scripts/start-production.mjs
 
-RUN mkdir -p /app/data && chown node:node /app/data
+RUN mkdir -p /app/data && chown node:node /app/data && chmod 700 /app/data
 
 USER node
 VOLUME ["/app/data"]

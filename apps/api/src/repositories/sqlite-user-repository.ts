@@ -32,7 +32,8 @@ export class SqliteUserRepository implements UserRepository {
 
   constructor(configDirectory: string) {
     const directory = path.resolve(configDirectory);
-    fs.mkdirSync(directory, { recursive: true });
+    fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+    fs.chmodSync(directory, 0o700);
     this.databasePath = path.join(directory, "users.sqlite");
     this.open();
   }
@@ -332,6 +333,7 @@ export class SqliteUserRepository implements UserRepository {
 
   private open(): void {
     this.database = new DatabaseSync(this.databasePath);
+    fs.chmodSync(this.databasePath, 0o600);
   }
 
   private requireDatabase(): DatabaseSync {

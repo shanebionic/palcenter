@@ -55,7 +55,8 @@ export class SqliteHistoryRepository implements HistoryRepository {
 
   constructor(configDirectory: string) {
     const directory = path.resolve(configDirectory);
-    fs.mkdirSync(directory, { recursive: true });
+    fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+    fs.chmodSync(directory, 0o700);
     this.databasePath = path.join(directory, "history.sqlite");
     this.open();
   }
@@ -338,6 +339,7 @@ export class SqliteHistoryRepository implements HistoryRepository {
 
   private open(): void {
     this.database = new DatabaseSync(this.databasePath);
+    fs.chmodSync(this.databasePath, 0o600);
   }
 
   private requireDatabase(): DatabaseSync {

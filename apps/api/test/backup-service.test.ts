@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
 import { SqliteUserRepository } from "../src/repositories/sqlite-user-repository.js";
+import { SystemConfigurationRepository } from "../src/repositories/system-configuration-repository.js";
 import {
   BackupService,
   InvalidBackupError,
@@ -91,6 +92,9 @@ async function fixture() {
     createdAt: "2026-07-23T00:00:00.000Z",
     updatedAt: "2026-07-23T00:00:00.000Z",
   });
+  const system = await new SystemConfigurationRepository(directory).initialize(
+    "fixture-session-secret-at-least-32-characters",
+  );
 
   const lifecycle = {
     async pause() {
@@ -107,6 +111,7 @@ async function fixture() {
     directory,
     history,
     users,
+    system,
     service: new BackupService(directory, "1.0.0-test", lifecycle),
   };
 }
@@ -120,7 +125,7 @@ test("creates and restores all PalCenter data", async () => {
       backup.filename,
       /^palcenter-backup-\d{4}-\d{2}-\d{2}\.tar\.gz$/,
     );
-    assert.equal(backup.metadata.formatVersion, 2);
+    assert.equal(backup.metadata.formatVersion, 3);
     const archivePath = path.join(context.directory, backup.filename);
     await fs.writeFile(archivePath, backup.contents);
     const listing = spawnSync("tar", ["-tzf", archivePath], {
@@ -132,6 +137,7 @@ test("creates and restores all PalCenter data", async () => {
       "metadata.json",
       "notifications.json",
       "servers.json",
+      "system.json",
       "users.sqlite",
     ]);
 
@@ -142,6 +148,13 @@ test("creates and restores all PalCenter data", async () => {
     await fs.writeFile(
       path.join(context.directory, "notifications.json"),
       JSON.stringify({ version: 1, providers: [] }),
+    );
+    await fs.writeFile(
+      path.join(context.directory, "system.json"),
+      JSON.stringify({
+        ...context.system.configuration,
+        sessionSecret: "replacement-session-secret-at-least-32-characters",
+      }),
     );
     context.history.saveSample(
       {
@@ -175,6 +188,10 @@ test("creates and restores all PalCenter data", async () => {
     assert.equal(context.history.listMetrics("srv_test", 10).length, 1);
     assert.equal(context.history.listEvents("srv_test", 10).length, 1);
     assert.equal(context.users.list().length, 1);
+    const restoredSystem = await new SystemConfigurationRepository(
+      context.directory,
+    ).read();
+    assert.deepEqual(restoredSystem, context.system.configuration);
   } finally {
     context.history.close();
     context.users.close();
@@ -212,6 +229,7 @@ test("restoring a format v1 backup preserves current users", async () => {
     const current = await context.service.create();
     const entries = extractTarGzip(current.contents);
     entries.delete("users.sqlite");
+    entries.delete("system.json");
     entries.set(
       "metadata.json",
       Buffer.from(
@@ -240,6 +258,43 @@ test("restoring a format v1 backup preserves current users", async () => {
       ),
     );
     assert.equal(context.users.list().length, 2);
+    assert.deepEqual(
+      await new SystemConfigurationRepository(context.directory).read(),
+      context.system.configuration,
+    );
+  } finally {
+    context.history.close();
+    context.users.close();
+    await fs.rm(context.directory, { recursive: true, force: true });
+  }
+});
+
+test("restoring a format v2 backup preserves current system configuration", async () => {
+  const context = await fixture();
+  try {
+    const current = await context.service.create();
+    const entries = extractTarGzip(current.contents);
+    entries.delete("system.json");
+    entries.set(
+      "metadata.json",
+      Buffer.from(
+        JSON.stringify({
+          formatVersion: 2,
+          palcenterVersion: "1.0.0-test",
+          createdAt: new Date().toISOString(),
+        }),
+      ),
+    );
+
+    await context.service.restore(
+      createTarGzip(
+        [...entries].map(([name, contents]) => ({ name, contents })),
+      ),
+    );
+    assert.deepEqual(
+      await new SystemConfigurationRepository(context.directory).read(),
+      context.system.configuration,
+    );
   } finally {
     context.history.close();
     context.users.close();

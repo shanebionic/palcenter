@@ -6,6 +6,7 @@ import { z } from "zod";
 import { JsonConnectionRepository } from "../repositories/json-connection-repository.js";
 import { JsonNotificationRepository } from "../repositories/json-notification-repository.js";
 import { SqliteUserRepository } from "../repositories/sqlite-user-repository.js";
+import { SystemConfigurationRepository } from "../repositories/system-configuration-repository.js";
 import {
   createTarGzip,
   extractTarGzip,
@@ -19,12 +20,17 @@ const legacyFiles = [
   "notifications.json",
   "history.sqlite",
 ] as const;
-const currentFiles = [...legacyFiles, "users.sqlite"] as const;
-const formatVersion = 2;
+const versionTwoFiles = [...legacyFiles, "users.sqlite"] as const;
+const currentFiles = [...versionTwoFiles, "system.json"] as const;
+const formatVersion = 3;
 
 const metadataSchema = z
   .object({
-    formatVersion: z.union([z.literal(1), z.literal(formatVersion)]),
+    formatVersion: z.union([
+      z.literal(1),
+      z.literal(2),
+      z.literal(formatVersion),
+    ]),
     palcenterVersion: z.string().min(1).max(50),
     createdAt: z.string().datetime(),
   })
@@ -92,7 +98,7 @@ export class BackupService {
     return {
       applicationVersion: this.applicationVersion,
       backupFormatVersion: formatVersion,
-      compatibleFormatVersions: [1, formatVersion],
+      compatibleFormatVersions: [1, 2, formatVersion],
       data: { servers, notifications, history, users },
     };
   }
@@ -155,9 +161,7 @@ export class BackupService {
         try {
           await this.replaceFrom(
             stagedDirectory,
-            metadata.formatVersion === 1
-              ? legacyFiles.slice(1)
-              : currentFiles.slice(1),
+            this.filesForVersion(metadata.formatVersion).slice(1),
           );
         } catch (error) {
           await this.lifecycle.resume().catch(() => undefined);
@@ -196,8 +200,7 @@ export class BackupService {
       );
     }
 
-    const expectedFiles =
-      metadata.formatVersion === 1 ? legacyFiles : currentFiles;
+    const expectedFiles = this.filesForVersion(metadata.formatVersion);
     if (
       entries.size !== expectedFiles.length ||
       expectedFiles.some((filename) => !entries.has(filename))
@@ -205,7 +208,9 @@ export class BackupService {
       throw new InvalidBackupError(
         metadata.formatVersion === 1
           ? "Format v1 backup must contain its four required files only."
-          : "Backup must contain metadata, server, notification, history, and user data only.",
+          : metadata.formatVersion === 2
+            ? "Format v2 backup must contain metadata, server, notification, history, and user data only."
+            : "Backup must contain metadata, server, notification, history, user, and system data only.",
       );
     }
 
@@ -221,7 +226,7 @@ export class BackupService {
       await new JsonConnectionRepository(stagedDirectory).list();
       await new JsonNotificationRepository(stagedDirectory).list();
       this.validateDatabase(path.join(stagedDirectory, "history.sqlite"));
-      if (metadata.formatVersion === formatVersion) {
+      if (metadata.formatVersion >= 2) {
         const users = new SqliteUserRepository(stagedDirectory);
         try {
           users.initialize();
@@ -241,6 +246,11 @@ export class BackupService {
         } finally {
           users.close();
         }
+      }
+      if (metadata.formatVersion === formatVersion) {
+        await new SystemConfigurationRepository(stagedDirectory).validateFile(
+          path.join(stagedDirectory, "system.json"),
+        );
       }
     } catch {
       throw new InvalidBackupError(
@@ -279,6 +289,12 @@ export class BackupService {
     } finally {
       database.close();
     }
+  }
+
+  private filesForVersion(version: 1 | 2 | 3) {
+    if (version === 1) return legacyFiles;
+    if (version === 2) return versionTwoFiles;
+    return currentFiles;
   }
 
   private async replaceFrom(

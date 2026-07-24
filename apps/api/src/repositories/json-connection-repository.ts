@@ -1,10 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import type {
-  ConnectionFile,
-  StoredConnection,
-} from "../types/connections.js";
+import type { ConnectionFile, StoredConnection } from "../types/connections.js";
 import type { ConnectionRepository } from "./connection-repository.js";
 
 const storedConnectionSchema = z.object({
@@ -29,10 +26,13 @@ export class JsonConnectionRepository implements ConnectionRepository {
   }
 
   async initialize(): Promise<void> {
-    await fs.mkdir(path.dirname(this.filePath), { recursive: true });
+    const directory = path.dirname(this.filePath);
+    await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+    await fs.chmod(directory, 0o700);
 
     try {
       await fs.access(this.filePath);
+      await fs.chmod(this.filePath, 0o600);
     } catch {
       await this.write({
         version: 1,
@@ -88,7 +88,10 @@ export class JsonConnectionRepository implements ConnectionRepository {
   }
 
   private async write(file: ConnectionFile): Promise<void> {
-    await fs.mkdir(path.dirname(this.filePath), { recursive: true });
+    await fs.mkdir(path.dirname(this.filePath), {
+      recursive: true,
+      mode: 0o700,
+    });
 
     const validated = connectionFileSchema.parse(file);
     const temporaryPath = `${this.filePath}.tmp`;
@@ -96,9 +99,10 @@ export class JsonConnectionRepository implements ConnectionRepository {
     await fs.writeFile(
       temporaryPath,
       `${JSON.stringify(validated, null, 2)}\n`,
-      "utf8",
+      { encoding: "utf8", mode: 0o600 },
     );
 
     await fs.rename(temporaryPath, this.filePath);
+    await fs.chmod(this.filePath, 0o600);
   }
 }

@@ -26,6 +26,7 @@ apps/api/data/history.sqlite-wal
 apps/api/data/users.sqlite
 apps/api/data/users.sqlite-shm
 apps/api/data/users.sqlite-wal
+apps/api/data/system.json
 
 # Turbo
 .turbo
