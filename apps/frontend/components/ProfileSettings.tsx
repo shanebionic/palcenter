@@ -2,13 +2,9 @@
 
 import {
   Alert,
-  Anchor,
   Badge,
-  Breadcrumbs,
   Button,
   Card,
-  Container,
-  Group,
   PasswordInput,
   SimpleGrid,
   Skeleton,
@@ -17,11 +13,10 @@ import {
   Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { changePassword, getCurrentUser } from "../lib/api";
 import type { UserProfile } from "../types/servers";
-import { AccountActions } from "./AccountActions";
+import { PageHeader } from "./PageHeader";
 
 export function ProfileSettings() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -72,21 +67,12 @@ export function ProfileSettings() {
   });
 
   return (
-    <Container size="md" py={{ base: 32, sm: 64 }}>
-      <Stack gap="xl">
-        <Group justify="space-between">
-          <Breadcrumbs>
-            <Anchor component={Link} href="/">
-              Dashboard
-            </Anchor>
-            <Text>Profile</Text>
-          </Breadcrumbs>
-          <AccountActions />
-        </Group>
-        <div>
-          <Title order={1}>Your Profile</Title>
-          <Text c="dimmed">Account details and password security.</Text>
-        </div>
+    <Stack gap="xl" maw={920}>
+        <PageHeader
+          eyebrow="Account"
+          title="Your Profile"
+          description="Account details and password security."
+        />
         {error && <Alert color="red">{error}</Alert>}
         {!user ? (
           <Skeleton height={180} />
@@ -178,7 +164,6 @@ export function ProfileSettings() {
             </Card>
           </>
         )}
-      </Stack>
-    </Container>
+    </Stack>
   );
 }

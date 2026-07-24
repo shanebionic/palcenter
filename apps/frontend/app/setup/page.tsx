@@ -4,6 +4,7 @@ import {
   Alert,
   Button,
   Container,
+  Image,
   Paper,
   PasswordInput,
   Stack,
@@ -66,9 +67,16 @@ export default function SetupPage() {
   });
 
   return (
-    <Container size={480} py={{ base: 48, sm: 96 }}>
+    <Container size={500} py={{ base: 40, sm: 72 }}>
       <Stack gap="xl">
-        <div>
+        <Stack align="center" gap="sm">
+          <Image
+            src="/assets/palcenter-logo.png"
+            alt="PalCenter"
+            w={104}
+            h={104}
+            radius="xl"
+          />
           <Title order={1} ta="center">
             Set up PalCenter
           </Title>
@@ -76,8 +84,15 @@ export default function SetupPage() {
             Create the first Administrator account. No default credentials
             exist.
           </Text>
-        </div>
-        <Paper component="form" onSubmit={submit} withBorder radius="md" p="xl">
+        </Stack>
+        <Paper
+          className="pc-panel"
+          component="form"
+          onSubmit={submit}
+          withBorder
+          radius="xl"
+          p="xl"
+        >
           <Stack>
             <TextInput
               label="Username"

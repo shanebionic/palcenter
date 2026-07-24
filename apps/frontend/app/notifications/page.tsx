@@ -1,5 +1,10 @@
 import { NotificationSettings } from "../../components/NotificationSettings";
+import { ApplicationShell } from "../../components/ApplicationShell";
 
 export default function NotificationsPage() {
-  return <NotificationSettings />;
+  return (
+    <ApplicationShell>
+      <NotificationSettings />
+    </ApplicationShell>
+  );
 }

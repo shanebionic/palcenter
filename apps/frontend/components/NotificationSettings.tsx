@@ -2,11 +2,8 @@
 
 import {
   Alert,
-  Anchor,
-  Breadcrumbs,
   Button,
   Card,
-  Container,
   Group,
   Modal,
   SimpleGrid,
@@ -16,7 +13,6 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   deleteNotification,
@@ -28,7 +24,7 @@ import type {
   NotificationConfiguration,
   NotificationConfigurationUpdate,
 } from "../types/servers";
-import { AccountActions } from "./AccountActions";
+import { PageHeader } from "./PageHeader";
 import { NotificationProviderCard } from "./NotificationProviderCard";
 import { NotificationProviderDialog } from "./NotificationProviderDialog";
 
@@ -167,27 +163,14 @@ export function NotificationSettings() {
   };
 
   return (
-    <Container size="lg" py={{ base: 32, sm: 64 }}>
+    <>
       <Stack gap="xl">
-        <Group justify="space-between" align="center">
-          <Breadcrumbs>
-            <Anchor component={Link} href="/">
-              Dashboard
-            </Anchor>
-            <Text>Notifications</Text>
-          </Breadcrumbs>
-          <Group>
-            <AccountActions />
-            <Button onClick={openAdd}>Add Provider</Button>
-          </Group>
-        </Group>
-
-        <div>
-          <Title order={1}>Notification Settings</Title>
-          <Text c="dimmed">
-            Deliver selected PalCenter server events to external services.
-          </Text>
-        </div>
+        <PageHeader
+          eyebrow="Integrations"
+          title="Notification Settings"
+          description="Deliver selected PalCenter server events to external services."
+          action={<Button onClick={openAdd}>Add Provider</Button>}
+        />
 
         {error && <Alert color="red">{error}</Alert>}
 
@@ -271,6 +254,6 @@ export function NotificationSettings() {
           </Group>
         </Stack>
       </Modal>
-    </Container>
+    </>
   );
 }

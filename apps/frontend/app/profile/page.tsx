@@ -1,5 +1,10 @@
 import { ProfileSettings } from "../../components/ProfileSettings";
+import { ApplicationShell } from "../../components/ApplicationShell";
 
 export default function ProfilePage() {
-  return <ProfileSettings />;
+  return (
+    <ApplicationShell>
+      <ProfileSettings />
+    </ApplicationShell>
+  );
 }

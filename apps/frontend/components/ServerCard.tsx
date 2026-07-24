@@ -4,16 +4,17 @@ import {
   Badge,
   Button,
   Card,
-  Divider,
   Group,
-  Paper,
+  Progress,
   SimpleGrid,
   Stack,
   Text,
+  ThemeIcon,
   Title,
 } from "@mantine/core";
 import {
   IconActivityHeartbeat,
+  IconArrowRight,
   IconClock,
   IconGauge,
   IconLock,
@@ -28,127 +29,148 @@ interface ServerCardProps {
   server: ServerStatus;
 }
 
-interface MetricProps {
-  label: string;
-  value: string;
-  icon: ReactNode;
-}
-
-function HealthMetric({ label, value, icon }: MetricProps) {
-  return (
-    <Paper withBorder radius="sm" p="sm">
-      <Stack gap={4}>
-        <Group gap={6} c="dimmed">
-          {icon}
-          <Text size="xs">{label}</Text>
-        </Group>
-        <Text fw={600}>{value}</Text>
-      </Stack>
-    </Paper>
+function formatLastUpdated(value: string): string {
+  return new Intl.DateTimeFormat(undefined, { timeStyle: "medium" }).format(
+    new Date(value),
   );
 }
 
-function formatLastUpdated(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    timeStyle: "medium",
-  }).format(new Date(value));
+function formatUptime(value: number | null): string {
+  if (value === null) return "Unknown";
+  const seconds = Math.max(0, Math.floor(value));
+  const days = Math.floor(seconds / 86_400);
+  const hours = Math.floor((seconds % 86_400) / 3_600);
+  const minutes = Math.floor((seconds % 3_600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return minutes > 0 ? `${minutes}m` : `${seconds}s`;
 }
 
-function formatUptime(value: number | null): string {
-  if (value === null) {
-    return "Unknown";
-  }
-
-  const totalSeconds = Math.max(0, Math.floor(value));
-  const days = Math.floor(totalSeconds / 86_400);
-  const hours = Math.floor((totalSeconds % 86_400) / 3_600);
-  const minutes = Math.floor((totalSeconds % 3_600) / 60);
-
-  if (days > 0) {
-    return `${days}d ${hours}h`;
-  }
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-
-  if (minutes > 0) {
-    return `${minutes}m`;
-  }
-
-  return `${totalSeconds}s`;
+function Metric({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <Group gap="sm" wrap="nowrap">
+      <ThemeIcon variant="light" color="gray" size="lg" radius="md">
+        {icon}
+      </ThemeIcon>
+      <div>
+        <Text size="xs" c="dimmed">
+          {label}
+        </Text>
+        <Text fw={650}>{value}</Text>
+      </div>
+    </Group>
+  );
 }
 
 export function ServerCard({ server }: ServerCardProps) {
   const online = server.status === "online";
+  const players =
+    server.players === null || server.maxPlayers === null
+      ? "Unknown"
+      : `${server.players}/${server.maxPlayers}`;
+  const capacity =
+    server.players !== null && server.maxPlayers
+      ? (server.players / server.maxPlayers) * 100
+      : 0;
 
   return (
-    <Card withBorder shadow="sm" radius="md" p="lg">
-      <Stack gap="md">
-        <Group justify="space-between" align="start" wrap="nowrap">
-          <div>
-            <Group gap="xs" wrap="nowrap">
-              <Title order={3}>{server.name}</Title>
-              {server.passwordProtected && (
-                <IconLock size={18} aria-label="Password protected" />
-              )}
-            </Group>
-            <Text size="sm" c="dimmed" lineClamp={1}>
-              {server.serverName ?? "Server unavailable"}
-            </Text>
-          </div>
-          <Badge color={online ? "green" : "red"} variant="dot">
+    <Card
+      className="pc-server-card"
+      style={{ "--server-accent": online ? "#22c55e" : "#ef4444" }}
+      withBorder
+      radius="lg"
+      p={{ base: "lg", sm: "xl" }}
+    >
+      <Stack gap="xl">
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Group gap="md" wrap="nowrap">
+            <ThemeIcon
+              size={48}
+              radius="lg"
+              color={online ? "green" : "red"}
+              variant="light"
+            >
+              <IconServer size={25} />
+            </ThemeIcon>
+            <div>
+              <Group gap="xs">
+                <Title order={3}>{server.name}</Title>
+                {server.passwordProtected && (
+                  <IconLock size={16} aria-label="Password protected" />
+                )}
+              </Group>
+              <Text size="sm" c="dimmed" lineClamp={1}>
+                {server.serverName ?? "Remote server unavailable"}
+              </Text>
+            </div>
+          </Group>
+          <Badge color={online ? "green" : "red"} variant="light" size="lg">
             {online ? "Online" : "Offline"}
           </Badge>
         </Group>
 
-        <Divider />
-
-        <SimpleGrid cols={2} spacing="sm">
-          <HealthMetric
-            label="Players"
-            icon={<IconUsers size={16} />}
-            value={
-              server.players === null || server.maxPlayers === null
-                ? "Unknown"
-                : `${server.players}/${server.maxPlayers}`
-            }
+        <div>
+          <Group justify="space-between" mb={7}>
+            <Text size="xs" c="dimmed">
+              Player capacity
+            </Text>
+            <Text size="xs" fw={650}>
+              {players}
+            </Text>
+          </Group>
+          <Progress
+            value={capacity}
+            color={capacity > 85 ? "orange" : "cyan"}
+            size="sm"
+            radius="xl"
           />
-          <HealthMetric
-            label="FPS"
-            icon={<IconGauge size={16} />}
+        </div>
+
+        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
+          <Metric icon={<IconUsers size={18} />} label="Players" value={players} />
+          <Metric
+            icon={<IconGauge size={18} />}
+            label="Server FPS"
             value={server.fps === null ? "Unknown" : String(server.fps)}
           />
-          <HealthMetric
+          <Metric
+            icon={<IconClock size={18} />}
             label="Uptime"
-            icon={<IconClock size={16} />}
             value={formatUptime(server.uptimeSeconds)}
           />
-          <HealthMetric
-            label="Response Time"
-            icon={<IconActivityHeartbeat size={16} />}
+          <Metric
+            icon={<IconActivityHeartbeat size={18} />}
+            label="Response"
             value={
               server.responseTimeMs === null
                 ? "Unknown"
                 : `${server.responseTimeMs} ms`
             }
           />
-          <HealthMetric
-            label="Version"
-            icon={<IconServer size={16} />}
-            value={server.version ?? "Unknown"}
-          />
         </SimpleGrid>
 
         <Group justify="space-between" align="center">
-          <Text size="xs" c="dimmed">
-            Updated {formatLastUpdated(server.lastUpdated)}
-          </Text>
+          <Stack gap={1}>
+            <Text size="xs" c="dimmed">
+              {server.version ?? "Version unknown"}
+            </Text>
+            <Text size="xs" c="dimmed">
+              Updated {formatLastUpdated(server.lastUpdated)}
+            </Text>
+          </Stack>
           <Button
             component={Link}
             href={`/servers/${server.id}`}
             variant="light"
-            size="xs"
+            rightSection={<IconArrowRight size={16} />}
           >
             Manage
           </Button>

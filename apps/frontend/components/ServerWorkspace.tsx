@@ -2,23 +2,15 @@
 
 import {
   Alert,
-  Anchor,
-  Breadcrumbs,
-  Button,
-  Container,
-  Group,
   Loader,
   Skeleton,
   Stack,
   Tabs,
-  Text,
-  Title,
 } from "@mantine/core";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { getServer, getSession } from "../lib/api";
 import type { ServerWorkspaceData } from "../types/servers";
-import { AccountActions } from "./AccountActions";
+import { PageHeader } from "./PageHeader";
 import { ServerAdministration } from "./ServerAdministration";
 import { ServerOverview } from "./ServerOverview";
 import { ServerMonitoring } from "./ServerMonitoring";
@@ -91,23 +83,7 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
   }, [loadServer]);
 
   return (
-    <Container size="lg" py={{ base: 32, sm: 64 }}>
-      <Stack gap="xl">
-        <Group justify="space-between" align="center">
-          <Breadcrumbs>
-            <Anchor component={Link} href="/">
-              Dashboard
-            </Anchor>
-            <Text>{server?.connection.name ?? "Server"}</Text>
-          </Breadcrumbs>
-          <Group>
-            <AccountActions />
-            <Button component={Link} href="/" variant="light">
-              Back to Dashboard
-            </Button>
-          </Group>
-        </Group>
-
+    <Stack gap="xl">
         {error && <Alert color="red">{error}</Alert>}
 
         {loading && (
@@ -119,13 +95,15 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
 
         {!loading && server && (
           <>
-            <Group justify="space-between">
-              <div>
-                <Title order={1}>{server.connection.name}</Title>
-                <Text c="dimmed">Server Workspace</Text>
-              </div>
-              {refreshing && <Loader size="sm" />}
-            </Group>
+            <PageHeader
+              eyebrow="Server Workspace"
+              title={server.connection.name}
+              description={
+                server.status.serverName ??
+                "Live operations and server intelligence."
+              }
+              action={refreshing ? <Loader size="sm" /> : null}
+            />
 
             <Tabs defaultValue="overview" keepMounted={false}>
               <Tabs.List>
@@ -163,7 +141,6 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
             </Tabs>
           </>
         )}
-      </Stack>
-    </Container>
+    </Stack>
   );
 }

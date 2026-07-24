@@ -2,12 +2,9 @@
 
 import {
   Alert,
-  Anchor,
   Badge,
-  Breadcrumbs,
   Button,
   Card,
-  Container,
   Group,
   Modal,
   PasswordInput,
@@ -18,11 +15,10 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { deleteUser, getUsers, resetUserPassword } from "../lib/api";
 import type { UserProfile } from "../types/servers";
-import { AccountActions } from "./AccountActions";
+import { PageHeader } from "./PageHeader";
 import { UserDialog } from "./UserDialog";
 
 export function UserManagement() {
@@ -107,17 +103,13 @@ export function UserManagement() {
   };
 
   return (
-    <Container size="lg" py={{ base: 32, sm: 64 }}>
+    <>
       <Stack gap="xl">
-        <Group justify="space-between">
-          <Breadcrumbs>
-            <Anchor component={Link} href="/">
-              Dashboard
-            </Anchor>
-            <Text>Users</Text>
-          </Breadcrumbs>
-          <Group>
-            <AccountActions />
+        <PageHeader
+          eyebrow="Access Control"
+          title="User Management"
+          description="Manage access, roles, and temporary passwords."
+          action={
             <Button
               onClick={() => {
                 setSelected(null);
@@ -126,12 +118,8 @@ export function UserManagement() {
             >
               Create User
             </Button>
-          </Group>
-        </Group>
-        <div>
-          <Title order={1}>User Management</Title>
-          <Text c="dimmed">Manage access, roles, and temporary passwords.</Text>
-        </div>
+          }
+        />
         {error && <Alert color="red">{error}</Alert>}
         {loading ? (
           <SimpleGrid cols={{ base: 1, md: 2 }}>
@@ -276,6 +264,6 @@ export function UserManagement() {
           </Group>
         </Stack>
       </Modal>
-    </Container>
+    </>
   );
 }

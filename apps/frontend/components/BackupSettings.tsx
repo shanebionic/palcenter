@@ -2,12 +2,9 @@
 
 import {
   Alert,
-  Anchor,
   Badge,
-  Breadcrumbs,
   Button,
   Card,
-  Container,
   FileInput,
   Group,
   Modal,
@@ -17,11 +14,10 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { createBackup, getBackupInfo, restoreBackup } from "../lib/api";
 import type { BackupInfo } from "../types/servers";
-import { AccountActions } from "./AccountActions";
+import { PageHeader } from "./PageHeader";
 
 function size(value: number | null): string {
   if (value === null) return "Unavailable";
@@ -111,24 +107,13 @@ export function BackupSettings() {
   };
 
   return (
-    <Container size="md" py={{ base: 32, sm: 64 }}>
+    <>
       <Stack gap="xl">
-        <Group justify="space-between">
-          <Breadcrumbs>
-            <Anchor component={Link} href="/">
-              Dashboard
-            </Anchor>
-            <Text>Backup & Restore</Text>
-          </Breadcrumbs>
-          <AccountActions />
-        </Group>
-
-        <div>
-          <Title order={1}>Backup & Restore</Title>
-          <Text c="dimmed">
-            Export or recover PalCenter configuration and historical data.
-          </Text>
-        </div>
+        <PageHeader
+          eyebrow="Data Protection"
+          title="Backup & Restore"
+          description="Export or recover PalCenter configuration and historical data."
+        />
 
         {error && <Alert color="red">{error}</Alert>}
 
@@ -229,6 +214,6 @@ export function BackupSettings() {
           </Group>
         </Stack>
       </Modal>
-    </Container>
+    </>
   );
 }

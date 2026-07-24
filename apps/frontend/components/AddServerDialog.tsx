@@ -138,6 +138,7 @@ export function AddServerDialog({
       opened={opened}
       onClose={close}
       title="Add Palworld server"
+      size="lg"
       closeOnClickOutside={!testing && !saving}
       closeOnEscape={!testing && !saving}
     >
@@ -145,13 +146,13 @@ export function AddServerDialog({
         <Stack>
           <TextInput
             label="Display Name"
-            placeholder="The Fellas"
+            placeholder="My Palworld Server"
             required
             {...form.getInputProps("name")}
           />
           <TextInput
             label="REST URL"
-            placeholder="http://10.10.10.45:8212"
+            placeholder="http://your-server-ip:8212"
             description="The Palworld REST API address, including its port."
             required
             {...form.getInputProps("baseUrl")}

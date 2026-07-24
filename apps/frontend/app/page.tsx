@@ -2,26 +2,57 @@
 
 import {
   Alert,
+  Badge,
   Button,
   Card,
-  Container,
   Group,
-  Loader,
   SimpleGrid,
-  Skeleton,
   Stack,
   Text,
-  Title,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import {
+  IconActivityHeartbeat,
+  IconPlus,
+  IconServer,
+  IconUsers,
+} from "@tabler/icons-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AddServerDialog } from "../components/AddServerDialog";
-import { AccountActions } from "../components/AccountActions";
+import { ApplicationShell } from "../components/ApplicationShell";
+import { BrandedLoader } from "../components/BrandedLoader";
 import { EmptyState } from "../components/EmptyState";
+import { PageHeader } from "../components/PageHeader";
 import { ServerCard } from "../components/ServerCard";
 import { getServerStatus, getSession, type AuthSession } from "../lib/api";
 import type { ServerStatus } from "../types/servers";
+
+interface SummaryProps {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  color: string;
+}
+
+function Summary({ label, value, icon, color }: SummaryProps) {
+  return (
+    <Card className="pc-panel" withBorder radius="lg" p="lg">
+      <Group justify="space-between" wrap="nowrap">
+        <div>
+          <Text size="xs" c="dimmed" tt="uppercase" fw={700} lts={1}>
+            {label}
+          </Text>
+          <Text size="xl" fw={750} mt={4}>
+            {value}
+          </Text>
+        </div>
+        <Badge circle size="xl" color={color} variant="light">
+          {icon}
+        </Badge>
+      </Group>
+    </Card>
+  );
+}
 
 export default function HomePage() {
   const [dialogOpened, dialog] = useDisclosure(false);
@@ -32,12 +63,8 @@ export default function HomePage() {
   const [session, setSession] = useState<AuthSession | null>(null);
 
   const loadServers = useCallback(async (background = false) => {
-    if (background) {
-      setRefreshing(true);
-    }
-
+    if (background) setRefreshing(true);
     setError(null);
-
     try {
       setServers(await getServerStatus());
     } catch (requestError) {
@@ -53,104 +80,119 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    void getSession()
-      .then(setSession)
-      .catch(() => undefined);
+    void getSession().then(setSession).catch(() => undefined);
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
-
     const poll = async () => {
       await loadServers(true);
-
-      if (!cancelled) {
-        timeout = setTimeout(poll, 5_000);
-      }
+      if (!cancelled) timeout = setTimeout(poll, 5_000);
     };
-
     void loadServers().then(() => {
-      if (!cancelled) {
-        timeout = setTimeout(poll, 5_000);
-      }
+      if (!cancelled) timeout = setTimeout(poll, 5_000);
     });
-
     return () => {
       cancelled = true;
-
-      if (timeout) {
-        clearTimeout(timeout);
-      }
+      if (timeout) clearTimeout(timeout);
     };
   }, [loadServers]);
 
+  const summary = useMemo(() => {
+    const online = servers.filter((server) => server.status === "online");
+    return {
+      online: online.length,
+      players: online.reduce((total, server) => total + (server.players ?? 0), 0),
+      responseTimes: online
+        .map((server) => server.responseTimeMs)
+        .filter((value): value is number => value !== null),
+    };
+  }, [servers]);
+
+  const averageResponse =
+    summary.responseTimes.length === 0
+      ? "—"
+      : `${Math.round(
+          summary.responseTimes.reduce((total, value) => total + value, 0) /
+            summary.responseTimes.length,
+        )} ms`;
+  const isAdministrator = session?.user.role === "administrator";
+
   return (
-    <Container size="lg" py={80}>
+    <ApplicationShell>
       <Stack gap="xl">
-        <Group justify="space-between" align="end">
-          <div>
-            <Title order={1}>PalCenter</Title>
-            <Text c="dimmed">Remote Palworld Server Manager</Text>
-          </div>
-          <Group>
-            <AccountActions />
-            {session?.user.role === "administrator" && (
-              <>
-                <Button component={Link} href="/notifications" variant="light">
-                  Notifications
-                </Button>
-                <Button component={Link} href="/backup" variant="light">
-                  Backup
-                </Button>
-                <Button onClick={dialog.open}>Add Server</Button>
-              </>
-            )}
-          </Group>
-        </Group>
+        <PageHeader
+          eyebrow="Fleet Overview"
+          title="Server Command Center"
+          description="Monitor every connected Palworld world and jump into operations from one place."
+          action={
+            isAdministrator ? (
+              <Button leftSection={<IconPlus size={18} />} onClick={dialog.open}>
+                Add Server
+              </Button>
+            ) : null
+          }
+        />
 
-        <Group justify="space-between" mih={24}>
-          {error ? (
-            <Alert color="red" style={{ flex: 1 }}>
-              {error}
-            </Alert>
-          ) : (
-            <span />
-          )}
-          {refreshing && (
-            <Group gap="xs">
-              <Loader size="xs" />
-              <Text size="xs" c="dimmed">
-                Refreshing
-              </Text>
+        {error && <Alert color="red">{error}</Alert>}
+
+        {loading ? (
+          <BrandedLoader message="Scanning your Palworld fleet" />
+        ) : servers.length === 0 ? (
+          <EmptyState onAddServer={isAdministrator ? dialog.open : undefined} />
+        ) : (
+          <>
+            <SimpleGrid cols={{ base: 2, lg: 4 }}>
+              <Summary
+                label="Configured"
+                value={String(servers.length)}
+                icon={<IconServer size={20} />}
+                color="cyan"
+              />
+              <Summary
+                label="Online"
+                value={`${summary.online}/${servers.length}`}
+                icon={<IconActivityHeartbeat size={20} />}
+                color="green"
+              />
+              <Summary
+                label="Active Players"
+                value={String(summary.players)}
+                icon={<IconUsers size={20} />}
+                color="blue"
+              />
+              <Summary
+                label="Avg. Response"
+                value={averageResponse}
+                icon={<IconActivityHeartbeat size={20} />}
+                color="violet"
+              />
+            </SimpleGrid>
+
+            <Group justify="space-between" align="center">
+              <div>
+                <Text fw={700} size="lg">
+                  Your Servers
+                </Text>
+                <Text size="sm" c="dimmed">
+                  Live status refreshes every five seconds.
+                </Text>
+              </div>
+              {refreshing && (
+                <Badge variant="light" color="cyan">
+                  Syncing
+                </Badge>
+              )}
             </Group>
-          )}
-        </Group>
 
-        {!loading && servers.length === 0 && (
-          <EmptyState
-            onAddServer={
-              session?.user.role === "administrator" ? dialog.open : undefined
-            }
-          />
+            <SimpleGrid
+              cols={{ base: 1, lg: servers.length === 1 ? 1 : 2 }}
+              spacing="lg"
+            >
+              {servers.map((server) => (
+                <ServerCard key={server.id} server={server} />
+              ))}
+            </SimpleGrid>
+          </>
         )}
-
-        {loading && (
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
-            {[0, 1, 2].map((item) => (
-              <Card key={item} withBorder radius="md" p="lg">
-                <Stack>
-                  <Skeleton height={28} width="60%" />
-                  <Skeleton height={16} width="80%" />
-                  <Skeleton height={110} />
-                </Stack>
-              </Card>
-            ))}
-          </SimpleGrid>
-        )}
-
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
-          {servers.map((server) => (
-            <ServerCard key={server.id} server={server} />
-          ))}
-        </SimpleGrid>
       </Stack>
 
       <AddServerDialog
@@ -158,6 +200,6 @@ export default function HomePage() {
         onClose={dialog.close}
         onSaved={() => loadServers()}
       />
-    </Container>
+    </ApplicationShell>
   );
 }

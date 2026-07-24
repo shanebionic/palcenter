@@ -4,6 +4,7 @@ import {
   Alert,
   Button,
   Container,
+  Image,
   Paper,
   PasswordInput,
   Stack,
@@ -77,18 +78,32 @@ export default function LoginPage() {
   });
 
   return (
-    <Container size={420} py={{ base: 64, sm: 120 }}>
+    <Container size={440} py={{ base: 48, sm: 88 }}>
       <Stack gap="xl">
-        <div>
+        <Stack align="center" gap="sm">
+          <Image
+            src="/assets/palcenter-logo.png"
+            alt="PalCenter"
+            w={96}
+            h={96}
+            radius="xl"
+          />
           <Title order={1} ta="center">
             PalCenter
           </Title>
           <Text c="dimmed" ta="center">
             Sign in to manage your Palworld servers.
           </Text>
-        </div>
+        </Stack>
 
-        <Paper component="form" onSubmit={submit} withBorder radius="md" p="xl">
+        <Paper
+          className="pc-panel"
+          component="form"
+          onSubmit={submit}
+          withBorder
+          radius="xl"
+          p="xl"
+        >
           <Stack>
             <TextInput
               label="Username"
