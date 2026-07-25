@@ -15,6 +15,7 @@ It connects to your existing Palworld server through the official REST API and p
 - Notifications
 - Backup and restore
 - User access management
+- Standalone PalWorldSettings.ini generation
 
 PalCenter does not host or run the Palworld server itself. It connects to an existing dedicated server.
 
@@ -101,6 +102,8 @@ when using the default Docker-managed volume.
 
 Full installation, administration, backup, and troubleshooting guides are
 available in the [PalCenter Wiki](https://github.com/shanebionic/palcenter/wiki).
+The repository also includes the
+[configuration generator guide](docs/CONFIGURATION-GENERATOR.md).
 
 ## Contributing and support
 
