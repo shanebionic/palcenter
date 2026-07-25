@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   copyConfigurationToClipboard,
@@ -54,6 +55,30 @@ test("matches every displayed default from PalServer Steam build 24181105", () =
     ),
     VERIFIED_PALSERVER_DEFAULTS,
   );
+});
+
+test("matches the partial configuration accepted by PalServer build 24181105", () => {
+  const values = createDefaultValues(PALWORLD_SETTINGS);
+  values.ServerName = "PalCenter Partial Validation";
+  values.ServerDescription =
+    "PalCenter build 24181105 partial configuration validation";
+  values.PublicPort = "18211";
+  values.RESTAPIEnabled = true;
+  values.RESTAPIPort = "18212";
+  values.AdminPassword = "palcenter-validation-only";
+
+  const generated = requiredOutput(
+    generatePalWorldSettings(PALWORLD_SETTINGS, values),
+  );
+  const verifiedFixture = readFileSync(
+    new URL(
+      "./fixtures/palworld-settings-build-24181105.partial.ini",
+      import.meta.url,
+    ),
+    "utf8",
+  ).replaceAll("\r\n", "\n");
+
+  assert.equal(generated, verifiedFixture);
 });
 
 test("serializes the default configuration with the expected structure", () => {
