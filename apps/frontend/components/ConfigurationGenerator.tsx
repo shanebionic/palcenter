@@ -59,9 +59,19 @@ export function ConfigurationGenerator() {
     () => validateConfiguration(PALWORLD_SETTINGS, values),
     [values],
   );
-  const content = useMemo(
+  const exportContent = useMemo(
     () => generatePalWorldSettings(PALWORLD_SETTINGS, values),
     [values],
+  );
+  const redactedContent = useMemo(
+    () =>
+      generatePalWorldSettings(PALWORLD_SETTINGS, values, {
+        redactSensitive: true,
+      }),
+    [values],
+  );
+  const hasSensitiveValues = PALWORLD_SETTINGS.some(
+    (setting) => setting.sensitive && Boolean(values[setting.key]),
   );
   const query = search.trim().toLowerCase();
   const filteredSettings = PALWORLD_SETTINGS.filter((setting) =>
@@ -99,6 +109,12 @@ export function ConfigurationGenerator() {
       <Alert color="cyan" icon={<IconInfoCircle size={18} />}>
         All values stay in this browser tab. Nothing is saved, logged, or sent
         to the PalCenter API.
+      </Alert>
+
+      <Alert color="yellow" icon={<IconInfoCircle size={18} />}>
+        This generator supports a curated subset of {PALWORLD_SETTINGS.length}{" "}
+        commonly used settings, not every Palworld setting. Omitted settings
+        continue to use Palworld defaults.
       </Alert>
 
       <Card className="pc-panel" p="lg" withBorder>
@@ -178,9 +194,7 @@ export function ConfigurationGenerator() {
                       error={errors[setting.key]}
                       onChange={(value) => updateValue(setting.key, value)}
                       onReset={() =>
-                        setValues((current) =>
-                          resetSetting(current, setting),
-                        )
+                        setValues((current) => resetSetting(current, setting))
                       }
                     />
                   ))}
@@ -200,8 +214,10 @@ export function ConfigurationGenerator() {
 
         <div className="pc-config-preview-column">
           <ConfigurationPreview
-            content={content}
+            exportContent={exportContent}
+            redactedContent={redactedContent}
             errorCount={Object.keys(errors).length}
+            hasSensitiveValues={hasSensitiveValues}
           />
         </div>
       </SimpleGrid>
@@ -214,8 +230,8 @@ export function ConfigurationGenerator() {
       >
         <Stack>
           <Text c="dimmed">
-            This replaces every current form value. You can customize
-            individual settings afterward.
+            This replaces every current form value. You can customize individual
+            settings afterward.
           </Text>
           {pendingAction?.type === "preset" && (
             <Text size="sm">{pendingAction.preset.description}</Text>

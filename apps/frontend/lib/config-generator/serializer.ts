@@ -5,6 +5,11 @@ import type {
 import { validateConfiguration } from "./validation";
 
 const SECTION_HEADER = "[/Script/Pal.PalGameWorldSettings]";
+const REDACTED_SENSITIVE_VALUE = "••••••••";
+
+interface SerializationOptions {
+  redactSensitive?: boolean;
+}
 
 function quote(value: string): string {
   const escaped = value
@@ -42,15 +47,19 @@ function serializeValue(
 export function generatePalWorldSettings(
   settings: readonly SettingDefinition[],
   values: ConfigurationValues,
+  options: SerializationOptions = {},
 ): string | null {
   if (Object.keys(validateConfiguration(settings, values)).length > 0) {
     return null;
   }
 
-  const options = settings.map(
-    (setting) =>
-      `${setting.key}=${serializeValue(setting, values[setting.key]!)}`,
-  );
+  const serializedOptions = settings.map((setting) => {
+    const value =
+      options.redactSensitive && setting.sensitive && values[setting.key]
+        ? REDACTED_SENSITIVE_VALUE
+        : values[setting.key]!;
+    return `${setting.key}=${serializeValue(setting, value)}`;
+  });
 
-  return `${SECTION_HEADER}\nOptionSettings=(${options.join(",")})\n`;
+  return `${SECTION_HEADER}\nOptionSettings=(${serializedOptions.join(",")})\n`;
 }

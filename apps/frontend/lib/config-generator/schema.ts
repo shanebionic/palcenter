@@ -2,11 +2,13 @@ import type { SettingDefinition } from "../../types/config-generator";
 
 export const PALWORLD_CONFIGURATION_METADATA = {
   schemaVersion: 1,
-  gameVersionBasis: "Palworld Server Guide 1.0.0 (reviewed 2026-07-25)",
+  gameVersionBasis: "Palworld 1.0 / PalServer Steam build 24181105",
   sourceUrl:
     "https://docs.palworldgame.com/settings-and-operation/configuration/",
   defaultBasis:
-    "Standard DefaultPalWorldSettings.ini values distributed with PalServer",
+    "DefaultPalWorldSettings.ini from Steam app 2394010, build 24181105",
+  defaultFileSha256:
+    "4865FA1EB01D07E010B69E6269F955D24AA658E7B66AEA742B81AFB01BA7AC81",
 } as const;
 
 export const PALWORLD_SETTINGS: readonly SettingDefinition[] = [
@@ -16,7 +18,7 @@ export const PALWORLD_SETTINGS: readonly SettingDefinition[] = [
     category: "General",
     description: "Name shown to players for this Palworld server.",
     type: "string",
-    defaultValue: "Palworld Server",
+    defaultValue: "Default Palworld Server",
     maximumLength: 128,
   },
   {
@@ -58,7 +60,7 @@ export const PALWORLD_SETTINGS: readonly SettingDefinition[] = [
     category: "Gameplay",
     description: "Controls what a player drops upon death.",
     type: "enum",
-    defaultValue: "All",
+    defaultValue: "Item",
     options: [
       { value: "None", label: "None — no drops" },
       { value: "Item", label: "Items except equipment" },
@@ -154,7 +156,7 @@ export const PALWORLD_SETTINGS: readonly SettingDefinition[] = [
     category: "Players and Guilds",
     description: "Shows the player list in the in-game menu.",
     type: "boolean",
-    defaultValue: true,
+    defaultValue: false,
   },
   {
     key: "BaseCampMaxNumInGuild",
