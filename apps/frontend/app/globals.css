@@ -43,6 +43,42 @@ a {
   margin-inline: auto;
 }
 
+.pc-tool-card {
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.pc-tool-card:hover {
+  border-color: var(--mantine-color-cyan-7);
+  transform: translateY(-2px);
+}
+
+.pc-setting-category {
+  border-bottom: 1px solid var(--mantine-color-dark-4);
+}
+
+.pc-setting-field + .pc-setting-field {
+  border-top: 1px solid var(--mantine-color-dark-4);
+}
+
+.pc-config-preview {
+  max-height: 58vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 75em) {
+  .pc-config-preview-column {
+    position: sticky;
+    top: 96px;
+    align-self: start;
+  }
+}
+
 .pc-panel {
   background: linear-gradient(145deg, rgba(22, 29, 43, 0.92), rgba(13, 18, 29, 0.96));
   border-color: rgba(148, 163, 184, 0.13);

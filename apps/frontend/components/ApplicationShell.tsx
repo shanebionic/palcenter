@@ -15,6 +15,7 @@ import {
   IconDatabaseExport,
   IconLayoutDashboard,
   IconServer,
+  IconTools,
   IconUsers,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -31,6 +32,7 @@ interface ApplicationShellProps {
 
 const primaryLinks = [
   { href: "/", label: "Dashboard", icon: IconLayoutDashboard },
+  { href: "/tools", label: "Tools", icon: IconTools },
 ];
 
 const adminLinks = [
@@ -45,7 +47,9 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
   const pathname = usePathname();
 
   useEffect(() => {
-    void getSession().then(setSession).catch(() => setSession(null));
+    void getSession()
+      .then(setSession)
+      .catch(() => setSession(null));
   }, []);
 
   const links = session?.user.mustChangePassword
@@ -68,6 +72,7 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
         <Group h="100%" px={{ base: "md", sm: "xl" }} justify="space-between">
           <Group gap="md">
             <Burger
+              aria-label={opened ? "Close navigation" : "Open navigation"}
               opened={opened}
               onClick={navigation.toggle}
               hiddenFrom="md"
@@ -82,7 +87,15 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
       <AppShell.Navbar className="pc-shell-navbar" p="md">
         <AppShell.Section component={ScrollArea} grow>
           <Stack gap={6}>
-            <Text size="xs" tt="uppercase" c="dimmed" fw={700} lts={1.2} px="sm" py="xs">
+            <Text
+              size="xs"
+              tt="uppercase"
+              c="dimmed"
+              fw={700}
+              lts={1.2}
+              px="sm"
+              py="xs"
+            >
               Command Center
             </Text>
             {links.map(({ href, label, icon: Icon }) => (
@@ -92,7 +105,9 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
                 href={href}
                 label={label}
                 leftSection={<Icon size={19} stroke={1.8} />}
-                active={href === "/" ? pathname === href : pathname.startsWith(href)}
+                active={
+                  href === "/" ? pathname === href : pathname.startsWith(href)
+                }
                 onClick={navigation.close}
               />
             ))}
