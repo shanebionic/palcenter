@@ -6,7 +6,7 @@ Do not open a public issue containing credentials, backups, or exploit details.
 Contact the repository owner privately and include the affected version,
 reproduction steps, and impact without attaching production data.
 
-## v1.0 security model
+## Current security model
 
 PalCenter uses SQLite-backed accounts, memory-hard scrypt password hashes,
 signed HttpOnly SameSite cookies, session expiration and version invalidation,
@@ -41,7 +41,7 @@ needs nor should receive the Docker socket or Palworld save directories.
   page. Never copy a live SQLite file by itself.
 - Review users regularly and disable accounts that no longer need access.
 
-## v1.0 audit findings and residual risks
+## Security review and residual risks
 
 The final audit verified setup is single-use, passwords are never stored in
 plaintext, session cookies and expiration are enforced, role checks occur in
@@ -51,7 +51,7 @@ fields are redacted from logs. Secret generation, persisted migration,
 backup-format v3 validation, file permissions, and container privilege
 reduction were added as audit remediations.
 
-Known v1.0 limitations:
+Known limitations:
 
 - There is no MFA, external identity provider, or per-user audit trail.
 - Data and portable backups are not application-encrypted at rest; storage

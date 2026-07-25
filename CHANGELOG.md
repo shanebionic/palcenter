@@ -2,6 +2,27 @@
 
 All notable PalCenter changes are documented here.
 
+## 1.1.1
+
+### Added
+
+- Configurable non-root container UID/GID support, including Unraid's
+  `nobody:users` mapping.
+
+### Documentation
+
+- Deployment guidance for standard Docker and Unraid storage ownership models.
+
+## 1.1.0
+
+### Changed
+
+- Redesigned the frontend with a persistent application shell, improved
+  navigation, dashboard cards, branding, and profile controls.
+- Added an About dialog backed by centralized application release metadata.
+- Improved Docker bind-mount compatibility while preserving non-root
+  execution.
+
 ## 1.0.0
 
 ### Added

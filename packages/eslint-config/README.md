@@ -1,3 +1,4 @@
-# `@turbo/eslint-config`
+# PalCenter ESLint configuration
 
-Collection of internal eslint configurations.
+Shared ESLint rules used by the PalCenter frontend and internal workspace
+packages. This package is private and is not published independently.
