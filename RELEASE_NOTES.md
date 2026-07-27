@@ -1,49 +1,72 @@
-# PalCenter v1.2.0
+# PalCenter v1.2.1
 
-PalCenter v1.2.0 adds a standalone Palworld server configuration generator and includes production dependency security updates.
+Release Date: July 27, 2026
 
-## Highlights
+## Overview
 
-- Added a new Tools section.
-- Added a responsive `PalWorldSettings.ini` configuration generator.
-- Configure 24 commonly used Palworld server settings.
-- Search settings by name, key, or description.
-- Apply Default, Casual, Fast Progression, and Hard presets.
-- Validate settings immediately.
-- Reset individual settings or restore all defaults.
-- Preview, copy, and download generated configuration.
-- Redact passwords in the visual preview by default.
-- Generate configurations entirely in the browser without modifying connected servers.
+PalCenter v1.2.1 improves server management, refines the user interface, and introduces a new development release channel for users who want to test upcoming features before they're released to production.
 
-## Compatibility validation
+---
 
-Partial `OptionSettings` output was validated against:
+## ✨ New Features
 
-- Palworld Dedicated Server Steam app `2394010`
-- Steam build `24181105`
-- Runtime version `v1.0.1.100619`
+### Remove Servers
 
-The generated partial configuration was accepted by PalServer, expanded to the complete effective settings set, and remained stable across a full restart.
+Administrators can now remove configured servers directly from PalCenter.
 
-## Security and maintenance
+Removing a server only removes it from PalCenter—it does **not** stop the server, delete your world, uninstall Docker, or modify any remote server files.
 
-- Resolved production dependency audit vulnerabilities.
-- Updated PostCSS to patched version `8.5.18`.
-- Retained Sharp `0.35.0` to address the libvips vulnerability.
-- Updated pnpm from 9.0.0 to 11.17.0.
-- Moved dependency overrides to `pnpm-workspace.yaml`.
-- Restricted native installation scripts to required packages.
-- Production dependency audit reports no known vulnerabilities.
+### Development Release Channel
 
-## Testing
+PalCenter now offers an optional **Development** release channel for users who want early access to upcoming features.
 
-- Expanded the automated test suite to 30 tests.
-- Added frontend configuration-generator tests.
-- Added a byte-for-byte PalServer-compatible INI fixture.
-- Updated CI to run both frontend and backend tests.
+Development builds are available from:
 
-## Install
+`ghcr.io/shanebionic/palcenter:dev`
 
-```sh
-docker pull ghcr.io/shanebionic/palcenter:v1.2.0
-docker compose up -d
+Production users should continue using:
+
+`ghcr.io/shanebionic/palcenter:latest`
+
+---
+
+## 🚀 Improvements
+
+### Password Protection Status
+
+Improved how PalCenter reports server password protection.
+
+Servers now display one of three states:
+
+- Protected
+- Not Protected
+- Unknown
+
+When the Palworld REST API does not expose password information, PalCenter now reports **Unknown** instead of making incorrect assumptions.
+
+### Tools
+
+Improved the Tools page experience.
+
+- Entire tool cards are now clickable.
+- Cleaner visual styling.
+- Improved keyboard accessibility.
+
+### About Page
+
+The About page now clearly identifies whether you're running a **Production Build** or a **Development Build**.
+
+Development builds also display the current commit ID to simplify troubleshooting and bug reporting.
+
+---
+
+## 🐛 Fixes
+
+- Fixed incorrect password-protection reporting.
+- Fixed incorrect lock icon display for servers without a join password.
+- Improved reliability when removing configured servers.
+- Various UI polish and reliability improvements.
+
+---
+
+Thank you to everyone testing development builds and helping improve PalCenter!
