@@ -178,4 +178,12 @@ test("central role permissions enforce administrator, moderator, and visitor sco
   assert.equal(authorization.can("administrator", "manage_servers"), true);
   assert.equal(authorization.can("moderator", "manage_servers"), false);
   assert.equal(authorization.can("visitor", "manage_servers"), false);
+  assert.equal(authorization.permissionFor("GET", "/api/automations"), "read");
+  assert.equal(
+    authorization.permissionFor("POST", "/api/automations/task_1/run"),
+    "manage_automations",
+  );
+  assert.equal(authorization.can("administrator", "manage_automations"), true);
+  assert.equal(authorization.can("moderator", "manage_automations"), false);
+  assert.equal(authorization.can("visitor", "manage_automations"), false);
 });

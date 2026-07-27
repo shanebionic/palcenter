@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
+import { SqliteAutomationRepository } from "../src/repositories/sqlite-automation-repository.js";
 import { SqliteUserRepository } from "../src/repositories/sqlite-user-repository.js";
 import { SystemConfigurationRepository } from "../src/repositories/system-configuration-repository.js";
 import {
@@ -79,6 +80,24 @@ async function fixture() {
     ],
     [],
   );
+  const automation = new SqliteAutomationRepository(directory);
+  automation.initialize();
+  automation.createTask({
+    id: "task_test",
+    name: "Backup test broadcast",
+    serverId: "srv_test",
+    enabled: true,
+    taskType: "broadcast_message",
+    schedule: { type: "daily", time: "09:00" },
+    timeZone: "UTC",
+    configuration: { message: "This task must survive restore." },
+    lastRunAt: null,
+    nextRunAt: "2026-07-24T09:00:00.000Z",
+    lastResult: null,
+    lastError: null,
+    createdAt: "2026-07-23T00:00:00.000Z",
+    updatedAt: "2026-07-23T00:00:00.000Z",
+  });
   const users = new SqliteUserRepository(directory);
   users.initialize();
   users.createInitial({
@@ -98,11 +117,13 @@ async function fixture() {
 
   const lifecycle = {
     async pause() {
+      automation.close();
       history.close();
       users.close();
     },
     async resume() {
       history.reopen();
+      automation.reopen();
       users.reopen();
     },
   };
@@ -110,6 +131,7 @@ async function fixture() {
   return {
     directory,
     history,
+    automation,
     users,
     system,
     service: new BackupService(directory, "1.0.0-test", lifecycle),
@@ -187,6 +209,10 @@ test("creates and restores all PalCenter data", async () => {
     assert.equal(notifications.providers.length, 1);
     assert.equal(context.history.listMetrics("srv_test", 10).length, 1);
     assert.equal(context.history.listEvents("srv_test", 10).length, 1);
+    assert.equal(
+      context.automation.getTask("task_test")?.configuration.message,
+      "This task must survive restore.",
+    );
     assert.equal(context.users.list().length, 1);
     const restoredSystem = await new SystemConfigurationRepository(
       context.directory,
@@ -194,6 +220,7 @@ test("creates and restores all PalCenter data", async () => {
     assert.deepEqual(restoredSystem, context.system.configuration);
   } finally {
     context.history.close();
+    context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
   }
@@ -218,6 +245,7 @@ test("rejects invalid uploads without changing current data", async () => {
     context.history.check();
   } finally {
     context.history.close();
+    context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
   }
@@ -264,6 +292,7 @@ test("restoring a format v1 backup preserves current users", async () => {
     );
   } finally {
     context.history.close();
+    context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
   }
@@ -297,6 +326,7 @@ test("restoring a format v2 backup preserves current system configuration", asyn
     );
   } finally {
     context.history.close();
+    context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
   }

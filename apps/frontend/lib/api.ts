@@ -12,6 +12,13 @@ import type {
   UserProfile,
   UserRole,
 } from "../types/servers";
+import type {
+  AutomationExecution,
+  AutomationListQuery,
+  AutomationSummary,
+  AutomationTask,
+  AutomationTaskInput,
+} from "../types/automation";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ?? "";
 
@@ -485,6 +492,73 @@ export function resetUserPassword(
 
 export function deleteUser(id: string): Promise<void> {
   return request<void>(`/api/users/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getAutomationTasks(
+  query: AutomationListQuery = {},
+): Promise<AutomationTask[]> {
+  const parameters = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") parameters.set(key, String(value));
+  }
+  const suffix = parameters.size > 0 ? `?${parameters.toString()}` : "";
+  const result = await request<{ tasks: AutomationTask[] }>(
+    `/api/automations${suffix}`,
+    { cache: "no-store" },
+  );
+  return result.tasks;
+}
+
+export function getAutomationSummary(): Promise<AutomationSummary> {
+  return request<AutomationSummary>("/api/automations/summary", {
+    cache: "no-store",
+  });
+}
+
+export function createAutomationTask(
+  input: AutomationTaskInput,
+): Promise<AutomationTask> {
+  return jsonRequest<AutomationTask>("/api/automations", input);
+}
+
+export function updateAutomationTask(
+  id: string,
+  input: AutomationTaskInput,
+): Promise<AutomationTask> {
+  return request<AutomationTask>(`/api/automations/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function setAutomationTaskEnabled(
+  id: string,
+  enabled: boolean,
+): Promise<AutomationTask> {
+  return request<AutomationTask>(
+    `/api/automations/${encodeURIComponent(id)}/enabled`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    },
+  );
+}
+
+export function runAutomationTask(
+  id: string,
+): Promise<{ execution: AutomationExecution }> {
+  return request<{ execution: AutomationExecution }>(
+    `/api/automations/${encodeURIComponent(id)}/run`,
+    { method: "POST" },
+  );
+}
+
+export function deleteAutomationTask(id: string): Promise<void> {
+  return request<void>(`/api/automations/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }
