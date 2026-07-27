@@ -1,0 +1,32 @@
+.toolCard {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--mantine-radius-md);
+}
+
+.toolCard:visited {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card {
+  transition:
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.toolCard:hover .card {
+  border-color: var(--mantine-color-cyan-7);
+  transform: translateY(-2px);
+}
+
+.toolCard:focus-visible {
+  outline: none;
+}
+
+.toolCard:focus-visible .card {
+  border-color: var(--mantine-color-cyan-5);
+  outline: 2px solid var(--mantine-color-cyan-5);
+  outline-offset: 3px;
+}

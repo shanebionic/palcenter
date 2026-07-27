@@ -3,6 +3,7 @@ import { IconFileSettings } from "@tabler/icons-react";
 import Link from "next/link";
 import { ApplicationShell } from "../../components/ApplicationShell";
 import { PageHeader } from "../../components/PageHeader";
+import styles from "./tools.module.css";
 
 export default function ToolsPage() {
   return (
@@ -15,8 +16,13 @@ export default function ToolsPage() {
         />
 
         <SimpleGrid cols={{ base: 1, sm: 2, xl: 3 }}>
-          <Link href="/tools/config-generator" className="pc-tool-card">
-            <Card className="pc-panel" p="xl" withBorder h="100%">
+          <Link href="/tools/config-generator" className={styles.toolCard}>
+            <Card
+              className={`pc-panel ${styles.card}`}
+              p="xl"
+              withBorder
+              h="100%"
+            >
               <Stack gap="md">
                 <ThemeIcon size={48} radius="md" variant="light">
                   <IconFileSettings size={26} />
