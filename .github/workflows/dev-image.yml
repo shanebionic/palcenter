@@ -1,0 +1,86 @@
+name: Development Docker Image
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+concurrency:
+  group: dev-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate development build
+    permissions:
+      contents: read
+    uses: ./.github/workflows/validation.yml
+
+  publish:
+    name: Publish development Docker image
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Require dev branch
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" != "refs/heads/dev" ]]; then
+            echo "::error::Development images may only be published from the dev branch."
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate development build metadata
+        id: build
+        shell: bash
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          release_version="$(git describe --tags --match 'v[0-9]*.[0-9]*.[0-9]*' --abbrev=0 2>/dev/null || true)"
+          if [[ -z "$release_version" ]]; then
+            release_version="v$(node -p "require('./package.json').version")"
+          fi
+          version="${release_version#v}"
+          IFS=. read -r major minor patch <<< "$version"
+          development_version="v${major}.${minor}.$((patch + 1))-dev"
+          echo "version=${development_version}" >> "$GITHUB_OUTPUT"
+          echo "commit=${short_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish development image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/shanebionic/palcenter:dev
+            ghcr.io/shanebionic/palcenter:dev-${{ github.sha }}
+          build-args: |
+            PALCENTER_VERSION=${{ steps.build.outputs.version }}
+            PALCENTER_CHANNEL=development
+            PALCENTER_COMMIT=${{ steps.build.outputs.commit }}
+          cache-from: type=registry,ref=ghcr.io/shanebionic/palcenter:dev
+          cache-to: type=inline

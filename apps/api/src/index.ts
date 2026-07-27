@@ -83,6 +83,13 @@ const environmentSchema = z.object({
     (value) => (value === "" ? undefined : value),
     z.string().trim().min(1).max(50).default(packageVersion),
   ),
+  PALCENTER_CHANNEL: z
+    .enum(["production", "development"])
+    .default("development"),
+  PALCENTER_COMMIT: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().trim().min(1).max(64).default("unknown"),
+  ),
   PALCENTER_DEPLOYMENT: z.string().trim().min(1).max(50).default("Local"),
   PALCENTER_SESSION_SECRET: z.preprocess(
     (value) => (value === "" ? undefined : value),
@@ -127,10 +134,8 @@ const applicationMetadata = {
   name: "PalCenter",
   description: "Palworld Server Command Center",
   version: environment.PALCENTER_VERSION,
-  releaseChannel:
-    environment.NODE_ENV === "production"
-      ? "Production Release"
-      : "Development",
+  channel: environment.PALCENTER_CHANNEL,
+  commit: environment.PALCENTER_COMMIT.slice(0, 7),
   deployment: environment.PALCENTER_DEPLOYMENT,
 } as const;
 

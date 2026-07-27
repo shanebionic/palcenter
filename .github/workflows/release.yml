@@ -36,6 +36,11 @@ jobs:
             exit 1
           fi
 
+      - name: Generate production build metadata
+        id: build
+        shell: bash
+        run: echo "commit=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
@@ -70,6 +75,8 @@ jobs:
           annotations: ${{ steps.metadata.outputs.annotations }}
           build-args: |
             PALCENTER_VERSION=${{ github.ref_name }}
+            PALCENTER_CHANNEL=production
+            PALCENTER_COMMIT=${{ steps.build.outputs.commit }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

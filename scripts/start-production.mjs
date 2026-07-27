@@ -4,9 +4,11 @@ const apiPort = process.env.API_PORT ?? "3001";
 const webPort = process.env.WEB_PORT ?? "3000";
 const configDirectory = process.env.CONFIG_DIR ?? "/app/data";
 const version = process.env.PALCENTER_VERSION ?? "development";
+const channel = process.env.PALCENTER_CHANNEL ?? "development";
+const commit = process.env.PALCENTER_COMMIT ?? "unknown";
 
 console.info(
-  `Starting PalCenter ${version} (web=${webPort}, api=${apiPort}, data=${configDirectory}).`,
+  `Starting PalCenter ${version} (${channel}, commit=${commit}, web=${webPort}, api=${apiPort}, data=${configDirectory}).`,
 );
 
 const processes = [

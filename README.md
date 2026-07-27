@@ -74,6 +74,27 @@ http://YOUR_SERVER_IP:3000
 
 On first launch, complete the setup wizard to create your administrator account.
 
+### Development builds
+
+Production users should run:
+
+```text
+ghcr.io/shanebionic/palcenter:latest
+```
+
+Testers who want the current development channel can run:
+
+```text
+ghcr.io/shanebionic/palcenter:dev
+```
+
+Development builds may contain unfinished features, are intended for testing,
+and may change without notice. Each development build also has an immutable
+`dev-<git-sha>` image tag. The About PalCenter dialog identifies the build as
+Production or Development and includes the short commit for development builds.
+The displayed development version is generated as the next patch after the
+most recent release tag.
+
 ### Container user IDs
 
 PalCenter runs as a non-root user. The supplied Compose deployment defaults to
