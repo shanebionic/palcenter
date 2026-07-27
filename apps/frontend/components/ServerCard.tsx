@@ -23,6 +23,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { passwordProtectionPresentation } from "../lib/server-password-status";
 import type { ServerStatus } from "../types/servers";
 
 interface ServerCardProps {
@@ -80,6 +81,9 @@ export function ServerCard({ server }: ServerCardProps) {
     server.players !== null && server.maxPlayers
       ? (server.players / server.maxPlayers) * 100
       : 0;
+  const passwordProtection = passwordProtectionPresentation(
+    server.passwordProtected,
+  );
 
   return (
     <Card
@@ -103,7 +107,7 @@ export function ServerCard({ server }: ServerCardProps) {
             <div>
               <Group gap="xs">
                 <Title order={3}>{server.name}</Title>
-                {server.passwordProtected && (
+                {passwordProtection.showLock && (
                   <IconLock size={16} aria-label="Password protected" />
                 )}
               </Group>
@@ -135,7 +139,11 @@ export function ServerCard({ server }: ServerCardProps) {
         </div>
 
         <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
-          <Metric icon={<IconUsers size={18} />} label="Players" value={players} />
+          <Metric
+            icon={<IconUsers size={18} />}
+            label="Players"
+            value={players}
+          />
           <Metric
             icon={<IconGauge size={18} />}
             label="Server FPS"

@@ -50,6 +50,7 @@ export interface PalworldServerSettings {
   ServerPlayerMaxNum?: number;
   ServerName?: string;
   ServerDescription?: string;
+  ServerPassword?: string | null;
   PublicIP?: string;
   PublicPort?: number;
   RCONEnabled?: boolean;
