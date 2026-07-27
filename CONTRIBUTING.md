@@ -50,5 +50,28 @@ Docker Compose file and release image behavior.
 - Do not commit generated build output, local environment files, runtime data,
   or secrets.
 
+## Development and release branches
+
+PalCenter uses a permanent development channel:
+
+```text
+feature/* → dev → ghcr.io/shanebionic/palcenter:dev
+```
+
+Feature branches are reviewed into `dev`. Every push to `dev` must pass the
+reusable validation workflow before the multi-platform development image is
+published.
+
+After development testing:
+
+```text
+dev → main → vX.Y.Z tag → versioned image + latest
+```
+
+Production releases are prepared by merging the tested `dev` state into
+`main`, then creating a semantic version tag. Application source code does not
+need channel-specific edits; the Docker workflows inject version, channel, and
+commit metadata during the image build.
+
 By contributing, you agree that your contribution is licensed under the
 project's [MIT License](LICENSE).

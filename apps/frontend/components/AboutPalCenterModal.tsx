@@ -17,6 +17,7 @@ import {
   IconBug,
   IconScale,
 } from "@tabler/icons-react";
+import { buildChannelPresentation } from "../lib/build-metadata";
 
 interface AboutPalCenterModalProps {
   opened: boolean;
@@ -25,7 +26,8 @@ interface AboutPalCenterModalProps {
     name: string;
     description: string;
     version: string;
-    releaseChannel: string;
+    channel: "production" | "development";
+    commit: string;
     deployment: string;
   };
 }
@@ -58,6 +60,8 @@ export function AboutPalCenterModal({
   onClose,
   application,
 }: AboutPalCenterModalProps) {
+  const channel = buildChannelPresentation(application.channel);
+
   return (
     <Modal
       opened={opened}
@@ -88,13 +92,23 @@ export function AboutPalCenterModal({
               : `v${application.version}`}
           </Badge>
           <Group gap="xs" justify="center">
-            <Badge color="blue" variant="dot">
-              {application.releaseChannel}
+            <Badge color={channel.color} variant="dot">
+              {channel.label}
             </Badge>
             <Badge color="gray" variant="dot">
               Deployment: {application.deployment}
             </Badge>
           </Group>
+          {channel.showCommit && (
+            <Stack gap={2} align="center">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                Commit
+              </Text>
+              <Text size="sm" ff="monospace">
+                {application.commit}
+              </Text>
+            </Stack>
+          )}
         </Stack>
 
         <Divider />

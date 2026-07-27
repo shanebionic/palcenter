@@ -34,6 +34,28 @@ PalCenter starts. It does not grant root access, add capabilities, or change
 ownership inside the container. Users installing through Community
 Applications should not need to run `chmod` or `chown`.
 
+## Test development builds
+
+The Community Applications template installs the production image:
+
+```text
+ghcr.io/shanebionic/palcenter:latest
+```
+
+To test the development channel, open the PalCenter container settings, enable
+the advanced view if necessary, and change the repository to:
+
+```text
+ghcr.io/shanebionic/palcenter:dev
+```
+
+Apply the change and allow Unraid to pull and recreate the container. Keep the
+existing `/mnt/user/appdata/palcenter` mapping so PalCenter data persists.
+
+Development builds may contain unfinished features, are intended for testing,
+and may change without notice. Return the repository to `latest` to resume the
+production channel. Download a PalCenter backup before changing channels.
+
 ## Manual Unraid deployment
 
 Community Applications is recommended. If you intentionally deploy with Docker

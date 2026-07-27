@@ -48,7 +48,8 @@ export interface AuthSession {
     name: string;
     description: string;
     version: string;
-    releaseChannel: string;
+    channel: "production" | "development";
+    commit: string;
     deployment: string;
   };
 }
