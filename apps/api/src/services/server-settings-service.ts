@@ -4,6 +4,7 @@ import type {
   PalworldServerSettings,
   ServerSettingsView,
 } from "../types/connections.js";
+import { isServerPasswordProtected } from "./server-password-status.js";
 
 export class SettingsServerNotFoundError extends Error {
   constructor() {
@@ -61,16 +62,12 @@ export class ServerSettingsService {
         rconPort: settings.RCONPort ?? null,
       },
       security: {
-        passwordProtected: this.passwordProtected(settings),
+        passwordProtected: isServerPasswordProtected(settings),
       },
       crossplay: {
         platforms: this.crossplayPlatforms(settings),
       },
     };
-  }
-
-  private passwordProtected(settings: PalworldServerSettings): boolean | null {
-    return settings.bUseAuth ?? null;
   }
 
   private crossplayPlatforms(

@@ -15,6 +15,7 @@ import {
 import { IconLock } from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { getServerSettings } from "../lib/api";
+import { passwordProtectionPresentation } from "../lib/server-password-status";
 import type { ServerSettings as ServerSettingsData } from "../types/servers";
 
 interface ServerSettingsProps {
@@ -70,6 +71,9 @@ export function ServerSettings({ serverId }: ServerSettingsProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const passwordProtection = passwordProtectionPresentation(
+    settings?.security.passwordProtected ?? null,
+  );
 
   const loadSettings = useCallback(
     async (background = false) => {
@@ -204,16 +208,10 @@ export function ServerSettings({ serverId }: ServerSettingsProps) {
                 Password Protected
               </Text>
               <Group gap="xs">
-                {settings.security.passwordProtected && (
+                {passwordProtection.showLock && (
                   <IconLock size={16} aria-label="Password protected" />
                 )}
-                <Text>
-                  {settings.security.passwordProtected === null
-                    ? "Unknown"
-                    : settings.security.passwordProtected
-                      ? "Protected"
-                      : "Not protected"}
-                </Text>
+                <Text>{passwordProtection.label}</Text>
               </Group>
             </div>
           </SettingsSection>

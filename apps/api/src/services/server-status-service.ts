@@ -9,6 +9,7 @@ import type {
   ServerWorkspace,
   StoredConnection,
 } from "../types/connections.js";
+import { isServerPasswordProtected } from "./server-password-status.js";
 
 export class ServerStatusService {
   constructor(private readonly repository: ConnectionRepository) {}
@@ -86,7 +87,8 @@ export class ServerStatusService {
       version: result.info.version,
       responseTimeMs: result.latencyMs,
       uptimeSeconds: result.metrics.uptime ?? null,
-      passwordProtected: settings?.bUseAuth ?? null,
+      passwordProtected:
+        settings === null ? null : isServerPasswordProtected(settings),
       lastUpdated: new Date().toISOString(),
     };
   }
