@@ -286,7 +286,7 @@ const serverRemovalService = new ServerRemovalService(
   historyRepository,
   {
     pause: () => serverHistoryService.stop(),
-    resume: () => serverHistoryService.start(historyErrorHandler),
+    resume: () => serverHistoryService.start(historyErrorHandler, false),
   },
 );
 const backupService = new BackupService(
@@ -1085,41 +1085,45 @@ app.setErrorHandler((error, request, reply) => {
   });
 });
 
-try {
-  await app.listen({
-    host: "0.0.0.0",
-    port: environment.PORT,
-  });
+export { app };
 
-  app.log.info(
-    {
-      version: environment.PALCENTER_VERSION,
+if (environment.NODE_ENV !== "test") {
+  try {
+    await app.listen({
+      host: "0.0.0.0",
       port: environment.PORT,
-      configDirectory: environment.CONFIG_DIR,
-      historyIntervalSeconds: environment.HISTORY_INTERVAL_SECONDS,
-      corsOrigins: allowedOrigins.size,
-      secureSessionCookie: environment.PALCENTER_SESSION_COOKIE_SECURE,
-      trustProxy: environment.PALCENTER_TRUST_PROXY,
-      systemConfigurationSource: systemConfigurationResult.source,
-    },
-    "PalCenter API started.",
-  );
+    });
 
-  if (!environment.PALCENTER_SESSION_COOKIE_SECURE) {
-    app.log.warn(
-      "Session cookies are not marked Secure. Use HTTPS and enable PALCENTER_SESSION_COOKIE_SECURE in production.",
-    );
-  }
-
-  if (
-    environment.PALCENTER_SESSION_SECRET &&
-    systemConfigurationResult.source === "stored"
-  ) {
     app.log.info(
-      "Stored system configuration takes precedence over PALCENTER_SESSION_SECRET.",
+      {
+        version: environment.PALCENTER_VERSION,
+        port: environment.PORT,
+        configDirectory: environment.CONFIG_DIR,
+        historyIntervalSeconds: environment.HISTORY_INTERVAL_SECONDS,
+        corsOrigins: allowedOrigins.size,
+        secureSessionCookie: environment.PALCENTER_SESSION_COOKIE_SECURE,
+        trustProxy: environment.PALCENTER_TRUST_PROXY,
+        systemConfigurationSource: systemConfigurationResult.source,
+      },
+      "PalCenter API started.",
     );
+
+    if (!environment.PALCENTER_SESSION_COOKIE_SECURE) {
+      app.log.warn(
+        "Session cookies are not marked Secure. Use HTTPS and enable PALCENTER_SESSION_COOKIE_SECURE in production.",
+      );
+    }
+
+    if (
+      environment.PALCENTER_SESSION_SECRET &&
+      systemConfigurationResult.source === "stored"
+    ) {
+      app.log.info(
+        "Stored system configuration takes precedence over PALCENTER_SESSION_SECRET.",
+      );
+    }
+  } catch (error) {
+    app.log.fatal({ err: error }, "PalCenter API failed to start.");
+    process.exit(1);
   }
-} catch (error) {
-  app.log.fatal({ err: error }, "PalCenter API failed to start.");
-  process.exit(1);
 }

@@ -29,7 +29,7 @@ export class ServerHistoryService {
     private readonly onEvents: (events: ServerEvent[]) => Promise<void>,
   ) {}
 
-  start(onError: (error: unknown) => void): void {
+  start(onError: (error: unknown) => void, collectImmediately = true): void {
     if (this.timer) {
       return;
     }
@@ -46,7 +46,9 @@ export class ServerHistoryService {
         });
     };
 
-    run();
+    if (collectImmediately) {
+      run();
+    }
     this.timer = setInterval(run, this.intervalMs);
     this.timer.unref();
   }
