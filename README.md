@@ -103,7 +103,8 @@ when using the default Docker-managed volume.
 Full installation, administration, backup, and troubleshooting guides are
 available in the [PalCenter Wiki](https://github.com/shanebionic/palcenter/wiki).
 The repository also includes the
-[configuration generator guide](docs/CONFIGURATION-GENERATOR.md).
+[configuration generator guide](docs/CONFIGURATION-GENERATOR.md) and
+[server management guide](docs/SERVER-MANAGEMENT.md).
 
 ## Contributing and support
 

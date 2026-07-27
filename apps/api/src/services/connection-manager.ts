@@ -53,10 +53,6 @@ export class ConnectionManager {
     return this.sanitize(connection);
   }
 
-  async delete(id: string): Promise<void> {
-    await this.repository.delete(id);
-  }
-
   private sanitize(connection: StoredConnection): PublicConnection {
     const baseUrl = new URL(connection.baseUrl);
     baseUrl.username = "";

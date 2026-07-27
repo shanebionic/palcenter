@@ -11,16 +11,20 @@ test("treats a non-empty server password as protected", () => {
   assert.equal(isServerPasswordProtected({ ServerPassword: "secret" }), true);
 });
 
-test("treats a missing or null server password as not protected", () => {
-  assert.equal(isServerPasswordProtected({}), false);
-  assert.equal(isServerPasswordProtected({ ServerPassword: null }), false);
+test("treats a missing or null server password as unknown", () => {
+  assert.equal(isServerPasswordProtected({}), null);
+  assert.equal(isServerPasswordProtected({ ServerPassword: null }), null);
 });
 
 test("does not infer join-password protection from the admin password", () => {
-  const settings = {
+  const explicitEmptyPassword = {
     AdminPassword: "admin-secret",
     ServerPassword: "",
   };
+  const missingPassword = {
+    AdminPassword: "admin-secret",
+  };
 
-  assert.equal(isServerPasswordProtected(settings), false);
+  assert.equal(isServerPasswordProtected(explicitEmptyPassword), false);
+  assert.equal(isServerPasswordProtected(missingPassword), null);
 });

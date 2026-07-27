@@ -171,4 +171,11 @@ test("central role permissions enforce administrator, moderator, and visitor sco
     authorization.permissionFor("POST", "/api/backup"),
     "manage_backups",
   );
+  assert.equal(
+    authorization.permissionFor("DELETE", "/api/servers/srv_1"),
+    "manage_servers",
+  );
+  assert.equal(authorization.can("administrator", "manage_servers"), true);
+  assert.equal(authorization.can("moderator", "manage_servers"), false);
+  assert.equal(authorization.can("visitor", "manage_servers"), false);
 });

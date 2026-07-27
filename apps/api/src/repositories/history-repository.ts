@@ -20,6 +20,7 @@ export interface HistoryRepository {
   appendEvent(event: NewServerEvent): ServerEvent;
   listMetrics(serverId: string, limit: number): ServerMetric[];
   listEvents(serverId: string, limit: number): ServerEvent[];
+  deleteServerData(serverId: string): void;
 }
 
 export function isServerEventType(value: string): value is ServerEventType {
