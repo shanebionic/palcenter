@@ -60,7 +60,9 @@ feature/* → dev → ghcr.io/shanebionic/palcenter:dev
 
 Feature branches are reviewed into `dev`. Every push to `dev` must pass the
 reusable validation workflow before the multi-platform development image is
-published.
+published. Manual Development Docker Image runs must also select the `dev`
+branch; the workflow rejects every other selected ref before registry login or
+image publication.
 
 After development testing:
 

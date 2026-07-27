@@ -26,6 +26,15 @@ jobs:
       packages: write
 
     steps:
+      - name: Require dev branch
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" != "refs/heads/dev" ]]; then
+            echo "::error::Development images may only be published from the dev branch."
+            exit 1
+          fi
+
       - name: Check out repository
         uses: actions/checkout@v6
         with:
