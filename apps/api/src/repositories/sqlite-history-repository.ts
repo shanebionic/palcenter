@@ -326,6 +326,27 @@ export class SqliteHistoryRepository implements HistoryRepository {
     });
   }
 
+  deleteServerData(serverId: string): void {
+    const database = this.requireDatabase();
+    database.exec("BEGIN IMMEDIATE");
+
+    try {
+      database
+        .prepare("DELETE FROM active_players WHERE server_id = ?")
+        .run(serverId);
+      database
+        .prepare("DELETE FROM server_events WHERE server_id = ?")
+        .run(serverId);
+      database
+        .prepare("DELETE FROM server_metrics WHERE server_id = ?")
+        .run(serverId);
+      database.exec("COMMIT");
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
   private metric(row: MetricRow): ServerMetric {
     if (row.status !== "online" && row.status !== "offline") {
       throw new Error(`Unknown server status "${row.status}".`);

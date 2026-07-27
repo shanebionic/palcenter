@@ -54,6 +54,11 @@ import {
   initializeStorageDirectory,
   type StoragePermissionWarningHandler,
 } from "./services/storage-initialization-service.js";
+import {
+  RemovalServerNotFoundError,
+  ServerRemovalError,
+  ServerRemovalService,
+} from "./services/server-removal-service.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -68,7 +73,9 @@ const packageVersion = z
   ).version;
 
 const environmentSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
   PORT: z.coerce.number().int().positive().default(3001),
   CONFIG_DIR: z.string().min(1).default("./data"),
   HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
@@ -274,6 +281,14 @@ const serverHistoryService = new ServerHistoryService(
 const historyErrorHandler = (error: unknown) => {
   app.log.error({ err: error }, "Historical metric collection failed.");
 };
+const serverRemovalService = new ServerRemovalService(
+  repository,
+  historyRepository,
+  {
+    pause: () => serverHistoryService.stop(),
+    resume: () => serverHistoryService.start(historyErrorHandler),
+  },
+);
 const backupService = new BackupService(
   environment.CONFIG_DIR,
   environment.PALCENTER_VERSION,
@@ -689,6 +704,9 @@ const connectionInputSchema = z
     adminPassword: z.string().min(1).max(1_024),
   })
   .strict();
+const serverIdSchema = z.object({
+  id: z.string().min(1),
+});
 
 app.post("/api/servers/test", async (request) => {
   const input = connectionInputSchema.omit({ name: true }).parse(request.body);
@@ -704,19 +722,10 @@ app.post("/api/servers", async (request, reply) => {
 });
 
 app.delete("/api/servers/:id", async (request, reply) => {
-  const parameters = z
-    .object({
-      id: z.string().min(1),
-    })
-    .parse(request.params);
-
-  await connectionManager.delete(parameters.id);
+  const parameters = serverIdSchema.parse(request.params);
+  await serverRemovalService.remove(parameters.id);
 
   return reply.code(204).send();
-});
-
-const serverIdSchema = z.object({
-  id: z.string().min(1),
 });
 
 const messageSchema = z.string().trim().min(1).max(500);
@@ -986,10 +995,18 @@ app.setErrorHandler((error, request, reply) => {
     error instanceof ServerNotFoundError ||
     error instanceof PlayerServerNotFoundError ||
     error instanceof SettingsServerNotFoundError ||
-    error instanceof HistoryServerNotFoundError
+    error instanceof HistoryServerNotFoundError ||
+    error instanceof RemovalServerNotFoundError
   ) {
     return reply.code(404).send({
       error: "server_not_found",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof ServerRemovalError) {
+    return reply.code(500).send({
+      error: "server_removal_failed",
       message: error.message,
     });
   }
