@@ -283,7 +283,7 @@ export class BackupService {
       if (
         integrity?.quick_check !== "ok" ||
         !version ||
-        ![1, 2].includes(version.user_version) ||
+        ![1, 2, 3].includes(version.user_version) ||
         tables.length !== (version.user_version === 1 ? 3 : 5)
       ) {
         throw new Error("SQLite validation failed.");

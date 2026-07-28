@@ -79,6 +79,7 @@ export interface AutomationExecutionDetail extends AutomationExecution {
   serverName: string;
   actionSummary: string;
   resultMessage: string;
+  metadataSource: "snapshot" | "legacy_current_task";
 }
 
 export interface AutomationListQuery {

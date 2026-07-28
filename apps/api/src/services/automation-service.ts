@@ -147,13 +147,27 @@ export class AutomationService {
     limit: number,
   ): Promise<AutomationExecutionDetail[]> {
     const task = await this.get(id);
-    return this.repository.listExecutions(id, limit).map((execution) => ({
-      ...execution,
-      taskName: task.name,
-      serverName: task.serverName,
-      actionSummary: automationActionSummary(task),
-      resultMessage: automationResultMessage(task, execution),
-    }));
+    return this.repository.listExecutions(id, limit).map((execution) => {
+      const snapshot = execution.snapshot;
+      const taskType = snapshot?.taskType ?? execution.taskType;
+      return {
+        id: execution.id,
+        taskId: execution.taskId,
+        serverId: execution.serverId,
+        taskType: execution.taskType,
+        trigger: execution.trigger,
+        result: execution.result,
+        startedAt: execution.startedAt,
+        finishedAt: execution.finishedAt,
+        durationMs: execution.durationMs,
+        errorMessage: execution.errorMessage,
+        taskName: snapshot?.taskName ?? task.name,
+        serverName: snapshot?.serverName ?? task.serverName,
+        actionSummary: snapshot?.actionSummary ?? automationActionSummary(task),
+        resultMessage: automationResultMessage(taskType, execution),
+        metadataSource: snapshot ? "snapshot" : "legacy_current_task",
+      };
+    });
   }
 
   async summary(): Promise<AutomationSummary> {

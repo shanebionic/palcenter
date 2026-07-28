@@ -1,5 +1,6 @@
 import type {
   AutomationExecution,
+  AutomationTaskType,
   StoredAutomationTask,
 } from "../types/automation.js";
 
@@ -18,7 +19,7 @@ export function automationActionSummary(task: StoredAutomationTask): string {
 }
 
 export function automationResultMessage(
-  task: StoredAutomationTask,
+  taskType: AutomationTaskType,
   execution: AutomationExecution,
 ): string {
   if (execution.result === "failure") {
@@ -26,7 +27,7 @@ export function automationResultMessage(
   }
   if (execution.result === "running") return "The task is currently running.";
 
-  switch (task.taskType) {
+  switch (taskType) {
     case "broadcast_message":
       return "Broadcast message sent successfully.";
     case "save_world":

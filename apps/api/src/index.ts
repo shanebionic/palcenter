@@ -65,6 +65,7 @@ import {
   AutomationService,
   AutomationTaskNotFoundError,
 } from "./services/automation-service.js";
+import { AutomationExecutionSnapshotService } from "./services/automation-execution-snapshot-service.js";
 import {
   automationScheduleSchema,
   parseAutomationTaskInput,
@@ -309,10 +310,14 @@ const taskDispatcher = new TaskDispatcher({
   save_world: new SaveWorldTaskExecutor(serverAdminService),
   shutdown: new ShutdownTaskExecutor(serverAdminService),
 });
+const automationExecutionSnapshots = new AutomationExecutionSnapshotService(
+  repository,
+);
 const schedulerService = new SchedulerService(
   automationRepository,
   scheduleCalculator,
   taskDispatcher,
+  automationExecutionSnapshots,
   environment.AUTOMATION_INTERVAL_SECONDS * 1_000,
   (error) => {
     app.log.error({ err: error }, "Scheduled task execution failed.");

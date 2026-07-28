@@ -51,7 +51,7 @@ interface IntegrityCheckRow {
   quick_check: string;
 }
 
-const schemaVersion = 2;
+const schemaVersion = 3;
 
 export class SqliteHistoryRepository implements HistoryRepository {
   private database: DatabaseSync | null = null;
@@ -164,6 +164,7 @@ export class SqliteHistoryRepository implements HistoryRepository {
         finished_at TEXT,
         duration_ms INTEGER,
         error_message TEXT,
+        snapshot_json TEXT,
         FOREIGN KEY (task_id) REFERENCES scheduled_tasks (id) ON DELETE CASCADE
       );
       CREATE INDEX IF NOT EXISTS task_executions_task_time
@@ -171,8 +172,18 @@ export class SqliteHistoryRepository implements HistoryRepository {
       CREATE INDEX IF NOT EXISTS task_executions_result_time
         ON task_executions (result, started_at DESC);
 
-      PRAGMA user_version = 2;
       `);
+      if (version < 3) {
+        const columns = database
+          .prepare("PRAGMA table_info(task_executions)")
+          .all() as unknown as { name: string }[];
+        if (!columns.some((column) => column.name === "snapshot_json")) {
+          database.exec(
+            "ALTER TABLE task_executions ADD COLUMN snapshot_json TEXT",
+          );
+        }
+      }
+      database.exec(`PRAGMA user_version = ${schemaVersion}`);
       database.exec("COMMIT");
     } catch (error) {
       database.exec("ROLLBACK");

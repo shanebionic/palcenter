@@ -4,6 +4,7 @@ import type {
   AutomationTrigger,
 } from "../types/automation.js";
 import { AutomationTaskNotFoundError } from "./automation-service.js";
+import type { AutomationExecutionSnapshotFactory } from "./automation-execution-snapshot-service.js";
 import { ScheduleCalculator } from "./schedule-calculator.js";
 import { TaskDispatcher } from "./task-dispatcher.js";
 
@@ -17,6 +18,7 @@ export class SchedulerService {
     private readonly repository: AutomationRepository,
     private readonly schedules: ScheduleCalculator,
     private readonly dispatcher: TaskDispatcher,
+    private readonly snapshots: AutomationExecutionSnapshotFactory,
     private readonly intervalMs: number,
     private readonly onError: (error: unknown) => void,
   ) {}
@@ -92,8 +94,10 @@ export class SchedulerService {
           : task.nextRunAt;
       const enabled =
         trigger === "scheduled" ? nextRunAt !== null : task.enabled;
+      const snapshot = await this.snapshots.create(task);
       const executionId = this.repository.beginExecution(
         task,
+        snapshot,
         trigger,
         started.toISOString(),
         nextRunAt,

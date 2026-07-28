@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { z } from "zod";
 import {
   parseTaskConfiguration,
   storedAutomationScheduleSchema,
@@ -12,6 +13,7 @@ import {
 import {
   automationTaskTypes,
   type AutomationExecution,
+  type AutomationExecutionSnapshot,
   type AutomationResult,
   type AutomationTaskInput,
   type AutomationTaskType,
@@ -48,7 +50,18 @@ interface ExecutionRow {
   finished_at: string | null;
   duration_ms: number | null;
   error_message: string | null;
+  snapshot_json: string | null;
 }
+
+const executionSnapshotSchema = z
+  .object({
+    taskName: z.string().min(1).max(100),
+    taskType: z.enum(automationTaskTypes),
+    serverId: z.string().min(1).max(100),
+    serverName: z.string().min(1).max(80),
+    actionSummary: z.string().min(1).max(500),
+  })
+  .strict();
 
 export class SqliteAutomationRepository implements AutomationRepository {
   private database: DatabaseSync | null = null;
@@ -183,6 +196,7 @@ export class SqliteAutomationRepository implements AutomationRepository {
 
   beginExecution(
     task: StoredAutomationTask,
+    snapshot: AutomationExecutionSnapshot,
     trigger: AutomationTrigger,
     startedAt: string,
     nextRunAt: string | null,
@@ -195,10 +209,18 @@ export class SqliteAutomationRepository implements AutomationRepository {
       const result = database
         .prepare(
           `INSERT INTO task_executions (
-            task_id, server_id, task_type, trigger, result, started_at
-          ) VALUES (?, ?, ?, ?, 'running', ?)`,
+            task_id, server_id, task_type, trigger, result, started_at,
+            snapshot_json
+          ) VALUES (?, ?, ?, ?, 'running', ?, ?)`,
         )
-        .run(task.id, task.serverId, task.taskType, trigger, startedAt);
+        .run(
+          task.id,
+          task.serverId,
+          task.taskType,
+          trigger,
+          startedAt,
+          JSON.stringify(executionSnapshotSchema.parse(snapshot)),
+        );
       database
         .prepare(
           `UPDATE scheduled_tasks
@@ -315,6 +337,10 @@ export class SqliteAutomationRepository implements AutomationRepository {
       finishedAt: row.finished_at,
       durationMs: row.duration_ms,
       errorMessage: row.error_message,
+      snapshot:
+        row.snapshot_json === null
+          ? null
+          : executionSnapshotSchema.parse(JSON.parse(row.snapshot_json)),
     };
   }
 

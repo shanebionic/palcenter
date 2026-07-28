@@ -101,6 +101,12 @@ export function AutomationHistoryDrawer({
               </Group>
 
               <Text size="sm">{execution.actionSummary}</Text>
+              {execution.metadataSource === "legacy_current_task" && (
+                <Text size="xs" c="orange.4">
+                  Legacy record: descriptive metadata may reflect the task’s
+                  current settings.
+                </Text>
+              )}
               <Text
                 size="sm"
                 c={execution.result === "failure" ? "red.4" : undefined}
