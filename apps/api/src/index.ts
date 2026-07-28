@@ -964,14 +964,6 @@ app.get("/api/automations", async (request) => ({
   ),
 }));
 
-app.get("/api/automations/:id/history", async (request) => {
-  const { id } = automationIdSchema.parse(request.params);
-  const query = z
-    .object({ limit: z.coerce.number().int().min(1).max(200).default(50) })
-    .parse(request.query);
-  return { executions: await automationService.history(id, query.limit) };
-});
-
 app.post("/api/automations", async (request, reply) => {
   const task = await automationService.create(
     parseAutomationTaskInput(request.body),
