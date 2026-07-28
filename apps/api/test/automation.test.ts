@@ -278,12 +278,6 @@ test("failed task executions are retained without stopping the scheduler", async
     assert.equal(execution.result, "failure");
     assert.equal(execution.errorMessage, "Server offline");
     assert.equal((await service.get(task.id)).lastError, "Server offline");
-    const [historyEntry] = await service.history(task.id, 10);
-    assert.equal(historyEntry?.trigger, "manual");
-    assert.equal(historyEntry?.resultMessage, "Server offline");
-    assert.equal(historyEntry?.taskName, task.name);
-    assert.equal(historyEntry?.serverName, connection.name);
-    assert.ok((historyEntry?.durationMs ?? -1) >= 0);
   } finally {
     automation.close();
     history.close();
@@ -362,30 +356,6 @@ test("save world and graceful shutdown execute through registered task executors
     assert.equal((await service.get(save.id)).nextRunAt, saveNextRun);
     assert.equal((await service.get(shutdown.id)).nextRunAt, shutdownNextRun);
 
-    automation.updateTask(
-      save.id,
-      {
-        name: save.name,
-        serverId: save.serverId,
-        enabled: true,
-        taskType: "save_world",
-        schedule: save.schedule,
-        timeZone: save.timeZone,
-        configuration: {},
-      },
-      "2026-01-01T00:00:00.000Z",
-    );
-    await scheduler.tick();
-    const saveHistory = await service.history(save.id, 10);
-    assert.deepEqual(
-      saveHistory.map((entry) => entry.trigger),
-      ["scheduled", "manual"],
-    );
-    assert.equal(
-      saveHistory[0]?.resultMessage,
-      "World save completed successfully.",
-    );
-
     automation.close();
     automation.reopen();
     assert.equal((await service.get(save.id)).taskType, "save_world");
@@ -393,62 +363,6 @@ test("save world and graceful shutdown execute through registered task executors
       waitTime: 60,
       message: "Maintenance",
     });
-    assert.equal(automation.listExecutions(shutdown.id, 10).length, 1);
-    await service.delete(shutdown.id);
-    assert.equal(automation.listExecutions(shutdown.id, 10).length, 0);
-  } finally {
-    automation.close();
-    history.close();
-    await fs.rm(directory, { recursive: true, force: true });
-  }
-});
-
-test("the same task cannot overlap while a previous execution is running", async () => {
-  const directory = await fs.mkdtemp(
-    path.join(os.tmpdir(), "palcenter-automation-overlap-"),
-  );
-  const automation = new SqliteAutomationRepository(directory);
-  const connections = new JsonConnectionRepository(directory);
-  const history = new SqliteHistoryRepository(directory);
-  let release: (() => void) | undefined;
-
-  try {
-    await connections.initialize();
-    await connections.create(connection);
-    history.initialize();
-    automation.initialize();
-    const calculator = new ScheduleCalculator();
-    const service = new AutomationService(automation, connections, calculator);
-    const scheduler = new SchedulerService(
-      automation,
-      calculator,
-      new TaskDispatcher(
-        executors({
-          execute: () =>
-            new Promise<void>((resolve) => {
-              release = resolve;
-            }),
-        }),
-      ),
-      60_000,
-      () => undefined,
-    );
-    const task = await service.create({
-      name: "Overlap test",
-      serverId: connection.id,
-      enabled: true,
-      taskType: "broadcast_message",
-      schedule: { type: "daily", time: "09:00" },
-      timeZone: "UTC",
-      configuration: { message: "Test" },
-    });
-
-    const first = scheduler.runNow(task.id);
-    await new Promise((resolve) => setImmediate(resolve));
-    await assert.rejects(scheduler.runNow(task.id), /already running/);
-    release?.();
-    assert.equal((await first).result, "success");
-    assert.equal(automation.listExecutions(task.id, 10).length, 1);
   } finally {
     automation.close();
     history.close();

@@ -25,7 +25,6 @@ import {
   IconClockPlay,
   IconDots,
   IconEdit,
-  IconHistory,
   IconPlayerPlay,
   IconPlus,
   IconPower,
@@ -60,7 +59,6 @@ import type {
 } from "../types/automation";
 import type { PublicConnection } from "../types/servers";
 import { AutomationTaskDialog } from "./AutomationTaskDialog";
-import { AutomationHistoryDrawer } from "./AutomationHistoryDrawer";
 import { BrandedLoader } from "./BrandedLoader";
 import { PageHeader } from "./PageHeader";
 
@@ -76,7 +74,6 @@ export function AutomationDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AutomationTask | null>(null);
-  const [historyTask, setHistoryTask] = useState<AutomationTask | null>(null);
   const [search, setSearch] = useState("");
   const [serverId, setServerId] = useState<string | null>(null);
   const [taskType, setTaskType] = useState<AutomationTaskType | null>(null);
@@ -400,58 +397,49 @@ export function AutomationDashboard() {
                     <ResultBadge task={task} />
                   </Table.Td>
                   <Table.Td>
-                    <Menu position="bottom-end" withinPortal>
-                      <Menu.Target>
-                        <ActionIcon
-                          variant="subtle"
-                          aria-label={`Actions for ${task.name}`}
-                        >
-                          <IconDots size={18} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconHistory size={16} />}
-                          onClick={() => setHistoryTask(task)}
-                        >
-                          View History
-                        </Menu.Item>
-                        {isAdministrator && (
-                          <>
-                            <Menu.Divider />
-                            <Menu.Item
-                              leftSection={<IconEdit size={16} />}
-                              onClick={() => {
-                                setEditing(task);
-                                setDialogOpen(true);
-                              }}
-                            >
-                              Edit
-                            </Menu.Item>
-                            <Menu.Item
-                              leftSection={<IconPower size={16} />}
-                              onClick={() => void perform(task, "toggle")}
-                            >
-                              {task.enabled ? "Disable" : "Enable"}
-                            </Menu.Item>
-                            <Menu.Item
-                              leftSection={<IconPlayerPlay size={16} />}
-                              onClick={() => void perform(task, "run")}
-                            >
-                              Run Now
-                            </Menu.Item>
-                            <Menu.Divider />
-                            <Menu.Item
-                              color="red"
-                              leftSection={<IconTrash size={16} />}
-                              onClick={() => void perform(task, "delete")}
-                            >
-                              Delete
-                            </Menu.Item>
-                          </>
-                        )}
-                      </Menu.Dropdown>
-                    </Menu>
+                    {isAdministrator && (
+                      <Menu position="bottom-end" withinPortal>
+                        <Menu.Target>
+                          <ActionIcon
+                            variant="subtle"
+                            aria-label={`Actions for ${task.name}`}
+                          >
+                            <IconDots size={18} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            leftSection={<IconEdit size={16} />}
+                            onClick={() => {
+                              setEditing(task);
+                              setDialogOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Menu.Item>
+                          <Menu.Item
+                            leftSection={<IconPower size={16} />}
+                            onClick={() => void perform(task, "toggle")}
+                          >
+                            {task.enabled ? "Disable" : "Enable"}
+                          </Menu.Item>
+                          <Menu.Item
+                            leftSection={<IconPlayerPlay size={16} />}
+                            onClick={() => void perform(task, "run")}
+                          >
+                            Run Now
+                          </Menu.Item>
+                          <Menu.Divider />
+                          <Menu.Item
+                            color="red"
+                            leftSection={<IconTrash size={16} />}
+                            onClick={() => void perform(task, "delete")}
+                          >
+                            Delete
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    )}
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -491,10 +479,6 @@ export function AutomationDashboard() {
         saving={saving}
         onClose={() => setDialogOpen(false)}
         onSave={save}
-      />
-      <AutomationHistoryDrawer
-        task={historyTask}
-        onClose={() => setHistoryTask(null)}
       />
     </Stack>
   );

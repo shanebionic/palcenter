@@ -3,16 +3,11 @@ import type { ConnectionRepository } from "../repositories/connection-repository
 import type { AutomationRepository } from "../repositories/automation-repository.js";
 import type {
   AutomationSchedule,
-  AutomationExecutionDetail,
   AutomationSummary,
   AutomationTask,
   AutomationTaskInput,
   StoredAutomationTask,
 } from "../types/automation.js";
-import {
-  automationActionSummary,
-  automationResultMessage,
-} from "./automation-execution-presentation.js";
 import { ScheduleCalculator } from "./schedule-calculator.js";
 
 export class AutomationTaskNotFoundError extends Error {
@@ -140,20 +135,6 @@ export class AutomationService {
   async delete(id: string): Promise<void> {
     await this.get(id);
     this.repository.deleteTask(id);
-  }
-
-  async history(
-    id: string,
-    limit: number,
-  ): Promise<AutomationExecutionDetail[]> {
-    const task = await this.get(id);
-    return this.repository.listExecutions(id, limit).map((execution) => ({
-      ...execution,
-      taskName: task.name,
-      serverName: task.serverName,
-      actionSummary: automationActionSummary(task),
-      resultMessage: automationResultMessage(task, execution),
-    }));
   }
 
   async summary(): Promise<AutomationSummary> {
