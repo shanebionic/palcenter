@@ -421,7 +421,7 @@ function IntervalScheduleEditor({
 
   return (
     <Stack gap="sm">
-      <Group grow align="flex-start">
+      <Group grow align="flex-end">
         <NumberInput
           label="Interval (minutes)"
           min={1}
