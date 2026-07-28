@@ -91,7 +91,16 @@ container recreation.
 ## Results and troubleshooting
 
 The task table shows the most recent run, next scheduled run, and last result.
-A failed task remains available and future scheduled runs continue. Check that:
+Select **View History** for newest-first details about each execution, including
+the task and server, manual or scheduled trigger, start and finish times,
+duration, result, safe action summary, and error details. An overdue execution
+performed after PalCenter starts is reported as **Scheduled** because the
+scheduler intentionally uses the same execution path and does not persist a
+separate overdue trigger.
+
+A failed recurring task remains enabled and future scheduled runs continue.
+One-time tasks retain their normal automatic-disable behavior after execution.
+Check that:
 
 - the selected Palworld server is online;
 - its REST API is reachable from the PalCenter container;
@@ -99,6 +108,9 @@ A failed task remains available and future scheduled runs continue. Check that:
 
 Execution metadata and errors are stored in `history.sqlite`. Task
 configuration is included in authenticated PalCenter backups.
+
+Deleting a task also deletes its execution history. This is intentional: the
+history belongs to that task and the Automation UI warns before deletion.
 
 ## Operations
 
