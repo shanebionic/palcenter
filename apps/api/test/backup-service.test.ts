@@ -17,6 +17,7 @@ import {
   extractTarGzip,
 } from "../src/services/tar-gzip-archive.js";
 import { PasswordService } from "../src/services/password-service.js";
+import { SqliteTelemetryRepository } from "../src/telemetry/repositories/sqlite-telemetry-repository.js";
 
 async function fixture() {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "palcenter-test-"));
@@ -80,6 +81,23 @@ async function fixture() {
     ],
     [],
   );
+  const telemetry = new SqliteTelemetryRepository(directory);
+  telemetry.initialize();
+  telemetry.insertPlayerSnapshots([
+    {
+      serverId: "srv_test",
+      playerId: "player_test",
+      playerName: "Backup Player",
+      capturedAt: "2026-07-23T00:00:00.000Z",
+      x: 100,
+      y: 200,
+      z: null,
+      level: 10,
+      ping: 20,
+      guildId: null,
+      guildName: null,
+    },
+  ]);
   const automation = new SqliteAutomationRepository(directory);
   automation.initialize();
   automation.createTask({
@@ -165,10 +183,12 @@ async function fixture() {
     async pause() {
       automation.close();
       history.close();
+      telemetry.close();
       users.close();
     },
     async resume() {
       history.reopen();
+      telemetry.reopen();
       automation.reopen();
       users.reopen();
     },
@@ -177,6 +197,7 @@ async function fixture() {
   return {
     directory,
     history,
+    telemetry,
     automation,
     users,
     system,
@@ -255,6 +276,7 @@ test("creates and restores all PalCenter data", async () => {
     assert.equal(notifications.providers.length, 1);
     assert.equal(context.history.listMetrics("srv_test", 10).length, 1);
     assert.equal(context.history.listEvents("srv_test", 10).length, 1);
+    assert.equal(context.telemetry.latestPlayerSnapshots("srv_test").length, 1);
     assert.equal(
       context.automation.getTask("task_test")?.configuration.message,
       "This task must survive restore.",
@@ -271,6 +293,7 @@ test("creates and restores all PalCenter data", async () => {
     assert.deepEqual(restoredSystem, context.system.configuration);
   } finally {
     context.history.close();
+    context.telemetry.close();
     context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
@@ -296,6 +319,7 @@ test("rejects invalid uploads without changing current data", async () => {
     context.history.check();
   } finally {
     context.history.close();
+    context.telemetry.close();
     context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
@@ -343,6 +367,7 @@ test("restoring a format v1 backup preserves current users", async () => {
     );
   } finally {
     context.history.close();
+    context.telemetry.close();
     context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
@@ -377,6 +402,7 @@ test("restoring a format v2 backup preserves current system configuration", asyn
     );
   } finally {
     context.history.close();
+    context.telemetry.close();
     context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });

@@ -83,6 +83,12 @@ import { SaveWorldTaskExecutor } from "./services/save-world-task-executor.js";
 import { ShutdownTaskExecutor } from "./services/shutdown-task-executor.js";
 import { TaskDispatcher } from "./services/task-dispatcher.js";
 import { automationTaskTypes } from "./types/automation.js";
+import { PlayerTelemetryCollector } from "./telemetry/collectors/player-telemetry-collector.js";
+import { SqliteTelemetryRepository } from "./telemetry/repositories/sqlite-telemetry-repository.js";
+import {
+  TelemetryServerNotFoundError,
+  TelemetryService,
+} from "./telemetry/services/telemetry-service.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -103,6 +109,7 @@ const environmentSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   CONFIG_DIR: z.string().min(1).default("./data"),
   HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+  TELEMETRY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
   AUTOMATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(15),
   PALCENTER_VERSION: z.preprocess(
     (value) => (value === "" ? undefined : value),
@@ -237,6 +244,10 @@ const historyRepository = new SqliteHistoryRepository(
   environment.CONFIG_DIR,
   storagePermissionWarningHandler,
 );
+const telemetryRepository = new SqliteTelemetryRepository(
+  environment.CONFIG_DIR,
+  storagePermissionWarningHandler,
+);
 const automationRepository = new SqliteAutomationRepository(
   environment.CONFIG_DIR,
   storagePermissionWarningHandler,
@@ -336,6 +347,18 @@ const serverHistoryService = new ServerHistoryService(
   environment.HISTORY_INTERVAL_SECONDS * 1_000,
   (events) => notificationService.handle(events),
 );
+const telemetryService = new TelemetryService(
+  repository,
+  telemetryRepository,
+  new PlayerTelemetryCollector(),
+  environment.TELEMETRY_INTERVAL_SECONDS * 1_000,
+  (serverId, error) => {
+    app.log.warn(
+      { err: error, serverId },
+      "Player telemetry collection failed.",
+    );
+  },
+);
 const historyErrorHandler = (error: unknown) => {
   app.log.error({ err: error }, "Historical metric collection failed.");
 };
@@ -343,8 +366,13 @@ const serverRemovalService = new ServerRemovalService(
   repository,
   historyRepository,
   {
-    pause: () => serverHistoryService.stop(),
-    resume: () => serverHistoryService.start(historyErrorHandler, false),
+    async pause() {
+      await Promise.all([serverHistoryService.stop(), telemetryService.stop()]);
+    },
+    resume() {
+      serverHistoryService.start(historyErrorHandler, false);
+      telemetryService.start(false);
+    },
   },
 );
 const backupService = new BackupService(
@@ -354,18 +382,22 @@ const backupService = new BackupService(
     async pause() {
       await schedulerService.stop();
       await serverHistoryService.stop();
+      await telemetryService.stop();
       automationRepository.close();
       historyRepository.close();
+      telemetryRepository.close();
       userRepository.close();
     },
     async resume() {
       historyRepository.reopen();
+      telemetryRepository.reopen();
       automationRepository.reopen();
       userRepository.reopen();
       authenticationService.replaceSessionSecret(
         (await systemConfigurationRepository.read()).sessionSecret,
       );
       serverHistoryService.start(historyErrorHandler);
+      telemetryService.start();
       schedulerService.start();
     },
   },
@@ -375,6 +407,7 @@ try {
   await connectionManager.initialize();
   await notificationRepository.initialize();
   historyRepository.initialize();
+  telemetryRepository.initialize();
   automationRepository.initialize();
   userRepository.initialize();
 } catch (error) {
@@ -383,13 +416,16 @@ try {
 }
 
 serverHistoryService.start(historyErrorHandler);
+telemetryService.start();
 schedulerService.start();
 
 app.addHook("onClose", async () => {
   await schedulerService.stop();
   await serverHistoryService.stop();
+  await telemetryService.stop();
   automationRepository.close();
   historyRepository.close();
+  telemetryRepository.close();
   userRepository.close();
 });
 
@@ -951,6 +987,40 @@ app.get("/api/servers/:id/events", async (request) => {
   };
 });
 
+const telemetryHistoryQuerySchema = z
+  .object({
+    from: z.string().datetime({ offset: true }).optional(),
+    to: z.string().datetime({ offset: true }).optional(),
+    limit: z.coerce.number().int().min(1).max(500).default(100),
+  })
+  .refine(
+    (query) =>
+      !query.from ||
+      !query.to ||
+      Date.parse(query.from) <= Date.parse(query.to),
+    "The telemetry start time must not be after the end time.",
+  );
+
+app.get("/api/servers/:id/telemetry/players/latest", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  return { players: await telemetryService.latest(parameters.id) };
+});
+
+app.get(
+  "/api/servers/:id/telemetry/players/:playerId/history",
+  async (request) => {
+    const parameters = playerParametersSchema.parse(request.params);
+    const query = telemetryHistoryQuerySchema.parse(request.query);
+    return {
+      snapshots: await telemetryService.history(
+        parameters.id,
+        parameters.playerId,
+        query,
+      ),
+    };
+  },
+);
+
 const automationIdSchema = z.object({ id: z.string().min(1).max(100) });
 const automationListQuerySchema = z.object({
   search: z.string().max(100).optional(),
@@ -1166,6 +1236,7 @@ app.setErrorHandler((error, request, reply) => {
     error instanceof PlayerServerNotFoundError ||
     error instanceof SettingsServerNotFoundError ||
     error instanceof HistoryServerNotFoundError ||
+    error instanceof TelemetryServerNotFoundError ||
     error instanceof RemovalServerNotFoundError ||
     error instanceof ConnectionNotFoundError
   ) {

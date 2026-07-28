@@ -3,6 +3,7 @@ import type {
   NotificationConfiguration,
   NotificationConfigurationInput,
   NotificationConfigurationUpdate,
+  PlayerPositionSnapshot,
   PublicConnection,
   ServerStatus,
   ServerEvent,
@@ -34,6 +35,10 @@ interface AdminActionResponse {
 
 interface PlayersResponse {
   players: ConnectedPlayer[];
+}
+
+interface LatestPlayerTelemetryResponse {
+  players: PlayerPositionSnapshot[];
 }
 
 interface HistoryResponse {
@@ -357,6 +362,16 @@ export async function getPlayers(serverId: string): Promise<ConnectedPlayer[]> {
     { cache: "no-store" },
   );
 
+  return result.players;
+}
+
+export async function getLatestPlayerTelemetry(
+  serverId: string,
+): Promise<PlayerPositionSnapshot[]> {
+  const result = await request<LatestPlayerTelemetryResponse>(
+    `/api/servers/${encodeURIComponent(serverId)}/telemetry/players/latest`,
+    { cache: "no-store" },
+  );
   return result.players;
 }
 

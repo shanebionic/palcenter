@@ -51,7 +51,7 @@ interface IntegrityCheckRow {
   quick_check: string;
 }
 
-const schemaVersion = 3;
+const schemaVersion = 4;
 
 export class SqliteHistoryRepository implements HistoryRepository {
   private database: DatabaseSync | null = null;
@@ -171,6 +171,28 @@ export class SqliteHistoryRepository implements HistoryRepository {
         ON task_executions (task_id, started_at DESC);
       CREATE INDEX IF NOT EXISTS task_executions_result_time
         ON task_executions (result, started_at DESC);
+
+      CREATE TABLE IF NOT EXISTS player_position_snapshots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        server_id TEXT NOT NULL,
+        player_id TEXT NOT NULL,
+        player_name TEXT NOT NULL,
+        captured_at TEXT NOT NULL,
+        x REAL,
+        y REAL,
+        z REAL,
+        level INTEGER,
+        ping REAL,
+        guild_id TEXT,
+        guild_name TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS player_position_snapshots_server_player_time
+        ON player_position_snapshots (
+          server_id, player_id, captured_at DESC, id DESC
+        );
+      CREATE INDEX IF NOT EXISTS player_position_snapshots_server_time
+        ON player_position_snapshots (server_id, captured_at DESC, id DESC);
 
       `);
       if (version < 3) {
@@ -399,6 +421,9 @@ export class SqliteHistoryRepository implements HistoryRepository {
         .run(serverId);
       database
         .prepare("DELETE FROM scheduled_tasks WHERE server_id = ?")
+        .run(serverId);
+      database
+        .prepare("DELETE FROM player_position_snapshots WHERE server_id = ?")
         .run(serverId);
       database.exec("COMMIT");
     } catch (error) {
