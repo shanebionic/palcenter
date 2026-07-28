@@ -274,6 +274,10 @@ export class SqliteAutomationRepository implements AutomationRepository {
     const taskType = this.taskType(row.task_type);
     const result =
       row.last_result === null ? null : this.result(row.last_result);
+    const configuration = parseTaskConfiguration(
+      taskType,
+      JSON.parse(row.configuration_json),
+    );
 
     return {
       id: row.id,
@@ -285,17 +289,14 @@ export class SqliteAutomationRepository implements AutomationRepository {
         JSON.parse(row.schedule_json),
       ),
       timeZone: row.time_zone,
-      configuration: parseTaskConfiguration(
-        taskType,
-        JSON.parse(row.configuration_json),
-      ),
+      configuration,
       lastRunAt: row.last_run_at,
       nextRunAt: row.next_run_at,
       lastResult: result,
       lastError: row.last_error,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-    };
+    } as StoredAutomationTask;
   }
 
   private execution(row: ExecutionRow): AutomationExecution {

@@ -78,6 +78,8 @@ import {
   ScheduleCalculator,
 } from "./services/schedule-calculator.js";
 import { SchedulerService } from "./services/scheduler-service.js";
+import { SaveWorldTaskExecutor } from "./services/save-world-task-executor.js";
+import { ShutdownTaskExecutor } from "./services/shutdown-task-executor.js";
 import { TaskDispatcher } from "./services/task-dispatcher.js";
 import { automationTaskTypes } from "./types/automation.js";
 
@@ -305,11 +307,11 @@ const automationService = new AutomationService(
   repository,
   scheduleCalculator,
 );
-const taskDispatcher = new TaskDispatcher(
-  new Map([
-    ["broadcast_message", new BroadcastTaskExecutor(serverAdminService)],
-  ]),
-);
+const taskDispatcher = new TaskDispatcher({
+  broadcast_message: new BroadcastTaskExecutor(serverAdminService),
+  save_world: new SaveWorldTaskExecutor(serverAdminService),
+  shutdown: new ShutdownTaskExecutor(serverAdminService),
+});
 const schedulerService = new SchedulerService(
   automationRepository,
   scheduleCalculator,

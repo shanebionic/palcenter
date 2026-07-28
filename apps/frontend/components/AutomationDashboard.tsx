@@ -46,6 +46,8 @@ import {
 import {
   describeSchedule,
   formatDateTime,
+  runNowConfirmation,
+  taskConfigurationSummary,
   taskTypeLabel,
 } from "../lib/automation";
 import type {
@@ -53,6 +55,7 @@ import type {
   AutomationSummary,
   AutomationTask,
   AutomationTaskInput,
+  AutomationTaskType,
 } from "../types/automation";
 import type { PublicConnection } from "../types/servers";
 import { AutomationTaskDialog } from "./AutomationTaskDialog";
@@ -73,6 +76,7 @@ export function AutomationDashboard() {
   const [editing, setEditing] = useState<AutomationTask | null>(null);
   const [search, setSearch] = useState("");
   const [serverId, setServerId] = useState<string | null>(null);
+  const [taskType, setTaskType] = useState<AutomationTaskType | null>(null);
   const [enabled, setEnabled] = useState<string | null>(null);
   const [sortBy, setSortBy] =
     useState<NonNullable<AutomationListQuery["sortBy"]>>("nextRunAt");
@@ -85,7 +89,7 @@ export function AutomationDashboard() {
         getAutomationTasks({
           search: search || undefined,
           serverId: serverId || undefined,
-          taskType: "broadcast_message",
+          taskType: taskType || undefined,
           enabled: enabled === null ? undefined : enabled === "enabled",
           sortBy,
           order,
@@ -100,7 +104,7 @@ export function AutomationDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [enabled, order, search, serverId, sortBy]);
+  }, [enabled, order, search, serverId, sortBy, taskType]);
 
   useEffect(() => {
     void Promise.all([getServers(), getSession()])
@@ -120,7 +124,10 @@ export function AutomationDashboard() {
     };
   }, [load]);
 
-  useEffect(() => setPage(1), [enabled, search, serverId, sortBy, order]);
+  useEffect(
+    () => setPage(1),
+    [enabled, search, serverId, sortBy, order, taskType],
+  );
 
   const visibleTasks = useMemo(
     () => tasks.slice((page - 1) * pageSize, page * pageSize),
@@ -160,6 +167,8 @@ export function AutomationDashboard() {
       if (action === "toggle") {
         await setAutomationTaskEnabled(task.id, !task.enabled);
       } else if (action === "run") {
+        const confirmation = runNowConfirmation(task);
+        if (confirmation && !window.confirm(confirmation)) return;
         const { execution } = await runAutomationTask(task.id);
         notifications.show({
           color: execution.result === "success" ? "teal" : "red",
@@ -271,8 +280,17 @@ export function AutomationDashboard() {
           />
           <Select
             aria-label="Filter by task type"
-            data={[{ value: "broadcast_message", label: "Broadcast Message" }]}
-            value="broadcast_message"
+            placeholder="All task types"
+            clearable
+            data={[
+              { value: "broadcast_message", label: "Broadcast Message" },
+              { value: "save_world", label: "Save World" },
+              { value: "shutdown", label: "Graceful Shutdown" },
+            ]}
+            value={taskType}
+            onChange={(value) =>
+              setTaskType((value as AutomationTaskType | null) ?? null)
+            }
             style={{ flex: "1 1 180px" }}
           />
           <Select
@@ -359,9 +377,12 @@ export function AutomationDashboard() {
                     <Text size="xs" c="dimmed">
                       {describeSchedule(task.schedule)} · {task.timeZone}
                     </Text>
+                    <Text size="xs" c="dimmed">
+                      {taskConfigurationSummary(task)}
+                    </Text>
                   </Table.Td>
                   <Table.Td>{task.serverName}</Table.Td>
-                  <Table.Td>{taskTypeLabel()}</Table.Td>
+                  <Table.Td>{taskTypeLabel(task.taskType)}</Table.Td>
                   <Table.Td>
                     <Badge
                       color={task.enabled ? "teal" : "gray"}
@@ -433,9 +454,9 @@ export function AutomationDashboard() {
             </ThemeIcon>
             <Text fw={700}>No automation tasks found</Text>
             <Text c="dimmed" ta="center">
-              {search || serverId || enabled
+              {search || serverId || taskType || enabled
                 ? "Try changing the search or filters."
-                : "Create a scheduled broadcast to get started."}
+                : "Create a scheduled server operation to get started."}
             </Text>
           </Stack>
         )}
