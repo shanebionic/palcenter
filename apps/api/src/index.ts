@@ -6,6 +6,7 @@ import { PalworldRestError } from "./clients/palworld-rest-client.js";
 import { NotificationDeliveryError } from "./providers/notification-provider.js";
 import { JsonConnectionRepository } from "./repositories/json-connection-repository.js";
 import { JsonNotificationRepository } from "./repositories/json-notification-repository.js";
+import { SqliteAutomationRepository } from "./repositories/sqlite-automation-repository.js";
 import { SqliteHistoryRepository } from "./repositories/sqlite-history-repository.js";
 import { SqliteUserRepository } from "./repositories/sqlite-user-repository.js";
 import { SystemConfigurationRepository } from "./repositories/system-configuration-repository.js";
@@ -59,6 +60,20 @@ import {
   ServerRemovalError,
   ServerRemovalService,
 } from "./services/server-removal-service.js";
+import {
+  AutomationServerNotFoundError,
+  AutomationService,
+  AutomationTaskNotFoundError,
+} from "./services/automation-service.js";
+import { parseAutomationTaskInput } from "./services/automation-validation.js";
+import { BroadcastTaskExecutor } from "./services/broadcast-task-executor.js";
+import {
+  InvalidAutomationScheduleError,
+  ScheduleCalculator,
+} from "./services/schedule-calculator.js";
+import { SchedulerService } from "./services/scheduler-service.js";
+import { TaskDispatcher } from "./services/task-dispatcher.js";
+import { automationTaskTypes } from "./types/automation.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -79,6 +94,7 @@ const environmentSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   CONFIG_DIR: z.string().min(1).default("./data"),
   HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+  AUTOMATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(15),
   PALCENTER_VERSION: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().trim().min(1).max(50).default(packageVersion),
@@ -212,6 +228,10 @@ const historyRepository = new SqliteHistoryRepository(
   environment.CONFIG_DIR,
   storagePermissionWarningHandler,
 );
+const automationRepository = new SqliteAutomationRepository(
+  environment.CONFIG_DIR,
+  storagePermissionWarningHandler,
+);
 const userRepository = new SqliteUserRepository(
   environment.CONFIG_DIR,
   storagePermissionWarningHandler,
@@ -273,6 +293,26 @@ const playerService = new PlayerService(
   },
 );
 const serverAdminService = new ServerAdminService(repository);
+const scheduleCalculator = new ScheduleCalculator();
+const automationService = new AutomationService(
+  automationRepository,
+  repository,
+  scheduleCalculator,
+);
+const taskDispatcher = new TaskDispatcher(
+  new Map([
+    ["broadcast_message", new BroadcastTaskExecutor(serverAdminService)],
+  ]),
+);
+const schedulerService = new SchedulerService(
+  automationRepository,
+  scheduleCalculator,
+  taskDispatcher,
+  environment.AUTOMATION_INTERVAL_SECONDS * 1_000,
+  (error) => {
+    app.log.error({ err: error }, "Scheduled task execution failed.");
+  },
+);
 const serverSettingsService = new ServerSettingsService(repository);
 const serverStatusService = new ServerStatusService(repository);
 const serverHistoryService = new ServerHistoryService(
@@ -299,17 +339,21 @@ const backupService = new BackupService(
   environment.PALCENTER_VERSION,
   {
     async pause() {
+      await schedulerService.stop();
       await serverHistoryService.stop();
+      automationRepository.close();
       historyRepository.close();
       userRepository.close();
     },
     async resume() {
       historyRepository.reopen();
+      automationRepository.reopen();
       userRepository.reopen();
       authenticationService.replaceSessionSecret(
         (await systemConfigurationRepository.read()).sessionSecret,
       );
       serverHistoryService.start(historyErrorHandler);
+      schedulerService.start();
     },
   },
 );
@@ -318,6 +362,7 @@ try {
   await connectionManager.initialize();
   await notificationRepository.initialize();
   historyRepository.initialize();
+  automationRepository.initialize();
   userRepository.initialize();
 } catch (error) {
   app.log.fatal({ err: error }, "PalCenter data initialization failed.");
@@ -325,9 +370,12 @@ try {
 }
 
 serverHistoryService.start(historyErrorHandler);
+schedulerService.start();
 
 app.addHook("onClose", async () => {
+  await schedulerService.stop();
   await serverHistoryService.stop();
+  automationRepository.close();
   historyRepository.close();
   userRepository.close();
 });
@@ -552,6 +600,7 @@ app.get("/api/health", async (_request, reply) => {
     await repository.list();
     await notificationRepository.list();
     historyRepository.check();
+    automationRepository.listTasks();
     userRepository.check();
     await systemConfigurationRepository.read();
 
@@ -868,6 +917,69 @@ app.get("/api/servers/:id/events", async (request) => {
   };
 });
 
+const automationIdSchema = z.object({ id: z.string().min(1).max(100) });
+const automationListQuerySchema = z.object({
+  search: z.string().max(100).optional(),
+  serverId: z.string().max(100).optional(),
+  taskType: z.enum(automationTaskTypes).optional(),
+  enabled: z
+    .enum(["true", "false"])
+    .transform((value) => value === "true")
+    .optional(),
+  sortBy: z
+    .enum([
+      "name",
+      "server",
+      "taskType",
+      "enabled",
+      "lastRunAt",
+      "nextRunAt",
+      "lastResult",
+    ])
+    .optional(),
+  order: z.enum(["asc", "desc"]).optional(),
+});
+
+app.get("/api/automations/summary", async () => automationService.summary());
+
+app.get("/api/automations", async (request) => ({
+  tasks: await automationService.list(
+    automationListQuerySchema.parse(request.query),
+  ),
+}));
+
+app.post("/api/automations", async (request, reply) => {
+  const task = await automationService.create(
+    parseAutomationTaskInput(request.body),
+  );
+  return reply.code(201).send(task);
+});
+
+app.put("/api/automations/:id", async (request) => {
+  const { id } = automationIdSchema.parse(request.params);
+  return automationService.update(id, parseAutomationTaskInput(request.body));
+});
+
+app.patch("/api/automations/:id/enabled", async (request) => {
+  const { id } = automationIdSchema.parse(request.params);
+  const { enabled } = z
+    .object({ enabled: z.boolean() })
+    .strict()
+    .parse(request.body);
+  return automationService.setEnabled(id, enabled);
+});
+
+app.post("/api/automations/:id/run", async (request) => {
+  const { id } = automationIdSchema.parse(request.params);
+  return { execution: await schedulerService.runNow(id) };
+});
+
+app.delete("/api/automations/:id", async (request, reply) => {
+  const { id } = automationIdSchema.parse(request.params);
+  await automationService.delete(id);
+  return reply.code(204).send();
+});
+
 const notificationIdSchema = z.object({
   id: z.string().min(1),
 });
@@ -1005,6 +1117,27 @@ app.setErrorHandler((error, request, reply) => {
   ) {
     return reply.code(404).send({
       error: "server_not_found",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof AutomationTaskNotFoundError) {
+    return reply.code(404).send({
+      error: "automation_task_not_found",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof AutomationServerNotFoundError) {
+    return reply.code(404).send({
+      error: "server_not_found",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof InvalidAutomationScheduleError) {
+    return reply.code(400).send({
+      error: "invalid_automation_schedule",
       message: error.message,
     });
   }

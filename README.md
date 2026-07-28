@@ -14,6 +14,7 @@ It connects to your existing Palworld server through the official REST API and p
 - Server history
 - Notifications
 - Backup and restore
+- Scheduled server automation
 - User access management
 - Standalone PalWorldSettings.ini generation
 
@@ -125,7 +126,8 @@ Full installation, administration, backup, and troubleshooting guides are
 available in the [PalCenter Wiki](https://github.com/shanebionic/palcenter/wiki).
 The repository also includes the
 [configuration generator guide](docs/CONFIGURATION-GENERATOR.md) and
-[server management guide](docs/SERVER-MANAGEMENT.md).
+[server management guide](docs/SERVER-MANAGEMENT.md). Scheduled task setup and
+operation are covered in the [server automation guide](docs/AUTOMATION.md).
 
 ## Contributing and support
 

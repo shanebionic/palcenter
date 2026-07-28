@@ -172,3 +172,42 @@ test("Administrator deleting an unknown server returns server_not_found", async 
   assert.equal(response.json().error, "server_not_found");
   assert.equal(remoteRequests, 0);
 });
+
+test("automation routes allow all roles to view but only Administrators to mutate", async () => {
+  const payload = {
+    name: "Route authorization test",
+    serverId: "srv_moderator",
+    enabled: true,
+    taskType: "broadcast_message",
+    schedule: { type: "daily", time: "09:00" },
+    timeZone: "UTC",
+    configuration: { message: "Scheduled test message" },
+  };
+  const createResponse = await app.inject({
+    method: "POST",
+    url: "/api/automations",
+    headers: { cookie: administratorCookie },
+    payload,
+  });
+  assert.equal(createResponse.statusCode, 201);
+
+  for (const roleCookie of [moderatorCookie, visitorCookie]) {
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/automations",
+      headers: { cookie: roleCookie },
+    });
+    assert.equal(listResponse.statusCode, 200);
+    assert.equal(listResponse.json().tasks.length, 1);
+
+    const forbiddenResponse = await app.inject({
+      method: "POST",
+      url: "/api/automations",
+      headers: { cookie: roleCookie },
+      payload: { ...payload, name: "Forbidden task" },
+    });
+    assert.equal(forbiddenResponse.statusCode, 403);
+    assert.equal(forbiddenResponse.json().error, "insufficient_permissions");
+  }
+  assert.equal(remoteRequests, 0);
+});
