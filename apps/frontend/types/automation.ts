@@ -74,6 +74,14 @@ export interface AutomationExecution {
   errorMessage: string | null;
 }
 
+export interface AutomationExecutionDetail extends AutomationExecution {
+  taskName: string;
+  serverName: string;
+  actionSummary: string;
+  resultMessage: string;
+  metadataSource: "snapshot" | "legacy_current_task";
+}
+
 export interface AutomationListQuery {
   search?: string;
   serverId?: string;

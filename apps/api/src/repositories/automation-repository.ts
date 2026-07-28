@@ -1,5 +1,6 @@
 import type {
   AutomationExecution,
+  AutomationExecutionSnapshot,
   AutomationResult,
   AutomationTaskInput,
   AutomationTrigger,
@@ -22,6 +23,7 @@ export interface AutomationRepository {
   dueTasks(now: string): StoredAutomationTask[];
   beginExecution(
     task: StoredAutomationTask,
+    snapshot: AutomationExecutionSnapshot,
     trigger: AutomationTrigger,
     startedAt: string,
     nextRunAt: string | null,

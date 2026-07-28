@@ -231,6 +231,7 @@ test("automation routes allow all roles to view but only Administrators to mutat
     payload,
   });
   assert.equal(createResponse.statusCode, 201);
+  const taskId = createResponse.json().id as string;
 
   for (const roleCookie of [moderatorCookie, visitorCookie]) {
     const listResponse = await app.inject({
@@ -240,6 +241,13 @@ test("automation routes allow all roles to view but only Administrators to mutat
     });
     assert.equal(listResponse.statusCode, 200);
     assert.equal(listResponse.json().tasks.length, 1);
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: `/api/automations/${taskId}/history`,
+      headers: { cookie: roleCookie },
+    });
+    assert.equal(historyResponse.statusCode, 200);
+    assert.deepEqual(historyResponse.json().executions, []);
 
     const forbiddenResponse = await app.inject({
       method: "POST",

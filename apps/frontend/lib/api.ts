@@ -14,6 +14,7 @@ import type {
 } from "../types/servers";
 import type {
   AutomationExecution,
+  AutomationExecutionDetail,
   AutomationListQuery,
   AutomationSummary,
   AutomationTask,
@@ -592,6 +593,17 @@ export function runAutomationTask(
     `/api/automations/${encodeURIComponent(id)}/run`,
     { method: "POST" },
   );
+}
+
+export async function getAutomationTaskHistory(
+  id: string,
+  limit = 50,
+): Promise<AutomationExecutionDetail[]> {
+  const result = await request<{ executions: AutomationExecutionDetail[] }>(
+    `/api/automations/${encodeURIComponent(id)}/history?limit=${limit}`,
+    { cache: "no-store" },
+  );
+  return result.executions;
 }
 
 export function deleteAutomationTask(id: string): Promise<void> {

@@ -124,6 +124,13 @@ async function fixture() {
   });
   const executionId = automation.beginExecution(
     saveTask,
+    {
+      taskName: saveTask.name,
+      taskType: saveTask.taskType,
+      serverId: saveTask.serverId,
+      serverName: "Test Server",
+      actionSummary: "Save the current world state",
+    },
     "manual",
     "2026-07-23T00:01:00.000Z",
     saveTask.nextRunAt,
