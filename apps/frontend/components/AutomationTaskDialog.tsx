@@ -26,6 +26,7 @@ import type {
   AutomationSchedule,
   AutomationTask,
   AutomationTaskInput,
+  AutomationTaskType,
 } from "../types/automation";
 
 interface AutomationTaskDialogProps {
@@ -83,7 +84,10 @@ export function AutomationTaskDialog({
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [serverId, setServerId] = useState<string | null>(null);
+  const [taskType, setTaskType] =
+    useState<AutomationTaskType>("broadcast_message");
   const [message, setMessage] = useState("");
+  const [waitTime, setWaitTime] = useState(30);
   const [enabled, setEnabled] = useState(true);
   const [timeZone, setTimeZone] = useState("UTC");
   const [schedule, setSchedule] = useState<AutomationSchedule>(defaultSchedule);
@@ -93,7 +97,15 @@ export function AutomationTaskDialog({
     setStep(task ? 2 : 0);
     setName(task?.name ?? "");
     setServerId(task?.serverId ?? servers[0]?.id ?? null);
-    setMessage(task?.configuration.message ?? "");
+    setTaskType(task?.taskType ?? "broadcast_message");
+    setMessage(
+      task?.taskType === "broadcast_message" || task?.taskType === "shutdown"
+        ? (task.configuration.message ?? "")
+        : "",
+    );
+    setWaitTime(
+      task?.taskType === "shutdown" ? task.configuration.waitTime : 30,
+    );
     setEnabled(task?.enabled ?? true);
     setTimeZone(
       task?.timeZone ??
@@ -105,16 +117,47 @@ export function AutomationTaskDialog({
 
   const submit = () => {
     if (!serverId) return;
-    void onSave({
+    const common = {
       name,
       serverId,
       enabled,
-      taskType: "broadcast_message",
       schedule,
       timeZone,
-      configuration: { message },
-    });
+    };
+    switch (taskType) {
+      case "broadcast_message":
+        void onSave({
+          ...common,
+          taskType,
+          configuration: { message },
+        });
+        break;
+      case "save_world":
+        void onSave({
+          ...common,
+          taskType,
+          configuration: {},
+        });
+        break;
+      case "shutdown":
+        void onSave({
+          ...common,
+          taskType,
+          configuration: {
+            waitTime,
+            ...(message.trim() ? { message } : {}),
+          },
+        });
+        break;
+    }
   };
+
+  const configurationValid =
+    taskType === "broadcast_message"
+      ? message.trim().length > 0
+      : taskType === "shutdown"
+        ? Number.isInteger(waitTime) && waitTime >= 0 && waitTime <= 86_400
+        : true;
 
   return (
     <Modal
@@ -162,13 +205,29 @@ export function AutomationTaskDialog({
                 value: "broadcast_message",
                 label: "Broadcast Message",
               },
+              {
+                value: "save_world",
+                label: "Save World",
+              },
+              {
+                value: "shutdown",
+                label: "Graceful Shutdown",
+              },
             ]}
-            value="broadcast_message"
-            readOnly
+            value={taskType}
+            onChange={(value) => {
+              const next = (value ?? "broadcast_message") as AutomationTaskType;
+              setTaskType(next);
+              setMessage("");
+              setWaitTime(30);
+            }}
           />
           <Text size="sm" c="dimmed">
-            Send a message to every player currently connected to the selected
-            server.
+            {taskType === "broadcast_message"
+              ? "Send a message to every player currently connected to the selected server."
+              : taskType === "save_world"
+                ? "Ask the Palworld server to save its current world state."
+                : "Send the official Palworld graceful shutdown request after a configurable wait."}
           </Text>
           <Group justify="space-between">
             <Button variant="default" onClick={() => setStep(0)}>
@@ -189,15 +248,57 @@ export function AutomationTaskDialog({
             maxLength={100}
             required
           />
-          <Textarea
-            label="Broadcast message"
-            placeholder="Server restart begins in 15 minutes."
-            value={message}
-            onChange={(event) => setMessage(event.currentTarget.value)}
-            minRows={3}
-            maxLength={500}
-            required
-          />
+          {taskType === "broadcast_message" && (
+            <Textarea
+              label="Broadcast message"
+              placeholder="Scheduled maintenance begins in 15 minutes."
+              value={message}
+              onChange={(event) => setMessage(event.currentTarget.value)}
+              minRows={3}
+              maxLength={500}
+              required
+            />
+          )}
+          {taskType === "save_world" && (
+            <Card withBorder radius="md" p="md">
+              <Text size="sm" fw={650}>
+                Save the current world state
+              </Text>
+              <Text size="sm" c="dimmed">
+                This task uses the official Palworld Save World REST operation
+                and has no task-specific settings.
+              </Text>
+            </Card>
+          )}
+          {taskType === "shutdown" && (
+            <>
+              <NumberInput
+                label="Wait time (seconds)"
+                description="How long Palworld waits before disconnecting players and shutting down."
+                min={0}
+                max={86_400}
+                value={waitTime}
+                onChange={(value) => setWaitTime(Number(value))}
+                required
+              />
+              <Textarea
+                label="Player-facing shutdown message"
+                description={`Optional · ${message.length}/500 characters`}
+                placeholder="The server is shutting down for maintenance."
+                value={message}
+                onChange={(event) => setMessage(event.currentTarget.value)}
+                minRows={3}
+                maxLength={500}
+              />
+              <Text size="sm" c="dimmed">
+                PalCenter sends the official Palworld shutdown request. A
+                compatible container restart policy, such as Docker
+                &quot;restart: unless-stopped&quot;, may start the server
+                process again. Restart behavior depends on your deployment and
+                is not controlled by the Palworld REST API.
+              </Text>
+            </>
+          )}
           <Select
             label="Schedule"
             data={scheduleOptions}
@@ -233,7 +334,7 @@ export function AutomationTaskDialog({
             </Button>
             <Button
               loading={saving}
-              disabled={!name.trim() || !message.trim() || !timeZone.trim()}
+              disabled={!name.trim() || !configurationValid || !timeZone.trim()}
               onClick={submit}
             >
               {task ? "Save changes" : "Create task"}

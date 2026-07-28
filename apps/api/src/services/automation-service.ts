@@ -120,7 +120,7 @@ export class AutomationService {
 
   async setEnabled(id: string, enabled: boolean): Promise<AutomationTask> {
     const task = await this.get(id);
-    return this.update(id, {
+    const input = {
       name: task.name,
       serverId: task.serverId,
       taskType: task.taskType,
@@ -128,7 +128,8 @@ export class AutomationService {
       timeZone: task.timeZone,
       configuration: task.configuration,
       enabled,
-    });
+    } as AutomationTaskInput;
+    return this.update(id, input);
   }
 
   async delete(id: string): Promise<void> {

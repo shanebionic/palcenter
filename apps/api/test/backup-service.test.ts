@@ -98,6 +98,45 @@ async function fixture() {
     createdAt: "2026-07-23T00:00:00.000Z",
     updatedAt: "2026-07-23T00:00:00.000Z",
   });
+  const saveTask = {
+    id: "task_save",
+    name: "Backup test save",
+    serverId: "srv_test",
+    enabled: true,
+    taskType: "save_world" as const,
+    schedule: { type: "daily" as const, time: "10:00" },
+    timeZone: "UTC",
+    configuration: {},
+    lastRunAt: null,
+    nextRunAt: "2026-07-24T10:00:00.000Z",
+    lastResult: null,
+    lastError: null,
+    createdAt: "2026-07-23T00:00:00.000Z",
+    updatedAt: "2026-07-23T00:00:00.000Z",
+  };
+  automation.createTask(saveTask);
+  automation.createTask({
+    ...saveTask,
+    id: "task_shutdown",
+    name: "Backup test shutdown",
+    taskType: "shutdown",
+    configuration: { waitTime: 60, message: "Maintenance" },
+  });
+  const executionId = automation.beginExecution(
+    saveTask,
+    "manual",
+    "2026-07-23T00:01:00.000Z",
+    saveTask.nextRunAt,
+    true,
+  );
+  automation.completeExecution(
+    executionId,
+    saveTask.id,
+    "success",
+    "2026-07-23T00:01:01.000Z",
+    1_000,
+    null,
+  );
   const users = new SqliteUserRepository(directory);
   users.initialize();
   users.createInitial({
@@ -213,6 +252,11 @@ test("creates and restores all PalCenter data", async () => {
       context.automation.getTask("task_test")?.configuration.message,
       "This task must survive restore.",
     );
+    assert.deepEqual(
+      context.automation.getTask("task_shutdown")?.configuration,
+      { waitTime: 60, message: "Maintenance" },
+    );
+    assert.equal(context.automation.listExecutions("task_save", 10).length, 1);
     assert.equal(context.users.list().length, 1);
     const restoredSystem = await new SystemConfigurationRepository(
       context.directory,

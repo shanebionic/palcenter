@@ -5,7 +5,11 @@ import {
   formatDateTime,
   formatSchedulePreviewDate,
   intervalScheduleDescription,
+  runNowConfirmation,
+  taskConfigurationSummary,
+  taskTypeLabel,
 } from "../lib/automation";
+import type { AutomationTask } from "../types/automation";
 
 test("friendly automation schedule descriptions avoid exposing cron for common schedules", () => {
   assert.equal(
@@ -57,6 +61,51 @@ test("schedule preview formats the next run in the configured time zone", () => 
   assert.match(value, /July 27, 2026/);
   assert.match(value, /11:30/);
   assert.match(value, /EDT/);
+});
+
+test("automation task labels and summaries cover every server operation", () => {
+  const common = {
+    id: "task_test",
+    name: "Task",
+    serverId: "srv_test",
+    serverName: "Server",
+    enabled: true,
+    schedule: { type: "daily" as const, time: "09:00" },
+    timeZone: "UTC",
+    lastRunAt: null,
+    nextRunAt: null,
+    lastResult: null,
+    lastError: null,
+    createdAt: "2026-07-28T00:00:00.000Z",
+    updatedAt: "2026-07-28T00:00:00.000Z",
+  };
+  const tasks: AutomationTask[] = [
+    {
+      ...common,
+      taskType: "broadcast_message",
+      configuration: { message: "Welcome to Palworld" },
+    },
+    { ...common, taskType: "save_world", configuration: {} },
+    {
+      ...common,
+      taskType: "shutdown",
+      configuration: { waitTime: 60, message: "Maintenance" },
+    },
+  ];
+
+  assert.deepEqual(
+    tasks.map((task) => taskTypeLabel(task.taskType)),
+    ["Broadcast Message", "Save World", "Graceful Shutdown"],
+  );
+  assert.deepEqual(tasks.map(taskConfigurationSummary), [
+    "Welcome to Palworld",
+    "Save the current world state",
+    "Wait 60 seconds · Maintenance",
+  ]);
+  assert.equal(runNowConfirmation(tasks[0]!), null);
+  assert.equal(runNowConfirmation(tasks[1]!), null);
+  assert.match(runNowConfirmation(tasks[2]!) ?? "", /60 seconds/);
+  assert.match(runNowConfirmation(tasks[2]!) ?? "", /Maintenance/);
 });
 
 test("advanced schedules remain identifiable and missing timestamps are readable", () => {

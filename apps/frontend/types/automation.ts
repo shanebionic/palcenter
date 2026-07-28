@@ -1,4 +1,9 @@
-export type AutomationTaskType = "broadcast_message";
+export const automationTaskTypes = [
+  "broadcast_message",
+  "save_world",
+  "shutdown",
+] as const;
+export type AutomationTaskType = (typeof automationTaskTypes)[number];
 
 export type AutomationSchedule =
   | { type: "every_minutes"; interval: number; startMinute: number }
@@ -9,19 +14,31 @@ export type AutomationSchedule =
   | { type: "specific_time"; runAt: string }
   | { type: "cron"; expression: string };
 
-export interface AutomationTaskInput {
+export interface AutomationTaskConfigurationByType {
+  broadcast_message: { message: string };
+  save_world: Record<string, never>;
+  shutdown: { waitTime: number; message?: string };
+}
+
+interface AutomationTaskInputFields {
   name: string;
   serverId: string;
   enabled: boolean;
-  taskType: AutomationTaskType;
   schedule: AutomationSchedule;
   timeZone: string;
-  configuration: { message: string };
 }
 
-export interface AutomationTask extends AutomationTaskInput {
+export type AutomationTaskInput = {
+  [TaskType in AutomationTaskType]: AutomationTaskInputFields & {
+    taskType: TaskType;
+    configuration: AutomationTaskConfigurationByType[TaskType];
+  };
+}[AutomationTaskType];
+
+interface AutomationTaskFields extends AutomationTaskInputFields {
   id: string;
   serverName: string;
+  enabled: boolean;
   lastRunAt: string | null;
   nextRunAt: string | null;
   lastResult: "running" | "success" | "failure" | null;
@@ -29,6 +46,13 @@ export interface AutomationTask extends AutomationTaskInput {
   createdAt: string;
   updatedAt: string;
 }
+
+export type AutomationTask = {
+  [TaskType in AutomationTaskType]: AutomationTaskFields & {
+    taskType: TaskType;
+    configuration: AutomationTaskConfigurationByType[TaskType];
+  };
+}[AutomationTaskType];
 
 export interface AutomationSummary {
   activeTasks: number;
