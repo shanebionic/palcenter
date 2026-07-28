@@ -38,13 +38,13 @@ jobs:
         shell: bash
         run: |
           short_sha="${GITHUB_SHA::7}"
-          release_version="$(git describe --tags --match 'v[0-9]*.[0-9]*.[0-9]*' --abbrev=0 2>/dev/null || true)"
+          release_version="$(git tag --list 'v*.*.*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)"
           if [[ -z "$release_version" ]]; then
             release_version="v$(node -p "require('./package.json').version")"
           fi
           version="${release_version#v}"
-          IFS=. read -r major minor patch <<< "$version"
-          development_version="v${major}.${minor}.$((patch + 1))-dev"
+          IFS=. read -r major minor _patch <<< "$version"
+          development_version="v${major}.$((minor + 1)).0-DEV"
           echo "version=${development_version}" >> "$GITHUB_OUTPUT"
           echo "commit=${short_sha}" >> "$GITHUB_OUTPUT"
 

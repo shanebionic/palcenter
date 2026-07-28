@@ -93,8 +93,9 @@ Development builds may contain unfinished features, are intended for testing,
 and may change without notice. Each development build also has an immutable
 `dev-<git-sha>` image tag. The About PalCenter dialog identifies the build as
 Production or Development and includes the short commit for development builds.
-The displayed development version is generated as the next patch after the
-most recent release tag.
+The displayed development version is generated as the next minor release after
+the most recent release tag. For example, development after `v1.2.1` is
+identified as `v1.3.0-DEV`.
 
 ### Container user IDs
 
