@@ -32,7 +32,9 @@ export function AccountActions() {
   const [aboutOpened, setAboutOpened] = useState(false);
 
   useEffect(() => {
-    void getSession().then(setSession).catch(() => setSession(null));
+    void getSession()
+      .then(setSession)
+      .catch(() => setSession(null));
   }, []);
 
   const signOut = async () => {

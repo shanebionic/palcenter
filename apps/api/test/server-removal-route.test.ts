@@ -172,3 +172,91 @@ test("Administrator deleting an unknown server returns server_not_found", async 
   assert.equal(response.json().error, "server_not_found");
   assert.equal(remoteRequests, 0);
 });
+
+test("only Administrators can update saved server connections", async () => {
+  await new JsonConnectionRepository(directory).create(connection("srv_edit"));
+  const administratorResponse = await app.inject({
+    method: "PUT",
+    url: "/api/servers/srv_edit",
+    headers: { cookie: administratorCookie },
+    payload: {
+      name: "Updated Administrator Server",
+      baseUrl: "https://updated.example:9443",
+      adminPassword: "",
+    },
+  });
+  assert.equal(administratorResponse.statusCode, 200);
+  assert.equal(administratorResponse.json().id, "srv_edit");
+  assert.equal("adminPassword" in administratorResponse.json(), false);
+  const stored = await new JsonConnectionRepository(directory).get("srv_edit");
+  assert.equal(stored?.adminPassword, "must-not-be-used");
+
+  for (const [id, roleCookie] of [
+    ["srv_moderator", moderatorCookie],
+    ["srv_visitor", visitorCookie],
+  ] as const) {
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/servers/${id}`,
+      headers: { cookie: roleCookie },
+      payload: {
+        name: "Forbidden Update",
+        baseUrl: "https://forbidden.example:9443",
+        adminPassword: "",
+      },
+    });
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().error, "insufficient_permissions");
+    assert.equal(
+      (await new JsonConnectionRepository(directory).get(id))?.name,
+      id,
+    );
+  }
+});
+
+test("automation routes allow all roles to view but only Administrators to mutate", async () => {
+  const payload = {
+    name: "Route authorization test",
+    serverId: "srv_moderator",
+    enabled: true,
+    taskType: "broadcast_message",
+    schedule: { type: "daily", time: "09:00" },
+    timeZone: "UTC",
+    configuration: { message: "Scheduled test message" },
+  };
+  const createResponse = await app.inject({
+    method: "POST",
+    url: "/api/automations",
+    headers: { cookie: administratorCookie },
+    payload,
+  });
+  assert.equal(createResponse.statusCode, 201);
+  const taskId = createResponse.json().id as string;
+
+  for (const roleCookie of [moderatorCookie, visitorCookie]) {
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/automations",
+      headers: { cookie: roleCookie },
+    });
+    assert.equal(listResponse.statusCode, 200);
+    assert.equal(listResponse.json().tasks.length, 1);
+    const historyResponse = await app.inject({
+      method: "GET",
+      url: `/api/automations/${taskId}/history`,
+      headers: { cookie: roleCookie },
+    });
+    assert.equal(historyResponse.statusCode, 200);
+    assert.deepEqual(historyResponse.json().executions, []);
+
+    const forbiddenResponse = await app.inject({
+      method: "POST",
+      url: "/api/automations",
+      headers: { cookie: roleCookie },
+      payload: { ...payload, name: "Forbidden task" },
+    });
+    assert.equal(forbiddenResponse.statusCode, 403);
+    assert.equal(forbiddenResponse.json().error, "insufficient_permissions");
+  }
+  assert.equal(remoteRequests, 0);
+});

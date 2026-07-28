@@ -12,6 +12,14 @@ import type {
   UserProfile,
   UserRole,
 } from "../types/servers";
+import type {
+  AutomationExecution,
+  AutomationExecutionDetail,
+  AutomationListQuery,
+  AutomationSummary,
+  AutomationTask,
+  AutomationTaskInput,
+} from "../types/automation";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ?? "";
 
@@ -58,6 +66,12 @@ export interface ServerConnectionInput {
   name: string;
   baseUrl: string;
   adminPassword: string;
+}
+
+export interface ServerConnectionUpdate {
+  name: string;
+  baseUrl: string;
+  adminPassword?: string;
 }
 
 export interface ServerTestInput {
@@ -270,6 +284,27 @@ export function testServer(
   input: ServerTestInput,
 ): Promise<ConnectionTestResult> {
   return jsonRequest<ConnectionTestResult>("/api/servers/test", input);
+}
+
+export function testServerUpdate(
+  id: string,
+  input: ServerTestInput,
+): Promise<ConnectionTestResult> {
+  return jsonRequest<ConnectionTestResult>(
+    `/api/servers/${encodeURIComponent(id)}/test`,
+    input,
+  );
+}
+
+export function updateServer(
+  id: string,
+  input: ServerConnectionUpdate,
+): Promise<PublicConnection> {
+  return request<PublicConnection>(`/api/servers/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
 }
 
 export function deleteServer(id: string): Promise<void> {
@@ -485,6 +520,94 @@ export function resetUserPassword(
 
 export function deleteUser(id: string): Promise<void> {
   return request<void>(`/api/users/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getAutomationTasks(
+  query: AutomationListQuery = {},
+): Promise<AutomationTask[]> {
+  const parameters = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") parameters.set(key, String(value));
+  }
+  const suffix = parameters.size > 0 ? `?${parameters.toString()}` : "";
+  const result = await request<{ tasks: AutomationTask[] }>(
+    `/api/automations${suffix}`,
+    { cache: "no-store" },
+  );
+  return result.tasks;
+}
+
+export function getAutomationSummary(): Promise<AutomationSummary> {
+  return request<AutomationSummary>("/api/automations/summary", {
+    cache: "no-store",
+  });
+}
+
+export function previewAutomationSchedule(
+  schedule: AutomationTaskInput["schedule"],
+  timeZone: string,
+): Promise<{ nextRunAt: string | null }> {
+  return jsonRequest<{ nextRunAt: string | null }>("/api/automations/preview", {
+    schedule,
+    timeZone,
+  });
+}
+
+export function createAutomationTask(
+  input: AutomationTaskInput,
+): Promise<AutomationTask> {
+  return jsonRequest<AutomationTask>("/api/automations", input);
+}
+
+export function updateAutomationTask(
+  id: string,
+  input: AutomationTaskInput,
+): Promise<AutomationTask> {
+  return request<AutomationTask>(`/api/automations/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function setAutomationTaskEnabled(
+  id: string,
+  enabled: boolean,
+): Promise<AutomationTask> {
+  return request<AutomationTask>(
+    `/api/automations/${encodeURIComponent(id)}/enabled`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    },
+  );
+}
+
+export function runAutomationTask(
+  id: string,
+): Promise<{ execution: AutomationExecution }> {
+  return request<{ execution: AutomationExecution }>(
+    `/api/automations/${encodeURIComponent(id)}/run`,
+    { method: "POST" },
+  );
+}
+
+export async function getAutomationTaskHistory(
+  id: string,
+  limit = 50,
+): Promise<AutomationExecutionDetail[]> {
+  const result = await request<{ executions: AutomationExecutionDetail[] }>(
+    `/api/automations/${encodeURIComponent(id)}/history?limit=${limit}`,
+    { cache: "no-store" },
+  );
+  return result.executions;
+}
+
+export function deleteAutomationTask(id: string): Promise<void> {
+  return request<void>(`/api/automations/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }

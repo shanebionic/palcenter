@@ -11,8 +11,8 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
-  IconBell,
-  IconDatabaseExport,
+  IconAutomation,
+  IconAdjustments,
   IconLayoutDashboard,
   IconServer,
   IconTools,
@@ -32,13 +32,11 @@ interface ApplicationShellProps {
 
 const primaryLinks = [
   { href: "/", label: "Dashboard", icon: IconLayoutDashboard },
+  { href: "/servers", label: "Servers", icon: IconServer },
+  { href: "/players", label: "Players", icon: IconUsers },
+  { href: "/automation", label: "Automation", icon: IconAutomation },
   { href: "/tools", label: "Tools", icon: IconTools },
-];
-
-const adminLinks = [
-  { href: "/users", label: "Users", icon: IconUsers },
-  { href: "/notifications", label: "Notifications", icon: IconBell },
-  { href: "/backup", label: "Backup & Restore", icon: IconDatabaseExport },
+  { href: "/settings", label: "Settings", icon: IconAdjustments },
 ];
 
 export function ApplicationShell({ children }: ApplicationShellProps) {
@@ -52,11 +50,7 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
       .catch(() => setSession(null));
   }, []);
 
-  const links = session?.user.mustChangePassword
-    ? []
-    : session?.user.role === "administrator"
-      ? [...primaryLinks, ...adminLinks]
-      : primaryLinks;
+  const links = session?.user.mustChangePassword ? [] : primaryLinks;
 
   return (
     <AppShell

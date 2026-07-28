@@ -6,6 +6,7 @@ export type Permission =
   | "manage_servers"
   | "manage_notifications"
   | "manage_backups"
+  | "manage_automations"
   | "manage_users";
 
 const permissions: Record<UserRole, ReadonlySet<Permission>> = {
@@ -15,6 +16,7 @@ const permissions: Record<UserRole, ReadonlySet<Permission>> = {
     "manage_servers",
     "manage_notifications",
     "manage_backups",
+    "manage_automations",
     "manage_users",
   ]),
   moderator: new Set(["read", "operate"]),
@@ -27,13 +29,15 @@ export class AuthorizationService {
   }
 
   permissionFor(method: string, path: string): Permission {
+    if (path.startsWith("/api/automations")) {
+      return method === "GET" || method === "HEAD"
+        ? "read"
+        : "manage_automations";
+    }
     if (path.startsWith("/api/users")) return "manage_users";
     if (path.startsWith("/api/backup")) return "manage_backups";
     if (path.startsWith("/api/notifications")) return "manage_notifications";
-    if (
-      method === "GET" &&
-      /^\/api\/servers\/[^/]+\/players$/.test(path)
-    ) {
+    if (method === "GET" && /^\/api\/servers\/[^/]+\/players$/.test(path)) {
       return "operate";
     }
     if (
@@ -46,6 +50,8 @@ export class AuthorizationService {
     if (
       (method === "POST" &&
         (path === "/api/servers" || path === "/api/servers/test")) ||
+      (method === "POST" && /^\/api\/servers\/[^/]+\/test$/.test(path)) ||
+      (method === "PUT" && /^\/api\/servers\/[^/]+$/.test(path)) ||
       (method === "DELETE" && /^\/api\/servers\/[^/]+$/.test(path))
     ) {
       return "manage_servers";

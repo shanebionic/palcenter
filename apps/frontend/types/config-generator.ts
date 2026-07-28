@@ -8,8 +8,7 @@ export const CONFIGURATION_CATEGORIES = [
   "Administration",
 ] as const;
 
-export type ConfigurationCategory =
-  (typeof CONFIGURATION_CATEGORIES)[number];
+export type ConfigurationCategory = (typeof CONFIGURATION_CATEGORIES)[number];
 
 export type SettingValue = string | boolean;
 export type ConfigurationValues = Record<string, SettingValue>;

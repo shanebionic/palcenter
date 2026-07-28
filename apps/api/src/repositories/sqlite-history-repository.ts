@@ -51,7 +51,7 @@ interface IntegrityCheckRow {
   quick_check: string;
 }
 
-const schemaVersion = 1;
+const schemaVersion = 3;
 
 export class SqliteHistoryRepository implements HistoryRepository {
   private database: DatabaseSync | null = null;
@@ -128,8 +128,62 @@ export class SqliteHistoryRepository implements HistoryRepository {
         player_name TEXT NOT NULL,
         PRIMARY KEY (server_id, player_id)
       );
-      PRAGMA user_version = 1;
+
+      CREATE TABLE IF NOT EXISTS scheduled_tasks (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        server_id TEXT NOT NULL,
+        enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+        task_type TEXT NOT NULL,
+        schedule_json TEXT NOT NULL,
+        time_zone TEXT NOT NULL,
+        configuration_json TEXT NOT NULL,
+        last_run_at TEXT,
+        next_run_at TEXT,
+        last_result TEXT CHECK (
+          last_result IS NULL OR
+          last_result IN ('running', 'success', 'failure')
+        ),
+        last_error TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS scheduled_tasks_due
+        ON scheduled_tasks (enabled, next_run_at);
+      CREATE INDEX IF NOT EXISTS scheduled_tasks_server
+        ON scheduled_tasks (server_id);
+
+      CREATE TABLE IF NOT EXISTS task_executions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id TEXT NOT NULL,
+        server_id TEXT NOT NULL,
+        task_type TEXT NOT NULL,
+        trigger TEXT NOT NULL CHECK (trigger IN ('scheduled', 'manual')),
+        result TEXT NOT NULL CHECK (result IN ('running', 'success', 'failure')),
+        started_at TEXT NOT NULL,
+        finished_at TEXT,
+        duration_ms INTEGER,
+        error_message TEXT,
+        snapshot_json TEXT,
+        FOREIGN KEY (task_id) REFERENCES scheduled_tasks (id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS task_executions_task_time
+        ON task_executions (task_id, started_at DESC);
+      CREATE INDEX IF NOT EXISTS task_executions_result_time
+        ON task_executions (result, started_at DESC);
+
       `);
+      if (version < 3) {
+        const columns = database
+          .prepare("PRAGMA table_info(task_executions)")
+          .all() as unknown as { name: string }[];
+        if (!columns.some((column) => column.name === "snapshot_json")) {
+          database.exec(
+            "ALTER TABLE task_executions ADD COLUMN snapshot_json TEXT",
+          );
+        }
+      }
+      database.exec(`PRAGMA user_version = ${schemaVersion}`);
       database.exec("COMMIT");
     } catch (error) {
       database.exec("ROLLBACK");
@@ -339,6 +393,12 @@ export class SqliteHistoryRepository implements HistoryRepository {
         .run(serverId);
       database
         .prepare("DELETE FROM server_metrics WHERE server_id = ?")
+        .run(serverId);
+      database
+        .prepare("DELETE FROM task_executions WHERE server_id = ?")
+        .run(serverId);
+      database
+        .prepare("DELETE FROM scheduled_tasks WHERE server_id = ?")
         .run(serverId);
       database.exec("COMMIT");
     } catch (error) {

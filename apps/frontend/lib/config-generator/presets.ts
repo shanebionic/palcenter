@@ -4,7 +4,8 @@ export const CONFIGURATION_PRESETS: readonly ConfigurationPreset[] = [
   {
     id: "default",
     name: "Default",
-    description: "Restore the standard Palworld values represented by this schema.",
+    description:
+      "Restore the standard Palworld values represented by this schema.",
     values: {},
   },
   {

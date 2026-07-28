@@ -11,6 +11,7 @@ import { ServerMonitoring } from "./ServerMonitoring";
 import { ServerPlayers } from "./ServerPlayers";
 import { ServerSettings } from "./ServerSettings";
 import { ServerDangerZone } from "./ServerDangerZone";
+import { ServerConnectionSettings } from "./ServerConnectionSettings";
 
 interface ServerWorkspaceProps {
   serverId: string;
@@ -112,6 +113,9 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
                 <Tabs.Tab value="administration">Administration</Tabs.Tab>
               )}
               <Tabs.Tab value="settings">Settings</Tabs.Tab>
+              {canManage && (
+                <Tabs.Tab value="connection">Connection Settings</Tabs.Tab>
+              )}
               <Tabs.Tab value="monitoring">Monitoring</Tabs.Tab>
             </Tabs.List>
 
@@ -134,6 +138,14 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
             <Tabs.Panel value="settings">
               <ServerSettings serverId={server.connection.id} />
             </Tabs.Panel>
+            {canManage && (
+              <Tabs.Panel value="connection">
+                <ServerConnectionSettings
+                  connection={server.connection}
+                  onSaved={() => loadServer()}
+                />
+              </Tabs.Panel>
+            )}
             <Tabs.Panel value="monitoring">
               <ServerMonitoring serverId={server.connection.id} />
             </Tabs.Panel>
