@@ -37,6 +37,14 @@ export type AutomationTaskConfiguration =
 export type AutomationResult = "running" | "success" | "failure";
 export type AutomationTrigger = "scheduled" | "manual";
 
+export interface AutomationExecutionSnapshot {
+  taskName: string;
+  taskType: AutomationTaskType;
+  serverId: string;
+  serverName: string;
+  actionSummary: string;
+}
+
 interface AutomationTaskFields {
   id: string;
   name: string;
@@ -87,6 +95,18 @@ export interface AutomationExecution {
   finishedAt: string | null;
   durationMs: number | null;
   errorMessage: string | null;
+  snapshot: AutomationExecutionSnapshot | null;
+}
+
+export interface AutomationExecutionDetail extends Omit<
+  AutomationExecution,
+  "snapshot"
+> {
+  taskName: string;
+  serverName: string;
+  actionSummary: string;
+  resultMessage: string;
+  metadataSource: "snapshot" | "legacy_current_task";
 }
 
 export interface AutomationSummary {
