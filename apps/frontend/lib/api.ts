@@ -68,6 +68,12 @@ export interface ServerConnectionInput {
   adminPassword: string;
 }
 
+export interface ServerConnectionUpdate {
+  name: string;
+  baseUrl: string;
+  adminPassword?: string;
+}
+
 export interface ServerTestInput {
   baseUrl: string;
   adminPassword: string;
@@ -278,6 +284,27 @@ export function testServer(
   input: ServerTestInput,
 ): Promise<ConnectionTestResult> {
   return jsonRequest<ConnectionTestResult>("/api/servers/test", input);
+}
+
+export function testServerUpdate(
+  id: string,
+  input: ServerTestInput,
+): Promise<ConnectionTestResult> {
+  return jsonRequest<ConnectionTestResult>(
+    `/api/servers/${encodeURIComponent(id)}/test`,
+    input,
+  );
+}
+
+export function updateServer(
+  id: string,
+  input: ServerConnectionUpdate,
+): Promise<PublicConnection> {
+  return request<PublicConnection>(`/api/servers/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
 }
 
 export function deleteServer(id: string): Promise<void> {

@@ -173,6 +173,47 @@ test("Administrator deleting an unknown server returns server_not_found", async 
   assert.equal(remoteRequests, 0);
 });
 
+test("only Administrators can update saved server connections", async () => {
+  await new JsonConnectionRepository(directory).create(connection("srv_edit"));
+  const administratorResponse = await app.inject({
+    method: "PUT",
+    url: "/api/servers/srv_edit",
+    headers: { cookie: administratorCookie },
+    payload: {
+      name: "Updated Administrator Server",
+      baseUrl: "https://updated.example:9443",
+      adminPassword: "",
+    },
+  });
+  assert.equal(administratorResponse.statusCode, 200);
+  assert.equal(administratorResponse.json().id, "srv_edit");
+  assert.equal("adminPassword" in administratorResponse.json(), false);
+  const stored = await new JsonConnectionRepository(directory).get("srv_edit");
+  assert.equal(stored?.adminPassword, "must-not-be-used");
+
+  for (const [id, roleCookie] of [
+    ["srv_moderator", moderatorCookie],
+    ["srv_visitor", visitorCookie],
+  ] as const) {
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/servers/${id}`,
+      headers: { cookie: roleCookie },
+      payload: {
+        name: "Forbidden Update",
+        baseUrl: "https://forbidden.example:9443",
+        adminPassword: "",
+      },
+    });
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().error, "insufficient_permissions");
+    assert.equal(
+      (await new JsonConnectionRepository(directory).get(id))?.name,
+      id,
+    );
+  }
+});
+
 test("automation routes allow all roles to view but only Administrators to mutate", async () => {
   const payload = {
     name: "Route authorization test",
