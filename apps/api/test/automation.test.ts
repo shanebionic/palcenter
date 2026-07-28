@@ -7,6 +7,10 @@ import { JsonConnectionRepository } from "../src/repositories/json-connection-re
 import { SqliteAutomationRepository } from "../src/repositories/sqlite-automation-repository.js";
 import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
 import { AutomationService } from "../src/services/automation-service.js";
+import {
+  automationScheduleSchema,
+  storedAutomationScheduleSchema,
+} from "../src/services/automation-validation.js";
 import { ScheduleCalculator } from "../src/services/schedule-calculator.js";
 import { SchedulerService } from "../src/services/scheduler-service.js";
 import { TaskDispatcher } from "../src/services/task-dispatcher.js";
@@ -27,8 +31,20 @@ test("friendly and cron schedules calculate future runs in the selected time zon
   const now = new Date("2026-07-27T12:34:30.000Z");
 
   assert.equal(
-    calculator.nextRun({ type: "every_minutes", interval: 15 }, "UTC", now),
-    "2026-07-27T12:49:00.000Z",
+    calculator.nextRun(
+      { type: "every_minutes", interval: 15, startMinute: 5 },
+      "UTC",
+      now,
+    ),
+    "2026-07-27T12:35:00.000Z",
+  );
+  assert.equal(
+    calculator.nextRun(
+      { type: "every_minutes", interval: 30, startMinute: 15 },
+      "America/New_York",
+      new Date("2026-07-27T22:16:00.000Z"),
+    ),
+    "2026-07-27T22:45:00.000Z",
   );
   assert.equal(
     calculator.nextRun({ type: "hourly", minute: 45 }, "UTC", now),
@@ -68,6 +84,31 @@ test("friendly and cron schedules calculate future runs in the selected time zon
   );
 });
 
+test("interval schedules validate their phase and migrate legacy values safely", () => {
+  assert.equal(
+    storedAutomationScheduleSchema.parse({
+      type: "every_minutes",
+      interval: 30,
+    }).startMinute,
+    0,
+  );
+  assert.throws(() =>
+    automationScheduleSchema.parse({
+      type: "every_minutes",
+      interval: 30,
+      startMinute: 30,
+    }),
+  );
+  assert.deepEqual(
+    automationScheduleSchema.parse({
+      type: "every_minutes",
+      interval: 60,
+      startMinute: 59,
+    }),
+    { type: "every_minutes", interval: 60, startMinute: 59 },
+  );
+});
+
 test("automation tasks persist generically and dispatcher records manual execution", async () => {
   const directory = await fs.mkdtemp(
     path.join(os.tmpdir(), "palcenter-automation-"),
@@ -102,7 +143,7 @@ test("automation tasks persist generically and dispatcher records manual executi
       serverId: connection.id,
       enabled: true,
       taskType: "broadcast_message",
-      schedule: { type: "every_minutes", interval: 30 },
+      schedule: { type: "every_minutes", interval: 30, startMinute: 0 },
       timeZone: "UTC",
       configuration: { message: "Welcome to the server" },
     });
@@ -112,6 +153,22 @@ test("automation tasks persist generically and dispatcher records manual executi
     assert.equal(execution.result, "success");
     assert.deepEqual(calls, ["Welcome to the server"]);
     assert.equal((await service.get(task.id)).lastResult, "success");
+
+    const updated = await service.update(task.id, {
+      name: task.name,
+      serverId: task.serverId,
+      enabled: true,
+      taskType: task.taskType,
+      schedule: {
+        type: "every_minutes",
+        interval: 30,
+        startMinute: 15,
+      },
+      timeZone: "UTC",
+      configuration: task.configuration,
+    });
+    assert.ok(updated.nextRunAt);
+    assert.ok([15, 45].includes(new Date(updated.nextRunAt).getUTCMinutes()));
 
     automation.close();
     automation.reopen();

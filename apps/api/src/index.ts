@@ -65,7 +65,10 @@ import {
   AutomationService,
   AutomationTaskNotFoundError,
 } from "./services/automation-service.js";
-import { parseAutomationTaskInput } from "./services/automation-validation.js";
+import {
+  automationScheduleSchema,
+  parseAutomationTaskInput,
+} from "./services/automation-validation.js";
 import { BroadcastTaskExecutor } from "./services/broadcast-task-executor.js";
 import {
   InvalidAutomationScheduleError,
@@ -941,6 +944,17 @@ const automationListQuerySchema = z.object({
 });
 
 app.get("/api/automations/summary", async () => automationService.summary());
+
+app.post("/api/automations/preview", async (request) => {
+  const input = z
+    .object({
+      schedule: automationScheduleSchema,
+      timeZone: z.string().trim().min(1).max(100),
+    })
+    .strict()
+    .parse(request.body);
+  return automationService.preview(input.schedule, input.timeZone);
+});
 
 app.get("/api/automations", async (request) => ({
   tasks: await automationService.list(

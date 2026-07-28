@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
 import type { AutomationRepository } from "../repositories/automation-repository.js";
 import type {
+  AutomationSchedule,
   AutomationSummary,
   AutomationTask,
   AutomationTaskInput,
@@ -149,6 +150,15 @@ export class AutomationService {
       disabledTasks: tasks.length - active.length,
       failedToday: this.repository.failedSince(today),
       nextScheduledRun: nextRuns[0] ?? null,
+    };
+  }
+
+  preview(
+    schedule: AutomationSchedule,
+    timeZone: string,
+  ): { nextRunAt: string | null } {
+    return {
+      nextRunAt: this.schedules.nextRun(schedule, timeZone, new Date()),
     };
   }
 

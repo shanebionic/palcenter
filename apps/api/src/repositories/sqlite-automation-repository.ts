@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import {
-  automationScheduleSchema,
   parseTaskConfiguration,
+  storedAutomationScheduleSchema,
 } from "../services/automation-validation.js";
 import {
   tightenFilePermissionsSync,
@@ -281,7 +281,9 @@ export class SqliteAutomationRepository implements AutomationRepository {
       serverId: row.server_id,
       enabled: row.enabled === 1,
       taskType,
-      schedule: automationScheduleSchema.parse(JSON.parse(row.schedule_json)),
+      schedule: storedAutomationScheduleSchema.parse(
+        JSON.parse(row.schedule_json),
+      ),
       timeZone: row.time_zone,
       configuration: parseTaskConfiguration(
         taskType,

@@ -517,6 +517,16 @@ export function getAutomationSummary(): Promise<AutomationSummary> {
   });
 }
 
+export function previewAutomationSchedule(
+  schedule: AutomationTaskInput["schedule"],
+  timeZone: string,
+): Promise<{ nextRunAt: string | null }> {
+  return jsonRequest<{ nextRunAt: string | null }>("/api/automations/preview", {
+    schedule,
+    timeZone,
+  });
+}
+
 export function createAutomationTask(
   input: AutomationTaskInput,
 ): Promise<AutomationTask> {

@@ -25,6 +25,21 @@ The editor supports friendly schedules for intervals, hourly, daily, weekly,
 monthly, and one-time execution. Advanced users can provide a standard
 five-field cron expression.
 
+**Every N minutes** schedules are aligned to the wall clock instead of the time
+when the task was created. Configure:
+
+- **Interval (minutes)** for the time between executions.
+- **Start minute** for the alignment phase. It must be between `0` and one less
+  than the interval.
+
+For example, an interval of `30` with start minute `0` runs at `:00` and `:30`.
+The same interval with start minute `15` runs at `:15` and `:45`. An interval
+of `15` with start minute `5` runs at `:05`, `:20`, `:35`, and `:50`.
+
+The editor shows a live description and the next calculated execution in the
+selected time zone. Editing an enabled task recalculates its next run
+immediately.
+
 Every task has an IANA time zone, such as `America/New_York` or `UTC`. Daylight
 saving changes are handled using the selected time zone.
 
@@ -40,6 +55,14 @@ from the current time. Earlier missed occurrences are skipped.
 For example, if a daily 8:00 PM task is overdue when PalCenter starts at
 9:30 PM, it runs once after startup and is next scheduled for 8:00 PM the
 following day. An overdue one-time task also runs once and is then disabled.
+
+### Existing interval tasks
+
+Interval tasks created before wall-clock alignment do not require a database
+migration or manual edit. Their existing calculated next run is preserved.
+When that execution finishes, future runs align with start minute `0`. Editing,
+disabling and re-enabling, or otherwise saving a legacy task also persists
+start minute `0` and immediately recalculates the next aligned run.
 
 ## Results and troubleshooting
 
