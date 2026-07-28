@@ -1,0 +1,12 @@
+.corepack/
+.docker-validation/
+.next/
+.turbo/
+coverage/
+dist/
+node_modules/
+apps/api/data/
+pnpm-lock.yaml
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
