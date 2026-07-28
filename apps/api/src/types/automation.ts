@@ -89,6 +89,13 @@ export interface AutomationExecution {
   errorMessage: string | null;
 }
 
+export interface AutomationExecutionDetail extends AutomationExecution {
+  taskName: string;
+  serverName: string;
+  actionSummary: string;
+  resultMessage: string;
+}
+
 export interface AutomationSummary {
   activeTasks: number;
   disabledTasks: number;
