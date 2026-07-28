@@ -20,24 +20,21 @@ It connects to your existing Palworld server through the official REST API and p
 
 PalCenter does not host or run the Palworld server itself. It connects to an existing dedicated server.
 
-## Installation
-
-### Unraid Community Applications
-
-For Unraid, the recommended installation method is the official Community
-Applications template:
-
 ## Support PalCenter
 
 PalCenter is free and open-source software. If you find it useful, consider supporting continued development, testing, documentation, and future improvements.
 
 [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=github)](https://github.com/sponsors/shanebionic)
 
----
-
 ## Installation
 
-## Quick Start
+### Unraid Community Applications
+
+For Unraid, install PalCenter from **Apps → Community Applications**. The
+official template configures the non-root `99:100` user mapping and persistent
+`/mnt/user/appdata/palcenter` storage. See the
+[Unraid deployment guide](docs/UNRAID.md) for upgrade and troubleshooting
+instructions.
 
 ### Docker Compose
 
@@ -93,9 +90,8 @@ Development builds may contain unfinished features, are intended for testing,
 and may change without notice. Each development build also has an immutable
 `dev-<git-sha>` image tag. The About PalCenter dialog identifies the build as
 Production or Development and includes the short commit for development builds.
-The displayed development version is generated as the next minor release after
-the most recent release tag. For example, development after `v1.2.1` is
-identified as `v1.3.0-DEV`.
+Development after `v1.2.1` is identified as `v1.3.0-DEV`; the production
+`v1.3.0` image receives its stable version and channel from the release tag.
 
 ### Container user IDs
 
@@ -120,6 +116,11 @@ when using the default Docker-managed volume.
 - Docker
 - An existing Palworld dedicated server
 - Palworld REST API enabled
+
+PalCenter v1.3 adds scheduled Broadcast Message, Save World, and Graceful
+Shutdown tasks, immutable execution history, and safe editing of saved server
+connections. Existing v1.2.x data remains compatible and is upgraded in place.
+Download a PalCenter backup before upgrading any production installation.
 
 ## Documentation
 

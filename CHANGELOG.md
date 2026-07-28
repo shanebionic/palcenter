@@ -2,6 +2,33 @@
 
 All notable PalCenter changes are documented here.
 
+## 1.3.0
+
+### Added
+
+- Scheduled Broadcast Message, Save World, and Graceful Shutdown automation.
+- Automation execution history with manual and scheduled triggers, results,
+  durations, and immutable task/server snapshots.
+- Administrator editing for saved server display names, REST URLs, and
+  administrator passwords.
+
+### Changed
+
+- Aligned Every N Minutes schedules to wall-clock minutes with live schedule
+  previews and safe migration for existing interval tasks.
+- Extended backup validation and restore compatibility for automation tasks,
+  execution history, and the history database schema.
+- Consolidated validation and Docker workflows and gated development image
+  publication on a successful Validation run.
+
+### Fixed
+
+- Preserved historical task, server, broadcast, and shutdown details after
+  later configuration edits.
+- Preserved server IDs, related history, and automation when editing saved
+  connections.
+- Made formatting validation deterministic across CI and Windows checkouts.
+
 ## 1.1.1
 
 ### Added

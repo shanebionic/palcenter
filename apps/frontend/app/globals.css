@@ -12,8 +12,16 @@ body {
 body {
   color: var(--foreground);
   background:
-    radial-gradient(circle at 75% -10%, rgba(8, 184, 245, 0.13), transparent 34rem),
-    radial-gradient(circle at 0% 85%, rgba(92, 111, 255, 0.08), transparent 30rem),
+    radial-gradient(
+      circle at 75% -10%,
+      rgba(8, 184, 245, 0.13),
+      transparent 34rem
+    ),
+    radial-gradient(
+      circle at 0% 85%,
+      rgba(92, 111, 255, 0.08),
+      transparent 30rem
+    ),
     var(--background);
   min-height: 100vh;
 }
@@ -80,7 +88,11 @@ a {
 }
 
 .pc-panel {
-  background: linear-gradient(145deg, rgba(22, 29, 43, 0.92), rgba(13, 18, 29, 0.96));
+  background: linear-gradient(
+    145deg,
+    rgba(22, 29, 43, 0.92),
+    rgba(13, 18, 29, 0.96)
+  );
   border-color: rgba(148, 163, 184, 0.13);
   box-shadow: 0 20px 55px rgba(0, 0, 0, 0.18);
 }
@@ -88,9 +100,16 @@ a {
 .pc-server-card {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(145deg, rgba(23, 31, 47, 0.96), rgba(12, 17, 28, 0.98));
+  background: linear-gradient(
+    145deg,
+    rgba(23, 31, 47, 0.96),
+    rgba(12, 17, 28, 0.98)
+  );
   border-color: rgba(148, 163, 184, 0.14);
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .pc-server-card::before {

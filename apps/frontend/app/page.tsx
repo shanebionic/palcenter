@@ -80,7 +80,9 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    void getSession().then(setSession).catch(() => undefined);
+    void getSession()
+      .then(setSession)
+      .catch(() => undefined);
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const poll = async () => {
@@ -100,7 +102,10 @@ export default function HomePage() {
     const online = servers.filter((server) => server.status === "online");
     return {
       online: online.length,
-      players: online.reduce((total, server) => total + (server.players ?? 0), 0),
+      players: online.reduce(
+        (total, server) => total + (server.players ?? 0),
+        0,
+      ),
       responseTimes: online
         .map((server) => server.responseTimeMs)
         .filter((value): value is number => value !== null),
@@ -125,7 +130,10 @@ export default function HomePage() {
           description="Monitor every connected Palworld world and jump into operations from one place."
           action={
             isAdministrator ? (
-              <Button leftSection={<IconPlus size={18} />} onClick={dialog.open}>
+              <Button
+                leftSection={<IconPlus size={18} />}
+                onClick={dialog.open}
+              >
                 Add Server
               </Button>
             ) : null

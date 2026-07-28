@@ -15,6 +15,7 @@ jobs:
     name: Publish development Docker image
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       packages: write
 
@@ -28,6 +29,41 @@ jobs:
             exit 1
           fi
 
+      - name: Require successful validation
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in {1..80}; do
+            validation="$(
+              gh run list \
+                --repo "${GITHUB_REPOSITORY}" \
+                --workflow validation.yml \
+                --branch dev \
+                --commit "${GITHUB_SHA}" \
+                --event push \
+                --limit 1 \
+                --json status,conclusion
+            )"
+            status="$(jq -r '.[0].status // "pending"' <<< "${validation}")"
+            conclusion="$(jq -r '.[0].conclusion // ""' <<< "${validation}")"
+
+            if [[ "${status}" == "completed" && "${conclusion}" == "success" ]]; then
+              echo "Validation succeeded for ${GITHUB_SHA}."
+              exit 0
+            fi
+            if [[ "${status}" == "completed" ]]; then
+              echo "::error::Validation completed with '${conclusion}' for ${GITHUB_SHA}; the development image will not be published."
+              exit 1
+            fi
+
+            echo "Waiting for Validation (${status}, attempt ${attempt}/80)..."
+            sleep 15
+          done
+
+          echo "::error::Timed out waiting for Validation to complete for ${GITHUB_SHA}."
+          exit 1
+
       - name: Check out repository
         uses: actions/checkout@v6
         with:
@@ -37,7 +73,6 @@ jobs:
         id: build
         shell: bash
         run: |
-          short_sha="${GITHUB_SHA::7}"
           release_version="$(git tag --list 'v*.*.*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)"
           if [[ -z "$release_version" ]]; then
             release_version="v$(node -p "require('./package.json').version")"
@@ -46,7 +81,7 @@ jobs:
           IFS=. read -r major minor _patch <<< "$version"
           development_version="v${major}.$((minor + 1)).0-DEV"
           echo "version=${development_version}" >> "$GITHUB_OUTPUT"
-          echo "commit=${short_sha}" >> "$GITHUB_OUTPUT"
+          echo "commit=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
