@@ -2,7 +2,7 @@ export const automationTaskTypes = ["broadcast_message"] as const;
 export type AutomationTaskType = (typeof automationTaskTypes)[number];
 
 export type AutomationSchedule =
-  | { type: "every_minutes"; interval: number }
+  | { type: "every_minutes"; interval: number; startMinute: number }
   | { type: "hourly"; minute: number }
   | { type: "daily"; time: string }
   | { type: "weekly"; dayOfWeek: number; time: string }

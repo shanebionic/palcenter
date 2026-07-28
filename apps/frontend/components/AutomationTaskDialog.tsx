@@ -2,7 +2,9 @@
 
 import {
   Button,
+  Card,
   Group,
+  Loader,
   Modal,
   NumberInput,
   Select,
@@ -14,6 +16,11 @@ import {
   TextInput,
 } from "@mantine/core";
 import { useEffect, useState } from "react";
+import { previewAutomationSchedule } from "../lib/api";
+import {
+  formatSchedulePreviewDate,
+  intervalScheduleDescription,
+} from "../lib/automation";
 import type { PublicConnection } from "../types/servers";
 import type {
   AutomationSchedule,
@@ -31,7 +38,7 @@ interface AutomationTaskDialogProps {
 }
 
 const scheduleOptions = [
-  { value: "every_minutes", label: "Every X minutes" },
+  { value: "every_minutes", label: "Every N minutes" },
   { value: "hourly", label: "Hourly" },
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
@@ -43,6 +50,7 @@ const scheduleOptions = [
 const defaultSchedule: AutomationSchedule = {
   type: "every_minutes",
   interval: 30,
+  startMinute: 0,
 };
 
 function scheduleFor(type: AutomationSchedule["type"]): AutomationSchedule {
@@ -202,7 +210,11 @@ export function AutomationTaskDialog({
               )
             }
           />
-          <ScheduleEditor schedule={schedule} onChange={setSchedule} />
+          <ScheduleEditor
+            schedule={schedule}
+            timeZone={timeZone}
+            onChange={setSchedule}
+          />
           <TextInput
             label="Time zone"
             description="Use an IANA zone such as America/New_York."
@@ -235,22 +247,20 @@ export function AutomationTaskDialog({
 
 function ScheduleEditor({
   schedule,
+  timeZone,
   onChange,
 }: {
   schedule: AutomationSchedule;
+  timeZone: string;
   onChange(value: AutomationSchedule): void;
 }) {
   switch (schedule.type) {
     case "every_minutes":
       return (
-        <NumberInput
-          label="Interval in minutes"
-          min={1}
-          max={10_080}
-          value={schedule.interval}
-          onChange={(value) =>
-            onChange({ ...schedule, interval: Number(value) || 1 })
-          }
+        <IntervalScheduleEditor
+          schedule={schedule}
+          timeZone={timeZone}
+          onChange={onChange}
         />
       );
     case "hourly":
@@ -353,4 +363,125 @@ function ScheduleEditor({
         />
       );
   }
+}
+
+function IntervalScheduleEditor({
+  schedule,
+  timeZone,
+  onChange,
+}: {
+  schedule: Extract<AutomationSchedule, { type: "every_minutes" }>;
+  timeZone: string;
+  onChange(value: AutomationSchedule): void;
+}) {
+  const [nextRunAt, setNextRunAt] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (
+      schedule.interval < 1 ||
+      schedule.startMinute < 0 ||
+      schedule.startMinute >= schedule.interval ||
+      !timeZone.trim()
+    ) {
+      setNextRunAt(null);
+      setPreviewError("Enter a valid interval, start minute, and time zone.");
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      setLoading(true);
+      void previewAutomationSchedule(schedule, timeZone)
+        .then((preview) => {
+          if (cancelled) return;
+          setNextRunAt(preview.nextRunAt);
+          setPreviewError(null);
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          setNextRunAt(null);
+          setPreviewError(
+            error instanceof Error
+              ? error.message
+              : "Unable to calculate the next run.",
+          );
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [schedule, timeZone]);
+
+  return (
+    <Stack gap="sm">
+      <Group grow align="flex-start">
+        <NumberInput
+          label="Interval (minutes)"
+          min={1}
+          max={10_080}
+          value={schedule.interval}
+          onChange={(value) => {
+            const interval = Math.max(1, Number(value) || 1);
+            onChange({
+              ...schedule,
+              interval,
+              startMinute: Math.min(schedule.startMinute, interval - 1),
+            });
+          }}
+        />
+        <NumberInput
+          label="Start minute"
+          description={`Allowed range: 0–${schedule.interval - 1}`}
+          min={0}
+          max={schedule.interval - 1}
+          value={schedule.startMinute}
+          onChange={(value) =>
+            onChange({
+              ...schedule,
+              startMinute: Math.min(
+                schedule.interval - 1,
+                Math.max(0, Number(value) || 0),
+              ),
+            })
+          }
+        />
+      </Group>
+
+      <Card withBorder radius="md" p="md" bg="dark.7">
+        <Stack gap={6}>
+          <Group justify="space-between" wrap="nowrap">
+            <Text size="sm" fw={650}>
+              Schedule preview
+            </Text>
+            {loading && <Loader size="xs" />}
+          </Group>
+          <Text size="sm" c="dimmed">
+            {intervalScheduleDescription(
+              schedule.interval,
+              schedule.startMinute,
+            )}
+          </Text>
+          <div>
+            <Text size="xs" tt="uppercase" fw={700} c="dimmed">
+              Next run
+            </Text>
+            <Text size="sm" c={previewError ? "red.4" : undefined}>
+              {previewError
+                ? previewError
+                : nextRunAt
+                  ? formatSchedulePreviewDate(nextRunAt, timeZone)
+                  : "Calculating…"}
+            </Text>
+          </div>
+        </Stack>
+      </Card>
+    </Stack>
+  );
 }

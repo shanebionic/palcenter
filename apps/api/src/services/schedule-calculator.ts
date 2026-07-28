@@ -3,6 +3,7 @@ import type { AutomationSchedule } from "../types/automation.js";
 export class InvalidAutomationScheduleError extends Error {}
 
 interface ZonedParts {
+  year: number;
   minute: number;
   hour: number;
   day: number;
@@ -44,10 +45,7 @@ export class ScheduleCalculator {
     }
 
     if (schedule.type === "every_minutes") {
-      const nextMinute =
-        Math.floor(after.getTime() / 60_000) * 60_000 +
-        schedule.interval * 60_000;
-      return new Date(nextMinute).toISOString();
+      return this.nextAlignedInterval(schedule, timeZone, after);
     }
 
     const cron =
@@ -99,6 +97,7 @@ export class ScheduleCalculator {
     const values = new Map(
       new Intl.DateTimeFormat("en-US", {
         timeZone,
+        year: "numeric",
         minute: "2-digit",
         hour: "2-digit",
         day: "2-digit",
@@ -111,12 +110,46 @@ export class ScheduleCalculator {
     );
 
     return {
+      year: Number(values.get("year")),
       minute: Number(values.get("minute")),
       hour: Number(values.get("hour")),
       day: Number(values.get("day")),
       month: Number(values.get("month")),
       weekday: weekdayIndexes[values.get("weekday") ?? ""] ?? -1,
     };
+  }
+
+  private nextAlignedInterval(
+    schedule: Extract<AutomationSchedule, { type: "every_minutes" }>,
+    timeZone: string,
+    after: Date,
+  ): string {
+    const limit = Math.max(schedule.interval * 2, 366 * 24 * 60);
+    let candidate = Math.floor(after.getTime() / 60_000) * 60_000 + 60_000;
+
+    for (let offset = 0; offset < limit; offset += 1) {
+      const date = new Date(candidate);
+      const parts = this.zonedParts(date, timeZone);
+      const localMinute = Math.floor(
+        Date.UTC(
+          parts.year,
+          parts.month - 1,
+          parts.day,
+          parts.hour,
+          parts.minute,
+        ) / 60_000,
+      );
+      const phase =
+        ((localMinute % schedule.interval) + schedule.interval) %
+        schedule.interval;
+
+      if (phase === schedule.startMinute) return date.toISOString();
+      candidate += 60_000;
+    }
+
+    throw new InvalidAutomationScheduleError(
+      "The interval does not produce a run within the supported range.",
+    );
   }
 
   private matchesTime(parts: ZonedParts, time: string): boolean {

@@ -8,46 +8,87 @@ const timeSchema = z
   .string()
   .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use a 24-hour time such as 09:30.");
 
-export const automationScheduleSchema = z.discriminatedUnion("type", [
+const intervalScheduleSchema = z
+  .object({
+    type: z.literal("every_minutes"),
+    interval: z.number().int().min(1).max(10_080),
+    startMinute: z.number().int().min(0).max(10_079),
+  })
+  .strict()
+  .refine((value) => value.startMinute < value.interval, {
+    path: ["startMinute"],
+    message: "Start minute must be less than the interval.",
+  });
+
+const hourlyScheduleSchema = z
+  .object({
+    type: z.literal("hourly"),
+    minute: z.number().int().min(0).max(59),
+  })
+  .strict();
+const dailyScheduleSchema = z
+  .object({ type: z.literal("daily"), time: timeSchema })
+  .strict();
+const weeklyScheduleSchema = z
+  .object({
+    type: z.literal("weekly"),
+    dayOfWeek: z.number().int().min(0).max(6),
+    time: timeSchema,
+  })
+  .strict();
+const monthlyScheduleSchema = z
+  .object({
+    type: z.literal("monthly"),
+    dayOfMonth: z.number().int().min(1).max(31),
+    time: timeSchema,
+  })
+  .strict();
+const specificTimeScheduleSchema = z
+  .object({
+    type: z.literal("specific_time"),
+    runAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
+const cronScheduleSchema = z
+  .object({
+    type: z.literal("cron"),
+    expression: z.string().trim().min(9).max(100),
+  })
+  .strict();
+
+export const automationScheduleSchema = z.union([
+  intervalScheduleSchema,
+  hourlyScheduleSchema,
+  dailyScheduleSchema,
+  weeklyScheduleSchema,
+  monthlyScheduleSchema,
+  specificTimeScheduleSchema,
+  cronScheduleSchema,
+]);
+
+export const storedAutomationScheduleSchema = z.union([
   z
     .object({
       type: z.literal("every_minutes"),
       interval: z.number().int().min(1).max(10_080),
+      startMinute: z.number().int().min(0).max(10_079).optional(),
     })
-    .strict(),
-  z
-    .object({
-      type: z.literal("hourly"),
-      minute: z.number().int().min(0).max(59),
-    })
-    .strict(),
-  z.object({ type: z.literal("daily"), time: timeSchema }).strict(),
-  z
-    .object({
-      type: z.literal("weekly"),
-      dayOfWeek: z.number().int().min(0).max(6),
-      time: timeSchema,
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("monthly"),
-      dayOfMonth: z.number().int().min(1).max(31),
-      time: timeSchema,
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("specific_time"),
-      runAt: z.string().datetime({ offset: true }),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("cron"),
-      expression: z.string().trim().min(9).max(100),
-    })
-    .strict(),
+    .strict()
+    .refine(
+      (value) =>
+        value.startMinute === undefined || value.startMinute < value.interval,
+      {
+        path: ["startMinute"],
+        message: "Start minute must be less than the interval.",
+      },
+    )
+    .transform((value) => ({ ...value, startMinute: value.startMinute ?? 0 })),
+  hourlyScheduleSchema,
+  dailyScheduleSchema,
+  weeklyScheduleSchema,
+  monthlyScheduleSchema,
+  specificTimeScheduleSchema,
+  cronScheduleSchema,
 ]);
 
 export const broadcastConfigurationSchema = z
