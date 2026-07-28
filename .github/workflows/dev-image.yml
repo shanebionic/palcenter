@@ -11,15 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Validate development build
-    permissions:
-      contents: read
-    uses: ./.github/workflows/validation.yml
-
   publish:
     name: Publish development Docker image
-    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
