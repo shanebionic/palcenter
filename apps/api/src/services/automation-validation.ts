@@ -97,17 +97,46 @@ export const broadcastConfigurationSchema = z
   })
   .strict();
 
-export const automationTaskInputSchema = z
+export const saveWorldConfigurationSchema = z.object({}).strict();
+
+export const shutdownConfigurationSchema = z
   .object({
-    name: z.string().trim().min(1).max(100),
-    serverId: z.string().min(1).max(100),
-    enabled: z.boolean(),
-    taskType: z.literal("broadcast_message"),
-    schedule: automationScheduleSchema,
-    timeZone: z.string().trim().min(1).max(100),
-    configuration: broadcastConfigurationSchema,
+    waitTime: z.number().int().min(0).max(86_400),
+    message: z.string().trim().max(500).optional(),
   })
   .strict();
+
+const taskInputFields = {
+  name: z.string().trim().min(1).max(100),
+  serverId: z.string().min(1).max(100),
+  enabled: z.boolean(),
+  schedule: automationScheduleSchema,
+  timeZone: z.string().trim().min(1).max(100),
+};
+
+export const automationTaskInputSchema = z.discriminatedUnion("taskType", [
+  z
+    .object({
+      ...taskInputFields,
+      taskType: z.literal("broadcast_message"),
+      configuration: broadcastConfigurationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...taskInputFields,
+      taskType: z.literal("save_world"),
+      configuration: saveWorldConfigurationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...taskInputFields,
+      taskType: z.literal("shutdown"),
+      configuration: shutdownConfigurationSchema,
+    })
+    .strict(),
+]);
 
 export function parseAutomationTaskInput(value: unknown): AutomationTaskInput {
   return automationTaskInputSchema.parse(value);
@@ -120,5 +149,9 @@ export function parseTaskConfiguration(
   switch (taskType) {
     case "broadcast_message":
       return broadcastConfigurationSchema.parse(value);
+    case "save_world":
+      return saveWorldConfigurationSchema.parse(value);
+    case "shutdown":
+      return shutdownConfigurationSchema.parse(value);
   }
 }

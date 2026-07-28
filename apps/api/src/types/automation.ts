@@ -1,4 +1,8 @@
-export const automationTaskTypes = ["broadcast_message"] as const;
+export const automationTaskTypes = [
+  "broadcast_message",
+  "save_world",
+  "shutdown",
+] as const;
 export type AutomationTaskType = (typeof automationTaskTypes)[number];
 
 export type AutomationSchedule =
@@ -14,21 +18,32 @@ export interface BroadcastTaskConfiguration {
   message: string;
 }
 
-export type AutomationTaskConfiguration = BroadcastTaskConfiguration;
+export type SaveWorldTaskConfiguration = Record<string, never>;
+
+export interface ShutdownTaskConfiguration {
+  waitTime: number;
+  message?: string;
+}
+
+export interface AutomationTaskConfigurationByType {
+  broadcast_message: BroadcastTaskConfiguration;
+  save_world: SaveWorldTaskConfiguration;
+  shutdown: ShutdownTaskConfiguration;
+}
+
+export type AutomationTaskConfiguration =
+  AutomationTaskConfigurationByType[AutomationTaskType];
 
 export type AutomationResult = "running" | "success" | "failure";
 export type AutomationTrigger = "scheduled" | "manual";
 
-export interface AutomationTask {
+interface AutomationTaskFields {
   id: string;
   name: string;
   serverId: string;
-  serverName: string;
   enabled: boolean;
-  taskType: AutomationTaskType;
   schedule: AutomationSchedule;
   timeZone: string;
-  configuration: AutomationTaskConfiguration;
   lastRunAt: string | null;
   nextRunAt: string | null;
   lastResult: AutomationResult | null;
@@ -37,20 +52,29 @@ export interface AutomationTask {
   updatedAt: string;
 }
 
-export interface StoredAutomationTask extends Omit<
-  AutomationTask,
-  "serverName"
-> {}
+export type StoredAutomationTask = {
+  [TaskType in AutomationTaskType]: AutomationTaskFields & {
+    taskType: TaskType;
+    configuration: AutomationTaskConfigurationByType[TaskType];
+  };
+}[AutomationTaskType];
 
-export interface AutomationTaskInput {
+export type AutomationTask = StoredAutomationTask & { serverName: string };
+
+interface AutomationTaskInputFields {
   name: string;
   serverId: string;
   enabled: boolean;
-  taskType: AutomationTaskType;
   schedule: AutomationSchedule;
   timeZone: string;
-  configuration: AutomationTaskConfiguration;
 }
+
+export type AutomationTaskInput = {
+  [TaskType in AutomationTaskType]: AutomationTaskInputFields & {
+    taskType: TaskType;
+    configuration: AutomationTaskConfigurationByType[TaskType];
+  };
+}[AutomationTaskType];
 
 export interface AutomationExecution {
   id: number;

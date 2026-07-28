@@ -9,6 +9,7 @@ import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repo
 import { AutomationService } from "../src/services/automation-service.js";
 import {
   automationScheduleSchema,
+  automationTaskInputSchema,
   storedAutomationScheduleSchema,
 } from "../src/services/automation-validation.js";
 import { ScheduleCalculator } from "../src/services/schedule-calculator.js";
@@ -25,6 +26,18 @@ const connection: StoredConnection = {
   createdAt: "2026-07-27T12:00:00.000Z",
   updatedAt: "2026-07-27T12:00:00.000Z",
 };
+
+function executors(
+  broadcastMessage: TaskExecutor<"broadcast_message">,
+  saveWorld: TaskExecutor<"save_world"> = { execute: () => Promise.resolve() },
+  shutdown: TaskExecutor<"shutdown"> = { execute: () => Promise.resolve() },
+) {
+  return {
+    broadcast_message: broadcastMessage,
+    save_world: saveWorld,
+    shutdown,
+  };
+}
 
 test("friendly and cron schedules calculate future runs in the selected time zone", () => {
   const calculator = new ScheduleCalculator();
@@ -109,6 +122,51 @@ test("interval schedules validate their phase and migrate legacy values safely",
   );
 });
 
+test("task-specific configuration is exhaustive and rejects unsupported or malformed tasks", () => {
+  const common = {
+    name: "Task",
+    serverId: connection.id,
+    enabled: true,
+    schedule: { type: "daily" as const, time: "09:00" },
+    timeZone: "UTC",
+  };
+
+  assert.deepEqual(
+    automationTaskInputSchema.parse({
+      ...common,
+      taskType: "save_world",
+      configuration: {},
+    }).configuration,
+    {},
+  );
+  for (const waitTime of [0, 86_400]) {
+    assert.equal(
+      automationTaskInputSchema.parse({
+        ...common,
+        taskType: "shutdown",
+        configuration: { waitTime, message: "Maintenance" },
+      }).configuration.waitTime,
+      waitTime,
+    );
+  }
+  for (const waitTime of [-1, 86_401, 1.5]) {
+    assert.throws(() =>
+      automationTaskInputSchema.parse({
+        ...common,
+        taskType: "shutdown",
+        configuration: { waitTime },
+      }),
+    );
+  }
+  assert.throws(() =>
+    automationTaskInputSchema.parse({
+      ...common,
+      taskType: "force_stop",
+      configuration: {},
+    }),
+  );
+});
+
 test("automation tasks persist generically and dispatcher records manual execution", async () => {
   const directory = await fs.mkdtemp(
     path.join(os.tmpdir(), "palcenter-automation-"),
@@ -117,7 +175,7 @@ test("automation tasks persist generically and dispatcher records manual executi
   const automation = new SqliteAutomationRepository(directory);
   const connections = new JsonConnectionRepository(directory);
   const calls: string[] = [];
-  const executor: TaskExecutor = {
+  const executor: TaskExecutor<"broadcast_message"> = {
     execute(task) {
       calls.push(task.configuration.message);
       return Promise.resolve();
@@ -134,7 +192,7 @@ test("automation tasks persist generically and dispatcher records manual executi
     const scheduler = new SchedulerService(
       automation,
       calculator,
-      new TaskDispatcher(new Map([["broadcast_message", executor]])),
+      new TaskDispatcher(executors(executor)),
       60_000,
       () => undefined,
     );
@@ -199,14 +257,9 @@ test("failed task executions are retained without stopping the scheduler", async
       automation,
       calculator,
       new TaskDispatcher(
-        new Map([
-          [
-            "broadcast_message",
-            {
-              execute: () => Promise.reject(new Error("Server offline")),
-            },
-          ],
-        ]),
+        executors({
+          execute: () => Promise.reject(new Error("Server offline")),
+        }),
       ),
       60_000,
       () => undefined,
@@ -225,6 +278,91 @@ test("failed task executions are retained without stopping the scheduler", async
     assert.equal(execution.result, "failure");
     assert.equal(execution.errorMessage, "Server offline");
     assert.equal((await service.get(task.id)).lastError, "Server offline");
+  } finally {
+    automation.close();
+    history.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("save world and graceful shutdown execute through registered task executors", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "palcenter-automation-operations-"),
+  );
+  const automation = new SqliteAutomationRepository(directory);
+  const connections = new JsonConnectionRepository(directory);
+  const history = new SqliteHistoryRepository(directory);
+  const calls: string[] = [];
+
+  try {
+    await connections.initialize();
+    await connections.create(connection);
+    history.initialize();
+    automation.initialize();
+    const calculator = new ScheduleCalculator();
+    const service = new AutomationService(automation, connections, calculator);
+    const scheduler = new SchedulerService(
+      automation,
+      calculator,
+      new TaskDispatcher(
+        executors(
+          { execute: () => Promise.resolve() },
+          {
+            execute: (task) => {
+              calls.push(`save:${task.serverId}`);
+              return Promise.resolve();
+            },
+          },
+          {
+            execute: (task) => {
+              calls.push(
+                `shutdown:${task.configuration.waitTime}:${task.configuration.message ?? ""}`,
+              );
+              return Promise.resolve();
+            },
+          },
+        ),
+      ),
+      60_000,
+      () => undefined,
+    );
+    const save = await service.create({
+      name: "Save world",
+      serverId: connection.id,
+      enabled: true,
+      taskType: "save_world",
+      schedule: { type: "daily", time: "09:00" },
+      timeZone: "UTC",
+      configuration: {},
+    });
+    const shutdown = await service.create({
+      name: "Maintenance shutdown",
+      serverId: connection.id,
+      enabled: true,
+      taskType: "shutdown",
+      schedule: { type: "daily", time: "10:00" },
+      timeZone: "UTC",
+      configuration: { waitTime: 60, message: "Maintenance" },
+    });
+    const saveNextRun = save.nextRunAt;
+    const shutdownNextRun = shutdown.nextRunAt;
+
+    assert.equal((await scheduler.runNow(save.id)).result, "success");
+    assert.equal((await scheduler.runNow(shutdown.id)).result, "success");
+    assert.deepEqual(calls, [
+      `save:${connection.id}`,
+      "shutdown:60:Maintenance",
+    ]);
+    assert.equal((await service.get(save.id)).nextRunAt, saveNextRun);
+    assert.equal((await service.get(shutdown.id)).nextRunAt, shutdownNextRun);
+
+    automation.close();
+    automation.reopen();
+    assert.equal((await service.get(save.id)).taskType, "save_world");
+    assert.deepEqual((await service.get(shutdown.id)).configuration, {
+      waitTime: 60,
+      message: "Maintenance",
+    });
   } finally {
     automation.close();
     history.close();

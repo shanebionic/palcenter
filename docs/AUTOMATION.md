@@ -5,19 +5,37 @@ configured Palworld server. Automation is available to view for all signed-in
 roles. Only Administrators can create, edit, enable, disable, run, or delete
 tasks.
 
-## Broadcast messages
+## Supported server operations
 
-Broadcast Message is the first supported task type. To create one:
+PalCenter v1.3 supports exactly three automation task types:
+
+- **Broadcast Message** sends a required player-facing message of up to 500
+  characters.
+- **Save World** asks Palworld to save the current world state and has no
+  task-specific settings.
+- **Graceful Shutdown** sends the official Palworld shutdown request. Configure
+  an integer wait time from 0 through 86,400 seconds and an optional
+  player-facing message of up to 500 characters.
+
+To create a task:
 
 1. Open **Automation** and select **New Task**.
 2. Select the Palworld server.
-3. Select **Broadcast Message**.
-4. Enter a task name, player-facing message, schedule, and time zone.
+3. Select the server operation.
+4. Enter a task name, its operation-specific settings, schedule, and time zone.
 5. Choose whether the task should be enabled immediately.
 
-Use **Run Now** from a task's action menu to test the message without changing
-its schedule. The manual execution is recorded in task history, but the
-calculated next scheduled run remains unchanged.
+Use **Run Now** from a task's action menu to execute it without changing its
+schedule. The manual execution is recorded in task history, but the calculated
+next scheduled run remains unchanged. Graceful Shutdown requires confirmation
+because players may be disconnected; the confirmation shows the wait time and
+optional message.
+
+Graceful Shutdown is not a restart command. Palworld does not currently expose
+an official restart REST operation. A compatible process or container restart
+policy, such as Docker `restart: unless-stopped`, may start the server process
+again after shutdown, but that behavior belongs to the deployment and is not
+controlled by PalCenter or the Palworld REST API.
 
 ## Scheduling
 
@@ -64,6 +82,12 @@ When that execution finishes, future runs align with start minute `0`. Editing,
 disabling and re-enabling, or otherwise saving a legacy task also persists
 start minute `0` and immediately recalculates the next aligned run.
 
+Broadcast tasks created before Save World and Graceful Shutdown support remain
+compatible without a database migration. Task types and configuration use the
+existing generic SQLite columns. Backups already contain `history.sqlite`, so
+all supported tasks and their execution records survive backup, restore, and
+container recreation.
+
 ## Results and troubleshooting
 
 The task table shows the most recent run, next scheduled run, and last result.
@@ -73,8 +97,8 @@ A failed task remains available and future scheduled runs continue. Check that:
 - its REST API is reachable from the PalCenter container;
 - the stored Palworld administrator password is still valid.
 
-Execution metadata and errors are stored in `history.sqlite`. Broadcast content
-is task configuration and is included in authenticated PalCenter backups.
+Execution metadata and errors are stored in `history.sqlite`. Task
+configuration is included in authenticated PalCenter backups.
 
 ## Operations
 

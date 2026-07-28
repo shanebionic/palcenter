@@ -1,4 +1,8 @@
-import type { AutomationSchedule } from "../types/automation";
+import type {
+  AutomationSchedule,
+  AutomationTask,
+  AutomationTaskType,
+} from "../types/automation";
 
 const days = [
   "Sunday",
@@ -90,8 +94,46 @@ export function formatDateTime(value: string | null): string {
       }).format(date);
 }
 
-export function taskTypeLabel(): string {
-  return "Broadcast Message";
+export function taskTypeLabel(taskType: AutomationTaskType): string {
+  switch (taskType) {
+    case "broadcast_message":
+      return "Broadcast Message";
+    case "save_world":
+      return "Save World";
+    case "shutdown":
+      return "Graceful Shutdown";
+  }
+}
+
+export function taskConfigurationSummary(task: AutomationTask): string {
+  switch (task.taskType) {
+    case "broadcast_message":
+      return truncate(task.configuration.message, 80);
+    case "save_world":
+      return "Save the current world state";
+    case "shutdown": {
+      const wait = `${task.configuration.waitTime} second${
+        task.configuration.waitTime === 1 ? "" : "s"
+      }`;
+      const message = task.configuration.message?.trim();
+      return message
+        ? `Wait ${wait} · ${truncate(message, 60)}`
+        : `Wait ${wait}`;
+    }
+  }
+}
+
+export function runNowConfirmation(task: AutomationTask): string | null {
+  if (task.taskType !== "shutdown") return null;
+
+  const configuredMessage = task.configuration.message?.trim();
+  return [
+    `Run “${task.name}” now?`,
+    `Palworld will shut down after ${task.configuration.waitTime} seconds and connected players may be disconnected.`,
+    configuredMessage ? `Player message: ${configuredMessage}` : null,
+  ]
+    .filter((value): value is string => value !== null)
+    .join("\n\n");
 }
 
 function greatestCommonDivisor(left: number, right: number): number {
@@ -105,4 +147,8 @@ function joinList(values: string[]): string {
   if (values.length <= 1) return values[0] ?? "";
   if (values.length === 2) return `${values[0]} and ${values[1]}`;
   return `${values.slice(0, -1).join(", ")} and ${values.at(-1)}`;
+}
+
+function truncate(value: string, length: number): string {
+  return value.length > length ? `${value.slice(0, length - 1)}…` : value;
 }
