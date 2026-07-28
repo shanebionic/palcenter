@@ -72,6 +72,20 @@ export class JsonConnectionRepository implements ConnectionRepository {
     await this.write(file);
   }
 
+  async update(connection: StoredConnection): Promise<void> {
+    const file = await this.read();
+    const index = file.servers.findIndex(
+      (server) => server.id === connection.id,
+    );
+
+    if (index === -1) {
+      throw new Error(`Connection "${connection.id}" was not found.`);
+    }
+
+    file.servers[index] = { ...connection };
+    await this.write(file);
+  }
+
   async delete(id: string): Promise<void> {
     const file = await this.read();
     const servers = file.servers.filter((server) => server.id !== id);

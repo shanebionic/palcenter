@@ -13,6 +13,18 @@ export interface AddConnectionInput {
   adminPassword: string;
 }
 
+export interface UpdateConnectionInput {
+  name: string;
+  baseUrl: string;
+  adminPassword?: string;
+}
+
+export class ConnectionNotFoundError extends Error {
+  constructor() {
+    super("The requested server does not exist.");
+  }
+}
+
 export class ConnectionManager {
   constructor(private readonly repository: ConnectionRepository) {}
 
@@ -34,6 +46,20 @@ export class ConnectionManager {
     return client.testConnection();
   }
 
+  async testUpdate(
+    id: string,
+    baseUrl: string,
+    adminPassword?: string,
+  ): Promise<ConnectionTestResult> {
+    const connection = await this.requireConnection(id);
+    return this.test(
+      baseUrl,
+      adminPassword === undefined || adminPassword === ""
+        ? connection.adminPassword
+        : adminPassword,
+    );
+  }
+
   async add(input: AddConnectionInput): Promise<PublicConnection> {
     await this.test(input.baseUrl, input.adminPassword);
 
@@ -51,6 +77,31 @@ export class ConnectionManager {
     await this.repository.create(connection);
 
     return this.sanitize(connection);
+  }
+
+  async update(
+    id: string,
+    input: UpdateConnectionInput,
+  ): Promise<PublicConnection> {
+    const existing = await this.requireConnection(id);
+    const connection: StoredConnection = {
+      ...existing,
+      name: input.name.trim(),
+      baseUrl: input.baseUrl.replace(/\/+$/, ""),
+      adminPassword:
+        input.adminPassword === undefined || input.adminPassword === ""
+          ? existing.adminPassword
+          : input.adminPassword,
+      updatedAt: new Date().toISOString(),
+    };
+    await this.repository.update(connection);
+    return this.sanitize(connection);
+  }
+
+  private async requireConnection(id: string): Promise<StoredConnection> {
+    const connection = await this.repository.get(id);
+    if (!connection) throw new ConnectionNotFoundError();
+    return connection;
   }
 
   private sanitize(connection: StoredConnection): PublicConnection {

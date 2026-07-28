@@ -5,5 +5,6 @@ export interface ConnectionRepository {
   list(): Promise<StoredConnection[]>;
   get(id: string): Promise<StoredConnection | null>;
   create(connection: StoredConnection): Promise<void>;
+  update(connection: StoredConnection): Promise<void>;
   delete(id: string): Promise<void>;
 }

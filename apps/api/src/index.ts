@@ -10,7 +10,10 @@ import { SqliteAutomationRepository } from "./repositories/sqlite-automation-rep
 import { SqliteHistoryRepository } from "./repositories/sqlite-history-repository.js";
 import { SqliteUserRepository } from "./repositories/sqlite-user-repository.js";
 import { SystemConfigurationRepository } from "./repositories/system-configuration-repository.js";
-import { ConnectionManager } from "./services/connection-manager.js";
+import {
+  ConnectionManager,
+  ConnectionNotFoundError,
+} from "./services/connection-manager.js";
 import {
   NotificationConfigurationError,
   NotificationNotFoundError,
@@ -761,6 +764,9 @@ const connectionInputSchema = z
     adminPassword: z.string().min(1).max(1_024),
   })
   .strict();
+const connectionUpdateSchema = connectionInputSchema.extend({
+  adminPassword: z.string().max(1_024).optional(),
+});
 const serverIdSchema = z.object({
   id: z.string().min(1),
 });
@@ -776,6 +782,24 @@ app.post("/api/servers", async (request, reply) => {
   const connection = await connectionManager.add(input);
 
   return reply.code(201).send(connection);
+});
+
+app.post("/api/servers/:id/test", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  const input = connectionUpdateSchema.omit({ name: true }).parse(request.body);
+  return connectionManager.testUpdate(
+    parameters.id,
+    input.baseUrl,
+    input.adminPassword,
+  );
+});
+
+app.put("/api/servers/:id", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  return connectionManager.update(
+    parameters.id,
+    connectionUpdateSchema.parse(request.body),
+  );
 });
 
 app.delete("/api/servers/:id", async (request, reply) => {
@@ -1127,7 +1151,8 @@ app.setErrorHandler((error, request, reply) => {
     error instanceof PlayerServerNotFoundError ||
     error instanceof SettingsServerNotFoundError ||
     error instanceof HistoryServerNotFoundError ||
-    error instanceof RemovalServerNotFoundError
+    error instanceof RemovalServerNotFoundError ||
+    error instanceof ConnectionNotFoundError
   ) {
     return reply.code(404).send({
       error: "server_not_found",
