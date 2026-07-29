@@ -148,6 +148,9 @@ issue.
 
 ## License
 
-PalCenter is licensed under the MIT License.
+PalCenter's original code and documentation are licensed under the MIT License.
+Separately identified third-party assets are excluded. In particular, the
+bundled Palpagos map remains copyright Pocketpair, Inc.
 
-See [LICENSE](LICENSE) for details.
+See [LICENSE](LICENSE) and [THIRD_PARTY_ASSETS.md](THIRD_PARTY_ASSETS.md) for
+details, attribution, and rights/removal contact information.

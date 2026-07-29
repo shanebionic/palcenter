@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import {
+  worldMapAssetPath,
+  worldMapLayerClasses,
+} from "../lib/world-map/layers";
 import {
   buildLivePlayerMapModel,
   calibrationRecord,
@@ -16,6 +22,53 @@ import {
   type MapProjectionConfiguration,
 } from "../lib/world-map/projection";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
+
+test("bundles the attributed Palpagos map locally with verified metadata", async () => {
+  const assetDirectory = new URL(
+    "../public/world-maps/palpagos/",
+    import.meta.url,
+  );
+  const [asset, source] = await Promise.all([
+    readFile(new URL("world-map.webp", assetDirectory)),
+    readFile(new URL("source.json", assetDirectory), "utf8"),
+  ]);
+  const metadata = JSON.parse(source) as {
+    sourceFilePage: string;
+    dimensions: { width: number; height: number };
+    bundledSha256: string;
+  };
+
+  assert.equal(worldMapAssetPath, "/world-maps/palpagos/world-map.webp");
+  assert.equal(metadata.sourceFilePage.startsWith("https://"), true);
+  assert.deepEqual(metadata.dimensions, { width: 8192, height: 8192 });
+  assert.equal(
+    createHash("sha256").update(asset).digest("hex"),
+    metadata.bundledSha256,
+  );
+});
+
+test("serves bundled world maps without an authentication redirect", async () => {
+  const proxySource = await readFile(
+    new URL("../proxy.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(proxySource, /\(\?!api\|assets\|world-maps\|/);
+});
+
+test("selects map and calibration grid layers without changing projection", () => {
+  assert.equal(
+    worldMapLayerClasses("map"),
+    "pc-world-map-surface pc-world-map-surface-map",
+  );
+  assert.equal(
+    worldMapLayerClasses("grid"),
+    "pc-world-map-surface pc-world-map-surface-grid",
+  );
+  assert.equal(
+    worldMapLayerClasses("map-with-grid"),
+    "pc-world-map-surface pc-world-map-surface-map pc-world-map-surface-grid",
+  );
+});
 
 test("projects the documented world bounds and center onto the map", () => {
   assert.deepEqual(

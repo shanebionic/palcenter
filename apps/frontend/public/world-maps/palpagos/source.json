@@ -1,0 +1,17 @@
+{
+  "asset": "world-map.webp",
+  "title": "World Map",
+  "copyrightHolder": "Pocketpair, Inc.",
+  "sourceFilePage": "https://palworld.wiki.gg/wiki/File:World_Map.webp",
+  "sourceFileUrl": "https://palworld.wiki.gg/images/World_Map.webp?b0143b",
+  "retrievedAt": "2026-07-28",
+  "dimensions": {
+    "width": 8192,
+    "height": 8192
+  },
+  "mediaType": "image/webp",
+  "sourceSha1": "b0143b6e44a40b821b53f129f12d8f53ca50c433",
+  "bundledSha256": "b6ed5baa418332a183e2642f250a239a15efb1488d7783d8f289921254e49896",
+  "attribution": "Palworld and the Palpagos map are copyright Pocketpair, Inc. Source copy retrieved from The Palworld Wiki.",
+  "sourceNoticeSummary": "The source file page identifies Pocketpair as copyright holder and describes the wiki's illustrative use as fair use under United States copyright law."
+}

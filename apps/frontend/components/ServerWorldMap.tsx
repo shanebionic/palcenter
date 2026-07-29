@@ -11,6 +11,7 @@ import {
   Group,
   Loader,
   Paper,
+  Select,
   SimpleGrid,
   Stack,
   Switch,
@@ -24,6 +25,7 @@ import {
   IconMinus,
   IconPlus,
 } from "@tabler/icons-react";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getPlayers, getPlayerTelemetry } from "../lib/api";
 import {
@@ -34,6 +36,11 @@ import {
   telemetryFreshnessLabel,
   type LivePlayerMapMarker,
 } from "../lib/world-map/model";
+import {
+  worldMapAssetPath,
+  worldMapLayerClasses,
+  type WorldMapLayer,
+} from "../lib/world-map/layers";
 import { palpagosProjection } from "../lib/world-map/projection";
 import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
 
@@ -68,6 +75,7 @@ export function ServerWorldMap({
   const [playerRequestFailed, setPlayerRequestFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [calibrating, setCalibrating] = useState(false);
+  const [mapLayer, setMapLayer] = useState<WorldMapLayer>("map");
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
@@ -226,6 +234,23 @@ export function ServerWorldMap({
         </div>
         <Group gap="sm">
           {canCalibrate && (
+            <Select
+              label="Map layer"
+              aria-label="Map layer"
+              value={mapLayer}
+              onChange={(value) =>
+                setMapLayer((value as WorldMapLayer | null) ?? "map")
+              }
+              allowDeselect={false}
+              w={190}
+              data={[
+                { value: "map", label: "Palpagos map" },
+                { value: "grid", label: "Calibration grid" },
+                { value: "map-with-grid", label: "Map with grid overlay" },
+              ]}
+            />
+          )}
+          {canCalibrate && (
             <Switch
               label="Calibration"
               checked={calibrating}
@@ -347,14 +372,30 @@ export function ServerWorldMap({
               }}
             >
               <div
-                className="pc-world-map-surface"
+                className={worldMapLayerClasses(mapLayer)}
                 style={{
                   transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                 }}
               >
-                <div className="pc-world-map-label">
-                  PALPAGOS CALIBRATION GRID
-                </div>
+                {mapLayer !== "grid" && (
+                  <Image
+                    className="pc-world-map-image"
+                    src={worldMapAssetPath}
+                    alt=""
+                    draggable={false}
+                    fill
+                    sizes="(max-width: 62em) 100vw, 50vw"
+                    unoptimized
+                  />
+                )}
+                {mapLayer !== "map" && (
+                  <>
+                    <div className="pc-world-map-grid" aria-hidden="true" />
+                    <div className="pc-world-map-label">
+                      PALPAGOS CALIBRATION GRID
+                    </div>
+                  </>
+                )}
                 {model.markers.map((marker) => (
                   <button
                     key={marker.userId}
@@ -382,6 +423,10 @@ export function ServerWorldMap({
             <Text size="xs" c="dimmed" mt="xs">
               Scroll to zoom. Drag while zoomed to pan. Use marker buttons for
               player details.
+            </Text>
+            <Text size="xs" c="dimmed" mt="xs">
+              Palworld and the Palpagos map are copyright Pocketpair, Inc.
+              PalCenter is an unofficial community project.
             </Text>
           </Card>
 
