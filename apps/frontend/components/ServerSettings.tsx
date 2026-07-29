@@ -3,7 +3,6 @@
 import {
   Alert,
   Button,
-  Card,
   Center,
   Group,
   Loader,
@@ -17,6 +16,8 @@ import { useCallback, useEffect, useState } from "react";
 import { getServerSettings } from "../lib/api";
 import { passwordProtectionPresentation } from "../lib/server-password-status";
 import type { ServerSettings as ServerSettingsData } from "../types/servers";
+import { SectionCard } from "./ui/SectionCard";
+import { SectionHeader } from "./ui/SectionHeader";
 
 interface ServerSettingsProps {
   serverId: string;
@@ -45,12 +46,12 @@ function SettingValue({ label, value }: SettingValueProps) {
 
 function SettingsSection({ title, children }: SettingsSectionProps) {
   return (
-    <Card withBorder radius="md" padding="lg">
+    <SectionCard>
       <Stack>
         <Title order={3}>{title}</Title>
         <SimpleGrid cols={{ base: 1, sm: 2 }}>{children}</SimpleGrid>
       </Stack>
-    </Card>
+    </SectionCard>
   );
 }
 
@@ -105,20 +106,20 @@ export function ServerSettings({ serverId }: ServerSettingsProps) {
 
   return (
     <Stack gap="lg" pt="lg">
-      <Group justify="space-between" align="flex-end">
-        <div>
-          <Title order={2}>Settings</Title>
-          <Text c="dimmed">Read-only Palworld server configuration.</Text>
-        </div>
-        <Button
-          variant="light"
-          onClick={() => loadSettings(true)}
-          loading={refreshing}
-          disabled={loading}
-        >
-          Refresh
-        </Button>
-      </Group>
+      <SectionHeader
+        title="Settings"
+        description="Read-only Palworld server configuration."
+        action={
+          <Button
+            variant="light"
+            onClick={() => loadSettings(true)}
+            loading={refreshing}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+        }
+      />
 
       {error && <Alert color="red">{error}</Alert>}
 

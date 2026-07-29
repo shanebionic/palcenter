@@ -4,7 +4,6 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   Group,
   Modal,
   PasswordInput,
@@ -20,6 +19,7 @@ import { deleteUser, getUsers, resetUserPassword } from "../lib/api";
 import type { UserProfile } from "../types/servers";
 import { PageHeader } from "./PageHeader";
 import { UserDialog } from "./UserDialog";
+import { SectionCard } from "./ui/SectionCard";
 
 export function UserManagement() {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -129,7 +129,7 @@ export function UserManagement() {
         ) : (
           <SimpleGrid cols={{ base: 1, md: 2 }}>
             {users.map((user) => (
-              <Card key={user.id} withBorder radius="md" p="lg">
+              <SectionCard key={user.id}>
                 <Stack>
                   <Group justify="space-between">
                     <div>
@@ -185,7 +185,7 @@ export function UserManagement() {
                     </Button>
                   </Group>
                 </Stack>
-              </Card>
+              </SectionCard>
             ))}
           </SimpleGrid>
         )}

@@ -1,7 +1,6 @@
 import {
   Badge,
   Button,
-  Card,
   Group,
   Loader,
   Stack,
@@ -10,6 +9,7 @@ import {
 } from "@mantine/core";
 import { notificationEventLabel } from "../lib/notification-events";
 import type { NotificationConfiguration } from "../types/servers";
+import { SectionCard } from "./ui/SectionCard";
 
 interface NotificationProviderCardProps {
   provider: NotificationConfiguration;
@@ -29,7 +29,7 @@ export function NotificationProviderCard({
   onTest,
 }: NotificationProviderCardProps) {
   return (
-    <Card withBorder radius="md" p="lg">
+    <SectionCard>
       <Stack h="100%">
         <Group justify="space-between" align="flex-start">
           <div>
@@ -104,6 +104,6 @@ export function NotificationProviderCard({
           </Button>
         </Group>
       </Stack>
-    </Card>
+    </SectionCard>
   );
 }

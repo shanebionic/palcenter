@@ -3,7 +3,6 @@
 import {
   Alert,
   Button,
-  Card,
   Group,
   Modal,
   SimpleGrid,
@@ -27,6 +26,7 @@ import type {
 import { PageHeader } from "./PageHeader";
 import { NotificationProviderCard } from "./NotificationProviderCard";
 import { NotificationProviderDialog } from "./NotificationProviderDialog";
+import { SectionCard } from "./ui/SectionCard";
 
 function updateInput(
   provider: NotificationConfiguration,
@@ -180,7 +180,7 @@ export function NotificationSettings() {
             <Skeleton height={220} radius="md" />
           </SimpleGrid>
         ) : providers.length === 0 ? (
-          <Card withBorder radius="md" p="xl">
+          <SectionCard p="xl">
             <Stack align="center">
               <Title order={3}>No notification providers configured</Title>
               <Text c="dimmed" ta="center">
@@ -188,7 +188,7 @@ export function NotificationSettings() {
               </Text>
               <Button onClick={openAdd}>Add Provider</Button>
             </Stack>
-          </Card>
+          </SectionCard>
         ) : (
           <SimpleGrid cols={{ base: 1, md: 2 }}>
             {providers.map((provider) => {

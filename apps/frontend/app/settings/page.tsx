@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Button, SimpleGrid, Stack, Text } from "@mantine/core";
 import {
   IconBell,
   IconDatabaseExport,
@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ApplicationShell } from "../../components/ApplicationShell";
 import { PageHeader } from "../../components/PageHeader";
+import { SectionCard } from "../../components/ui/SectionCard";
 import { getSession } from "../../lib/api";
 
 const administratorSettings = [
@@ -63,7 +64,7 @@ export default function SettingsPage() {
         />
         <SimpleGrid cols={{ base: 1, md: 2 }}>
           {settings.map(({ href, title, description, icon: Icon }) => (
-            <Card key={href} className="pc-panel" withBorder radius="lg" p="xl">
+            <SectionCard key={href} p="xl">
               <Stack align="flex-start">
                 <Icon size={26} color="var(--mantine-color-cyan-4)" />
                 <div>
@@ -78,7 +79,7 @@ export default function SettingsPage() {
                   Open
                 </Button>
               </Stack>
-            </Card>
+            </SectionCard>
           ))}
         </SimpleGrid>
       </Stack>

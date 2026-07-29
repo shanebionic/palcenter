@@ -97,6 +97,82 @@ a {
   box-shadow: 0 20px 55px rgba(0, 0, 0, 0.18);
 }
 
+.pc-page-header {
+  padding-bottom: 0.25rem;
+}
+
+.pc-workspace-tabs {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pc-workspace-tabs > [role="tablist"] {
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  gap: 0.2rem;
+  padding: 0.3rem;
+  overflow-x: auto;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: var(--mantine-radius-lg);
+  background: rgba(11, 18, 29, 0.72);
+}
+
+.pc-workspace-tabs [role="tab"] {
+  flex: 0 0 auto;
+  border-radius: var(--mantine-radius-md);
+}
+
+.pc-workspace-tabs [role="tab"][data-active] {
+  color: var(--mantine-color-cyan-2);
+  background: rgba(8, 184, 245, 0.12);
+}
+
+.pc-section-header {
+  padding-bottom: 0.15rem;
+}
+
+.pc-danger-card {
+  border-color: rgba(248, 113, 113, 0.38);
+  background: linear-gradient(
+    145deg,
+    rgba(55, 24, 31, 0.88),
+    rgba(25, 16, 24, 0.96)
+  );
+  box-shadow: 0 20px 55px rgba(20, 4, 8, 0.22);
+}
+
+.pc-panel:focus-within {
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+.pc-stat-card-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.pc-stat-card-value {
+  overflow-wrap: anywhere;
+}
+
+.pc-stat-card-icon {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 48em) {
+  .pc-page-header.pc-page-header,
+  .pc-section-header.pc-section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pc-page-header > :last-child,
+  .pc-section-header > :last-child {
+    align-self: flex-start;
+  }
+}
+
 .pc-server-card {
   position: relative;
   overflow: hidden;

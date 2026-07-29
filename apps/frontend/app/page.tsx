@@ -4,7 +4,6 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   Group,
   SimpleGrid,
   Stack,
@@ -24,35 +23,9 @@ import { BrandedLoader } from "../components/BrandedLoader";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { ServerCard } from "../components/ServerCard";
+import { StatCard } from "../components/ui/StatCard";
 import { getServerStatus, getSession, type AuthSession } from "../lib/api";
 import type { ServerStatus } from "../types/servers";
-
-interface SummaryProps {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  color: string;
-}
-
-function Summary({ label, value, icon, color }: SummaryProps) {
-  return (
-    <Card className="pc-panel" withBorder radius="lg" p="lg">
-      <Group justify="space-between" wrap="nowrap">
-        <div>
-          <Text size="xs" c="dimmed" tt="uppercase" fw={700} lts={1}>
-            {label}
-          </Text>
-          <Text size="xl" fw={750} mt={4}>
-            {value}
-          </Text>
-        </div>
-        <Badge circle size="xl" color={color} variant="light">
-          {icon}
-        </Badge>
-      </Group>
-    </Card>
-  );
-}
 
 export default function HomePage() {
   const [dialogOpened, dialog] = useDisclosure(false);
@@ -149,25 +122,25 @@ export default function HomePage() {
         ) : (
           <>
             <SimpleGrid cols={{ base: 2, lg: 4 }}>
-              <Summary
+              <StatCard
                 label="Configured"
                 value={String(servers.length)}
                 icon={<IconServer size={20} />}
                 color="cyan"
               />
-              <Summary
+              <StatCard
                 label="Online"
                 value={`${summary.online}/${servers.length}`}
                 icon={<IconActivityHeartbeat size={20} />}
                 color="green"
               />
-              <Summary
+              <StatCard
                 label="Active Players"
                 value={String(summary.players)}
                 icon={<IconUsers size={20} />}
                 color="blue"
               />
-              <Summary
+              <StatCard
                 label="Avg. Response"
                 value={averageResponse}
                 icon={<IconActivityHeartbeat size={20} />}

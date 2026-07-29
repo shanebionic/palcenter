@@ -4,7 +4,6 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   Center,
   Group,
   Loader,
@@ -25,6 +24,8 @@ import {
   kickPlayer,
 } from "../lib/api";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
+import { SectionCard } from "./ui/SectionCard";
+import { SectionHeader } from "./ui/SectionHeader";
 
 type PlayerAction = "kick" | "ban";
 
@@ -156,20 +157,20 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
   return (
     <>
       <Stack gap="lg" pt="lg">
-        <Group justify="space-between" align="flex-end">
-          <div>
-            <Title order={2}>Players</Title>
-            <Text c="dimmed">View and manage connected players.</Text>
-          </div>
-          <Button
-            variant="light"
-            onClick={() => loadPlayers(true)}
-            loading={refreshing}
-            disabled={loading || submitting}
-          >
-            Refresh
-          </Button>
-        </Group>
+        <SectionHeader
+          title="Players"
+          description="View and manage connected players."
+          action={
+            <Button
+              variant="light"
+              onClick={() => loadPlayers(true)}
+              loading={refreshing}
+              disabled={loading || submitting}
+            >
+              Refresh
+            </Button>
+          }
+        />
 
         {error && <Alert color="red">{error}</Alert>}
 
@@ -185,18 +186,18 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
             <Loader />
           </Center>
         ) : players.length === 0 ? (
-          <Card withBorder radius="md" padding="xl">
+          <SectionCard p="xl">
             <Center mih={120}>
               <Stack align="center" gap="xs">
                 <Title order={3}>No players online</Title>
                 <Text c="dimmed">Connected players will appear here.</Text>
               </Stack>
             </Center>
-          </Card>
+          </SectionCard>
         ) : filteredPlayers.length === 0 ? (
           <Alert color="gray">No players match your search.</Alert>
         ) : (
-          <Card withBorder radius="md" padding={0}>
+          <SectionCard p={0}>
             <ScrollArea>
               <Table striped highlightOnHover miw={960}>
                 <Table.Thead>
@@ -268,7 +269,7 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
                 </Table.Tbody>
               </Table>
             </ScrollArea>
-          </Card>
+          </SectionCard>
         )}
       </Stack>
 

@@ -3,7 +3,6 @@
 import {
   Alert,
   Button,
-  Card,
   Group,
   Modal,
   NumberInput,
@@ -15,6 +14,8 @@ import {
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { announce, saveWorld, shutdown, stop } from "../lib/api";
+import { SectionCard } from "./ui/SectionCard";
+import { SectionHeader } from "./ui/SectionHeader";
 
 const messageLimit = 500;
 
@@ -126,9 +127,12 @@ export function ServerAdministration({
   return (
     <>
       <Stack gap="lg" pt="lg">
-        <Title order={2}>Administration</Title>
+        <SectionHeader
+          title="Administration"
+          description="Run immediate server operations through the Palworld REST API."
+        />
 
-        <Card withBorder padding="lg" radius="md">
+        <SectionCard>
           <Stack>
             <div>
               <Title order={3}>Broadcast</Title>
@@ -156,9 +160,9 @@ export function ServerAdministration({
               </Button>
             </Group>
           </Stack>
-        </Card>
+        </SectionCard>
 
-        <Card withBorder padding="lg" radius="md">
+        <SectionCard>
           <Group justify="space-between" align="flex-end">
             <div>
               <Title order={3}>Save World</Title>
@@ -174,9 +178,9 @@ export function ServerAdministration({
               Save World
             </Button>
           </Group>
-        </Card>
+        </SectionCard>
 
-        <Card withBorder padding="lg" radius="md">
+        <SectionCard>
           <Stack>
             <div>
               <Title order={3}>Server Shutdown</Title>
@@ -230,7 +234,7 @@ export function ServerAdministration({
               be lost.
             </Alert>
           </Stack>
-        </Card>
+        </SectionCard>
       </Stack>
 
       <Modal

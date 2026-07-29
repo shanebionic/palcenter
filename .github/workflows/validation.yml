@@ -62,6 +62,9 @@ jobs:
       - name: Verify production CSS delivery
         run: pnpm --filter web test:production-css
 
+      - name: Verify shared UI surfaces
+        run: pnpm --filter web test:ui
+
   docker:
     name: Build production image
     runs-on: ubuntu-24.04

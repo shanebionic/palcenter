@@ -45,6 +45,10 @@ docker build .
 Changes to deployment documentation should also be checked against the current
 Docker Compose file and release image behavior.
 
+Frontend changes should follow the shared
+[design conventions](docs/FRONTEND-DESIGN.md) so new pages remain consistent
+with the existing PalCenter interface.
+
 ## Pull requests
 
 - Keep each pull request focused on one issue.

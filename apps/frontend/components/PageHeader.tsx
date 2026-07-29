@@ -15,7 +15,12 @@ export function PageHeader({
   action,
 }: PageHeaderProps) {
   return (
-    <Group justify="space-between" align="flex-end" gap="lg">
+    <Group
+      className="pc-page-header"
+      justify="space-between"
+      align="flex-end"
+      gap="lg"
+    >
       <Stack gap={5}>
         {eyebrow && (
           <Text size="xs" tt="uppercase" fw={700} c="cyan.4" lts={1.4}>
