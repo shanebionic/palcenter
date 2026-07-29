@@ -37,6 +37,14 @@ export function clampMapZoom(zoom: number): number {
   return Math.min(maximumMapZoom, Math.max(minimumMapZoom, zoom));
 }
 
+export function markerInverseScale(zoom: number): number {
+  const safeZoom =
+    Number.isFinite(zoom) && zoom >= minimumMapZoom
+      ? Math.min(maximumMapZoom, zoom)
+      : minimumMapZoom;
+  return 1 / safeZoom;
+}
+
 export function constrainMapPan(
   pan: MapPan,
   viewport: MapSize,

@@ -138,7 +138,8 @@ of the map recoverable, and Fit Map restores the complete square coordinate
 plane after navigation. Marker buttons are keyboard focusable, have one
 accessible name, and retain a visible focus indicator. Player labels preserve
 the capitalization returned by Palworld and truncate safely when space is
-limited.
+limited. Marker icons and labels retain their Fit Map screen-space size while
+their geographic anchors continue to follow map zoom and pan.
 
 ## Administrator calibration
 

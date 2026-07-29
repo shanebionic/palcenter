@@ -26,14 +26,7 @@ import {
   IconMinus,
   IconPlus,
 } from "@tabler/icons-react";
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getPlayers, getPlayerTelemetry } from "../lib/api";
 import {
   buildLivePlayerMapModel,
@@ -50,6 +43,7 @@ import {
   constrainMapPan,
   fitMapView,
   mapSurfaceSize,
+  markerInverseScale,
   rectanglesIntersect,
   zoomMapAtPointer,
   type MapPan,
@@ -673,35 +667,41 @@ export function ServerWorldMap({
                     marker.playerName,
                   );
                   return (
-                    <Fragment key={marker.userId}>
-                      <button
-                        type="button"
-                        data-player-id={marker.userId}
-                        className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                    <div
+                      key={marker.userId}
+                      className="pc-world-map-marker-position"
+                      style={{
+                        left: `${marker.position.x * 100}%`,
+                        top: `${marker.position.y * 100}%`,
+                      }}
+                    >
+                      <div
+                        className="pc-world-map-marker-visual"
                         style={{
-                          left: `${marker.position.x * 100}%`,
-                          top: `${marker.position.y * 100}%`,
-                        }}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedId(marker.userId);
-                        }}
-                        aria-label={presentation.accessibleName}
-                        aria-pressed={selected?.userId === marker.userId}
-                      >
-                        <span aria-hidden="true">{presentation.initial}</span>
-                      </button>
-                      <span
-                        className="pc-world-map-marker-label"
-                        aria-hidden="true"
-                        style={{
-                          left: `${marker.position.x * 100}%`,
-                          top: `${marker.position.y * 100}%`,
+                          transform: `scale(${markerInverseScale(zoom)})`,
                         }}
                       >
-                        {presentation.displayName}
-                      </span>
-                    </Fragment>
+                        <button
+                          type="button"
+                          data-player-id={marker.userId}
+                          className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedId(marker.userId);
+                          }}
+                          aria-label={presentation.accessibleName}
+                          aria-pressed={selected?.userId === marker.userId}
+                        >
+                          <span aria-hidden="true">{presentation.initial}</span>
+                        </button>
+                        <span
+                          className="pc-world-map-marker-label"
+                          aria-hidden="true"
+                        >
+                          {presentation.displayName}
+                        </span>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
