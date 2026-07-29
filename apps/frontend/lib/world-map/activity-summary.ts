@@ -35,14 +35,16 @@ export interface MovementStatistics {
   firstActivityAt: string;
   lastActivityAt: string;
   activeDurationMs: number;
+  movingDurationMs: number;
+  stationaryDurationMs: number;
   samplesCollected: number;
   renderedTrailSegments: number;
   approximateTravelDistance: number;
   averageMovementSpeed: number;
   maximumMovementSpeed: number;
   longestStationaryPeriodMs: number;
-  disconnectedPathCount: number;
-  teleportOrGapCount: number;
+  disconnectCount: number;
+  excludedTeleportCount: number;
   currentlyOnline: boolean;
   currentPositionAgeMs: number;
   movementPercentage: number;
@@ -87,6 +89,7 @@ interface ValidActivityPoint {
 }
 
 interface MovementInterval {
+  pathIndex: number;
   start: ValidActivityPoint;
   end: ValidActivityPoint;
   durationMs: number;
@@ -117,6 +120,7 @@ export function buildPlayerActivitySummary(
     before: ValidActivityPoint;
     after: ValidActivityPoint;
   }> = [];
+  let pathIndex = 0;
 
   for (let index = 1; index < validPoints.length; index += 1) {
     const start = validPoints[index - 1] as ValidActivityPoint;
@@ -126,14 +130,17 @@ export function buildPlayerActivitySummary(
     if (durationMs <= 0) continue;
     if (durationMs > gapMs) {
       disconnects.push({ before: start, after: end });
+      pathIndex += 1;
       continue;
     }
     if (distance > 200_000) {
       teleports.push({ before: start, after: end });
+      pathIndex += 1;
       continue;
     }
 
     intervals.push({
+      pathIndex,
       start,
       end,
       durationMs,
@@ -152,6 +159,7 @@ export function buildPlayerActivitySummary(
   const movingDurationMs = intervals
     .filter(({ moving }) => moving)
     .reduce((total, interval) => total + interval.durationMs, 0);
+  const stationaryDurationMs = activeDurationMs - movingDurationMs;
   const travelDistance = intervals.reduce(
     (total, interval) => total + interval.distance,
     0,
@@ -167,25 +175,26 @@ export function buildPlayerActivitySummary(
   const currentPositionAgeMs = Number.isFinite(positionTimestamp)
     ? Math.max(0, now.getTime() - positionTimestamp)
     : 0;
-  const disconnectedPathCount = disconnects.length;
-  const teleportOrGapCount = disconnects.length + teleports.length;
   const statistics: MovementStatistics = {
     timeWindowMs: Math.max(0, lastPoint.timestamp - firstPoint.timestamp),
     firstActivityAt: firstPoint.capturedAt,
     lastActivityAt: lastPoint.capturedAt,
     activeDurationMs,
+    movingDurationMs,
+    stationaryDurationMs,
     samplesCollected: validPoints.length,
     renderedTrailSegments: input.renderedTrailSegments,
     approximateTravelDistance: travelDistance,
     averageMovementSpeed:
-      activeDurationMs > 0 ? travelDistance / (activeDurationMs / 1_000) : 0,
+      movingDurationMs > 0 ? travelDistance / (movingDurationMs / 1_000) : 0,
     maximumMovementSpeed: intervals.reduce(
-      (maximum, interval) => Math.max(maximum, interval.speed),
+      (maximum, interval) =>
+        interval.moving ? Math.max(maximum, interval.speed) : maximum,
       0,
     ),
     longestStationaryPeriodMs,
-    disconnectedPathCount,
-    teleportOrGapCount,
+    disconnectCount: disconnects.length,
+    excludedTeleportCount: teleports.length,
     currentlyOnline: input.currentlyOnline,
     currentPositionAgeMs,
     movementPercentage,
@@ -269,7 +278,12 @@ function validActivityPoint(
 function longestStationaryPeriod(intervals: MovementInterval[]): number {
   let longest = 0;
   let current = 0;
+  let previousPathIndex: number | null = null;
   for (const interval of intervals) {
+    if (interval.pathIndex !== previousPathIndex) {
+      current = 0;
+      previousPathIndex = interval.pathIndex;
+    }
     current = interval.moving ? 0 : current + interval.durationMs;
     longest = Math.max(longest, current);
   }
@@ -304,11 +318,11 @@ function buildOperationalFlags({
       severity: "warning",
     });
   }
-  if (statistics.disconnectedPathCount >= 2) {
+  if (statistics.disconnectCount >= 2) {
     flags.push({
       type: "multiple_disconnects",
       label: "Multiple disconnects",
-      detail: `${statistics.disconnectedPathCount} telemetry gaps were observed.`,
+      detail: `${statistics.disconnectCount} telemetry gaps were observed.`,
       severity: "notice",
     });
   }
@@ -378,8 +392,14 @@ function buildActivityTimeline({
   ];
   let previousMoving: boolean | null = null;
   let stationaryStartedAt: ValidActivityPoint | null = null;
+  let previousPathIndex: number | null = null;
 
   for (const interval of intervals) {
+    if (interval.pathIndex !== previousPathIndex) {
+      previousMoving = null;
+      stationaryStartedAt = null;
+      previousPathIndex = interval.pathIndex;
+    }
     if (interval.moving !== previousMoving) {
       if (interval.moving) {
         events.push({
@@ -460,9 +480,9 @@ function buildActivityInsights(statistics: MovementStatistics): string[] {
   ) {
     insights.push("Player remained near one location.");
   }
-  if (statistics.disconnectedPathCount >= 2) {
+  if (statistics.disconnectCount >= 2) {
     insights.push(
-      `${statistics.disconnectedPathCount + 1} disconnected telemetry sessions were observed.`,
+      `${statistics.disconnectCount + 1} disconnected telemetry sessions were observed.`,
     );
   }
   if (insights.length === 0) {

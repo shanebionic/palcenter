@@ -238,15 +238,20 @@ position heartbeat without treating an idle player as disconnected.
 ### Movement calculations
 
 The statistics show the selected data window, first and last activity, valid
-active duration, sample and rendered-line counts, approximate distance, average
-and peak speed, longest stationary period, disconnect and teleport/gap counts,
-online state, position age, and moving/stationary percentages.
+active duration, moving and stationary durations, sample and rendered-line
+counts, approximate distance, average and peak speed, longest stationary
+period, separate disconnect and excluded-teleport counts, online state,
+position age, and moving/stationary percentages.
 
 Invalid coordinates, likely teleports, and disconnected gaps contribute no
 distance, speed, active duration, or moving/stationary time. Displayed metric
-units use 100 Palworld world units per meter. Average speed is valid travel
-distance divided by valid active duration; maximum speed is the highest valid
-adjacent-sample speed.
+units use 100 Palworld world units per meter. Average movement speed is valid
+travel distance divided by moving time only; stationary time does not reduce
+it. Maximum speed is the highest valid adjacent moving-sample speed.
+Stationary accumulation and movement-transition state reset at every
+disconnect or excluded teleport, so separate continuous paths cannot combine
+into a false long-stationary period. Moving and stationary durations exclude
+invalid samples, teleports, and disconnected gaps.
 
 ### Timeline and insights
 

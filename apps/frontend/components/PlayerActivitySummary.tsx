@@ -101,6 +101,14 @@ export function PlayerActivitySummary({
                 value={formatDuration(statistics.activeDurationMs)}
               />
               <ActivityValue
+                label="Time moving"
+                value={formatDuration(statistics.movingDurationMs)}
+              />
+              <ActivityValue
+                label="Time stationary"
+                value={formatDuration(statistics.stationaryDurationMs)}
+              />
+              <ActivityValue
                 label="First activity"
                 value={formatTimestamp(statistics.firstActivityAt)}
               />
@@ -133,12 +141,12 @@ export function PlayerActivitySummary({
                 value={formatDuration(statistics.longestStationaryPeriodMs)}
               />
               <ActivityValue
-                label="Disconnected path count"
-                value={String(statistics.disconnectedPathCount)}
+                label="Disconnect count"
+                value={String(statistics.disconnectCount)}
               />
               <ActivityValue
-                label="Teleport or gap count"
-                value={String(statistics.teleportOrGapCount)}
+                label="Excluded teleport count"
+                value={String(statistics.excludedTeleportCount)}
               />
               <ActivityValue
                 label="Current online status"

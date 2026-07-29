@@ -19,6 +19,7 @@ test("classifies an idle player and reports a long stationary period", () => {
   assert.equal(summary.classification, "Idle");
   assert.equal(summary.statistics.movementPercentage, 0);
   assert.equal(summary.statistics.stationaryPercentage, 100);
+  assert.equal(summary.statistics.averageMovementSpeed, 0);
   assert.equal(summary.statistics.longestStationaryPeriodMs, 15 * 60_000);
   assert.ok(summary.flags.some(({ type }) => type === "long_idle"));
   assert.ok(
@@ -72,7 +73,7 @@ test("records frequent disconnects without treating gaps as active time", () => 
   });
 
   assert.equal(summary.classification, "Recently Disconnected");
-  assert.equal(summary.statistics.disconnectedPathCount, 2);
+  assert.equal(summary.statistics.disconnectCount, 2);
   assert.equal(summary.statistics.activeDurationMs, 3 * 60_000);
   assert.ok(summary.flags.some(({ type }) => type === "multiple_disconnects"));
   assert.deepEqual(summary.timeline, [
@@ -93,6 +94,11 @@ test("records frequent disconnects without treating gaps as active time", () => 
     },
     {
       occurredAt: point(13, 2_000).capturedAt,
+      type: "moving",
+      label: "Started moving",
+    },
+    {
+      occurredAt: point(13, 2_000).capturedAt,
       type: "connected",
       label: "Telemetry resumed",
     },
@@ -100,6 +106,11 @@ test("records frequent disconnects without treating gaps as active time", () => 
       occurredAt: point(14, 3_000).capturedAt,
       type: "disconnected",
       label: "Telemetry disconnected",
+    },
+    {
+      occurredAt: point(26, 4_000).capturedAt,
+      type: "moving",
+      label: "Started moving",
     },
     {
       occurredAt: point(26, 4_000).capturedAt,
@@ -132,7 +143,7 @@ test("excludes teleports from distance and speed calculations", () => {
 
   assert.equal(summary.statistics.approximateTravelDistance, 200);
   assert.ok(summary.statistics.maximumMovementSpeed < 10);
-  assert.equal(summary.statistics.teleportOrGapCount, 1);
+  assert.equal(summary.statistics.excludedTeleportCount, 1);
   assert.ok(summary.flags.some(({ type }) => type === "large_teleport"));
 });
 
@@ -151,10 +162,121 @@ test("calculates moving and stationary percentages from valid intervals", () => 
 
   assert.equal(summary.statistics.movementPercentage, 50);
   assert.equal(summary.statistics.stationaryPercentage, 50);
+  assert.equal(summary.statistics.movingDurationMs, 2 * 60_000);
+  assert.equal(summary.statistics.stationaryDurationMs, 2 * 60_000);
+  assert.equal(
+    summary.statistics.movingDurationMs +
+      summary.statistics.stationaryDurationMs,
+    summary.statistics.activeDurationMs,
+  );
   assert.equal(summary.classification, "Exploring");
   assert.deepEqual(
     summary.timeline.map(({ label }) => label),
     ["Activity observed", "Started moving", "Resumed movement"],
+  );
+});
+
+test("does not combine stationary periods across a disconnect", () => {
+  const summary = summaryFor(
+    [point(0, 0), point(6, 0), point(17, 0), point(23, 0)],
+    {
+      currentlyOnline: true,
+      now: new Date(startedAt + 23 * 60_000),
+    },
+  );
+
+  assert.equal(summary.statistics.disconnectCount, 1);
+  assert.equal(summary.statistics.stationaryDurationMs, 12 * 60_000);
+  assert.equal(summary.statistics.longestStationaryPeriodMs, 6 * 60_000);
+  assert.equal(
+    summary.timeline.some(({ label }) => label === "Long stationary period"),
+    false,
+  );
+});
+
+test("starts movement again after a disconnected path boundary", () => {
+  const summary = summaryFor(
+    [point(0, 0), point(1, 1_000), point(13, 2_000), point(14, 3_000)],
+    {
+      currentlyOnline: true,
+      now: new Date(startedAt + 14 * 60_000),
+    },
+  );
+
+  assert.deepEqual(
+    summary.timeline
+      .filter(({ type }) => type === "moving" || type === "resumed")
+      .map(({ type, label }) => ({ type, label })),
+    [
+      { type: "moving", label: "Started moving" },
+      { type: "moving", label: "Started moving" },
+    ],
+  );
+});
+
+test("does not combine stationary periods across an excluded teleport", () => {
+  const summary = summaryFor(
+    [point(0, 0), point(6, 0), point(7, 300_001), point(13, 300_001)],
+    {
+      currentlyOnline: true,
+      now: new Date(startedAt + 13 * 60_000),
+    },
+  );
+
+  assert.equal(summary.statistics.excludedTeleportCount, 1);
+  assert.equal(summary.statistics.stationaryDurationMs, 12 * 60_000);
+  assert.equal(summary.statistics.longestStationaryPeriodMs, 6 * 60_000);
+});
+
+test("keeps long stationary detection within one continuous path", () => {
+  const summary = summaryFor([point(0, 0), point(6, 0), point(12, 0)], {
+    currentlyOnline: true,
+    now: new Date(startedAt + 12 * 60_000),
+  });
+
+  assert.equal(summary.statistics.longestStationaryPeriodMs, 12 * 60_000);
+  assert.ok(
+    summary.timeline.some(({ label }) => label === "Long stationary period"),
+  );
+});
+
+test("uses moving time rather than active time for average movement speed", () => {
+  const summary = summaryFor(
+    [point(0, 0), point(1, 10_000), point(10, 10_000)],
+    {
+      currentlyOnline: true,
+      now: new Date(startedAt + 10 * 60_000),
+    },
+  );
+
+  assert.equal(summary.statistics.movingDurationMs, 60_000);
+  assert.equal(summary.statistics.stationaryDurationMs, 9 * 60_000);
+  assert.ok(
+    Math.abs(summary.statistics.averageMovementSpeed - 166.6667) < 0.001,
+  );
+});
+
+test("excludes disconnects and teleports from average speed duration", () => {
+  const summary = summaryFor(
+    [
+      point(0, 0),
+      point(1, 10_000),
+      point(13, 20_000),
+      point(14, 320_001),
+      point(15, 330_001),
+    ],
+    {
+      currentlyOnline: true,
+      now: new Date(startedAt + 15 * 60_000),
+    },
+  );
+
+  assert.equal(summary.statistics.disconnectCount, 1);
+  assert.equal(summary.statistics.excludedTeleportCount, 1);
+  assert.equal(summary.statistics.movingDurationMs, 2 * 60_000);
+  assert.equal(summary.statistics.activeDurationMs, 2 * 60_000);
+  assert.ok(
+    Math.abs(summary.statistics.averageMovementSpeed - 166.6667) < 0.001,
   );
 });
 
