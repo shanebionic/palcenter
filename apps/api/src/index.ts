@@ -1006,7 +1006,11 @@ const telemetryHistoryQuerySchema = z
 
 app.get("/api/servers/:id/telemetry/players/latest", async (request) => {
   const parameters = serverIdSchema.parse(request.params);
-  return { players: await telemetryService.latest(parameters.id) };
+  return {
+    players: await telemetryService.latest(parameters.id),
+    pollingIntervalSeconds: environment.TELEMETRY_INTERVAL_SECONDS,
+    lastCollectedAt: telemetryService.lastCollectedAt(parameters.id),
+  };
 });
 
 const telemetryPlayerParametersSchema = z.object({

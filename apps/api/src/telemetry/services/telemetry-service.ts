@@ -29,6 +29,7 @@ export class TelemetryService {
   private timer: ReturnType<typeof setInterval> | null = null;
   private collectionPromise: Promise<void> | null = null;
   private lastCleanupAt: number | null = null;
+  private readonly lastSuccessfulCollections = new Map<string, string>();
 
   constructor(
     private readonly connections: ConnectionRepository,
@@ -93,6 +94,7 @@ export class TelemetryService {
               this.shouldStore(snapshot, previous.get(snapshot.userId)),
             ),
           );
+          this.lastSuccessfulCollections.set(connection.id, capturedAt);
         } catch (error) {
           this.onError(connection.id, error);
         }
@@ -104,6 +106,10 @@ export class TelemetryService {
   async latest(serverId: string): Promise<PlayerPositionSnapshot[]> {
     await this.requireServer(serverId);
     return this.repository.latestPlayerSnapshots(serverId);
+  }
+
+  lastCollectedAt(serverId: string): string | null {
+    return this.lastSuccessfulCollections.get(serverId) ?? null;
   }
 
   async history(

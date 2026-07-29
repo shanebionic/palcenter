@@ -132,7 +132,9 @@ The repository also includes the
 [server management guide](docs/SERVER-MANAGEMENT.md). Scheduled task setup and
 operation are covered in the [server automation guide](docs/AUTOMATION.md).
 The initial World Intelligence storage behavior is described in the
-[player telemetry guide](docs/TELEMETRY.md).
+[player telemetry guide](docs/TELEMETRY.md). The v1.4 interactive map
+prototype, projection assumptions, and asset policy are documented in the
+[world map guide](docs/WORLD-MAP.md).
 
 ## Contributing and support
 
