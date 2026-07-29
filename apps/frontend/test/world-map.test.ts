@@ -408,16 +408,8 @@ test("gives normal and expanded map viewports stable independent dimensions", as
   assert.ok(normalViewport);
   assert.match(normalViewport, /position:\s*relative/);
   assert.match(normalViewport, /width:\s*100%/);
-  assert.match(
-    normalViewport,
-    /height:\s*clamp\(31\.25rem,\s*55vw,\s*47\.5rem\)/,
-  );
-  assert.match(normalViewport, /min-height:\s*31\.25rem/);
-  assert.match(
-    normalViewport,
-    /max-height:\s*min\(47\.5rem,\s*calc\(100vh - 8rem\)\)/,
-  );
-  assert.match(normalViewport, /aspect-ratio:\s*1\s*\/\s*1/);
+  assert.match(normalViewport, /height:\s*clamp\(500px,\s*65vh,\s*760px\)/);
+  assert.match(normalViewport, /min-height:\s*500px/);
   assert.match(normalViewport, /overflow:\s*hidden/);
 
   const expandedRoot = css.match(

@@ -129,10 +129,8 @@ a {
 .pc-world-map-viewport {
   position: relative;
   width: 100%;
-  height: clamp(31.25rem, 55vw, 47.5rem);
-  min-height: 31.25rem;
-  max-height: min(47.5rem, calc(100vh - 8rem));
-  aspect-ratio: 1 / 1;
+  height: clamp(500px, 65vh, 760px);
+  min-height: 500px;
   overflow: hidden;
   border: 1px solid rgba(34, 211, 238, 0.22);
   border-radius: var(--mantine-radius-md);
