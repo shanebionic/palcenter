@@ -148,9 +148,10 @@ Administrators can enable **Calibration** on the Map tab to inspect:
 - polling interval;
 - raw X/Y and normalized/map percentages for a selected player;
 - the reason a connected player could not be mapped;
-- a copyable, credential-free calibration record.
+- a copyable, credential-free calibration record;
 - safe viewport diagnostics covering the square surface, image, marker plane,
-  zoom/pan, selected normalized position, screen rectangles, and visibility.
+  zoom/pan, selected normalized position, screen rectangles, visibility,
+  computed CSS dimensions, client dimensions, aspect ratio, and expanded state.
 
 Administrators can select **Palpagos map**, **Calibration grid**, or **Map with
 grid overlay**. The map image, optional grid, and markers share the same square
@@ -181,15 +182,22 @@ geographically separated live observations and acceptable measured error.
 
 Before release, verify in Chromium:
 
+- at 1920×1080 and laptop widths, the normal viewport is at least 500px tall;
 - opening Map shows the complete map in Fit Map state;
+- zoom and pan transform only the internal square plane without changing the
+  viewport dimensions or moving surrounding page content;
+- panned content remains clipped by the viewport;
 - wheel input over the map zooms without scrolling the page;
 - the page still scrolls normally outside the map;
 - Center Player reveals and briefly highlights the selected marker;
-- expanded mode retains the selected marker, layer, controls, and details;
-- Escape closes expanded mode;
+- expanded mode uses most of the browser height and retains the selected marker,
+  layer, controls, and independently scrollable details;
+- Escape closes expanded mode and restores the original normal dimensions;
 - Fit Map recovers from extreme zoom and pan;
 - the untransformed surface, image, grid, and marker plane remain square;
 - the known `69.19%, 45.55%` observation appears in the expected area;
+- the laptop, 1920×1080, and narrow/mobile layouts have no horizontal page
+  overflow;
 - copied diagnostics contain no server address, token, credential, password, or
   player IP.
 

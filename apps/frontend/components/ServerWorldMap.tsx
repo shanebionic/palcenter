@@ -104,6 +104,15 @@ export function ServerWorldMap({
     marker: MapRect | null;
     untransformedSurface: { width: number; height: number };
     markerPlane: { width: number; height: number };
+    viewportClient: { width: number; height: number };
+    viewportCss: {
+      width: string;
+      height: string;
+      minHeight: string;
+      maxHeight: string;
+      aspectRatio: string;
+    };
+    expanded: boolean;
     visible: boolean;
   } | null>(null);
   const viewport = useRef<HTMLDivElement | null>(null);
@@ -200,9 +209,10 @@ export function ServerWorldMap({
       };
       setViewportSize((current) => {
         if (
-          current.width > 0 &&
-          (Math.abs(current.width - nextSize.width) > 160 ||
-            Math.abs(current.height - nextSize.height) > 160)
+          (current.width === 0 && nextSize.width > 0 && nextSize.height > 0) ||
+          (current.width > 0 &&
+            (Math.abs(current.width - nextSize.width) > 160 ||
+              Math.abs(current.height - nextSize.height) > 160))
         ) {
           setZoom(1);
           setPan({ x: 0, y: 0 });
@@ -312,6 +322,7 @@ export function ServerWorldMap({
           null)
         : null;
       const viewportRect = viewportElement.getBoundingClientRect();
+      const viewportStyle = window.getComputedStyle(viewportElement);
       const surfaceRect = surfaceElement.getBoundingClientRect();
       const imageRect =
         surfaceElement
@@ -331,6 +342,18 @@ export function ServerWorldMap({
           width: surfaceElement.offsetWidth,
           height: surfaceElement.offsetHeight,
         },
+        viewportClient: {
+          width: viewportElement.clientWidth,
+          height: viewportElement.clientHeight,
+        },
+        viewportCss: {
+          width: viewportStyle.width,
+          height: viewportStyle.height,
+          minHeight: viewportStyle.minHeight,
+          maxHeight: viewportStyle.maxHeight,
+          aspectRatio: viewportStyle.aspectRatio,
+        },
+        expanded,
         visible: markerRect
           ? rectanglesIntersect(markerRect, viewportRect)
           : false,
@@ -338,7 +361,7 @@ export function ServerWorldMap({
     };
     const frame = window.requestAnimationFrame(update);
     return () => window.cancelAnimationFrame(frame);
-  }, [mapLayer, pan, selected, surfaceSize, zoom]);
+  }, [expanded, mapLayer, pan, selected, surfaceSize, zoom]);
 
   const copyCalibration = async (marker: LivePlayerMapMarker) => {
     try {
@@ -377,6 +400,9 @@ export function ServerWorldMap({
           diagnostics.viewport.bottom - diagnostics.viewport.top,
         ),
       },
+      viewportCss: diagnostics.viewportCss,
+      viewportClient: diagnostics.viewportClient,
+      expanded: diagnostics.expanded,
       untransformedSurface: diagnostics.untransformedSurface,
       transformedSurface: rect(diagnostics.surface),
       image: rect(diagnostics.image),
@@ -484,17 +510,20 @@ export function ServerWorldMap({
           </Center>
         </Card>
       ) : contentState === "ready" ? (
-        <SimpleGrid
-          cols={{ base: 1, lg: 2 }}
-          spacing="lg"
-          className={expanded ? "pc-world-map-expanded" : undefined}
+        <div
+          className={`pc-world-map-layout${expanded ? " pc-world-map-expanded" : ""}`}
           role={expanded ? "dialog" : undefined}
           aria-modal={expanded ? true : undefined}
           aria-label={
             expanded ? "Expanded Palpagos live player map" : undefined
           }
         >
-          <Card withBorder radius="md" padding="sm" className="pc-panel">
+          <Card
+            withBorder
+            radius="md"
+            padding="sm"
+            className="pc-panel pc-world-map-card"
+          >
             <Group justify="space-between" mb="sm">
               <Group gap="xs">
                 <Badge color="cyan" variant="light">
@@ -687,7 +716,7 @@ export function ServerWorldMap({
             </Text>
           </Card>
 
-          <Stack gap="md">
+          <Stack gap="md" className="pc-world-map-details">
             {selected && diagnostics && !diagnostics.visible && (
               <Alert color="orange">
                 <Group justify="space-between">
@@ -717,7 +746,7 @@ export function ServerWorldMap({
               />
             )}
           </Stack>
-        </SimpleGrid>
+        </div>
       ) : null}
     </Stack>
   );
@@ -851,6 +880,15 @@ function CalibrationPanel({
     marker: MapRect | null;
     untransformedSurface: { width: number; height: number };
     markerPlane: { width: number; height: number };
+    viewportClient: { width: number; height: number };
+    viewportCss: {
+      width: string;
+      height: string;
+      minHeight: string;
+      maxHeight: string;
+      aspectRatio: string;
+    };
+    expanded: boolean;
     visible: boolean;
   } | null;
   onCopyDiagnostics: () => void;
@@ -869,12 +907,17 @@ Y: ${palpagosProjection.worldMinY} … ${palpagosProjection.worldMaxY}
 Rotation: ${palpagosProjection.rotationDegrees}°
 Polling interval: ${pollingIntervalSeconds}s
 Viewport: ${viewportSize.width} × ${viewportSize.height}px
+Viewport CSS: ${diagnostics?.viewportCss.width ?? "0px"} × ${diagnostics?.viewportCss.height ?? "0px"}
+Viewport min/max: ${diagnostics?.viewportCss.minHeight ?? "0px"} / ${diagnostics?.viewportCss.maxHeight ?? "none"}
+Viewport aspect-ratio: ${diagnostics?.viewportCss.aspectRatio ?? "auto"}
+Viewport client: ${diagnostics?.viewportClient.width ?? 0} × ${diagnostics?.viewportClient.height ?? 0}px
 Surface (untransformed): ${diagnostics?.untransformedSurface.width ?? 0} × ${diagnostics?.untransformedSurface.height ?? 0}px
 Surface (transformed): ${diagnostics ? Math.round(diagnostics.surface.right - diagnostics.surface.left) : 0} × ${diagnostics ? Math.round(diagnostics.surface.bottom - diagnostics.surface.top) : 0}px
 Image: ${diagnostics?.image ? `${Math.round(diagnostics.image.right - diagnostics.image.left)} × ${Math.round(diagnostics.image.bottom - diagnostics.image.top)}px` : "not rendered"}
 Marker plane: ${diagnostics?.markerPlane.width ?? 0} × ${diagnostics?.markerPlane.height ?? 0}px
 Scale: ${zoom.toFixed(2)}×
-Offset: ${Math.round(pan.x)}px, ${Math.round(pan.y)}px`}
+Offset: ${Math.round(pan.x)}px, ${Math.round(pan.y)}px
+Expanded: ${diagnostics?.expanded ? "yes" : "no"}`}
         </Code>
         <Button
           variant="light"

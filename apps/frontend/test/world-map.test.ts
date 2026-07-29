@@ -397,6 +397,44 @@ test("starts fitted and computes a square surface from the available viewport", 
   assert.equal(mapSurfaceSize({ width: 1200, height: 700 }), 700);
 });
 
+test("gives normal and expanded map viewports stable independent dimensions", async () => {
+  const css = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+  const normalViewport = css.match(
+    /\.pc-world-map-viewport\s*\{(?<rules>[\s\S]*?)\}/,
+  )?.groups?.rules;
+  assert.ok(normalViewport);
+  assert.match(normalViewport, /position:\s*relative/);
+  assert.match(normalViewport, /width:\s*100%/);
+  assert.match(
+    normalViewport,
+    /height:\s*clamp\(31\.25rem,\s*55vw,\s*47\.5rem\)/,
+  );
+  assert.match(normalViewport, /min-height:\s*31\.25rem/);
+  assert.match(
+    normalViewport,
+    /max-height:\s*min\(47\.5rem,\s*calc\(100vh - 8rem\)\)/,
+  );
+  assert.match(normalViewport, /aspect-ratio:\s*1\s*\/\s*1/);
+  assert.match(normalViewport, /overflow:\s*hidden/);
+
+  const expandedRoot = css.match(
+    /\.pc-world-map-layout\.pc-world-map-expanded\s*\{(?<rules>[\s\S]*?)\}/,
+  )?.groups?.rules;
+  assert.ok(expandedRoot);
+  assert.match(expandedRoot, /overflow:\s*hidden/);
+  assert.doesNotMatch(expandedRoot, /overflow:\s*auto/);
+
+  const expandedViewport = css.match(
+    /\.pc-world-map-expanded \.pc-world-map-viewport\s*\{(?<rules>[\s\S]*?)\}/,
+  )?.groups?.rules;
+  assert.ok(expandedViewport);
+  assert.match(expandedViewport, /height:\s*calc\(100vh - 8rem\)/);
+  assert.match(expandedViewport, /max-height:\s*none/);
+});
+
 test("centers a normalized marker without changing its projected position", () => {
   const view = centerMapOnPosition(
     { x: 0.6919, y: 0.4555 },
