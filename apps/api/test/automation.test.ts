@@ -592,7 +592,7 @@ test("schema version 2 execution rows migrate and remain readable as legacy meta
       .prepare("PRAGMA table_info(task_executions)")
       .all() as unknown as { name: string }[];
     migrated.close();
-    assert.equal(version.user_version, 3);
+    assert.equal(version.user_version, 4);
     assert.ok(columns.some((column) => column.name === "snapshot_json"));
   } finally {
     automation.close();

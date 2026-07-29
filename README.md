@@ -11,6 +11,7 @@ It connects to your existing Palworld server through the official REST API and p
 
 - Server monitoring
 - Player tracking
+- Player state and location telemetry
 - Server history
 - Notifications
 - Backup and restore
@@ -90,8 +91,8 @@ Development builds may contain unfinished features, are intended for testing,
 and may change without notice. Each development build also has an immutable
 `dev-<git-sha>` image tag. The About PalCenter dialog identifies the build as
 Production or Development and includes the short commit for development builds.
-Development after `v1.2.1` is identified as `v1.3.0-DEV`; the production
-`v1.3.0` image receives its stable version and channel from the release tag.
+Development after `v1.3.0` is identified as `v1.4.0-DEV`; production images
+receive their stable version and channel from the release tag.
 
 ### Container user IDs
 
@@ -130,6 +131,8 @@ The repository also includes the
 [configuration generator guide](docs/CONFIGURATION-GENERATOR.md) and
 [server management guide](docs/SERVER-MANAGEMENT.md). Scheduled task setup and
 operation are covered in the [server automation guide](docs/AUTOMATION.md).
+The initial World Intelligence storage behavior is described in the
+[player telemetry guide](docs/TELEMETRY.md).
 
 ## Contributing and support
 
