@@ -151,6 +151,65 @@ test("renders age-aware disconnected paths with a strict element bound", () => {
   );
 });
 
+test("caps dense trails by rebuilding connected lines within each path", () => {
+  const point = (
+    index: number,
+    pathOffset: number,
+  ): import("../lib/world-map/trail").ProjectedTrailPoint => ({
+    capturedAt: new Date(
+      Date.UTC(2026, 6, 28, 12) + (pathOffset + index) * 1_000,
+    ).toISOString(),
+    x: pathOffset + index,
+    y: pathOffset + index,
+    worldX: (pathOffset + index) * 1000,
+    worldY: (pathOffset + index) * 1000,
+  });
+  const firstPath = Array.from({ length: 351 }, (_, index) => point(index, 0));
+  const secondPath = Array.from({ length: 301 }, (_, index) =>
+    point(index, 10_000),
+  );
+  const trail: import("../lib/world-map/trail").ProcessedTrail = {
+    segments: [firstPath, secondPath],
+    pointCount: firstPath.length + secondPath.length,
+    approximateDistance: 0,
+    firstTimestamp: firstPath[0]!.capturedAt,
+    lastTimestamp: secondPath.at(-1)!.capturedAt,
+    exclusions: {
+      invalid: 0,
+      duplicate: 0,
+      simplified: 0,
+      timeGap: 1,
+      teleport: 0,
+    },
+  };
+
+  const rendered = buildRenderedTrailSegments(trail);
+  assert.ok(rendered.length <= maximumRenderedTrailSegments);
+  assert.equal(rendered.length, maximumRenderedTrailSegments);
+
+  for (const pathIndex of [0, 1]) {
+    const sourcePath = trail.segments[pathIndex]!;
+    const renderedPath = rendered.filter(
+      (segment) => segment.pathIndex === pathIndex,
+    );
+    assert.equal(renderedPath[0]!.start, sourcePath[0]);
+    assert.equal(renderedPath.at(-1)!.end, sourcePath.at(-1));
+    for (let index = 1; index < renderedPath.length; index += 1) {
+      assert.equal(renderedPath[index - 1]!.end, renderedPath[index]!.start);
+    }
+  }
+
+  const firstRenderedPath = rendered.filter(
+    (segment) => segment.pathIndex === 0,
+  );
+  const secondRenderedPath = rendered.filter(
+    (segment) => segment.pathIndex === 1,
+  );
+  assert.notEqual(firstRenderedPath.at(-1)!.end, secondRenderedPath[0]!.start);
+  assert.equal(rendered.at(-1)!.end, secondPath.at(-1));
+  assert.equal(rendered.at(-1)!.ageRatio, 1);
+});
+
 test("movement trails sort, project, deduplicate, and preserve endpoints", () => {
   const points = [
     { capturedAt: "2026-07-28T12:02:00.000Z", x: -200_000, y: 200_000 },
