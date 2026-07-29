@@ -23,4 +23,52 @@ export const palcenterTheme = createTheme({
       "#007bae",
     ],
   },
+  components: {
+    Alert: {
+      defaultProps: {
+        radius: "md",
+        variant: "light",
+      },
+    },
+    Button: {
+      defaultProps: {
+        radius: "md",
+      },
+    },
+    FileInput: {
+      defaultProps: {
+        radius: "md",
+      },
+    },
+    Modal: {
+      defaultProps: {
+        radius: "lg",
+      },
+    },
+    NumberInput: {
+      defaultProps: {
+        radius: "md",
+      },
+    },
+    PasswordInput: {
+      defaultProps: {
+        radius: "md",
+      },
+    },
+    Select: {
+      defaultProps: {
+        radius: "md",
+      },
+    },
+    Textarea: {
+      defaultProps: {
+        radius: "md",
+      },
+    },
+    TextInput: {
+      defaultProps: {
+        radius: "md",
+      },
+    },
+  },
 });

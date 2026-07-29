@@ -4,7 +4,6 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   Group,
   Loader,
   ScrollArea,
@@ -18,6 +17,8 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { getServerEvents, getServerHistory } from "../lib/api";
 import type { ServerEvent, ServerMetric } from "../types/servers";
+import { SectionCard } from "./ui/SectionCard";
+import { SectionHeader } from "./ui/SectionHeader";
 
 interface ServerMonitoringProps {
   serverId: string;
@@ -121,29 +122,27 @@ export function ServerMonitoring({ serverId }: ServerMonitoringProps) {
 
   return (
     <Stack gap="lg" pt="lg">
-      <Group justify="space-between">
-        <div>
-          <Title order={2}>Monitoring</Title>
-          <Text c="dimmed">
-            Historical health samples and significant server activity.
-          </Text>
-        </div>
-        <Group gap="sm">
-          {refreshing && <Loader size="sm" />}
-          <Button
-            variant="light"
-            onClick={() => void load(true)}
-            disabled={refreshing}
-          >
-            Refresh
-          </Button>
-        </Group>
-      </Group>
+      <SectionHeader
+        title="Monitoring"
+        description="Historical health samples and significant server activity."
+        action={
+          <Group gap="sm">
+            {refreshing && <Loader size="sm" />}
+            <Button
+              variant="light"
+              onClick={() => void load(true)}
+              disabled={refreshing}
+            >
+              Refresh
+            </Button>
+          </Group>
+        }
+      />
 
       {error && <Alert color="red">{error}</Alert>}
 
       <SimpleGrid cols={{ base: 1, md: 2 }}>
-        <Card withBorder radius="md" p="lg">
+        <SectionCard>
           <Stack gap="md">
             <Title order={3}>Recent Events</Title>
             {events.length === 0 ? (
@@ -170,9 +169,9 @@ export function ServerMonitoring({ serverId }: ServerMonitoringProps) {
               </Stack>
             )}
           </Stack>
-        </Card>
+        </SectionCard>
 
-        <Card withBorder radius="md" p="lg">
+        <SectionCard>
           <Stack gap="md">
             <Title order={3}>Collection</Title>
             <div>
@@ -188,10 +187,10 @@ export function ServerMonitoring({ serverId }: ServerMonitoringProps) {
               default and stored in SQLite.
             </Text>
           </Stack>
-        </Card>
+        </SectionCard>
       </SimpleGrid>
 
-      <Card withBorder radius="md" p="lg">
+      <SectionCard>
         <Stack gap="md">
           <Title order={3}>Metric History</Title>
           {recentMetrics.length === 0 ? (
@@ -236,7 +235,7 @@ export function ServerMonitoring({ serverId }: ServerMonitoringProps) {
             </ScrollArea>
           )}
         </Stack>
-      </Card>
+      </SectionCard>
     </Stack>
   );
 }

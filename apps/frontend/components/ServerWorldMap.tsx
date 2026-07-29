@@ -1285,7 +1285,7 @@ function CalibrationPanel({
   onCopyDiagnostics: () => void;
 }) {
   return (
-    <Paper withBorder radius="md" p="lg">
+    <Paper className="pc-panel" withBorder radius="lg" p="lg">
       <Stack gap="sm">
         <Title order={4}>Projection calibration</Title>
         <Text size="sm" c="dimmed">

@@ -106,7 +106,11 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
             action={refreshing ? <Loader size="sm" /> : null}
           />
 
-          <Tabs defaultValue="overview" keepMounted={false}>
+          <Tabs
+            className="pc-workspace-tabs"
+            defaultValue="overview"
+            keepMounted={false}
+          >
             <Tabs.List>
               <Tabs.Tab value="overview">Overview</Tabs.Tab>
               {canOperate && <Tabs.Tab value="players">Players</Tabs.Tab>}

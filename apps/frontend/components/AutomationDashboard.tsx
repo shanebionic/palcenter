@@ -5,7 +5,6 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   Group,
   Menu,
   Pagination,
@@ -63,6 +62,8 @@ import { AutomationTaskDialog } from "./AutomationTaskDialog";
 import { AutomationHistoryDrawer } from "./AutomationHistoryDrawer";
 import { BrandedLoader } from "./BrandedLoader";
 import { PageHeader } from "./PageHeader";
+import { SectionCard } from "./ui/SectionCard";
+import { StatCard } from "./ui/StatCard";
 
 const pageSize = 25;
 
@@ -231,25 +232,25 @@ export function AutomationDashboard() {
       )}
 
       <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }}>
-        <SummaryCard
+        <StatCard
           label="Active Tasks"
           value={String(summary?.activeTasks ?? 0)}
           icon={<IconPower size={20} />}
           color="teal"
         />
-        <SummaryCard
+        <StatCard
           label="Disabled Tasks"
           value={String(summary?.disabledTasks ?? 0)}
           icon={<IconPower size={20} />}
           color="gray"
         />
-        <SummaryCard
+        <StatCard
           label="Failed Today"
           value={String(summary?.failedToday ?? 0)}
           icon={<IconAlertTriangle size={20} />}
           color={(summary?.failedToday ?? 0) > 0 ? "red" : "gray"}
         />
-        <SummaryCard
+        <StatCard
           label="Next Scheduled Run"
           value={formatDateTime(summary?.nextScheduledRun ?? null)}
           icon={<IconCalendarClock size={20} />}
@@ -258,7 +259,7 @@ export function AutomationDashboard() {
         />
       </SimpleGrid>
 
-      <Card className="pc-panel" withBorder radius="lg" p={0}>
+      <SectionCard p={0}>
         <Group p="lg" gap="sm" align="flex-end">
           <TextInput
             aria-label="Search automation tasks"
@@ -482,7 +483,7 @@ export function AutomationDashboard() {
             />
           </Group>
         )}
-      </Card>
+      </SectionCard>
 
       <AutomationTaskDialog
         opened={dialogOpen}
@@ -497,38 +498,6 @@ export function AutomationDashboard() {
         onClose={() => setHistoryTask(null)}
       />
     </Stack>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  icon,
-  color,
-  compact = false,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  color: string;
-  compact?: boolean;
-}) {
-  return (
-    <Card className="pc-panel" withBorder radius="lg" p="lg">
-      <Group justify="space-between" wrap="nowrap">
-        <div>
-          <Text size="xs" c="dimmed" tt="uppercase" fw={700} lts={1}>
-            {label}
-          </Text>
-          <Text size={compact ? "sm" : "xl"} fw={750} mt={4}>
-            {value}
-          </Text>
-        </div>
-        <ThemeIcon color={color} variant="light" radius="xl" size="xl">
-          {icon}
-        </ThemeIcon>
-      </Group>
-    </Card>
   );
 }
 
