@@ -56,10 +56,12 @@ export interface RenderedTrailSegment {
 const defaultTeleportDistance = 200_000;
 const defaultMinimumNormalizedMovement = 0.0005;
 export const maximumRenderedTrailSegments = 400;
-export const oldestTrailOpacity = 0.16;
-export const newestTrailOpacity = 0.96;
-export const oldestTrailStrokeWidth = 2.4;
-export const newestTrailStrokeWidth = 3;
+export const oldestTrailOpacity = 0.35;
+export const newestTrailOpacity = 0.95;
+export const oldestTrailStrokeWidth = 1.2;
+export const newestTrailStrokeWidth = 1.5;
+export const oldestTrailBrightness = 0.85;
+export const newestTrailBrightness = 1;
 
 export function processMovementTrail(
   input: TrailHistoryPoint[],
@@ -194,7 +196,9 @@ export function trailStyle(ageRatio: number): TrailSegmentStyle {
     strokeWidth:
       oldestTrailStrokeWidth +
       (newestTrailStrokeWidth - oldestTrailStrokeWidth) * age,
-    brightness: 0.72 + 0.28 * age,
+    brightness:
+      oldestTrailBrightness +
+      (newestTrailBrightness - oldestTrailBrightness) * age,
   };
 }
 
@@ -210,30 +214,57 @@ export function buildRenderedTrailSegments(
 
   const representedPaths = selectRepresentedPaths(drawablePaths, maximum);
   const lineBudgets = allocateLineBudgets(representedPaths, maximum);
-
-  return representedPaths.flatMap(({ points, pathIndex }, index) => {
-    const sampledPoints = downsampleTrailPoints(
-      points,
-      lineBudgets[index] ?? 1,
-    );
-    return sampledPoints.slice(1).map((end, pointIndex) => {
-      const start = sampledPoints[pointIndex] as ProjectedTrailPoint;
-      // The segment end timestamp expresses how recent that movement was
-      // across the complete selected history window, including disconnected
-      // paths.
-      const ageRatio = trailAgeRatio(
-        end.capturedAt,
-        trail.firstTimestamp,
-        trail.lastTimestamp,
+  const renderedLines = representedPaths.flatMap(
+    ({ points, pathIndex }, index) => {
+      const sampledPoints = downsampleTrailPoints(
+        points,
+        lineBudgets[index] ?? 1,
       );
-      return {
+      return sampledPoints.slice(1).map((end, pointIndex) => ({
         pathIndex,
-        start,
+        start: sampledPoints[pointIndex] as ProjectedTrailPoint,
         end,
-        ageRatio,
-        style: trailStyle(ageRatio),
-      };
-    });
+      }));
+    },
+  );
+  const validTrailTimestamps = representedPaths
+    .flatMap(({ points }) => points.map(({ capturedAt }) => capturedAt))
+    .filter((timestamp) => Number.isFinite(Date.parse(timestamp)));
+  const oldestTrailTimestamp = validTrailTimestamps.reduce<string | null>(
+    (oldest, timestamp) =>
+      oldest === null || Date.parse(timestamp) < Date.parse(oldest)
+        ? timestamp
+        : oldest,
+    null,
+  );
+  const newestTrailTimestamp = validTrailTimestamps.reduce<string | null>(
+    (newest, timestamp) =>
+      newest === null || Date.parse(timestamp) > Date.parse(newest)
+        ? timestamp
+        : newest,
+    null,
+  );
+
+  return renderedLines.map(({ pathIndex, start, end }) => {
+    // Normalize over the movement timestamps actually represented by the
+    // returned trail. Requested presets, retention, and wall-clock time do not
+    // influence the visual range.
+    const styleTimestamp =
+      start.capturedAt === oldestTrailTimestamp
+        ? start.capturedAt
+        : end.capturedAt;
+    const ageRatio = trailAgeRatio(
+      styleTimestamp,
+      oldestTrailTimestamp,
+      newestTrailTimestamp,
+    );
+    return {
+      pathIndex,
+      start,
+      end,
+      ageRatio,
+      style: trailStyle(ageRatio),
+    };
   });
 }
 
