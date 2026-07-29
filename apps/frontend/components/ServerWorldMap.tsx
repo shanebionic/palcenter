@@ -11,6 +11,7 @@ import {
   Group,
   Loader,
   Paper,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
@@ -27,7 +28,11 @@ import {
   IconPlus,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getPlayers, getPlayerTelemetry } from "../lib/api";
+import {
+  getPlayers,
+  getPlayerTelemetry,
+  getPlayerTrailHistory,
+} from "../lib/api";
 import {
   buildLivePlayerMapModel,
   calibrationRecord,
@@ -57,6 +62,11 @@ import {
   type WorldMapLayer,
 } from "../lib/world-map/layers";
 import { palpagosProjection } from "../lib/world-map/projection";
+import {
+  processMovementTrail,
+  trailPolylinePoints,
+  type ProcessedTrail,
+} from "../lib/world-map/trail";
 import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
 
 interface ServerWorldMapProps {
@@ -69,6 +79,14 @@ const defaultTelemetry: LatestPlayerTelemetry = {
   players: [],
   pollingIntervalSeconds: 30,
   lastCollectedAt: null,
+};
+
+type TrailRange = "15m" | "1h" | "6h" | "24h";
+const trailRangeMilliseconds: Record<TrailRange, number> = {
+  "15m": 15 * 60 * 1_000,
+  "1h": 60 * 60 * 1_000,
+  "6h": 6 * 60 * 60 * 1_000,
+  "24h": 24 * 60 * 60 * 1_000,
 };
 
 export function ServerWorldMap({
@@ -91,6 +109,13 @@ export function ServerWorldMap({
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [expanded, setExpanded] = useState(false);
   const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
+  const [trailEnabled, setTrailEnabled] = useState(false);
+  const [trailRange, setTrailRange] = useState<TrailRange>("1h");
+  const [trail, setTrail] = useState<ProcessedTrail | null>(null);
+  const [trailLoading, setTrailLoading] = useState(false);
+  const [trailError, setTrailError] = useState<string | null>(null);
+  const [trailTruncated, setTrailTruncated] = useState(false);
+  const trailRequest = useRef<AbortController | null>(null);
   const [diagnostics, setDiagnostics] = useState<{
     viewport: MapRect;
     surface: MapRect;
@@ -242,14 +267,76 @@ export function ServerWorldMap({
   );
   const selected =
     model.markers.find((marker) => marker.userId === selectedId) ?? null;
+  const selectedTelemetry =
+    telemetry.players.find((snapshot) => snapshot.userId === selectedId) ??
+    null;
+  const selectedPlayerName =
+    selected?.playerName ?? selectedTelemetry?.playerName ?? null;
   const contentState = mapContentState({
     loading,
     serverOnline,
     playerRequestFailed,
     connectedPlayerCount: players.length,
   });
+  const displayedContentState =
+    contentState === "empty" && telemetry.players.length > 0
+      ? "ready"
+      : contentState;
 
   const surfaceSize = mapSurfaceSize(viewportSize);
+
+  const loadTrail = useCallback(
+    async (userId: string, range: TrailRange) => {
+      trailRequest.current?.abort();
+      const controller = new AbortController();
+      trailRequest.current = controller;
+      setTrailLoading(true);
+      setTrailError(null);
+      const end = new Date();
+      const start = new Date(end.getTime() - trailRangeMilliseconds[range]);
+      try {
+        const history = await getPlayerTrailHistory(
+          serverId,
+          userId,
+          start.toISOString(),
+          end.toISOString(),
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+        setTrail(
+          processMovementTrail(history.points, palpagosProjection, {
+            pollingIntervalSeconds: telemetry.pollingIntervalSeconds,
+          }),
+        );
+        setTrailTruncated(history.truncated);
+      } catch (trailLoadError) {
+        if (controller.signal.aborted) return;
+        setTrail(null);
+        setTrailError(
+          trailLoadError instanceof Error
+            ? trailLoadError.message
+            : "Unable to load movement history.",
+        );
+      } finally {
+        if (!controller.signal.aborted) setTrailLoading(false);
+      }
+    },
+    [serverId, telemetry.pollingIntervalSeconds],
+  );
+
+  useEffect(() => {
+    setTrailEnabled(false);
+    setTrail(null);
+    setTrailError(null);
+    trailRequest.current?.abort();
+  }, [serverId, selectedId]);
+
+  useEffect(() => {
+    if (trailEnabled && selectedId) {
+      void loadTrail(selectedId, trailRange);
+    }
+    return () => trailRequest.current?.abort();
+  }, [loadTrail, selectedId, trailEnabled, trailRange]);
   const applyFitMap = useCallback(() => {
     const fit = fitMapView();
     setZoom(fit.zoom);
@@ -472,18 +559,18 @@ export function ServerWorldMap({
         </Group>
       </Group>
 
-      {contentState === "offline" && (
+      {displayedContentState === "offline" && (
         <Alert color="gray" title="Server offline">
           Live player positions are unavailable until the server reconnects.
         </Alert>
       )}
       {error && <Alert color="red">{error}</Alert>}
 
-      {contentState === "loading" ? (
+      {displayedContentState === "loading" ? (
         <Center mih={360}>
           <Loader />
         </Center>
-      ) : contentState === "unavailable" ? (
+      ) : displayedContentState === "unavailable" ? (
         <Card withBorder radius="md" padding="xl" className="pc-panel">
           <Center mih={220}>
             <Stack align="center" gap="xs">
@@ -494,7 +581,7 @@ export function ServerWorldMap({
             </Stack>
           </Center>
         </Card>
-      ) : contentState === "empty" ? (
+      ) : displayedContentState === "empty" ? (
         <Card withBorder radius="md" padding="xl" className="pc-panel">
           <Center mih={220}>
             <Stack align="center" gap="xs">
@@ -503,7 +590,7 @@ export function ServerWorldMap({
             </Stack>
           </Center>
         </Card>
-      ) : contentState === "ready" ? (
+      ) : displayedContentState === "ready" ? (
         <div
           className={`pc-world-map-layout${expanded ? " pc-world-map-expanded" : ""}`}
           role={expanded ? "dialog" : undefined}
@@ -662,6 +749,45 @@ export function ServerWorldMap({
                     </div>
                   </>
                 )}
+                {trailEnabled && trail && (
+                  <svg
+                    className="pc-world-map-trail"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                    aria-label={`Movement trail for ${selectedPlayerName ?? "selected player"}`}
+                    role="img"
+                  >
+                    {trail.segments.map((segment, index) => (
+                      <polyline
+                        key={`${segment[0]?.capturedAt ?? index}-${index}`}
+                        points={trailPolylinePoints(segment)}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    ))}
+                    {trail.segments[0]?.[0] && (
+                      <circle
+                        className="pc-world-map-trail-start"
+                        cx={trail.segments[0][0].x * 100}
+                        cy={trail.segments[0][0].y * 100}
+                        r="0.7"
+                        vectorEffect="non-scaling-stroke"
+                      >
+                        <title>Trail start</title>
+                      </circle>
+                    )}
+                    {trail.segments.at(-1)?.at(-1) && (
+                      <circle
+                        className="pc-world-map-trail-end"
+                        cx={trail.segments.at(-1)!.at(-1)!.x * 100}
+                        cy={trail.segments.at(-1)!.at(-1)!.y * 100}
+                        r="0.7"
+                        vectorEffect="non-scaling-stroke"
+                      >
+                        <title>Trail end</title>
+                      </circle>
+                    )}
+                  </svg>
+                )}
                 {model.markers.map((marker) => {
                   const presentation = playerMarkerPresentation(
                     marker.playerName,
@@ -734,6 +860,33 @@ export function ServerWorldMap({
               marker={selected}
               onCopy={canCalibrate && calibrating ? copyCalibration : undefined}
             />
+            <TrailControls
+              players={telemetry.players.map((snapshot) => ({
+                value: snapshot.userId,
+                label: snapshot.playerName || snapshot.userId,
+              }))}
+              selectedPlayerId={selectedId}
+              selectedPlayerName={selectedPlayerName}
+              enabled={trailEnabled}
+              range={trailRange}
+              trail={trail}
+              loading={trailLoading}
+              error={trailError}
+              truncated={trailTruncated}
+              currentlyOnline={selected !== null}
+              onPlayerChange={setSelectedId}
+              onEnabledChange={setTrailEnabled}
+              onRangeChange={setTrailRange}
+              onRefresh={() => {
+                if (selectedId) void loadTrail(selectedId, trailRange);
+              }}
+              onClear={() => {
+                trailRequest.current?.abort();
+                setTrailEnabled(false);
+                setTrail(null);
+                setTrailError(null);
+              }}
+            />
             {canCalibrate && calibrating && (
               <CalibrationPanel
                 unmapped={model.unmappedPlayers}
@@ -749,6 +902,154 @@ export function ServerWorldMap({
         </div>
       ) : null}
     </Stack>
+  );
+}
+
+function TrailControls({
+  players,
+  selectedPlayerId,
+  selectedPlayerName,
+  enabled,
+  range,
+  trail,
+  loading,
+  error,
+  truncated,
+  currentlyOnline,
+  onPlayerChange,
+  onEnabledChange,
+  onRangeChange,
+  onRefresh,
+  onClear,
+}: {
+  players: Array<{ value: string; label: string }>;
+  selectedPlayerId: string | null;
+  selectedPlayerName: string | null;
+  enabled: boolean;
+  range: TrailRange;
+  trail: ProcessedTrail | null;
+  loading: boolean;
+  error: string | null;
+  truncated: boolean;
+  currentlyOnline: boolean;
+  onPlayerChange: (userId: string | null) => void;
+  onEnabledChange: (enabled: boolean) => void;
+  onRangeChange: (range: TrailRange) => void;
+  onRefresh: () => void;
+  onClear: () => void;
+}) {
+  const formatTimestamp = (value: string | null) =>
+    value ? new Date(value).toLocaleString() : "—";
+
+  return (
+    <Card withBorder radius="md" padding="lg" className="pc-panel">
+      <Stack gap="sm">
+        <Group justify="space-between">
+          <div>
+            <Title order={4}>Movement trail</Title>
+            <Text size="sm" c="dimmed">
+              {selectedPlayerName
+                ? `Historical positions for ${selectedPlayerName}.`
+                : "Select a player to view movement history."}
+            </Text>
+          </div>
+          <Switch
+            label="Show movement trail"
+            checked={enabled}
+            disabled={!selectedPlayerName}
+            onChange={(event) => onEnabledChange(event.currentTarget.checked)}
+          />
+        </Group>
+        <Select
+          label="Trail player"
+          description="Choose a connected or recently observed player."
+          placeholder="Select a player"
+          searchable
+          clearable
+          value={selectedPlayerId}
+          data={players}
+          onChange={onPlayerChange}
+        />
+        <SegmentedControl
+          aria-label="Movement trail time range"
+          value={range}
+          disabled={!selectedPlayerName}
+          onChange={(value) => onRangeChange(value as TrailRange)}
+          data={["15m", "1h", "6h", "24h"]}
+          fullWidth
+        />
+        <Group grow>
+          <Button
+            variant="light"
+            loading={loading}
+            disabled={!selectedPlayerName || !enabled}
+            onClick={onRefresh}
+          >
+            Refresh trail
+          </Button>
+          <Button
+            variant="default"
+            disabled={!enabled && !trail}
+            onClick={onClear}
+          >
+            Clear trail
+          </Button>
+        </Group>
+        {error && <Alert color="red">{error}</Alert>}
+        {enabled && loading && (
+          <Text size="sm" c="dimmed" role="status">
+            Loading movement history…
+          </Text>
+        )}
+        {enabled && !loading && !error && trail?.pointCount === 0 && (
+          <Alert color="gray">
+            No valid position history was captured in this time range.
+          </Alert>
+        )}
+        {enabled && trail && trail.pointCount > 0 && (
+          <Stack gap={4} role="status" aria-label="Movement trail summary">
+            <SimpleGrid cols={2}>
+              <Detail
+                label="First position"
+                value={formatTimestamp(trail.firstTimestamp)}
+              />
+              <Detail
+                label="Last position"
+                value={formatTimestamp(trail.lastTimestamp)}
+              />
+              <Detail label="Trail points" value={String(trail.pointCount)} />
+              <Detail
+                label="Path segments"
+                value={String(trail.segments.length)}
+              />
+              <Detail
+                label="Approx. distance"
+                value={`${Math.round(trail.approximateDistance).toLocaleString()} world units`}
+              />
+              <Detail
+                label="Player status"
+                value={currentlyOnline ? "Currently online" : "Not online"}
+              />
+              <Detail
+                label="Invalid points excluded"
+                value={String(trail.exclusions.invalid)}
+              />
+              <Detail
+                label="Discontinuities"
+                value={String(
+                  trail.exclusions.timeGap + trail.exclusions.teleport,
+                )}
+              />
+            </SimpleGrid>
+            {truncated && (
+              <Alert color="orange">
+                Showing the newest 5,000 captured positions in this range.
+              </Alert>
+            )}
+          </Stack>
+        )}
+      </Stack>
+    </Card>
   );
 }
 

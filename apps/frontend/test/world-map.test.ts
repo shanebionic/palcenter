@@ -34,7 +34,92 @@ import {
   worldToNormalizedMapPosition,
   type MapProjectionConfiguration,
 } from "../lib/world-map/projection";
+import {
+  processMovementTrail,
+  trailPolylinePoints,
+} from "../lib/world-map/trail";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
+
+test("movement trails sort, project, deduplicate, and preserve endpoints", () => {
+  const points = [
+    { capturedAt: "2026-07-28T12:02:00.000Z", x: -200_000, y: 200_000 },
+    { capturedAt: "2026-07-28T12:00:00.000Z", x: -210_000, y: 190_000 },
+    { capturedAt: "2026-07-28T12:01:00.000Z", x: -210_000, y: 190_000 },
+  ];
+  const trail = processMovementTrail(points, palpagosProjection, {
+    pollingIntervalSeconds: 30,
+    minimumNormalizedMovement: 0,
+  });
+  assert.equal(trail.pointCount, 2);
+  assert.equal(trail.exclusions.duplicate, 1);
+  assert.equal(trail.firstTimestamp, "2026-07-28T12:00:00.000Z");
+  assert.equal(trail.lastTimestamp, "2026-07-28T12:02:00.000Z");
+  assert.ok(trail.approximateDistance > 0);
+  const segment = trail.segments[0];
+  assert.ok(segment);
+  assert.equal(
+    segment[0]?.x,
+    worldToNormalizedMapPosition(
+      { x: -210_000, y: 190_000 },
+      palpagosProjection,
+    )?.x,
+  );
+  assert.notEqual(trailPolylinePoints(segment), "");
+});
+
+test("movement trails reject invalid points and split gaps and teleports", () => {
+  const trail = processMovementTrail(
+    [
+      { capturedAt: "invalid", x: 0, y: 0 },
+      { capturedAt: "2026-07-28T12:00:00.000Z", x: -200_000, y: 200_000 },
+      { capturedAt: "2026-07-28T12:05:00.000Z", x: -190_000, y: 210_000 },
+      { capturedAt: "2026-07-28T12:05:30.000Z", x: 100_000, y: 400_000 },
+    ],
+    palpagosProjection,
+    { pollingIntervalSeconds: 30 },
+  );
+  assert.equal(trail.exclusions.invalid, 1);
+  assert.equal(trail.exclusions.timeGap, 1);
+  assert.equal(trail.exclusions.teleport, 1);
+  assert.equal(trail.segments.length, 3);
+});
+
+test("movement trail simplification retains first and last points", () => {
+  const trail = processMovementTrail(
+    Array.from({ length: 1000 }, (_, index) => ({
+      capturedAt: new Date(Date.UTC(2026, 6, 28, 12, 0, index)).toISOString(),
+      x: -200_000 + index,
+      y: 200_000 + index,
+    })),
+    palpagosProjection,
+    { pollingIntervalSeconds: 30, minimumNormalizedMovement: 0.0001 },
+  );
+  assert.ok(trail.pointCount < 1000);
+  const segment = trail.segments[0];
+  assert.ok(segment);
+  assert.equal(segment[0]?.worldX, -200_000);
+  assert.equal(segment.at(-1)?.worldX, -199_001);
+  assert.ok(trail.exclusions.simplified > 0);
+});
+
+test("dense 24-hour movement history remains bounded for rendering", () => {
+  const startedAt = performance.now();
+  const trail = processMovementTrail(
+    Array.from({ length: 5000 }, (_, index) => ({
+      capturedAt: new Date(
+        Date.UTC(2026, 6, 28) + index * 17_280,
+      ).toISOString(),
+      x: -300_000 + index * 5,
+      y: 100_000 + Math.sin(index / 20) * 2_000,
+    })),
+    palpagosProjection,
+    { pollingIntervalSeconds: 30 },
+  );
+  const durationMs = performance.now() - startedAt;
+  assert.ok(trail.pointCount < 5000);
+  assert.ok(trail.segments.length >= 1);
+  assert.ok(durationMs < 500, `trail processing took ${durationMs}ms`);
+});
 
 test("bundles attributed responsive Palpagos derivatives with verified metadata", async () => {
   const assetDirectory = new URL(
@@ -557,6 +642,33 @@ test("keeps the marker initial and floating label decorative", async () => {
   assert.equal(denalb.accessibleName, "View Denalb on map");
   assert.equal(denalb.accessibleName.match(/Denalb/g)?.length, 1);
   assert.equal(denalb.displayName, "Denalb");
+});
+
+test("movement trail controls and layer preserve accessible map ordering", async () => {
+  const source = await readFile(
+    new URL("../components/ServerWorldMap.tsx", import.meta.url),
+    "utf8",
+  );
+  const css = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /label="Trail player"/);
+  assert.match(source, /label="Show movement trail"/);
+  assert.match(source, /aria-label="Movement trail time range"/);
+  assert.match(source, /Refresh trail/);
+  assert.match(source, /Clear trail/);
+  assert.match(source, /vectorEffect="non-scaling-stroke"/);
+  assert.ok(
+    source.indexOf('className="pc-world-map-trail"') <
+      source.indexOf('className="pc-world-map-marker-position"'),
+    "trail SVG renders beneath live marker elements",
+  );
+  assert.match(css, /\.pc-world-map-trail\s*\{[\s\S]*?z-index:\s*2;[\s\S]*?\}/);
+  assert.match(
+    css,
+    /\.pc-world-map-marker-position\s*\{[\s\S]*?z-index:\s*3;[\s\S]*?\}/,
+  );
 });
 
 test("keeps the connected display name and telemetry account name distinct", () => {

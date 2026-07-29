@@ -992,16 +992,30 @@ app.get("/api/servers/:id/events", async (request) => {
 
 const telemetryHistoryQuerySchema = z
   .object({
+    start: z.string().datetime({ offset: true }).optional(),
+    end: z.string().datetime({ offset: true }).optional(),
     from: z.string().datetime({ offset: true }).optional(),
     to: z.string().datetime({ offset: true }).optional(),
-    limit: z.coerce.number().int().min(1).max(500).default(100),
+    limit: z.coerce.number().int().min(1).max(5_000).default(5_000),
   })
   .refine(
     (query) =>
-      !query.from ||
-      !query.to ||
-      Date.parse(query.from) <= Date.parse(query.to),
+      Boolean(query.start ?? query.from) && Boolean(query.end ?? query.to),
+    "Telemetry history requires a start and end time.",
+  )
+  .transform((query) => ({
+    start: (query.start ?? query.from) as string,
+    end: (query.end ?? query.to) as string,
+    limit: query.limit,
+  }))
+  .refine(
+    (query) => Date.parse(query.start) <= Date.parse(query.end),
     "The telemetry start time must not be after the end time.",
+  )
+  .refine(
+    (query) =>
+      Date.parse(query.end) - Date.parse(query.start) <= 24 * 60 * 60 * 1_000,
+    "The telemetry history range must not exceed 24 hours.",
   );
 
 app.get("/api/servers/:id/telemetry/players/latest", async (request) => {
@@ -1015,7 +1029,7 @@ app.get("/api/servers/:id/telemetry/players/latest", async (request) => {
 
 const telemetryPlayerParametersSchema = z.object({
   id: z.string().min(1),
-  userId: z.string().min(1),
+  userId: z.string().trim().min(1).max(200),
 });
 
 app.get(
@@ -1023,12 +1037,15 @@ app.get(
   async (request) => {
     const parameters = telemetryPlayerParametersSchema.parse(request.params);
     const query = telemetryHistoryQuerySchema.parse(request.query);
+    const history = await telemetryService.trailHistory(
+      parameters.id,
+      parameters.userId,
+      { from: query.start, to: query.end, limit: query.limit },
+    );
     return {
-      snapshots: await telemetryService.history(
-        parameters.id,
-        parameters.userId,
-        query,
-      ),
+      points: history.points,
+      limit: query.limit,
+      truncated: history.truncated,
     };
   },
 );

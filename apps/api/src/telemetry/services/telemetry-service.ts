@@ -5,6 +5,7 @@ import type {
   NewPlayerPositionSnapshot,
   PlayerPositionSnapshot,
   PlayerTelemetryHistoryQuery,
+  PlayerTrailPoint,
 } from "../types/player-telemetry.js";
 
 export const telemetryHeartbeatMs = 5 * 60 * 1_000;
@@ -119,6 +120,22 @@ export class TelemetryService {
   ): Promise<PlayerPositionSnapshot[]> {
     await this.requireServer(serverId);
     return this.repository.playerHistory(serverId, userId, query);
+  }
+
+  async trailHistory(
+    serverId: string,
+    userId: string,
+    query: PlayerTelemetryHistoryQuery,
+  ): Promise<{ points: PlayerTrailPoint[]; truncated: boolean }> {
+    const snapshots = await this.history(serverId, userId, {
+      ...query,
+      limit: query.limit + 1,
+    });
+    const truncated = snapshots.length > query.limit;
+    const points = snapshots
+      .slice(truncated ? 1 : 0)
+      .map(({ capturedAt, x, y }) => ({ capturedAt, x, y }));
+    return { points, truncated };
   }
 
   private shouldStore(
