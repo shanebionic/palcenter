@@ -25,7 +25,6 @@ import {
   IconMinus,
   IconPlus,
 } from "@tabler/icons-react";
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getPlayers, getPlayerTelemetry } from "../lib/api";
 import {
@@ -37,7 +36,9 @@ import {
   type LivePlayerMapMarker,
 } from "../lib/world-map/model";
 import {
+  defaultWorldMapLayer,
   worldMapAssetPath,
+  worldMapAssetSrcSet,
   worldMapLayerClasses,
   type WorldMapLayer,
 } from "../lib/world-map/layers";
@@ -75,7 +76,7 @@ export function ServerWorldMap({
   const [playerRequestFailed, setPlayerRequestFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [calibrating, setCalibrating] = useState(false);
-  const [mapLayer, setMapLayer] = useState<WorldMapLayer>("map");
+  const [mapLayer, setMapLayer] = useState<WorldMapLayer>(defaultWorldMapLayer);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
@@ -378,15 +379,24 @@ export function ServerWorldMap({
                 }}
               >
                 {mapLayer !== "grid" && (
-                  <Image
-                    className="pc-world-map-image"
-                    src={worldMapAssetPath}
-                    alt=""
-                    draggable={false}
-                    fill
-                    sizes="(max-width: 62em) 100vw, 50vw"
-                    unoptimized
-                  />
+                  <picture>
+                    <source
+                      type="image/webp"
+                      srcSet={worldMapAssetSrcSet}
+                      sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
+                    />
+                    {/* These pre-generated responsive assets intentionally bypass Next's image optimizer. */}
+                    <img
+                      className="pc-world-map-image"
+                      src={worldMapAssetPath}
+                      srcSet={worldMapAssetSrcSet}
+                      sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
+                      width={2048}
+                      height={2048}
+                      alt=""
+                      draggable={false}
+                    />
+                  </picture>
                 )}
                 {mapLayer !== "map" && (
                   <>

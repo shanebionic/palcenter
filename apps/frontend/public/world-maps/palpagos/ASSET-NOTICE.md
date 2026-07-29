@@ -1,7 +1,8 @@
 # Palpagos world map asset notice
 
-`world-map.webp` remains copyright Pocketpair, Inc. It is not covered by
-PalCenter's MIT license.
+`world-map-2048.webp` and `world-map-4096.webp` are resized derivatives of a
+Pocketpair-owned Palpagos map. The source image and both derivatives remain
+copyright Pocketpair, Inc. They are not covered by PalCenter's MIT license.
 
 PalCenter is an unofficial community project and is not affiliated with,
 endorsed by, or sponsored by Pocketpair, Inc. The image is included in
@@ -15,6 +16,8 @@ file page describes its illustrative use as fair use under United States
 copyright law. PalCenter preserves that copyright position and does not claim
 that the image is freely licensed.
 
-Source and retrieval details are recorded in `source.json`. Pocketpair may
-request removal. Rights holders can use the contact instructions in
+Source, retrieval, derivative conversion settings, and checksums are recorded
+in `source.json`. The upstream 8192×8192 binary is not shipped in PalCenter or
+its production container. Pocketpair may request removal. Rights holders can
+use the contact instructions in
 [`THIRD_PARTY_ASSETS.md`](../../../../../THIRD_PARTY_ASSETS.md).

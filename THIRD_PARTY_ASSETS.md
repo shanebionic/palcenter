@@ -5,10 +5,12 @@ documentation. It does not apply to separately identified third-party assets.
 
 ## Palpagos world map
 
-The Palpagos reference map at
-`apps/frontend/public/world-maps/palpagos/world-map.webp` remains copyright
-Pocketpair, Inc. It is bundled solely as a functional reference layer in this
-free, noncommercial, unofficial Palworld dedicated-server administration tool.
+The responsive Palpagos reference-map derivatives under
+`apps/frontend/public/world-maps/palpagos/` remain copyright Pocketpair, Inc.
+They are bundled solely as a functional reference layer in this free,
+noncommercial, unofficial Palworld dedicated-server administration tool. The
+upstream 8192×8192 binary is not distributed in PalCenter's production
+frontend.
 
 See the adjacent
 [`ASSET-NOTICE.md`](apps/frontend/public/world-maps/palpagos/ASSET-NOTICE.md)

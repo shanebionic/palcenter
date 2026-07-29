@@ -7,8 +7,8 @@ the bundled image layer.
 
 ## Asset and licensing decision
 
-The repository bundles an 8192×8192 WebP copy of the Palpagos world map
-published by The Palworld Wiki. The
+The repository bundles 2048×2048 and 4096×4096 WebP derivatives of the
+8192×8192 Palpagos world map published by The Palworld Wiki. The
 [source file page](https://palworld.wiki.gg/wiki/File:World_Map.webp)
 identifies the image as originating from Palworld or a Pocketpair-owned website,
 states that Pocketpair holds the copyright, and describes the wiki's
@@ -24,9 +24,27 @@ attribution, and removal policy are in the asset's
 [`source.json`](../apps/frontend/public/world-maps/palpagos/source.json), and
 the repository-level [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md).
 
-The map is bundled in the application and is never hotlinked at runtime. The
-PalCenter-owned CSS calibration grid remains available to Administrators as a
-standalone layer or an overlay. The normal map layer is the default.
+The upstream 8192×8192 binary is not shipped in the production frontend.
+Ordinary clients default to the 2048×2048 derivative; browsers can select the
+4096×4096 derivative for a sufficiently large or high-density rendered map.
+Both derivatives use WebP quality 90, effort 6, and Lanczos3 resizing with
+`fit: fill`. Because the source and output are all square, this performs a
+direct full-frame scale with no crop, rotation, padding, or boundary change.
+
+| Bundled derivative    | Compressed size | Approximate RGBA decode |
+| --------------------- | --------------: | ----------------------: |
+| `world-map-2048.webp` |   381,772 bytes |                  16 MiB |
+| `world-map-4096.webp` | 1,346,542 bytes |                  64 MiB |
+
+The original file was 4,876,386 bytes and could require approximately 256 MiB
+when decoded as RGBA. The default derivative reduces transfer size by 92.2% and
+decoded pixel memory by approximately 93.8%; the larger derivative reduces
+transfer size by 72.4% and decoded pixel memory by approximately 75%.
+
+The derivatives are bundled in the application and are never hotlinked at
+runtime. The PalCenter-owned CSS calibration grid remains available to
+Administrators as a standalone layer or an overlay. The normal map layer is the
+default.
 
 ## Coordinate sources
 

@@ -1,17 +1,44 @@
 {
-  "asset": "world-map.webp",
   "title": "World Map",
   "copyrightHolder": "Pocketpair, Inc.",
-  "sourceFilePage": "https://palworld.wiki.gg/wiki/File:World_Map.webp",
-  "sourceFileUrl": "https://palworld.wiki.gg/images/World_Map.webp?b0143b",
-  "retrievedAt": "2026-07-28",
-  "dimensions": {
-    "width": 8192,
-    "height": 8192
+  "upstreamSource": {
+    "filePage": "https://palworld.wiki.gg/wiki/File:World_Map.webp",
+    "fileUrl": "https://palworld.wiki.gg/images/World_Map.webp?b0143b",
+    "retrievedAt": "2026-07-28",
+    "dimensions": {
+      "width": 8192,
+      "height": 8192
+    },
+    "sha1": "b0143b6e44a40b821b53f129f12d8f53ca50c433"
   },
-  "mediaType": "image/webp",
-  "sourceSha1": "b0143b6e44a40b821b53f129f12d8f53ca50c433",
-  "bundledSha256": "b6ed5baa418332a183e2642f250a239a15efb1488d7783d8f289921254e49896",
+  "bundledDerivatives": [
+    {
+      "filename": "world-map-2048.webp",
+      "dimensions": {
+        "width": 2048,
+        "height": 2048
+      },
+      "mediaType": "image/webp",
+      "sha256": "932ce0243aaf72b8b07e64d5490c7f6319310e675aac52f2822df99595815611",
+      "compressedSizeBytes": 381772,
+      "conversionTool": "sharp-cli 5.2.0",
+      "conversionCommand": "pnpm dlx sharp-cli@5.2.0 -i world-map.webp -o world-map-2048.webp -f webp -q 90 --effort 6 resize 2048 2048 --fit fill --kernel lanczos3",
+      "quality": 90
+    },
+    {
+      "filename": "world-map-4096.webp",
+      "dimensions": {
+        "width": 4096,
+        "height": 4096
+      },
+      "mediaType": "image/webp",
+      "sha256": "08f96148901eeedd1e90530732c766a3d2e5a4d37aae398a05d2cac0c908d953",
+      "compressedSizeBytes": 1346542,
+      "conversionTool": "sharp-cli 5.2.0",
+      "conversionCommand": "pnpm dlx sharp-cli@5.2.0 -i world-map.webp -o world-map-4096.webp -f webp -q 90 --effort 6 resize 4096 4096 --fit fill --kernel lanczos3",
+      "quality": 90
+    }
+  ],
   "attribution": "Palworld and the Palpagos map are copyright Pocketpair, Inc. Source copy retrieved from The Palworld Wiki.",
   "sourceNoticeSummary": "The source file page identifies Pocketpair as copyright holder and describes the wiki's illustrative use as fair use under United States copyright law."
 }

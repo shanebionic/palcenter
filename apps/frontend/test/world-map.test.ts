@@ -3,7 +3,9 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  defaultWorldMapLayer,
   worldMapAssetPath,
+  worldMapAssetSrcSet,
   worldMapLayerClasses,
 } from "../lib/world-map/layers";
 import {
@@ -23,27 +25,47 @@ import {
 } from "../lib/world-map/projection";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
 
-test("bundles the attributed Palpagos map locally with verified metadata", async () => {
+test("bundles attributed responsive Palpagos derivatives with verified metadata", async () => {
   const assetDirectory = new URL(
     "../public/world-maps/palpagos/",
     import.meta.url,
   );
-  const [asset, source] = await Promise.all([
-    readFile(new URL("world-map.webp", assetDirectory)),
-    readFile(new URL("source.json", assetDirectory), "utf8"),
-  ]);
+  const source = await readFile(new URL("source.json", assetDirectory), "utf8");
   const metadata = JSON.parse(source) as {
-    sourceFilePage: string;
-    dimensions: { width: number; height: number };
-    bundledSha256: string;
+    upstreamSource: {
+      filePage: string;
+      dimensions: { width: number; height: number };
+    };
+    bundledDerivatives: Array<{
+      filename: string;
+      dimensions: { width: number; height: number };
+      sha256: string;
+      compressedSizeBytes: number;
+    }>;
   };
 
-  assert.equal(worldMapAssetPath, "/world-maps/palpagos/world-map.webp");
-  assert.equal(metadata.sourceFilePage.startsWith("https://"), true);
-  assert.deepEqual(metadata.dimensions, { width: 8192, height: 8192 });
-  assert.equal(
-    createHash("sha256").update(asset).digest("hex"),
-    metadata.bundledSha256,
+  assert.equal(worldMapAssetPath, "/world-maps/palpagos/world-map-2048.webp");
+  assert.equal(worldMapAssetSrcSet.includes("https://"), false);
+  assert.equal(metadata.upstreamSource.filePage.startsWith("https://"), true);
+  assert.deepEqual(metadata.upstreamSource.dimensions, {
+    width: 8192,
+    height: 8192,
+  });
+  assert.equal(metadata.bundledDerivatives.length, 2);
+
+  for (const derivative of metadata.bundledDerivatives) {
+    const asset = await readFile(new URL(derivative.filename, assetDirectory));
+    assert.deepEqual(readWebpDimensions(asset), derivative.dimensions);
+    assert.equal(asset.byteLength, derivative.compressedSizeBytes);
+    assert.equal(
+      createHash("sha256").update(asset).digest("hex"),
+      derivative.sha256,
+    );
+  }
+
+  await assert.rejects(
+    readFile(new URL("world-map.webp", assetDirectory)),
+    (error: NodeJS.ErrnoException) => error.code === "ENOENT",
   );
 });
 
@@ -56,6 +78,7 @@ test("serves bundled world maps without an authentication redirect", async () =>
 });
 
 test("selects map and calibration grid layers without changing projection", () => {
+  assert.equal(defaultWorldMapLayer, "map");
   assert.equal(
     worldMapLayerClasses("map"),
     "pc-world-map-surface pc-world-map-surface-map",
@@ -69,6 +92,21 @@ test("selects map and calibration grid layers without changing projection", () =
     "pc-world-map-surface pc-world-map-surface-map pc-world-map-surface-grid",
   );
 });
+
+function readWebpDimensions(asset: Buffer): {
+  width: number;
+  height: number;
+} {
+  assert.equal(asset.subarray(0, 4).toString("ascii"), "RIFF");
+  assert.equal(asset.subarray(8, 12).toString("ascii"), "WEBP");
+  assert.equal(asset.subarray(12, 16).toString("ascii"), "VP8 ");
+  assert.deepEqual([...asset.subarray(23, 26)], [0x9d, 0x01, 0x2a]);
+
+  return {
+    width: asset.readUInt16LE(26) & 0x3fff,
+    height: asset.readUInt16LE(28) & 0x3fff,
+  };
+}
 
 test("projects the documented world bounds and center onto the map", () => {
   assert.deepEqual(
