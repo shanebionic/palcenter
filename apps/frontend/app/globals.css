@@ -126,6 +126,139 @@ a {
   box-shadow: 0 22px 60px rgba(0, 0, 0, 0.25);
 }
 
+.pc-world-map-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: var(--mantine-radius-md);
+  background: #07121c;
+  touch-action: none;
+  cursor: grab;
+}
+
+.pc-world-map-viewport:active {
+  cursor: grabbing;
+}
+
+.pc-world-map-surface {
+  position: absolute;
+  inset: 0;
+  transform-origin: center;
+  background:
+    linear-gradient(rgba(34, 211, 238, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(34, 211, 238, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.15) 1px, transparent 1px),
+    radial-gradient(
+      circle at 50% 45%,
+      rgba(8, 184, 245, 0.14),
+      transparent 52%
+    ),
+    #07121c;
+  background-size:
+    5% 5%,
+    5% 5%,
+    25% 25%,
+    25% 25%,
+    auto,
+    auto;
+  transition: transform 80ms ease-out;
+}
+
+.pc-world-map-surface::before,
+.pc-world-map-surface::after {
+  content: "";
+  position: absolute;
+  background: rgba(34, 211, 238, 0.38);
+  pointer-events: none;
+}
+
+.pc-world-map-surface::before {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.pc-world-map-surface::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+
+.pc-world-map-label {
+  position: absolute;
+  inset: 1rem auto auto 1rem;
+  color: rgba(165, 243, 252, 0.38);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  pointer-events: none;
+}
+
+.pc-world-map-marker {
+  position: absolute;
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 2px solid #ecfeff;
+  border-radius: 50%;
+  color: #061019;
+  background: var(--mantine-color-cyan-4);
+  box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.14);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.pc-world-map-marker-delayed {
+  background: var(--mantine-color-orange-4);
+  box-shadow: 0 0 0 5px rgba(251, 146, 60, 0.16);
+}
+
+.pc-world-map-marker-stale {
+  background: var(--mantine-color-red-5);
+  box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.18);
+}
+
+.pc-world-map-marker:hover,
+.pc-world-map-marker[aria-pressed="true"] {
+  z-index: 3;
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.pc-world-map-marker:focus-visible {
+  outline: 3px solid var(--mantine-color-yellow-4);
+  outline-offset: 3px;
+}
+
+.pc-world-map-marker-label {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 0.45rem);
+  max-width: 9rem;
+  overflow: hidden;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mantine-color-gray-0);
+  background: rgba(6, 16, 25, 0.9);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-shadow: none;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 html {
   color-scheme: dark;
 }

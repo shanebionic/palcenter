@@ -65,6 +65,12 @@ export interface PlayerPositionSnapshot {
   createdAt: string;
 }
 
+export interface LatestPlayerTelemetry {
+  players: PlayerPositionSnapshot[];
+  pollingIntervalSeconds: number;
+  lastCollectedAt: string | null;
+}
+
 export interface ServerSettings {
   general: {
     serverName: string | null;

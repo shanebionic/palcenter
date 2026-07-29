@@ -143,8 +143,11 @@ test("visitor can read latest player telemetry with normalized response", async 
   assert.equal(body.players[0].playerId, "player-one");
   assert.equal(body.players[0].accountName, "bob-account");
   assert.equal(body.players[0].buildingCount, 2);
+  assert.equal(body.pollingIntervalSeconds, 3600);
+  assert.equal(body.lastCollectedAt, null);
   assert.equal(body.players[0].x, 100);
   assert.equal("adminPassword" in body.players[0], false);
+  assert.equal("ip" in body.players[0], false);
 });
 
 test("history supports time ranges and bounded limits", async () => {

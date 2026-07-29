@@ -433,5 +433,7 @@ test("service collects configured servers concurrently and isolates offline fail
 
   assert.equal(saved.length, 1);
   assert.equal(saved[0]?.[0]?.serverId, "srv_online");
+  assert.ok(service.lastCollectedAt("srv_online"));
+  assert.equal(service.lastCollectedAt("srv_offline"), null);
   assert.deepEqual(failures, ["srv_offline"]);
 });
