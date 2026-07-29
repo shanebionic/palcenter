@@ -9,18 +9,17 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  REGISTRY_IMAGE: ghcr.io/shanebionic/palcenter
+
 jobs:
-  publish:
-    name: Publish Docker image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
+  prepare:
+    name: Verify release metadata
+    runs-on: ubuntu-24.04
+    outputs:
+      commit: ${{ steps.build.outputs.commit }}
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
       - name: Validate version tag
         shell: bash
         run: |
@@ -34,8 +33,27 @@ jobs:
         shell: bash
         run: echo "commit=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+  build:
+    name: Build production image (${{ matrix.arch }})
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -51,27 +69,107 @@ jobs:
         id: metadata
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/shanebionic/palcenter
+          images: ${{ env.REGISTRY_IMAGE }}
           tags: |
             type=raw,value=${{ github.ref_name }}
             type=raw,value=latest
 
-      - name: Build and publish production image
+      - name: Build and push production image by digest
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.metadata.outputs.tags }}
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.metadata.outputs.labels }}
           annotations: ${{ steps.metadata.outputs.annotations }}
           build-args: |
             PALCENTER_VERSION=${{ github.ref_name }}
             PALCENTER_CHANNEL=production
-            PALCENTER_COMMIT=${{ steps.build.outputs.commit }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            PALCENTER_COMMIT=${{ needs.prepare.outputs.commit }}
+          cache-from: type=gha,scope=palcenter-publish-${{ matrix.arch }}
+          cache-to: type=gha,scope=palcenter-publish-${{ matrix.arch }},mode=max
+          provenance: mode=max
+
+      - name: Export image digest
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${RUNNER_TEMP}/digests/${digest#sha256:}"
+
+      - name: Upload image digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish release
+    needs:
+      - prepare
+      - build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Download image digests
+        uses: actions/download-artifact@v7
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: release-digest-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: metadata
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=raw,value=${{ github.ref_name }}
+            type=raw,value=latest
+
+      - name: Publish multi-platform production manifest
+        shell: bash
+        env:
+          IMAGE_TAGS: ${{ steps.metadata.outputs.tags }}
+        run: |
+          tags=()
+          while IFS= read -r tag; do
+            if [[ -n "${tag}" ]]; then
+              tags+=("--tag" "${tag}")
+            fi
+          done <<< "${IMAGE_TAGS}"
+
+          sources=()
+          for digest in "${RUNNER_TEMP}"/digests/*; do
+            sources+=("${REGISTRY_IMAGE}@sha256:$(basename "${digest}")")
+          done
+
+          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
+
+      - name: Verify published platforms
+        shell: bash
+        run: |
+          docker buildx imagetools inspect "${REGISTRY_IMAGE}:${GITHUB_REF_NAME}"
 
       - name: Create or update GitHub release
         env:

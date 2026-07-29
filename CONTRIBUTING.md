@@ -63,17 +63,21 @@ feature/* → dev → ghcr.io/shanebionic/palcenter:dev
 
 Feature branches are reviewed into `dev`. The Validation workflow checks
 dependencies, types, linting, tests, the production application build, and a
-non-publishing multi-platform Docker build. The consolidated workflow preserves
-both existing status checks required for `dev` and `main`:
-`Type check, lint, and build` and `Build production image`.
+non-publishing Docker build on native AMD64 and ARM64 runners in parallel. The
+workflow preserves the existing `Type check, lint, and build` and
+`Build production image` status checks required for `dev` and `main`, and adds
+the ARM64 image build as a separate validation job.
 
 Pushes to `dev` start the multi-platform development image workflow, which
 waits for the matching Validation run and publishes only after it succeeds.
-The publishing workflow builds the exact validated commit and does not repeat
-application validation. Manual Development Docker Image runs must select the
-`dev` branch and the selected commit must already have a successful Validation
-run; the workflow rejects other refs or unvalidated commits before registry
-login or image publication.
+The publishing workflow builds the exact validated commit natively on parallel
+AMD64 and ARM64 runners, pushes each image by digest, and publishes the `dev`
+and immutable `dev-<sha>` tags as a combined manifest. Architecture-specific
+GitHub Actions BuildKit caches prevent cache collisions. The workflow does not
+repeat application validation. Manual Development Docker Image runs must
+select the `dev` branch and the selected commit must already have a successful
+Validation run; the workflow rejects other refs or unvalidated commits before
+registry login or image publication.
 
 After development testing:
 
@@ -84,7 +88,9 @@ dev → main → vX.Y.Z tag → versioned image + latest
 Production releases are prepared by merging the tested `dev` state into
 `main`, then creating a semantic version tag. Application source code does not
 need channel-specific edits; the Docker workflows inject version, channel, and
-commit metadata during the image build.
+commit metadata during each native image build. The release workflow then
+assembles the versioned and `latest` tags from the architecture digests before
+creating the GitHub Release.
 
 The repository intentionally has three workflows:
 
