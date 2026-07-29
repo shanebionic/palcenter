@@ -39,8 +39,26 @@ export interface TrailProcessingOptions {
   minimumNormalizedMovement?: number;
 }
 
+export interface TrailSegmentStyle {
+  opacity: number;
+  strokeWidth: number;
+  brightness: number;
+}
+
+export interface RenderedTrailSegment {
+  start: ProjectedTrailPoint;
+  end: ProjectedTrailPoint;
+  ageRatio: number;
+  style: TrailSegmentStyle;
+}
+
 const defaultTeleportDistance = 200_000;
 const defaultMinimumNormalizedMovement = 0.0005;
+export const maximumRenderedTrailSegments = 400;
+export const oldestTrailOpacity = 0.16;
+export const newestTrailOpacity = 0.96;
+export const oldestTrailStrokeWidth = 2.4;
+export const newestTrailStrokeWidth = 3;
 
 export function processMovementTrail(
   input: TrailHistoryPoint[],
@@ -144,4 +162,72 @@ export function processMovementTrail(
 
 export function trailPolylinePoints(points: ProjectedTrailPoint[]): string {
   return points.map((point) => `${point.x * 100},${point.y * 100}`).join(" ");
+}
+
+export function trailAgeRatio(
+  timestamp: string,
+  oldestTimestamp: string | null,
+  newestTimestamp: string | null,
+): number {
+  const value = Date.parse(timestamp);
+  const oldest = oldestTimestamp ? Date.parse(oldestTimestamp) : Number.NaN;
+  const newest = newestTimestamp ? Date.parse(newestTimestamp) : Number.NaN;
+  if (
+    !Number.isFinite(value) ||
+    !Number.isFinite(oldest) ||
+    !Number.isFinite(newest)
+  ) {
+    return 0;
+  }
+  if (newest <= oldest) return 1;
+  return Math.min(1, Math.max(0, (value - oldest) / (newest - oldest)));
+}
+
+export function trailStyle(ageRatio: number): TrailSegmentStyle {
+  const age = Number.isFinite(ageRatio)
+    ? Math.min(1, Math.max(0, ageRatio))
+    : 0;
+  return {
+    opacity:
+      oldestTrailOpacity + (newestTrailOpacity - oldestTrailOpacity) * age,
+    strokeWidth:
+      oldestTrailStrokeWidth +
+      (newestTrailStrokeWidth - oldestTrailStrokeWidth) * age,
+    brightness: 0.72 + 0.28 * age,
+  };
+}
+
+export function buildRenderedTrailSegments(
+  trail: ProcessedTrail,
+  maximum = maximumRenderedTrailSegments,
+): RenderedTrailSegment[] {
+  if (maximum <= 0) return [];
+  const candidates = trail.segments.flatMap((segment) =>
+    segment.slice(1).map((end, index) => ({
+      start: segment[index] as ProjectedTrailPoint,
+      end,
+    })),
+  );
+  if (candidates.length === 0) return [];
+
+  const selected =
+    candidates.length <= maximum
+      ? candidates
+      : Array.from({ length: maximum }, (_, index) => {
+          const candidateIndex = Math.floor(
+            (index * candidates.length) / maximum,
+          );
+          return candidates[candidateIndex] as (typeof candidates)[number];
+        });
+
+  return selected.map(({ start, end }) => {
+    // The segment end timestamp expresses how recent that movement was across
+    // the complete selected history window, including disconnected paths.
+    const ageRatio = trailAgeRatio(
+      end.capturedAt,
+      trail.firstTimestamp,
+      trail.lastTimestamp,
+    );
+    return { start, end, ageRatio, style: trailStyle(ageRatio) };
+  });
 }

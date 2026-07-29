@@ -28,6 +28,7 @@ import {
   IconPlus,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import {
   getPlayers,
   getPlayerTelemetry,
@@ -62,9 +63,10 @@ import {
   type WorldMapLayer,
 } from "../lib/world-map/layers";
 import { palpagosProjection } from "../lib/world-map/projection";
+import { playerColor } from "../lib/world-map/player-color";
 import {
+  buildRenderedTrailSegments,
   processMovementTrail,
-  trailPolylinePoints,
   type ProcessedTrail,
 } from "../lib/world-map/trail";
 import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
@@ -272,6 +274,11 @@ export function ServerWorldMap({
     null;
   const selectedPlayerName =
     selected?.playerName ?? selectedTelemetry?.playerName ?? null;
+  const selectedPlayerColor = playerColor(selectedId ?? "");
+  const renderedTrailSegments = useMemo(
+    () => (trail ? buildRenderedTrailSegments(trail) : []),
+    [trail],
+  );
   const contentState = mapContentState({
     loading,
     serverOnline,
@@ -757,11 +764,21 @@ export function ServerWorldMap({
                     aria-label={`Movement trail for ${selectedPlayerName ?? "selected player"}`}
                     role="img"
                   >
-                    {trail.segments.map((segment, index) => (
-                      <polyline
-                        key={`${segment[0]?.capturedAt ?? index}-${index}`}
-                        points={trailPolylinePoints(segment)}
+                    {renderedTrailSegments.map((segment, index) => (
+                      <line
+                        key={`${segment.end.capturedAt}-${index}`}
+                        className="pc-world-map-trail-segment"
+                        x1={segment.start.x * 100}
+                        y1={segment.start.y * 100}
+                        x2={segment.end.x * 100}
+                        y2={segment.end.y * 100}
                         vectorEffect="non-scaling-stroke"
+                        stroke={selectedPlayerColor}
+                        opacity={segment.style.opacity}
+                        strokeWidth={segment.style.strokeWidth}
+                        style={{
+                          filter: `brightness(${segment.style.brightness}) drop-shadow(0 0 2px rgba(6, 16, 25, 0.95))`,
+                        }}
                       />
                     ))}
                     {trail.segments[0]?.[0] && (
@@ -771,6 +788,7 @@ export function ServerWorldMap({
                         cy={trail.segments[0][0].y * 100}
                         r="0.7"
                         vectorEffect="non-scaling-stroke"
+                        style={{ fill: selectedPlayerColor }}
                       >
                         <title>Trail start</title>
                       </circle>
@@ -782,6 +800,7 @@ export function ServerWorldMap({
                         cy={trail.segments.at(-1)!.at(-1)!.y * 100}
                         r="0.7"
                         vectorEffect="non-scaling-stroke"
+                        style={{ fill: selectedPlayerColor }}
                       >
                         <title>Trail end</title>
                       </circle>
@@ -811,6 +830,9 @@ export function ServerWorldMap({
                           type="button"
                           data-player-id={marker.userId}
                           className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                          style={{
+                            backgroundColor: playerColor(marker.userId),
+                          }}
                           onClick={(event) => {
                             event.stopPropagation();
                             setSelectedId(marker.userId);
@@ -870,6 +892,8 @@ export function ServerWorldMap({
               enabled={trailEnabled}
               range={trailRange}
               trail={trail}
+              playerColor={selectedPlayerColor}
+              renderedSegmentCount={renderedTrailSegments.length}
               loading={trailLoading}
               error={trailError}
               truncated={trailTruncated}
@@ -912,6 +936,8 @@ function TrailControls({
   enabled,
   range,
   trail,
+  playerColor,
+  renderedSegmentCount,
   loading,
   error,
   truncated,
@@ -928,6 +954,8 @@ function TrailControls({
   enabled: boolean;
   range: TrailRange;
   trail: ProcessedTrail | null;
+  playerColor: string;
+  renderedSegmentCount: number;
   loading: boolean;
   error: string | null;
   truncated: boolean;
@@ -1008,6 +1036,19 @@ function TrailControls({
         )}
         {enabled && trail && trail.pointCount > 0 && (
           <Stack gap={4} role="status" aria-label="Movement trail summary">
+            <div
+              className="pc-world-map-trail-legend"
+              aria-label="Trail age: faint is older and bright is newer"
+              style={
+                {
+                  "--pc-player-color": playerColor,
+                } as CSSProperties
+              }
+            >
+              <Text size="xs">Older</Text>
+              <span aria-hidden="true" />
+              <Text size="xs">Newer</Text>
+            </div>
             <SimpleGrid cols={2}>
               <Detail
                 label="First position"
@@ -1021,6 +1062,10 @@ function TrailControls({
               <Detail
                 label="Path segments"
                 value={String(trail.segments.length)}
+              />
+              <Detail
+                label="Rendered segments"
+                value={String(renderedSegmentCount)}
               />
               <Detail
                 label="Approx. distance"

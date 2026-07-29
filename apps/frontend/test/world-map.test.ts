@@ -35,10 +35,121 @@ import {
   type MapProjectionConfiguration,
 } from "../lib/world-map/projection";
 import {
+  buildRenderedTrailSegments,
+  maximumRenderedTrailSegments,
+  newestTrailOpacity,
+  newestTrailStrokeWidth,
+  oldestTrailOpacity,
+  oldestTrailStrokeWidth,
   processMovementTrail,
+  trailAgeRatio,
   trailPolylinePoints,
+  trailStyle,
 } from "../lib/world-map/trail";
+import { isPlayerColor, playerColor } from "../lib/world-map/player-color";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
+
+test("assigns stable readable player colors from userId", () => {
+  assert.equal(playerColor("user-a"), playerColor("user-a"));
+  const colors = [
+    playerColor("user-a"),
+    playerColor("user-b"),
+    playerColor("gdk_2533274899179326"),
+  ];
+  assert.equal(new Set(colors).size, colors.length);
+  for (const color of colors) {
+    assert.match(color, /^#[0-9a-f]{6}$/i);
+    assert.equal(isPlayerColor(color), true);
+  }
+});
+
+test("calculates safe timestamp-based trail age and bounded styles", () => {
+  const oldest = "2026-07-28T12:00:00.000Z";
+  const newest = "2026-07-28T14:00:00.000Z";
+  assert.equal(trailAgeRatio(oldest, oldest, newest), 0);
+  assert.equal(trailAgeRatio("2026-07-28T13:00:00.000Z", oldest, newest), 0.5);
+  assert.equal(trailAgeRatio(newest, oldest, newest), 1);
+  assert.equal(trailAgeRatio(oldest, oldest, oldest), 1);
+  assert.equal(trailAgeRatio("invalid", oldest, newest), 0);
+  assert.equal(trailAgeRatio(oldest, null, newest), 0);
+
+  for (const ratio of [-1, 0, 0.5, 1, 2, Number.NaN]) {
+    const style = trailStyle(ratio);
+    assert.ok(style.opacity >= oldestTrailOpacity);
+    assert.ok(style.opacity <= newestTrailOpacity);
+    assert.ok(style.strokeWidth >= oldestTrailStrokeWidth);
+    assert.ok(style.strokeWidth <= newestTrailStrokeWidth);
+  }
+});
+
+test("renders age-aware disconnected paths with a strict element bound", () => {
+  const point = (
+    capturedAt: string,
+    x: number,
+    y: number,
+  ): import("../lib/world-map/trail").ProjectedTrailPoint => ({
+    capturedAt,
+    x,
+    y,
+    worldX: x * 1000,
+    worldY: y * 1000,
+  });
+  const trail: import("../lib/world-map/trail").ProcessedTrail = {
+    segments: [
+      [
+        point("2026-07-28T12:00:00.000Z", 0.1, 0.1),
+        point("2026-07-28T12:30:00.000Z", 0.2, 0.2),
+      ],
+      [
+        point("2026-07-28T13:30:00.000Z", 0.7, 0.7),
+        point("2026-07-28T14:00:00.000Z", 0.8, 0.8),
+      ],
+    ],
+    pointCount: 4,
+    approximateDistance: 0,
+    firstTimestamp: "2026-07-28T12:00:00.000Z",
+    lastTimestamp: "2026-07-28T14:00:00.000Z",
+    exclusions: {
+      invalid: 0,
+      duplicate: 0,
+      simplified: 0,
+      timeGap: 1,
+      teleport: 0,
+    },
+  };
+  const rendered = buildRenderedTrailSegments(trail);
+  assert.equal(rendered.length, 2);
+  assert.ok(rendered[0]!.style.opacity < rendered[1]!.style.opacity);
+  assert.equal(rendered[1]!.ageRatio, 1);
+  assert.notEqual(rendered[0]!.end.x, rendered[1]!.start.x);
+
+  const empty = { ...trail, segments: [], pointCount: 0 };
+  assert.deepEqual(buildRenderedTrailSegments(empty), []);
+  const single = {
+    ...trail,
+    segments: [[trail.segments[0]![0]!]],
+    pointCount: 1,
+  };
+  assert.deepEqual(buildRenderedTrailSegments(single), []);
+
+  const dense = {
+    ...trail,
+    segments: [
+      Array.from({ length: 2_000 }, (_, index) =>
+        point(
+          new Date(Date.UTC(2026, 6, 28) + index * 1_000).toISOString(),
+          index / 2_000,
+          index / 2_000,
+        ),
+      ),
+    ],
+    pointCount: 2_000,
+  };
+  assert.equal(
+    buildRenderedTrailSegments(dense).length,
+    maximumRenderedTrailSegments,
+  );
+});
 
 test("movement trails sort, project, deduplicate, and preserve endpoints", () => {
   const points = [
@@ -659,6 +770,15 @@ test("movement trail controls and layer preserve accessible map ordering", async
   assert.match(source, /Refresh trail/);
   assert.match(source, /Clear trail/);
   assert.match(source, /vectorEffect="non-scaling-stroke"/);
+  assert.match(source, /className="pc-world-map-trail-segment"/);
+  assert.match(source, /stroke=\{selectedPlayerColor\}/);
+  assert.match(
+    source,
+    /style=\{\{[\s\S]*?backgroundColor: playerColor\(marker\.userId\),[\s\S]*?\}\}/,
+  );
+  assert.match(source, /Older/);
+  assert.match(source, /Newer/);
+  assert.match(source, /faint is older and bright is newer/);
   assert.ok(
     source.indexOf('className="pc-world-map-trail"') <
       source.indexOf('className="pc-world-map-marker-position"'),
