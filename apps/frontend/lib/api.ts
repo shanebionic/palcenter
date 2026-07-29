@@ -5,6 +5,7 @@ import type {
   NotificationConfigurationUpdate,
   LatestPlayerTelemetry,
   PlayerPositionSnapshot,
+  PlayerTrailHistory,
   PublicConnection,
   ServerStatus,
   ServerEvent,
@@ -374,6 +375,20 @@ export function getPlayerTelemetry(
   return request<LatestPlayerTelemetry>(
     `/api/servers/${encodeURIComponent(serverId)}/telemetry/players/latest`,
     { cache: "no-store" },
+  );
+}
+
+export function getPlayerTrailHistory(
+  serverId: string,
+  userId: string,
+  start: string,
+  end: string,
+  signal?: AbortSignal,
+): Promise<PlayerTrailHistory> {
+  const query = new URLSearchParams({ start, end, limit: "5000" });
+  return request<PlayerTrailHistory>(
+    `/api/servers/${encodeURIComponent(serverId)}/telemetry/players/${encodeURIComponent(userId)}/history?${query}`,
+    { cache: "no-store", signal },
   );
 }
 

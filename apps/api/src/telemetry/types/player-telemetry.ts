@@ -27,3 +27,9 @@ export interface PlayerTelemetryHistoryQuery {
   to?: string;
   limit: number;
 }
+
+export interface PlayerTrailPoint {
+  capturedAt: string;
+  x: number | null;
+  y: number | null;
+}

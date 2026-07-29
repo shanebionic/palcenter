@@ -71,6 +71,18 @@ export interface LatestPlayerTelemetry {
   lastCollectedAt: string | null;
 }
 
+export interface PlayerTrailPoint {
+  capturedAt: string;
+  x: number | null;
+  y: number | null;
+}
+
+export interface PlayerTrailHistory {
+  points: PlayerTrailPoint[];
+  limit: number;
+  truncated: boolean;
+}
+
 export interface ServerSettings {
   general: {
     serverName: string | null;

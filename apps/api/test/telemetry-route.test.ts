@@ -21,6 +21,7 @@ process.env.PALCENTER_SESSION_COOKIE_SECURE = "false";
 
 let app: FastifyInstance;
 let administratorCookie: string;
+let moderatorCookie: string;
 let visitorCookie: string;
 
 function cookie(response: {
@@ -58,37 +59,55 @@ before(async () => {
   assert.equal(setup.statusCode, 201);
   administratorCookie = cookie(setup);
 
-  const createVisitor = await app.inject({
-    method: "POST",
-    url: "/api/users",
-    headers: { cookie: administratorCookie },
-    payload: {
-      username: "visitor",
-      email: "visitor@example.com",
-      password: "Visitor-Password-123!",
-      role: "visitor",
-    },
-  });
-  assert.equal(createVisitor.statusCode, 201);
-  const temporaryCookie = await login("visitor", "Visitor-Password-123!");
-  const changePassword = await app.inject({
-    method: "POST",
-    url: "/api/users/me/password",
-    headers: { cookie: temporaryCookie },
-    payload: {
-      currentPassword: "Visitor-Password-123!",
-      newPassword: "Visitor-Replacement-456!",
-      passwordConfirmation: "Visitor-Replacement-456!",
-    },
-  });
-  assert.equal(changePassword.statusCode, 200);
-  visitorCookie = await login("visitor", "Visitor-Replacement-456!");
+  async function createUser(
+    username: string,
+    role: "moderator" | "visitor",
+  ): Promise<string> {
+    const initialPassword = `${username}-Password-123!`;
+    const replacementPassword = `${username}-Replacement-456!`;
+    const create = await app.inject({
+      method: "POST",
+      url: "/api/users",
+      headers: { cookie: administratorCookie },
+      payload: {
+        username,
+        email: `${username}@example.com`,
+        password: initialPassword,
+        role,
+      },
+    });
+    assert.equal(create.statusCode, 201);
+    const temporaryCookie = await login(username, initialPassword);
+    const changePassword = await app.inject({
+      method: "POST",
+      url: "/api/users/me/password",
+      headers: { cookie: temporaryCookie },
+      payload: {
+        currentPassword: initialPassword,
+        newPassword: replacementPassword,
+        passwordConfirmation: replacementPassword,
+      },
+    });
+    assert.equal(changePassword.statusCode, 200);
+    return login(username, replacementPassword);
+  }
+
+  moderatorCookie = await createUser("moderator", "moderator");
+  visitorCookie = await createUser("visitor", "visitor");
 
   const connections = new JsonConnectionRepository(directory);
   await connections.create({
     id: "srv_telemetry",
     name: "Telemetry Server",
     baseUrl: "http://127.0.0.1:1",
+    adminPassword: "not-used",
+    createdAt: "2026-07-28T12:00:00.000Z",
+    updatedAt: "2026-07-28T12:00:00.000Z",
+  });
+  await connections.create({
+    id: "srv_isolated",
+    name: "Isolated Server",
+    baseUrl: "http://127.0.0.1:2",
     adminPassword: "not-used",
     createdAt: "2026-07-28T12:00:00.000Z",
     updatedAt: "2026-07-28T12:00:00.000Z",
@@ -110,6 +129,38 @@ before(async () => {
       level: 10,
       ping: 20,
       buildingCount: 2,
+      guildId: null,
+      guildName: null,
+    },
+    {
+      serverId: "srv_telemetry",
+      userId: "user-one",
+      playerId: "player-one",
+      playerName: "Bob",
+      accountName: "bob-account",
+      capturedAt: "2026-07-28T12:01:00.000Z",
+      x: 150,
+      y: 250,
+      z: null,
+      level: 10,
+      ping: 20,
+      buildingCount: 2,
+      guildId: null,
+      guildName: null,
+    },
+    {
+      serverId: "srv_isolated",
+      userId: "user-one",
+      playerId: "other-player",
+      playerName: "Private",
+      accountName: "private-account",
+      capturedAt: "2026-07-28T12:02:00.000Z",
+      x: 999,
+      y: 999,
+      z: null,
+      level: 50,
+      ping: 1,
+      buildingCount: 99,
       guildId: null,
       guildName: null,
     },
@@ -145,7 +196,7 @@ test("visitor can read latest player telemetry with normalized response", async 
   assert.equal(body.players[0].buildingCount, 2);
   assert.equal(body.pollingIntervalSeconds, 3600);
   assert.equal(body.lastCollectedAt, null);
-  assert.equal(body.players[0].x, 100);
+  assert.equal(body.players[0].x, 150);
   assert.equal("adminPassword" in body.players[0], false);
   assert.equal("ip" in body.players[0], false);
 });
@@ -155,12 +206,94 @@ test("history supports time ranges and bounded limits", async () => {
     method: "GET",
     url:
       "/api/servers/srv_telemetry/telemetry/players/user-one/history" +
-      "?from=2026-07-28T11%3A00%3A00.000Z" +
-      "&to=2026-07-28T13%3A00%3A00.000Z&limit=10",
+      "?start=2026-07-28T11%3A00%3A00.000Z" +
+      "&end=2026-07-28T13%3A00%3A00.000Z&limit=1",
     headers: { cookie: administratorCookie },
   });
   assert.equal(response.statusCode, 200);
-  assert.equal(response.json().snapshots.length, 1);
+  const body = response.json();
+  assert.equal(body.points.length, 1);
+  assert.equal(body.points[0].capturedAt, "2026-07-28T12:01:00.000Z");
+  assert.equal(body.truncated, true);
+  assert.deepEqual(Object.keys(body.points[0]).sort(), [
+    "capturedAt",
+    "x",
+    "y",
+  ]);
+});
+
+test("Administrator and Moderator can read trails while Visitor cannot", async () => {
+  const url =
+    "/api/servers/srv_telemetry/telemetry/players/user-one/history" +
+    "?start=2026-07-28T11%3A00%3A00.000Z&end=2026-07-28T13%3A00%3A00.000Z";
+  for (const roleCookie of [administratorCookie, moderatorCookie]) {
+    assert.equal(
+      (
+        await app.inject({
+          method: "GET",
+          url,
+          headers: { cookie: roleCookie },
+        })
+      ).statusCode,
+      200,
+    );
+  }
+  assert.equal(
+    (
+      await app.inject({
+        method: "GET",
+        url,
+        headers: { cookie: visitorCookie },
+      })
+    ).statusCode,
+    403,
+  );
+});
+
+test("history is chronological, range filtered, private, and server isolated", async () => {
+  const response = await app.inject({
+    method: "GET",
+    url:
+      "/api/servers/srv_telemetry/telemetry/players/user-one/history" +
+      "?start=2026-07-28T11%3A00%3A00.000Z&end=2026-07-28T12%3A00%3A30.000Z",
+    headers: { cookie: moderatorCookie },
+  });
+  const body = response.json();
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(
+    body.points.map((point: { capturedAt: string }) => point.capturedAt),
+    ["2026-07-28T12:00:00.000Z"],
+  );
+  assert.equal(JSON.stringify(body).includes("private-account"), false);
+  assert.equal(JSON.stringify(body).includes("not-used"), false);
+});
+
+test("history returns empty points and validates identifiers and ranges", async () => {
+  const base =
+    "?start=2026-07-28T11%3A00%3A00.000Z&end=2026-07-28T13%3A00%3A00.000Z";
+  const empty = await app.inject({
+    method: "GET",
+    url: `/api/servers/srv_telemetry/telemetry/players/nobody/history${base}`,
+    headers: { cookie: moderatorCookie },
+  });
+  assert.equal(empty.statusCode, 200);
+  assert.deepEqual(empty.json().points, []);
+
+  const invalid = await app.inject({
+    method: "GET",
+    url: `/api/servers/srv_telemetry/telemetry/players/%20/history${base}`,
+    headers: { cookie: moderatorCookie },
+  });
+  assert.equal(invalid.statusCode, 400);
+
+  const tooLong = await app.inject({
+    method: "GET",
+    url:
+      "/api/servers/srv_telemetry/telemetry/players/user-one/history" +
+      "?start=2026-07-27T11%3A00%3A00.000Z&end=2026-07-28T13%3A00%3A00.000Z",
+    headers: { cookie: moderatorCookie },
+  });
+  assert.equal(tooLong.statusCode, 400);
 });
 
 test("telemetry routes return server_not_found for unknown server IDs", async () => {

@@ -141,6 +141,38 @@ the capitalization returned by Palworld and truncate safely when space is
 limited. Marker icons and labels retain their Fit Map screen-space size while
 their geographic anchors continue to follow map zoom and pan.
 
+## Historical movement trails
+
+Administrators and Moderators can select a connected player and enable
+**Show movement trail**. Available ranges are 15 minutes, 1 hour, 6 hours, and
+24 hours. Changing the range refreshes the trail; **Refresh trail** requests it
+again, and **Clear trail** removes it without changing stored telemetry.
+
+Trails use the existing stable `userId` telemetry key and Palpagos projection.
+The API returns only capture time and raw X/Y coordinates—never player IPs,
+account details, server connection details, or credentials. Visitors cannot
+access trail history.
+
+Requests are limited to 24 hours and the newest 5,000 captured points. Raw data
+remains governed by `PALCENTER_TELEMETRY_RETENTION_DAYS` (30 days by default),
+so a range may be empty when the player was absent or data has expired. This
+feature adds no polling or persistence.
+
+PalCenter sorts points chronologically, rejects invalid or out-of-bounds
+coordinates, removes consecutive duplicates, and reduces dense paths while
+preserving endpoints. It splits paths when captures are separated by more than
+the greater of three polling intervals or two minutes, when movement exceeds
+200,000 world units and is classified as a likely teleport, or when invalid
+data interrupts history. Disconnected periods are never joined by a misleading
+line.
+
+Each continuous segment is one SVG polyline. This avoids thousands of DOM
+markers, while a non-scaling stroke remains readable through zoom. Start and
+end states are distinct and have text descriptions. The summary reports the
+time span, points, segments, invalid exclusions, discontinuities, online state,
+and approximate distance in Palworld world units. Distance excludes gaps and
+likely teleports and is an operational estimate.
+
 ## Administrator calibration
 
 Administrators can enable **Calibration** on the Map tab to inspect:
@@ -207,7 +239,7 @@ Before release, verify in Chromium:
 This milestone does not add or claim:
 
 - multiple islands or world/map variants with separate bounds;
-- movement trails, heatmaps, analytics, or historical playback;
+- heatmaps, analytics, or historical playback;
 - `/game-data` collection, Z-axis display, guild data, bases, PalBoxes, or
   world actors;
 - new polling loops, telemetry tables, or persistence behavior.
