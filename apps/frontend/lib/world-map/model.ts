@@ -67,6 +67,23 @@ export interface PlayerMapDetailValues {
   telemetryAge: string;
 }
 
+export interface PlayerMarkerPresentation {
+  displayName: string;
+  initial: string;
+  accessibleName: string;
+}
+
+export function playerMarkerPresentation(
+  playerName: string | null | undefined,
+): PlayerMarkerPresentation {
+  const displayName = playerName?.trim() || "Unknown player";
+  return {
+    displayName,
+    initial: Array.from(displayName)[0] ?? "?",
+    accessibleName: `View ${displayName} on map`,
+  };
+}
+
 export function mapAccessForRole(role: UserRole): MapAccess {
   return {
     canView: role === "administrator" || role === "moderator",

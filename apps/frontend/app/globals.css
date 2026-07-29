@@ -144,10 +144,19 @@ a {
 
 .pc-world-map-surface {
   position: absolute;
-  inset: 0;
+  top: 50%;
+  left: 50%;
   transform-origin: center;
   background: #07121c;
   transition: transform 80ms ease-out;
+}
+
+.pc-world-map-surface picture {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .pc-world-map-image,
@@ -255,8 +264,7 @@ a {
 
 .pc-world-map-marker-label {
   position: absolute;
-  top: 50%;
-  left: calc(100% + 0.45rem);
+  z-index: 3;
   max-width: 9rem;
   overflow: hidden;
   padding: 0.2rem 0.4rem;
@@ -271,7 +279,33 @@ a {
   text-shadow: none;
   white-space: nowrap;
   pointer-events: none;
-  transform: translateY(-50%);
+  transform: translate(1.45rem, -50%);
+}
+
+.pc-world-map-marker-focused {
+  animation: pc-world-map-marker-pulse 0.6s ease-in-out 2;
+}
+
+@keyframes pc-world-map-marker-pulse {
+  50% {
+    box-shadow: 0 0 0 12px rgba(34, 211, 238, 0.38);
+    transform: translate(-50%, -50%) scale(1.25);
+  }
+}
+
+.pc-world-map-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  overflow: auto;
+  padding: 1rem;
+  background: rgba(3, 10, 17, 0.98);
+}
+
+.pc-world-map-expanded .pc-world-map-viewport {
+  height: calc(100vh - 7rem);
+  min-height: 28rem;
+  aspect-ratio: auto;
 }
 
 html {

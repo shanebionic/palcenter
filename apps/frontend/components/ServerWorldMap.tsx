@@ -21,20 +21,40 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconCopy,
+  IconArrowsMaximize,
   IconFocusCentered,
   IconMinus,
   IconPlus,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { getPlayers, getPlayerTelemetry } from "../lib/api";
 import {
   buildLivePlayerMapModel,
   calibrationRecord,
   mapContentState,
   playerMapDetailValues,
+  playerMarkerPresentation,
   telemetryFreshnessLabel,
   type LivePlayerMapMarker,
 } from "../lib/world-map/model";
+import {
+  centerMapOnPosition,
+  clampMapZoom,
+  constrainMapPan,
+  fitMapView,
+  mapSurfaceSize,
+  rectanglesIntersect,
+  zoomMapAtPointer,
+  type MapPan,
+  type MapRect,
+} from "../lib/world-map/navigation";
 import {
   defaultWorldMapLayer,
   worldMapAssetPath,
@@ -49,11 +69,6 @@ interface ServerWorldMapProps {
   serverId: string;
   serverOnline: boolean;
   canCalibrate: boolean;
-}
-
-interface Pan {
-  x: number;
-  y: number;
 }
 
 const defaultTelemetry: LatestPlayerTelemetry = {
@@ -78,14 +93,26 @@ export function ServerWorldMap({
   const [calibrating, setCalibrating] = useState(false);
   const [mapLayer, setMapLayer] = useState<WorldMapLayer>(defaultWorldMapLayer);
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
+  const [pan, setPan] = useState<MapPan>({ x: 0, y: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const [expanded, setExpanded] = useState(false);
+  const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<{
+    viewport: MapRect;
+    surface: MapRect;
+    image: MapRect | null;
+    marker: MapRect | null;
+    untransformedSurface: { width: number; height: number };
+    markerPlane: { width: number; height: number };
+    visible: boolean;
+  } | null>(null);
   const viewport = useRef<HTMLDivElement | null>(null);
+  const surface = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{
     pointerId: number;
     x: number;
     y: number;
-    pan: Pan;
+    pan: MapPan;
   } | null>(null);
 
   const loadMap = useCallback(
@@ -167,9 +194,20 @@ export function ServerWorldMap({
 
     const updateSize = () => {
       const bounds = element.getBoundingClientRect();
-      setViewportSize({
+      const nextSize = {
         width: Math.round(bounds.width),
         height: Math.round(bounds.height),
+      };
+      setViewportSize((current) => {
+        if (
+          current.width > 0 &&
+          (Math.abs(current.width - nextSize.width) > 160 ||
+            Math.abs(current.height - nextSize.height) > 160)
+        ) {
+          setZoom(1);
+          setPan({ x: 0, y: 0 });
+        }
+        return nextSize;
       });
     };
     updateSize();
@@ -177,6 +215,15 @@ export function ServerWorldMap({
     observer.observe(element);
     return () => observer.disconnect();
   }, [loading, serverOnline]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [expanded]);
 
   const model = useMemo(
     () =>
@@ -198,14 +245,100 @@ export function ServerWorldMap({
     connectedPlayerCount: players.length,
   });
 
+  const surfaceSize = mapSurfaceSize(viewportSize);
+  const applyFitMap = useCallback(() => {
+    const fit = fitMapView();
+    setZoom(fit.zoom);
+    setPan(fit.pan);
+  }, []);
   const changeZoom = (next: number) => {
-    setZoom(Math.min(4, Math.max(1, next)));
-    if (next <= 1) setPan({ x: 0, y: 0 });
+    const nextZoom = clampMapZoom(next);
+    setZoom(nextZoom);
+    setPan((current) =>
+      nextZoom === 1
+        ? { x: 0, y: 0 }
+        : constrainMapPan(current, viewportSize, surfaceSize, nextZoom),
+    );
   };
-  const resetView = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+  const centerSelectedPlayer = () => {
+    if (!selected) return;
+    const view = centerMapOnPosition(
+      selected.position,
+      viewportSize,
+      surfaceSize,
+    );
+    setZoom(view.zoom);
+    setPan(view.pan);
+    setFocusedPlayerId(selected.userId);
+    window.setTimeout(() => setFocusedPlayerId(null), 1_200);
   };
+
+  useEffect(() => {
+    applyFitMap();
+  }, [applyFitMap, expanded]);
+
+  useEffect(() => {
+    const element = viewport.current;
+    if (!element || surfaceSize === 0) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const bounds = element.getBoundingClientRect();
+      const view = zoomMapAtPointer({
+        view: { zoom, pan },
+        nextZoom: zoom * Math.exp(-event.deltaY * 0.0015),
+        pointer: {
+          x: event.clientX - (bounds.left + bounds.width / 2),
+          y: event.clientY - (bounds.top + bounds.height / 2),
+        },
+        viewport: viewportSize,
+        surfaceSize,
+      });
+      setZoom(view.zoom);
+      setPan(view.pan);
+    };
+    element.addEventListener("wheel", onWheel, { passive: false });
+    return () => element.removeEventListener("wheel", onWheel);
+  }, [pan, surfaceSize, viewportSize, zoom]);
+
+  useEffect(() => {
+    const update = () => {
+      const viewportElement = viewport.current;
+      const surfaceElement = surface.current;
+      if (!viewportElement || !surfaceElement) return;
+      const markerElement = selected
+        ? (Array.from(
+            surfaceElement.querySelectorAll<HTMLElement>("[data-player-id]"),
+          ).find((element) => element.dataset.playerId === selected.userId) ??
+          null)
+        : null;
+      const viewportRect = viewportElement.getBoundingClientRect();
+      const surfaceRect = surfaceElement.getBoundingClientRect();
+      const imageRect =
+        surfaceElement
+          .querySelector<HTMLImageElement>(".pc-world-map-image")
+          ?.getBoundingClientRect() ?? null;
+      const markerRect = markerElement?.getBoundingClientRect() ?? null;
+      setDiagnostics({
+        viewport: viewportRect,
+        surface: surfaceRect,
+        image: imageRect,
+        marker: markerRect,
+        untransformedSurface: {
+          width: surfaceElement.offsetWidth,
+          height: surfaceElement.offsetHeight,
+        },
+        markerPlane: {
+          width: surfaceElement.offsetWidth,
+          height: surfaceElement.offsetHeight,
+        },
+        visible: markerRect
+          ? rectanglesIntersect(markerRect, viewportRect)
+          : false,
+      });
+    };
+    const frame = window.requestAnimationFrame(update);
+    return () => window.cancelAnimationFrame(frame);
+  }, [mapLayer, pan, selected, surfaceSize, zoom]);
 
   const copyCalibration = async (marker: LivePlayerMapMarker) => {
     try {
@@ -219,6 +352,56 @@ export function ServerWorldMap({
       notifications.show({
         color: "red",
         title: "Copy failed",
+        message: "Your browser did not allow clipboard access.",
+      });
+    }
+  };
+
+  const copyDiagnostics = async () => {
+    if (!selected || !diagnostics) return;
+    const rect = (value: MapRect | null) =>
+      value
+        ? {
+            left: Math.round(value.left),
+            top: Math.round(value.top),
+            right: Math.round(value.right),
+            bottom: Math.round(value.bottom),
+          }
+        : null;
+    const output = {
+      viewport: {
+        width: Math.round(
+          diagnostics.viewport.right - diagnostics.viewport.left,
+        ),
+        height: Math.round(
+          diagnostics.viewport.bottom - diagnostics.viewport.top,
+        ),
+      },
+      untransformedSurface: diagnostics.untransformedSurface,
+      transformedSurface: rect(diagnostics.surface),
+      image: rect(diagnostics.image),
+      markerPlane: diagnostics.markerPlane,
+      zoom,
+      pan,
+      player: {
+        normalized: selected.position,
+        renderedPercent: {
+          x: Number((selected.position.x * 100).toFixed(2)),
+          y: Number((selected.position.y * 100).toFixed(2)),
+        },
+        screenRect: rect(diagnostics.marker),
+        intersectsViewport: diagnostics.visible,
+      },
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(output, null, 2));
+      notifications.show({
+        color: "green",
+        message: "Safe map diagnostics copied.",
+      });
+    } catch {
+      notifications.show({
+        color: "red",
         message: "Your browser did not allow clipboard access.",
       });
     }
@@ -301,7 +484,16 @@ export function ServerWorldMap({
           </Center>
         </Card>
       ) : contentState === "ready" ? (
-        <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+        <SimpleGrid
+          cols={{ base: 1, lg: 2 }}
+          spacing="lg"
+          className={expanded ? "pc-world-map-expanded" : undefined}
+          role={expanded ? "dialog" : undefined}
+          aria-modal={expanded ? true : undefined}
+          aria-label={
+            expanded ? "Expanded Palpagos live player map" : undefined
+          }
+        >
           <Card withBorder radius="md" padding="sm" className="pc-panel">
             <Group justify="space-between" mb="sm">
               <Group gap="xs">
@@ -315,6 +507,21 @@ export function ServerWorldMap({
                 )}
               </Group>
               <Group gap={4}>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  onClick={applyFitMap}
+                >
+                  Fit Map
+                </Button>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  onClick={centerSelectedPlayer}
+                  disabled={!selected}
+                >
+                  Center Player
+                </Button>
                 <ActionIcon
                   variant="subtle"
                   aria-label="Zoom out"
@@ -325,8 +532,8 @@ export function ServerWorldMap({
                 </ActionIcon>
                 <ActionIcon
                   variant="subtle"
-                  aria-label="Reset map view"
-                  onClick={resetView}
+                  aria-label="Reset map view to fit map"
+                  onClick={applyFitMap}
                 >
                   <IconFocusCentered size={18} />
                 </ActionIcon>
@@ -338,6 +545,13 @@ export function ServerWorldMap({
                 >
                   <IconPlus size={18} />
                 </ActionIcon>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={expanded ? "Close expanded map" : "Expand map"}
+                  onClick={() => setExpanded((current) => !current)}
+                >
+                  <IconArrowsMaximize size={18} />
+                </ActionIcon>
               </Group>
             </Group>
 
@@ -346,12 +560,15 @@ export function ServerWorldMap({
               className="pc-world-map-viewport"
               role="region"
               aria-label="Palpagos live player map"
-              onWheel={(event) => {
-                event.preventDefault();
-                changeZoom(zoom + (event.deltaY < 0 ? 0.25 : -0.25));
-              }}
               onPointerDown={(event) => {
-                if (zoom <= 1 || event.button !== 0) return;
+                if (
+                  zoom <= 1 ||
+                  event.button !== 0 ||
+                  (event.target as HTMLElement).closest(
+                    "button, [data-map-control]",
+                  )
+                )
+                  return;
                 event.currentTarget.setPointerCapture(event.pointerId);
                 drag.current = {
                   pointerId: event.pointerId,
@@ -363,19 +580,35 @@ export function ServerWorldMap({
               onPointerMove={(event) => {
                 if (!drag.current || drag.current.pointerId !== event.pointerId)
                   return;
-                setPan({
-                  x: drag.current.pan.x + event.clientX - drag.current.x,
-                  y: drag.current.pan.y + event.clientY - drag.current.y,
-                });
+                setPan(
+                  constrainMapPan(
+                    {
+                      x: drag.current.pan.x + event.clientX - drag.current.x,
+                      y: drag.current.pan.y + event.clientY - drag.current.y,
+                    },
+                    viewportSize,
+                    surfaceSize,
+                    zoom,
+                  ),
+                );
               }}
-              onPointerUp={() => {
+              onPointerUp={(event) => {
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+                }
+                drag.current = null;
+              }}
+              onPointerCancel={() => {
                 drag.current = null;
               }}
             >
               <div
+                ref={surface}
                 className={worldMapLayerClasses(mapLayer)}
                 style={{
-                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                  width: surfaceSize,
+                  height: surfaceSize,
+                  transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${zoom})`,
                 }}
               >
                 {mapLayer !== "grid" && (
@@ -406,28 +639,41 @@ export function ServerWorldMap({
                     </div>
                   </>
                 )}
-                {model.markers.map((marker) => (
-                  <button
-                    key={marker.userId}
-                    type="button"
-                    className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}`}
-                    style={{
-                      left: `${marker.position.x * 100}%`,
-                      top: `${marker.position.y * 100}%`,
-                    }}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSelectedId(marker.userId);
-                    }}
-                    aria-label={`${marker.playerName}, ${telemetryFreshnessLabel(marker.freshness)} position`}
-                    aria-pressed={selected?.userId === marker.userId}
-                  >
-                    <span>{marker.playerName.slice(0, 1).toUpperCase()}</span>
-                    <span className="pc-world-map-marker-label">
-                      {marker.playerName}
-                    </span>
-                  </button>
-                ))}
+                {model.markers.map((marker) => {
+                  const presentation = playerMarkerPresentation(
+                    marker.playerName,
+                  );
+                  return (
+                    <Fragment key={marker.userId}>
+                      <button
+                        type="button"
+                        data-player-id={marker.userId}
+                        className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                        style={{
+                          left: `${marker.position.x * 100}%`,
+                          top: `${marker.position.y * 100}%`,
+                        }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedId(marker.userId);
+                        }}
+                        aria-label={presentation.accessibleName}
+                        aria-pressed={selected?.userId === marker.userId}
+                      >
+                        <span aria-hidden="true">{presentation.initial}</span>
+                      </button>
+                      <span
+                        className="pc-world-map-marker-label"
+                        style={{
+                          left: `${marker.position.x * 100}%`,
+                          top: `${marker.position.y * 100}%`,
+                        }}
+                      >
+                        {presentation.displayName}
+                      </span>
+                    </Fragment>
+                  );
+                })}
               </div>
             </div>
             <Text size="xs" c="dimmed" mt="xs">
@@ -441,6 +687,19 @@ export function ServerWorldMap({
           </Card>
 
           <Stack gap="md">
+            {selected && diagnostics && !diagnostics.visible && (
+              <Alert color="orange">
+                <Group justify="space-between">
+                  <Text size="sm">
+                    {selected.playerName} is mapped but outside the current
+                    view.
+                  </Text>
+                  <Button size="compact-xs" onClick={centerSelectedPlayer}>
+                    Center Player
+                  </Button>
+                </Group>
+              </Alert>
+            )}
             <PlayerMapDetails
               marker={selected}
               onCopy={canCalibrate && calibrating ? copyCalibration : undefined}
@@ -452,6 +711,8 @@ export function ServerWorldMap({
                 viewportSize={viewportSize}
                 zoom={zoom}
                 pan={pan}
+                diagnostics={diagnostics}
+                onCopyDiagnostics={copyDiagnostics}
               />
             )}
           </Stack>
@@ -574,12 +835,24 @@ function CalibrationPanel({
   viewportSize,
   zoom,
   pan,
+  diagnostics,
+  onCopyDiagnostics,
 }: {
   unmapped: ReturnType<typeof buildLivePlayerMapModel>["unmappedPlayers"];
   pollingIntervalSeconds: number;
   viewportSize: { width: number; height: number };
   zoom: number;
-  pan: Pan;
+  pan: MapPan;
+  diagnostics: {
+    viewport: MapRect;
+    surface: MapRect;
+    image: MapRect | null;
+    marker: MapRect | null;
+    untransformedSurface: { width: number; height: number };
+    markerPlane: { width: number; height: number };
+    visible: boolean;
+  } | null;
+  onCopyDiagnostics: () => void;
 }) {
   return (
     <Paper withBorder radius="md" p="lg">
@@ -595,9 +868,21 @@ Y: ${palpagosProjection.worldMinY} … ${palpagosProjection.worldMaxY}
 Rotation: ${palpagosProjection.rotationDegrees}°
 Polling interval: ${pollingIntervalSeconds}s
 Viewport: ${viewportSize.width} × ${viewportSize.height}px
+Surface (untransformed): ${diagnostics?.untransformedSurface.width ?? 0} × ${diagnostics?.untransformedSurface.height ?? 0}px
+Surface (transformed): ${diagnostics ? Math.round(diagnostics.surface.right - diagnostics.surface.left) : 0} × ${diagnostics ? Math.round(diagnostics.surface.bottom - diagnostics.surface.top) : 0}px
+Image: ${diagnostics?.image ? `${Math.round(diagnostics.image.right - diagnostics.image.left)} × ${Math.round(diagnostics.image.bottom - diagnostics.image.top)}px` : "not rendered"}
+Marker plane: ${diagnostics?.markerPlane.width ?? 0} × ${diagnostics?.markerPlane.height ?? 0}px
 Scale: ${zoom.toFixed(2)}×
 Offset: ${Math.round(pan.x)}px, ${Math.round(pan.y)}px`}
         </Code>
+        <Button
+          variant="light"
+          leftSection={<IconCopy size={16} />}
+          onClick={onCopyDiagnostics}
+          disabled={!diagnostics?.marker}
+        >
+          Copy safe diagnostics
+        </Button>
         {unmapped.length > 0 && (
           <Stack gap={4}>
             <Text size="sm" fw={700}>
