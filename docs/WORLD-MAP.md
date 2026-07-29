@@ -189,6 +189,88 @@ section counts, invalid exclusions, discontinuities, online state, and
 approximate distance in Palworld world units. Distance excludes gaps and likely
 teleports and is an operational estimate.
 
+## Player Activity Summary
+
+When a player and movement trail are selected, PalCenter converts the returned
+telemetry into a compact administrator-facing summary. The trail remains the
+source visualization; the summary explains the observed movement without
+requiring an administrator to interpret every line on the map. It disappears
+when the trail is cleared or no valid history is available.
+
+The **Executive Summary** is the first sentence and combines the deterministic
+classification, travel distance, observed duration, movement percentage, and
+current connection state. It does not use AI and does not infer gameplay
+intent.
+
+### Activity classifications
+
+Classifications use these fixed thresholds:
+
+- **Offline:** the player is not connected and the newest returned position is
+  more than five minutes old.
+- **Recently Disconnected:** the player is not connected and the newest
+  returned position is no more than five minutes old.
+- **Idle:** connected, with no more than 5% of valid observed time moving.
+- **Mostly Idle:** connected, with more than 5% and no more than 25% moving.
+- **Exploring:** connected, with more than 25% and no more than 75% moving.
+- **Highly Active:** connected, with more than 75% moving.
+
+Movement means an adjacent valid sample changed by more than 100 Palworld world
+units. These names describe telemetry patterns only.
+
+### Operational flags
+
+Flags identify threshold crossings that may help an administrator investigate:
+
+- a stationary period lasting at least ten minutes;
+- a movement jump above 200,000 world units, excluded as a likely teleport;
+- two or more telemetry disconnects;
+- observed movement at or above 1,000 world units per second;
+- a newest position at least five minutes old;
+- fewer than three samples or average valid sample spacing above three polling
+  intervals.
+
+If none apply, the panel explicitly reports **No notable events**. A telemetry
+gap must exceed ten minutes (or six polling intervals when that is longer) to
+count as a disconnect. This accommodates the collector's five-minute unchanged
+position heartbeat without treating an idle player as disconnected.
+
+### Movement calculations
+
+The **Selected range** is the administrator's requested 15-minute, 1-hour,
+6-hour, or 24-hour preset. The **Observed span** is the elapsed time between
+the oldest and newest valid returned samples, so a 24-hour selection containing
+only 20 minutes of telemetry reports **Last 24 hours** and **20 minutes**
+separately. The selected range is display context only and does not affect
+movement calculations, classification, or trail fading.
+
+The statistics also show first and last activity, valid active duration, moving
+and stationary durations, sample and rendered-line counts, approximate
+distance, average and peak speed, longest stationary period, separate
+disconnect and excluded-teleport counts, online state, position age, and
+moving/stationary percentages. Active duration is the sum of valid adjacent
+sample intervals. Moving and stationary durations divide that active duration
+according to the movement threshold.
+
+Invalid coordinates, likely teleports, and disconnected gaps contribute no
+distance, speed, active duration, or moving/stationary time. Displayed metric
+units use 100 Palworld world units per meter. Average movement speed is moving
+distance divided by moving time only; positional drift in stationary intervals
+does not inflate it. Approximate travel distance retains the complete valid
+path distance. Maximum speed is the highest valid adjacent moving-sample speed.
+Stationary accumulation and movement-transition state reset at every
+disconnect or excluded teleport, so separate continuous paths cannot combine
+into a false long-stationary period. Moving and stationary durations exclude
+invalid samples, teleports, and disconnected gaps.
+
+### Timeline and insights
+
+The timeline lists meaningful transitions—first observation, movement starting
+or resuming, long stationary periods, telemetry disconnects/resumptions, and
+the last online observation. It does not list every sample. Insights contain at
+most two concise statements derived from movement percentage and disconnected
+session count. They remain factual and do not speculate about player intent.
+
 ## Administrator calibration
 
 Administrators can enable **Calibration** on the Map tab to inspect:

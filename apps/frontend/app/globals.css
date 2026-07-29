@@ -235,6 +235,40 @@ a {
   box-shadow: 0 1px 2px rgba(6, 16, 25, 0.8);
 }
 
+.pc-activity-summary {
+  border-color: rgba(34, 211, 238, 0.18);
+  background: rgba(7, 18, 28, 0.72);
+}
+
+.pc-activity-executive-summary {
+  line-height: 1.45;
+}
+
+.pc-activity-flag {
+  display: grid;
+  grid-template-columns: minmax(8.5rem, auto) minmax(0, 1fr);
+  gap: var(--mantine-spacing-xs);
+  align-items: center;
+}
+
+.pc-activity-value {
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: var(--mantine-radius-sm);
+  background: rgba(15, 28, 40, 0.5);
+}
+
+.pc-activity-timeline {
+  padding-left: 0.55rem;
+  border-left: 2px solid rgba(34, 211, 238, 0.22);
+}
+
+.pc-activity-timeline-time {
+  width: 4.5rem;
+  flex: 0 0 4.5rem;
+}
+
 .pc-world-map-grid {
   z-index: 1;
   background:
