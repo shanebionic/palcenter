@@ -19,6 +19,8 @@ const requiredSelectors = [
   ".pc-world-map-viewport",
   ".pc-world-map-surface",
   ".pc-world-map-marker",
+  ".pc-world-map-trail-segment",
+  ".pc-world-map-trail-legend",
 ];
 
 for (const selector of requiredSelectors) {

@@ -39,8 +39,27 @@ export interface TrailProcessingOptions {
   minimumNormalizedMovement?: number;
 }
 
+export interface TrailSegmentStyle {
+  opacity: number;
+  strokeWidth: number;
+  brightness: number;
+}
+
+export interface RenderedTrailSegment {
+  pathIndex: number;
+  start: ProjectedTrailPoint;
+  end: ProjectedTrailPoint;
+  ageRatio: number;
+  style: TrailSegmentStyle;
+}
+
 const defaultTeleportDistance = 200_000;
 const defaultMinimumNormalizedMovement = 0.0005;
+export const maximumRenderedTrailSegments = 400;
+export const oldestTrailOpacity = 0.16;
+export const newestTrailOpacity = 0.96;
+export const oldestTrailStrokeWidth = 2.4;
+export const newestTrailStrokeWidth = 3;
 
 export function processMovementTrail(
   input: TrailHistoryPoint[],
@@ -144,4 +163,181 @@ export function processMovementTrail(
 
 export function trailPolylinePoints(points: ProjectedTrailPoint[]): string {
   return points.map((point) => `${point.x * 100},${point.y * 100}`).join(" ");
+}
+
+export function trailAgeRatio(
+  timestamp: string,
+  oldestTimestamp: string | null,
+  newestTimestamp: string | null,
+): number {
+  const value = Date.parse(timestamp);
+  const oldest = oldestTimestamp ? Date.parse(oldestTimestamp) : Number.NaN;
+  const newest = newestTimestamp ? Date.parse(newestTimestamp) : Number.NaN;
+  if (
+    !Number.isFinite(value) ||
+    !Number.isFinite(oldest) ||
+    !Number.isFinite(newest)
+  ) {
+    return 0;
+  }
+  if (newest <= oldest) return 1;
+  return Math.min(1, Math.max(0, (value - oldest) / (newest - oldest)));
+}
+
+export function trailStyle(ageRatio: number): TrailSegmentStyle {
+  const age = Number.isFinite(ageRatio)
+    ? Math.min(1, Math.max(0, ageRatio))
+    : 0;
+  return {
+    opacity:
+      oldestTrailOpacity + (newestTrailOpacity - oldestTrailOpacity) * age,
+    strokeWidth:
+      oldestTrailStrokeWidth +
+      (newestTrailStrokeWidth - oldestTrailStrokeWidth) * age,
+    brightness: 0.72 + 0.28 * age,
+  };
+}
+
+export function buildRenderedTrailSegments(
+  trail: ProcessedTrail,
+  maximum = maximumRenderedTrailSegments,
+): RenderedTrailSegment[] {
+  if (maximum <= 0) return [];
+  const drawablePaths = trail.segments
+    .map((points, pathIndex) => ({ points, pathIndex }))
+    .filter(({ points }) => points.length >= 2);
+  if (drawablePaths.length === 0) return [];
+
+  const representedPaths = selectRepresentedPaths(drawablePaths, maximum);
+  const lineBudgets = allocateLineBudgets(representedPaths, maximum);
+
+  return representedPaths.flatMap(({ points, pathIndex }, index) => {
+    const sampledPoints = downsampleTrailPoints(
+      points,
+      lineBudgets[index] ?? 1,
+    );
+    return sampledPoints.slice(1).map((end, pointIndex) => {
+      const start = sampledPoints[pointIndex] as ProjectedTrailPoint;
+      // The segment end timestamp expresses how recent that movement was
+      // across the complete selected history window, including disconnected
+      // paths.
+      const ageRatio = trailAgeRatio(
+        end.capturedAt,
+        trail.firstTimestamp,
+        trail.lastTimestamp,
+      );
+      return {
+        pathIndex,
+        start,
+        end,
+        ageRatio,
+        style: trailStyle(ageRatio),
+      };
+    });
+  });
+}
+
+interface DrawableTrailPath {
+  points: ProjectedTrailPoint[];
+  pathIndex: number;
+}
+
+function selectRepresentedPaths(
+  paths: DrawableTrailPath[],
+  maximum: number,
+): DrawableTrailPath[] {
+  if (paths.length <= maximum) return paths;
+  if (maximum === 1) {
+    return [
+      paths.reduce((newestPath, path) =>
+        Date.parse(path.points.at(-1)?.capturedAt ?? "") >
+        Date.parse(newestPath.points.at(-1)?.capturedAt ?? "")
+          ? path
+          : newestPath,
+      ),
+    ];
+  }
+
+  const selectedIndexes = new Set<number>();
+  for (let index = 0; index < maximum; index += 1) {
+    selectedIndexes.add(
+      Math.round((index * (paths.length - 1)) / (maximum - 1)),
+    );
+  }
+
+  const newestPathIndex = paths.reduce((newestIndex, path, index) => {
+    const newestTimestamp = Date.parse(path.points.at(-1)?.capturedAt ?? "");
+    const currentTimestamp = Date.parse(
+      paths[newestIndex]?.points.at(-1)?.capturedAt ?? "",
+    );
+    return newestTimestamp > currentTimestamp ? index : newestIndex;
+  }, 0);
+  if (!selectedIndexes.has(newestPathIndex)) {
+    const replaceable = [...selectedIndexes]
+      .filter((index) => index !== 0 && index !== paths.length - 1)
+      .sort(
+        (left, right) =>
+          Math.abs(left - newestPathIndex) - Math.abs(right - newestPathIndex),
+      )[0];
+    if (replaceable !== undefined) selectedIndexes.delete(replaceable);
+    selectedIndexes.add(newestPathIndex);
+  }
+
+  return [...selectedIndexes]
+    .sort((left, right) => left - right)
+    .slice(0, maximum)
+    .map((index) => paths[index] as DrawableTrailPath);
+}
+
+function allocateLineBudgets(
+  paths: DrawableTrailPath[],
+  maximum: number,
+): number[] {
+  const capacities = paths.map(({ points }) => points.length - 1);
+  const candidateCount = capacities.reduce(
+    (total, capacity) => total + capacity,
+    0,
+  );
+  if (candidateCount <= maximum) return capacities;
+
+  const budgets = capacities.map(() => 1);
+  let remaining = maximum - paths.length;
+  const extraCapacity = capacities.map((capacity) => capacity - 1);
+  const totalExtraCapacity = extraCapacity.reduce(
+    (total, capacity) => total + capacity,
+    0,
+  );
+  const remainders = extraCapacity.map((capacity, index) => {
+    const exactShare = (remaining * capacity) / totalExtraCapacity;
+    const assigned = Math.min(capacity, Math.floor(exactShare));
+    budgets[index] = (budgets[index] ?? 1) + assigned;
+    return { index, remainder: exactShare - assigned };
+  });
+  remaining -=
+    budgets.reduce((total, budget) => total + budget, 0) - paths.length;
+
+  remainders.sort((left, right) => right.remainder - left.remainder);
+  while (remaining > 0) {
+    const target = remainders.find(
+      ({ index }) => (budgets[index] ?? 0) < (capacities[index] ?? 0),
+    );
+    if (!target) break;
+    budgets[target.index] = (budgets[target.index] ?? 0) + 1;
+    target.remainder = -1;
+    remaining -= 1;
+  }
+  return budgets;
+}
+
+function downsampleTrailPoints(
+  points: ProjectedTrailPoint[],
+  lineBudget: number,
+): ProjectedTrailPoint[] {
+  const renderedLineCount = Math.min(lineBudget, points.length - 1);
+  return Array.from({ length: renderedLineCount + 1 }, (_, index) => {
+    const pointIndex = Math.round(
+      (index * (points.length - 1)) / renderedLineCount,
+    );
+    return points[pointIndex] as ProjectedTrailPoint;
+  });
 }

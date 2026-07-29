@@ -196,13 +196,9 @@ a {
   pointer-events: none;
 }
 
-.pc-world-map-trail polyline {
+.pc-world-map-trail-segment {
   fill: none;
-  stroke: #22d3ee;
-  stroke-width: 3;
   stroke-linecap: round;
-  stroke-linejoin: round;
-  filter: drop-shadow(0 0 2px rgba(6, 16, 25, 0.95));
 }
 
 .pc-world-map-trail-start,
@@ -212,11 +208,31 @@ a {
 }
 
 .pc-world-map-trail-start {
-  fill: var(--mantine-color-yellow-4);
+  opacity: 0.38;
 }
 
 .pc-world-map-trail-end {
-  fill: var(--mantine-color-cyan-4);
+  opacity: 0.96;
+  filter: brightness(1.08) drop-shadow(0 0 2px rgba(6, 16, 25, 0.95));
+}
+
+.pc-world-map-trail-legend {
+  display: grid;
+  grid-template-columns: auto minmax(5rem, 1fr) auto;
+  gap: var(--mantine-spacing-xs);
+  align-items: center;
+  color: var(--mantine-color-dimmed);
+}
+
+.pc-world-map-trail-legend > span {
+  height: 0.3rem;
+  border-radius: var(--mantine-radius-xl);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--pc-player-color) 16%, transparent),
+    color-mix(in srgb, var(--pc-player-color) 96%, white 4%)
+  );
+  box-shadow: 0 1px 2px rgba(6, 16, 25, 0.8);
 }
 
 .pc-world-map-grid {

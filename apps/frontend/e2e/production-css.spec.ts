@@ -237,3 +237,137 @@ test("marker and label retain Fit Map screen size while the map zooms", async ({
   ).toBeLessThanOrEqual(1);
   expect(centered.animationName).toContain("pc-world-map-marker-pulse");
 });
+
+test("age-aware player trail remains readable, stable, and interactive", async ({
+  page,
+}) => {
+  const stylesheetUrls = await productionStylesheetUrls(page);
+  await page.setContent(`
+    ${stylesheetUrls.map((url) => `<link rel="stylesheet" href="${url}">`).join("")}
+    <main style="width: 1200px">
+      <div class="pc-world-map-viewport">
+        <div class="pc-world-map-surface" style="width: 700px; height: 700px; transition: none;">
+          <svg class="pc-world-map-trail" viewBox="0 0 100 100" aria-label="Movement trail for Denalb">
+            <line data-age="oldest" class="pc-world-map-trail-segment" x1="10" y1="20" x2="30" y2="35"
+              stroke="#22d3ee" opacity="0.16" stroke-width="2.4" vector-effect="non-scaling-stroke"></line>
+            <line data-age="newest" class="pc-world-map-trail-segment" x1="30" y1="35" x2="65" y2="55"
+              stroke="#22d3ee" opacity="0.96" stroke-width="3" vector-effect="non-scaling-stroke"></line>
+          </svg>
+          <div class="pc-world-map-marker-position" style="left: 65%; top: 55%;">
+            <div class="pc-world-map-marker-visual">
+              <button type="button" data-player-id="user-a"
+                class="pc-world-map-marker pc-world-map-marker-live"
+                style="background-color: #22d3ee" aria-label="View Denalb on map">D</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pc-world-map-trail-legend" aria-label="Trail age: faint is older and bright is newer"
+        style="--pc-player-color: #22d3ee">
+        <p>Older</p><span aria-hidden="true"></span><p>Newer</p>
+      </div>
+      <button type="button" data-action="select-other">Select other player</button>
+      <button type="button" data-action="center">Center Player</button>
+      <button type="button" data-action="clear">Clear trail</button>
+    </main>
+  `);
+
+  await page.evaluate(() => {
+    document
+      .querySelector('[data-action="select-other"]')
+      ?.addEventListener("click", () => {
+        const marker = document.querySelector<HTMLElement>(
+          ".pc-world-map-marker",
+        );
+        const legend = document.querySelector<HTMLElement>(
+          ".pc-world-map-trail-legend",
+        );
+        if (!marker || !legend) return;
+        marker.dataset.playerId = "user-b";
+        marker.style.backgroundColor = "#a3e635";
+        legend.style.setProperty("--pc-player-color", "#a3e635");
+        document
+          .querySelectorAll<SVGLineElement>(".pc-world-map-trail-segment")
+          .forEach((line) => line.setAttribute("stroke", "#a3e635"));
+      });
+    document
+      .querySelector('[data-action="center"]')
+      ?.addEventListener("click", () => {
+        document
+          .querySelector(".pc-world-map-marker")
+          ?.setAttribute("data-centered", "true");
+      });
+    document
+      .querySelector('[data-action="clear"]')
+      ?.addEventListener("click", () => {
+        document.querySelector(".pc-world-map-trail")?.remove();
+        document.querySelector(".pc-world-map-trail-legend")?.remove();
+      });
+  });
+
+  const oldest = page.locator('[data-age="oldest"]');
+  const newest = page.locator('[data-age="newest"]');
+  const marker = page.locator(".pc-world-map-marker");
+  const legend = page.locator(".pc-world-map-trail-legend");
+  await expect(legend).toContainText("Older");
+  await expect(legend).toContainText("Newer");
+
+  const styles = await page.evaluate(() => {
+    const oldLine = document.querySelector<SVGLineElement>(
+      '[data-age="oldest"]',
+    );
+    const newLine = document.querySelector<SVGLineElement>(
+      '[data-age="newest"]',
+    );
+    const playerMarker = document.querySelector<HTMLElement>(
+      ".pc-world-map-marker",
+    );
+    if (!oldLine || !newLine || !playerMarker) {
+      throw new Error("Trail fixture is missing.");
+    }
+    return {
+      oldestOpacity: Number(oldLine.getAttribute("opacity")),
+      newestOpacity: Number(newLine.getAttribute("opacity")),
+      newestColor: newLine.getAttribute("stroke"),
+      markerColor: playerMarker.style.backgroundColor,
+    };
+  });
+  expect(styles.newestOpacity).toBeGreaterThan(styles.oldestOpacity);
+  expect(styles.newestColor).toBe("#22d3ee");
+  expect(styles.markerColor).toBe("rgb(34, 211, 238)");
+
+  async function trailWidthsAtZoom(zoom: number) {
+    await page.locator(".pc-world-map-surface").evaluate((surface, value) => {
+      surface.style.transform = `translate(-50%, -50%) scale(${value})`;
+      const visual = surface.querySelector<HTMLElement>(
+        ".pc-world-map-marker-visual",
+      );
+      if (visual) visual.style.transform = `scale(${1 / value})`;
+    }, zoom);
+    return {
+      oldest: await oldest.evaluate(
+        (line) => getComputedStyle(line).strokeWidth,
+      ),
+      newest: await newest.evaluate(
+        (line) => getComputedStyle(line).strokeWidth,
+      ),
+    };
+  }
+  const fitWidths = await trailWidthsAtZoom(1);
+  expect(await trailWidthsAtZoom(2)).toEqual(fitWidths);
+  expect(await trailWidthsAtZoom(4)).toEqual(fitWidths);
+
+  await page.locator('[data-action="select-other"]').click();
+  await expect(marker).toHaveAttribute("data-player-id", "user-b");
+  await expect(newest).toHaveAttribute("stroke", "#a3e635");
+  await expect(legend).toHaveAttribute(
+    "style",
+    /--pc-player-color:\s*#a3e635/i,
+  );
+
+  await page.locator('[data-action="center"]').click();
+  await expect(marker).toHaveAttribute("data-centered", "true");
+  await page.locator('[data-action="clear"]').click();
+  await expect(page.locator(".pc-world-map-trail")).toHaveCount(0);
+  await expect(page.locator(".pc-world-map-trail-legend")).toHaveCount(0);
+});

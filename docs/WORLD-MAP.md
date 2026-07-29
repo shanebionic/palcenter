@@ -149,6 +149,12 @@ Administrators and Moderators can select a connected player and enable
 again, and **Clear trail** removes it without changing stored telemetry.
 
 Trails use the existing stable `userId` telemetry key and Palpagos projection.
+Each player receives a consistent marker and trail color derived from that
+identifier. Faint trail sections are older, while brighter sections are newer;
+the **Older — Newer** legend provides the same cue in text. The newest-point
+indicator uses the player color, while the subdued start indicator remains
+visually distinct from the live marker.
+
 The API returns only capture time and raw X/Y coordinates—never player IPs,
 account details, server connection details, or credentials. Visitors cannot
 access trail history.
@@ -166,12 +172,13 @@ the greater of three polling intervals or two minutes, when movement exceeds
 data interrupts history. Disconnected periods are never joined by a misleading
 line.
 
-Each continuous segment is one SVG polyline. This avoids thousands of DOM
-markers, while a non-scaling stroke remains readable through zoom. Start and
-end states are distinct and have text descriptions. The summary reports the
-time span, points, segments, invalid exclusions, discontinuities, online state,
-and approximate distance in Palworld world units. Distance excludes gaps and
-likely teleports and is an operational estimate.
+Movement is drawn in chronological sections with a screen-stable line width.
+Rendering is capped at 400 sections even when the selected history contains
+more stored positions, keeping zoom and pan responsive. Start and end states
+are distinct and have text descriptions. The summary reports the time span,
+points, path and rendered section counts, invalid exclusions, discontinuities,
+online state, and approximate distance in Palworld world units. Distance
+excludes gaps and likely teleports and is an operational estimate.
 
 ## Administrator calibration
 
