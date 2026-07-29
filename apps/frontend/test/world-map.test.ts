@@ -24,6 +24,7 @@ import {
   constrainMapPan,
   fitMapView,
   mapSurfaceSize,
+  markerInverseScale,
   rectanglesIntersect,
   zoomMapAtPointer,
 } from "../lib/world-map/navigation";
@@ -397,6 +398,19 @@ test("starts fitted and computes a square surface from the available viewport", 
   assert.equal(mapSurfaceSize({ width: 1200, height: 700 }), 700);
 });
 
+test("counter-scales marker visuals against valid map zoom", () => {
+  assert.equal(markerInverseScale(1), 1);
+  assert.equal(markerInverseScale(2), 0.5);
+  assert.ok(Math.abs(markerInverseScale(3) - 1 / 3) < 0.0001);
+  assert.equal(markerInverseScale(4), 0.25);
+
+  for (const invalidZoom of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+    const scale = markerInverseScale(invalidZoom);
+    assert.equal(scale, 1);
+    assert.equal(Number.isFinite(scale), true);
+  }
+});
+
 test("gives normal and expanded map viewports stable independent dimensions", async () => {
   const css = await readFile(
     new URL("../app/globals.css", import.meta.url),
@@ -523,6 +537,12 @@ test("keeps the marker initial and floating label decorative", async () => {
     /<span aria-hidden="true">\{presentation\.initial\}<\/span>/,
   );
   assert.match(source, /aria-label=\{presentation\.accessibleName\}/);
+  assert.match(source, /className="pc-world-map-marker-position"/);
+  assert.match(source, /className="pc-world-map-marker-visual"/);
+  assert.match(
+    source,
+    /transform: `scale\(\$\{markerInverseScale\(zoom\)\}\)`/,
+  );
   assert.match(
     source,
     /className="pc-world-map-marker-label"\s+aria-hidden="true"[\s\S]*?\{presentation\.displayName\}/,
