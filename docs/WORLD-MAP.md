@@ -1,21 +1,50 @@
-# World map prototype
+# Palpagos world map
 
-PalCenter v1.4 includes an interactive World Map tab for current connected
-players. It is a calibration-ready prototype: the position pipeline, controls,
-freshness indicators, and access controls are implemented, while the
-background deliberately uses a PalCenter-owned grid instead of redistributed
-game artwork.
+PalCenter v1.4 includes an interactive Palpagos reference map for current
+connected players. The position pipeline, controls, freshness indicators,
+access controls, and administrator calibration tooling remain independent from
+the bundled image layer.
 
 ## Asset and licensing decision
 
-The repository does not contain or hotlink a Pocketpair map image, extracted
-game texture, or third-party community map. No finished map asset with clear
-redistribution terms was identified for this milestone.
+The repository bundles 2048×2048 and 4096×4096 WebP derivatives of the
+8192×8192 Palpagos world map published by The Palworld Wiki. The
+[source file page](https://palworld.wiki.gg/wiki/File:World_Map.webp)
+identifies the image as originating from Palworld or a Pocketpair-owned website,
+states that Pocketpair holds the copyright, and describes the wiki's
+illustrative use as fair use under United States copyright law. The image was
+retrieved on July 28, 2026.
 
-The displayed background is produced entirely by PalCenter CSS. It is an
-original calibration grid covered by PalCenter's MIT license. The projection
-is independent from the background layer, so a separately licensed image can
-be added later without changing player-coordinate handling.
+The image remains copyright Pocketpair, Inc. It is not covered by PalCenter's
+MIT license. PalCenter is unofficial, unaffiliated, free, open source, and
+noncommercial, and includes the map only as a functional reference layer for
+official REST API player-location data. The full source record, checksum,
+attribution, and removal policy are in the asset's
+[`ASSET-NOTICE.md`](../apps/frontend/public/world-maps/palpagos/ASSET-NOTICE.md),
+[`source.json`](../apps/frontend/public/world-maps/palpagos/source.json), and
+the repository-level [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md).
+
+The upstream 8192×8192 binary is not shipped in the production frontend.
+Ordinary clients default to the 2048×2048 derivative; browsers can select the
+4096×4096 derivative for a sufficiently large or high-density rendered map.
+Both derivatives use WebP quality 90, effort 6, and Lanczos3 resizing with
+`fit: fill`. Because the source and output are all square, this performs a
+direct full-frame scale with no crop, rotation, padding, or boundary change.
+
+| Bundled derivative    | Compressed size | Approximate RGBA decode |
+| --------------------- | --------------: | ----------------------: |
+| `world-map-2048.webp` |   381,772 bytes |                  16 MiB |
+| `world-map-4096.webp` | 1,346,542 bytes |                  64 MiB |
+
+The original file was 4,876,386 bytes and could require approximately 256 MiB
+when decoded as RGBA. The default derivative reduces transfer size by 92.2% and
+decoded pixel memory by approximately 93.8%; the larger derivative reduces
+transfer size by 72.4% and decoded pixel memory by approximately 75%.
+
+The derivatives are bundled in the application and are never hotlinked at
+runtime. The PalCenter-owned CSS calibration grid remains available to
+Administrators as a standalone layer or an overlay. The normal map layer is the
+default.
 
 ## Coordinate sources
 
@@ -117,16 +146,36 @@ Administrators can enable **Calibration** on the Map tab to inspect:
 - the reason a connected player could not be mapped;
 - a copyable, credential-free calibration record.
 
+Administrators can select **Palpagos map**, **Calibration grid**, or **Map with
+grid overlay**. The map image, optional grid, and markers share the same square
+content box and transform, so zoom and pan remain synchronized.
+
 Validating the orientation against known in-game landmarks requires at least
-three observed player locations distributed across the world. Until that
-field calibration is recorded, exact visual alignment with a future finished
-map asset is not claimed.
+three observed player locations distributed across the world. Until that field
+calibration is recorded, exact visual alignment is not claimed.
+
+### Field calibration record
+
+The current projection constants have not yet passed a three-point field
+calibration against the PalDen server. PalCenter attempted to reach the
+configured PalDen REST API on July 28, 2026, but the server was unavailable
+from the validation host. No credentials or network address were recorded. A
+valid record must be collected while a player is standing at each named
+landmark:
+
+| World X/Y | Projected X/Y | Expected landmark | Observed alignment error |
+| --------- | ------------- | ----------------- | ------------------------ |
+| Pending   | Pending       | Landmark 1        | Pending                  |
+| Pending   | Pending       | Landmark 2        | Pending                  |
+| Pending   | Pending       | Landmark 3        | Pending                  |
+
+Do not treat the current overlay as survey-accurate until all three rows contain
+geographically separated live observations and acceptable measured error.
 
 ## Current limitations
 
 This milestone does not add or claim:
 
-- a finished Palpagos artwork layer;
 - multiple islands or world/map variants with separate bounds;
 - movement trails, heatmaps, analytics, or historical playback;
 - `/game-data` collection, Z-axis display, guild data, bases, PalBoxes, or
