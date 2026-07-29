@@ -29,6 +29,7 @@ import {
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { PlayerActivitySummary } from "./PlayerActivitySummary";
 import {
   getPlayers,
   getPlayerTelemetry,
@@ -65,9 +66,14 @@ import {
 import { palpagosProjection } from "../lib/world-map/projection";
 import { playerColor } from "../lib/world-map/player-color";
 import {
+  buildPlayerActivitySummary,
+  type ActivitySummary,
+} from "../lib/world-map/activity-summary";
+import {
   buildRenderedTrailSegments,
   processMovementTrail,
   type ProcessedTrail,
+  type TrailHistoryPoint,
 } from "../lib/world-map/trail";
 import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
 
@@ -114,6 +120,9 @@ export function ServerWorldMap({
   const [trailEnabled, setTrailEnabled] = useState(false);
   const [trailRange, setTrailRange] = useState<TrailRange>("1h");
   const [trail, setTrail] = useState<ProcessedTrail | null>(null);
+  const [trailHistoryPoints, setTrailHistoryPoints] = useState<
+    TrailHistoryPoint[]
+  >([]);
   const [trailLoading, setTrailLoading] = useState(false);
   const [trailError, setTrailError] = useState<string | null>(null);
   const [trailTruncated, setTrailTruncated] = useState(false);
@@ -279,6 +288,27 @@ export function ServerWorldMap({
     () => (trail ? buildRenderedTrailSegments(trail) : []),
     [trail],
   );
+  const activitySummary = useMemo(
+    () =>
+      trail && trail.pointCount > 0
+        ? buildPlayerActivitySummary({
+            points: trailHistoryPoints,
+            renderedTrailSegments: renderedTrailSegments.length,
+            currentlyOnline: selected !== null,
+            currentPositionCapturedAt:
+              selectedTelemetry?.capturedAt ?? trail.lastTimestamp,
+            pollingIntervalSeconds: telemetry.pollingIntervalSeconds,
+          })
+        : null,
+    [
+      renderedTrailSegments.length,
+      selected,
+      selectedTelemetry?.capturedAt,
+      telemetry.pollingIntervalSeconds,
+      trail,
+      trailHistoryPoints,
+    ],
+  );
   const contentState = mapContentState({
     loading,
     serverOnline,
@@ -299,6 +329,8 @@ export function ServerWorldMap({
       trailRequest.current = controller;
       setTrailLoading(true);
       setTrailError(null);
+      setTrail(null);
+      setTrailHistoryPoints([]);
       const end = new Date();
       const start = new Date(end.getTime() - trailRangeMilliseconds[range]);
       try {
@@ -310,6 +342,7 @@ export function ServerWorldMap({
           controller.signal,
         );
         if (controller.signal.aborted) return;
+        setTrailHistoryPoints(history.points);
         setTrail(
           processMovementTrail(history.points, palpagosProjection, {
             pollingIntervalSeconds: telemetry.pollingIntervalSeconds,
@@ -319,6 +352,7 @@ export function ServerWorldMap({
       } catch (trailLoadError) {
         if (controller.signal.aborted) return;
         setTrail(null);
+        setTrailHistoryPoints([]);
         setTrailError(
           trailLoadError instanceof Error
             ? trailLoadError.message
@@ -334,6 +368,7 @@ export function ServerWorldMap({
   useEffect(() => {
     setTrailEnabled(false);
     setTrail(null);
+    setTrailHistoryPoints([]);
     setTrailError(null);
     trailRequest.current?.abort();
   }, [serverId, selectedId]);
@@ -893,6 +928,7 @@ export function ServerWorldMap({
               enabled={trailEnabled}
               range={trailRange}
               trail={trail}
+              activitySummary={activitySummary}
               playerColor={selectedPlayerColor}
               renderedSegmentCount={renderedTrailSegments.length}
               loading={trailLoading}
@@ -909,6 +945,7 @@ export function ServerWorldMap({
                 trailRequest.current?.abort();
                 setTrailEnabled(false);
                 setTrail(null);
+                setTrailHistoryPoints([]);
                 setTrailError(null);
               }}
             />
@@ -937,6 +974,7 @@ function TrailControls({
   enabled,
   range,
   trail,
+  activitySummary,
   playerColor,
   renderedSegmentCount,
   loading,
@@ -955,6 +993,7 @@ function TrailControls({
   enabled: boolean;
   range: TrailRange;
   trail: ProcessedTrail | null;
+  activitySummary: ActivitySummary | null;
   playerColor: string;
   renderedSegmentCount: number;
   loading: boolean;
@@ -1034,6 +1073,9 @@ function TrailControls({
           <Alert color="gray">
             No valid position history was captured in this time range.
           </Alert>
+        )}
+        {enabled && activitySummary && (
+          <PlayerActivitySummary summary={activitySummary} />
         )}
         {enabled && trail && trail.pointCount > 0 && (
           <Stack gap={4} role="status" aria-label="Movement trail summary">

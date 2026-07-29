@@ -387,3 +387,77 @@ test("age-aware player trail remains readable, stable, and interactive", async (
   await expect(page.locator(".pc-world-map-trail")).toHaveCount(0);
   await expect(page.locator(".pc-world-map-trail-legend")).toHaveCount(0);
 });
+
+test("player activity summary follows trail range, player, and clear controls", async ({
+  page,
+}) => {
+  const stylesheetUrls = await productionStylesheetUrls(page);
+  await page.setContent(`
+    ${stylesheetUrls.map((url) => `<link rel="stylesheet" href="${url}">`).join("")}
+    <main style="width: 700px; padding: 2rem;">
+      <div class="pc-activity-summary" role="region" aria-label="Player activity summary">
+        <p data-summary-executive>Exploring • Denalb • 1 hour</p>
+        <h2>Activity classification</h2>
+        <p data-summary-classification>Exploring</p>
+        <h2>Operational flags</h2>
+        <p>No notable events</p>
+        <h2>Movement statistics</h2>
+        <p><span>Time window</span> <span data-summary-range>1 hour</span></p>
+        <h2>Timeline</h2>
+        <p>12:01 PM Activity observed</p>
+        <h2>Insights</h2>
+        <p>Movement and stationary time were both observed.</p>
+      </div>
+      <button type="button" data-action="range">Use 15-minute range</button>
+      <button type="button" data-action="player">Select Cattiva</button>
+      <button type="button" data-action="clear-summary">Clear trail</button>
+    </main>
+  `);
+
+  await page.evaluate(() => {
+    document
+      .querySelector('[data-action="range"]')
+      ?.addEventListener("click", () => {
+        const summary = document.querySelector("[data-summary-executive]");
+        const range = document.querySelector("[data-summary-range]");
+        if (summary)
+          summary.textContent = "Highly Active • Denalb • 15 minutes";
+        if (range) range.textContent = "15 minutes";
+      });
+    document
+      .querySelector('[data-action="player"]')
+      ?.addEventListener("click", () => {
+        const summary = document.querySelector("[data-summary-executive]");
+        if (summary) summary.textContent = "Mostly Idle • Cattiva • 15 minutes";
+      });
+    document
+      .querySelector('[data-action="clear-summary"]')
+      ?.addEventListener("click", () => {
+        document.querySelector(".pc-activity-summary")?.remove();
+      });
+  });
+
+  const summary = page.getByRole("region", {
+    name: "Player activity summary",
+  });
+  await expect(summary).toContainText("Exploring");
+  await expect(summary).toContainText("Movement statistics");
+  await expect(summary).toContainText("Timeline");
+  await expect(summary).toContainText("Insights");
+
+  await page.locator('[data-action="range"]').click();
+  await expect(summary.locator("[data-summary-range]")).toContainText(
+    "15 minutes",
+  );
+  await expect(summary.locator("[data-summary-executive]")).toContainText(
+    "Highly Active",
+  );
+
+  await page.locator('[data-action="player"]').click();
+  await expect(summary.locator("[data-summary-executive]")).toContainText(
+    "Cattiva",
+  );
+
+  await page.locator('[data-action="clear-summary"]').click();
+  await expect(summary).toHaveCount(0);
+});
