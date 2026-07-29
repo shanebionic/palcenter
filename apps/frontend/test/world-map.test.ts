@@ -37,8 +37,10 @@ import {
 import {
   buildRenderedTrailSegments,
   maximumRenderedTrailSegments,
+  newestTrailBrightness,
   newestTrailOpacity,
   newestTrailStrokeWidth,
+  oldestTrailBrightness,
   oldestTrailOpacity,
   oldestTrailStrokeWidth,
   processMovementTrail,
@@ -72,6 +74,12 @@ test("calculates safe timestamp-based trail age and bounded styles", () => {
   assert.equal(trailAgeRatio(oldest, oldest, oldest), 1);
   assert.equal(trailAgeRatio("invalid", oldest, newest), 0);
   assert.equal(trailAgeRatio(oldest, null, newest), 0);
+  assert.equal(oldestTrailOpacity, 0.35);
+  assert.equal(newestTrailOpacity, 0.95);
+  assert.equal(oldestTrailStrokeWidth, 1.2);
+  assert.equal(newestTrailStrokeWidth, 1.5);
+  assert.equal(oldestTrailBrightness, 0.85);
+  assert.equal(newestTrailBrightness, 1);
 
   for (const ratio of [-1, 0, 0.5, 1, 2, Number.NaN]) {
     const style = trailStyle(ratio);
@@ -79,6 +87,54 @@ test("calculates safe timestamp-based trail age and bounded styles", () => {
     assert.ok(style.opacity <= newestTrailOpacity);
     assert.ok(style.strokeWidth >= oldestTrailStrokeWidth);
     assert.ok(style.strokeWidth <= newestTrailStrokeWidth);
+  }
+});
+
+test("normalizes every requested range over the trail data actually returned", () => {
+  const renderedRatios = (
+    requestedMinutes: number,
+    returnedMinutes: number,
+  ): number[] => {
+    const start = Date.UTC(2026, 6, 28, 12);
+    const points = [0, returnedMinutes / 2, returnedMinutes].map(
+      (minute, index) => ({
+        capturedAt: new Date(start + minute * 60_000).toISOString(),
+        x: index / 10,
+        y: index / 10,
+        worldX: index * 1_000,
+        worldY: index * 1_000,
+      }),
+    );
+    const trail: import("../lib/world-map/trail").ProcessedTrail = {
+      segments: [points],
+      pointCount: points.length,
+      approximateDistance: 0,
+      firstTimestamp: new Date(
+        start - (requestedMinutes - returnedMinutes) * 60_000,
+      ).toISOString(),
+      lastTimestamp: points.at(-1)!.capturedAt,
+      exclusions: {
+        invalid: 0,
+        duplicate: 0,
+        simplified: 0,
+        timeGap: 0,
+        teleport: 0,
+      },
+    };
+    return buildRenderedTrailSegments(trail).map((segment) => segment.ageRatio);
+  };
+
+  const rangeCases: Array<[number, number]> = [
+    [15, 15],
+    [60, 60],
+    [360, 360],
+    [1_440, 1_440],
+    [1_440, 20],
+  ];
+  for (const [requestedMinutes, returnedMinutes] of rangeCases) {
+    const ratios = renderedRatios(requestedMinutes, returnedMinutes);
+    assert.ok(ratios[0]! <= 0.001);
+    assert.equal(ratios.at(-1), 1);
   }
 });
 

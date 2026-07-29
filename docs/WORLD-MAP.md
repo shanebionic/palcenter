@@ -155,6 +155,12 @@ the **Older — Newer** legend provides the same cue in text. The newest-point
 indicator uses the player color, while the subdued start indicator remains
 visually distinct from the live marker.
 
+The visual age range is calculated only from the oldest and newest movement
+timestamps actually returned for the selected player and range. A partially
+populated 24-hour request therefore still uses the complete Older — Newer
+visual range; preset duration, retention length, and current wall-clock time do
+not dilute the fade.
+
 The API returns only capture time and raw X/Y coordinates—never player IPs,
 account details, server connection details, or credentials. Visitors cannot
 access trail history.
@@ -172,13 +178,16 @@ the greater of three polling intervals or two minutes, when movement exceeds
 data interrupts history. Disconnected periods are never joined by a misleading
 line.
 
-Movement is drawn in chronological sections with a screen-stable line width.
-Rendering is capped at 400 sections even when the selected history contains
-more stored positions, keeping zoom and pan responsive. Start and end states
-are distinct and have text descriptions. The summary reports the time span,
-points, path and rendered section counts, invalid exclusions, discontinuities,
-online state, and approximate distance in Palworld world units. Distance
-excludes gaps and likely teleports and is an operational estimate.
+Movement is drawn in chronological sections with a subtle, screen-stable line
+width of approximately 1.2–1.5 pixels. Older movement retains at least 35%
+opacity and 85% brightness so short trails remain readable. Rendering is capped
+at 400 connected lines even when the selected history contains more stored
+positions, keeping zoom and pan responsive while preserving the endpoints of
+each represented continuous path. Start and end states are distinct and have
+text descriptions. The summary reports the time span, points, path and rendered
+section counts, invalid exclusions, discontinuities, online state, and
+approximate distance in Palworld world units. Distance excludes gaps and likely
+teleports and is an operational estimate.
 
 ## Administrator calibration
 

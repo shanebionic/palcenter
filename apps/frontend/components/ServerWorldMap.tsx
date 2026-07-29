@@ -768,6 +768,7 @@ export function ServerWorldMap({
                       <line
                         key={`${segment.end.capturedAt}-${index}`}
                         className="pc-world-map-trail-segment"
+                        data-age-ratio={segment.ageRatio}
                         x1={segment.start.x * 100}
                         y1={segment.start.y * 100}
                         x2={segment.end.x * 100}

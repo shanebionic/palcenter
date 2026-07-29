@@ -248,10 +248,15 @@ test("age-aware player trail remains readable, stable, and interactive", async (
       <div class="pc-world-map-viewport">
         <div class="pc-world-map-surface" style="width: 700px; height: 700px; transition: none;">
           <svg class="pc-world-map-trail" viewBox="0 0 100 100" aria-label="Movement trail for Denalb">
-            <line data-age="oldest" class="pc-world-map-trail-segment" x1="10" y1="20" x2="30" y2="35"
-              stroke="#22d3ee" opacity="0.16" stroke-width="2.4" vector-effect="non-scaling-stroke"></line>
-            <line data-age="newest" class="pc-world-map-trail-segment" x1="30" y1="35" x2="65" y2="55"
-              stroke="#22d3ee" opacity="0.96" stroke-width="3" vector-effect="non-scaling-stroke"></line>
+            <line data-age="oldest" data-age-ratio="0" data-captured-at="2026-07-28T12:00:00.000Z"
+              class="pc-world-map-trail-segment" x1="10" y1="20" x2="30" y2="35"
+              stroke="#22d3ee" opacity="0.35" stroke-width="1.2" vector-effect="non-scaling-stroke"></line>
+            <line data-age="middle" data-age-ratio="0.5" data-captured-at="2026-07-28T12:07:30.000Z"
+              class="pc-world-map-trail-segment" x1="30" y1="35" x2="48" y2="44"
+              stroke="#22d3ee" opacity="0.65" stroke-width="1.35" vector-effect="non-scaling-stroke"></line>
+            <line data-age="newest" data-age-ratio="1" data-captured-at="2026-07-28T12:15:00.000Z"
+              class="pc-world-map-trail-segment" x1="48" y1="44" x2="65" y2="55"
+              stroke="#22d3ee" opacity="0.95" stroke-width="1.5" vector-effect="non-scaling-stroke"></line>
           </svg>
           <div class="pc-world-map-marker-position" style="left: 65%; top: 55%;">
             <div class="pc-world-map-marker-visual">
@@ -266,6 +271,7 @@ test("age-aware player trail remains readable, stable, and interactive", async (
         style="--pc-player-color: #22d3ee">
         <p>Older</p><span aria-hidden="true"></span><p>Newer</p>
       </div>
+      <p data-range-summary>15-minute trail · 12:00 PM–12:15 PM</p>
       <button type="button" data-action="select-other">Select other player</button>
       <button type="button" data-action="center">Center Player</button>
       <button type="button" data-action="clear">Clear trail</button>
@@ -311,6 +317,9 @@ test("age-aware player trail remains readable, stable, and interactive", async (
   const legend = page.locator(".pc-world-map-trail-legend");
   await expect(legend).toContainText("Older");
   await expect(legend).toContainText("Newer");
+  await expect(page.locator("[data-range-summary]")).toContainText(
+    "15-minute trail",
+  );
 
   const styles = await page.evaluate(() => {
     const oldLine = document.querySelector<SVGLineElement>(
@@ -328,11 +337,16 @@ test("age-aware player trail remains readable, stable, and interactive", async (
     return {
       oldestOpacity: Number(oldLine.getAttribute("opacity")),
       newestOpacity: Number(newLine.getAttribute("opacity")),
+      oldestAgeRatio: Number(oldLine.dataset.ageRatio),
+      newestAgeRatio: Number(newLine.dataset.ageRatio),
       newestColor: newLine.getAttribute("stroke"),
       markerColor: playerMarker.style.backgroundColor,
     };
   });
+  expect(styles.oldestOpacity).toBeGreaterThanOrEqual(0.3);
   expect(styles.newestOpacity).toBeGreaterThan(styles.oldestOpacity);
+  expect(styles.oldestAgeRatio).toBe(0);
+  expect(styles.newestAgeRatio).toBe(1);
   expect(styles.newestColor).toBe("#22d3ee");
   expect(styles.markerColor).toBe("rgb(34, 211, 238)");
 
@@ -354,6 +368,8 @@ test("age-aware player trail remains readable, stable, and interactive", async (
     };
   }
   const fitWidths = await trailWidthsAtZoom(1);
+  expect(Number.parseFloat(fitWidths.oldest)).toBeCloseTo(1.2, 1);
+  expect(Number.parseFloat(fitWidths.newest)).toBeCloseTo(1.5, 1);
   expect(await trailWidthsAtZoom(2)).toEqual(fitWidths);
   expect(await trailWidthsAtZoom(4)).toEqual(fitWidths);
 
