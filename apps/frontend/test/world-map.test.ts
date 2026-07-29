@@ -483,7 +483,7 @@ test("presents player marker names once without substituting account names", () 
   assert.notEqual(playerMarkerPresentation("Denalb").displayName, "Denalb3032");
 });
 
-test("keeps the marker initial decorative and the visible label separate", async () => {
+test("keeps the marker initial and floating label decorative", async () => {
   const source = await readFile(
     new URL("../components/ServerWorldMap.tsx", import.meta.url),
     "utf8",
@@ -495,8 +495,18 @@ test("keeps the marker initial decorative and the visible label separate", async
   assert.match(source, /aria-label=\{presentation\.accessibleName\}/);
   assert.match(
     source,
-    /className="pc-world-map-marker-label"[\s\S]*\{presentation\.displayName\}/,
+    /className="pc-world-map-marker-label"\s+aria-hidden="true"[\s\S]*?\{presentation\.displayName\}/,
   );
+  assert.equal(
+    source.match(/\{presentation\.displayName\}/g)?.length,
+    1,
+    "the floating visual label renders the display name exactly once",
+  );
+
+  const denalb = playerMarkerPresentation("Denalb");
+  assert.equal(denalb.accessibleName, "View Denalb on map");
+  assert.equal(denalb.accessibleName.match(/Denalb/g)?.length, 1);
+  assert.equal(denalb.displayName, "Denalb");
 });
 
 test("keeps the connected display name and telemetry account name distinct", () => {

@@ -664,6 +664,7 @@ export function ServerWorldMap({
                       </button>
                       <span
                         className="pc-world-map-marker-label"
+                        aria-hidden="true"
                         style={{
                           left: `${marker.position.x * 100}%`,
                           top: `${marker.position.y * 100}%`,
