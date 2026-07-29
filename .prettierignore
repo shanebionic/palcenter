@@ -3,6 +3,8 @@
 .next/
 .turbo/
 coverage/
+apps/frontend/playwright-report/
+apps/frontend/test-results/
 dist/
 node_modules/
 apps/api/data/

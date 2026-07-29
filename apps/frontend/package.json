@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "check-types": "next typegen && tsc --noEmit",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "node --import tsx --test test/*.test.ts",
+    "test:production-css": "node scripts/assert-production-css.mjs && playwright test e2e/production-css.spec.ts"
   },
   "dependencies": {
     "@mantine/core": "^9.4.2",
@@ -22,6 +23,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.0",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^22.15.3",

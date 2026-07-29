@@ -56,6 +56,12 @@ jobs:
       - name: Run production builds
         run: pnpm build
 
+      - name: Install Chromium for production CSS regression
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      - name: Verify production CSS delivery
+        run: pnpm --filter web test:production-css
+
   docker:
     name: Build production image
     runs-on: ubuntu-24.04
