@@ -8,6 +8,7 @@ interface StatCardProps {
   icon: ReactNode;
   color?: string;
   compact?: boolean;
+  lineClamp?: number;
 }
 
 export function StatCard({
@@ -16,19 +17,27 @@ export function StatCard({
   icon,
   color = "cyan",
   compact = false,
+  lineClamp,
 }: StatCardProps) {
   return (
-    <SectionCard p="lg">
+    <SectionCard className="pc-stat-card" p="lg">
       <Group justify="space-between" wrap="nowrap">
-        <div>
+        <div className="pc-stat-card-content">
           <Text size="xs" c="dimmed" tt="uppercase" fw={700} lts={1}>
             {label}
           </Text>
-          <Text size={compact ? "sm" : "xl"} fw={750} mt={4} lineClamp={2}>
+          <Text
+            className="pc-stat-card-value"
+            size={compact ? "sm" : "xl"}
+            fw={750}
+            mt={4}
+            lineClamp={lineClamp}
+          >
             {value}
           </Text>
         </div>
         <ThemeIcon
+          className="pc-stat-card-icon"
           size="xl"
           radius="xl"
           color={color}

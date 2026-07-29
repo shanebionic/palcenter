@@ -101,7 +101,16 @@ a {
   padding-bottom: 0.25rem;
 }
 
+.pc-workspace-tabs {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .pc-workspace-tabs > [role="tablist"] {
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: nowrap;
   gap: 0.2rem;
   padding: 0.3rem;
   overflow-x: auto;
@@ -138,9 +147,23 @@ a {
   border-color: rgba(34, 211, 238, 0.3);
 }
 
+.pc-stat-card-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.pc-stat-card-value {
+  overflow-wrap: anywhere;
+}
+
+.pc-stat-card-icon {
+  flex: 0 0 auto;
+}
+
 @media (max-width: 48em) {
-  .pc-page-header,
-  .pc-section-header {
+  .pc-page-header.pc-page-header,
+  .pc-section-header.pc-section-header {
+    flex-direction: column;
     align-items: stretch;
   }
 
