@@ -31,7 +31,8 @@ export interface ActivityTimelineEvent {
 }
 
 export interface MovementStatistics {
-  timeWindowMs: number;
+  selectedRangeMs: number;
+  observedSpanMs: number;
   firstActivityAt: string;
   lastActivityAt: string;
   activeDurationMs: number;
@@ -62,6 +63,7 @@ export interface ActivitySummary {
 
 export interface ActivitySummaryInput {
   points: TrailHistoryPoint[];
+  selectedRangeMs: number;
   renderedTrailSegments: number;
   currentlyOnline: boolean;
   currentPositionCapturedAt: string | null;
@@ -164,6 +166,9 @@ export function buildPlayerActivitySummary(
     (total, interval) => total + interval.distance,
     0,
   );
+  const movingDistance = intervals
+    .filter(({ moving }) => moving)
+    .reduce((total, interval) => total + interval.distance, 0);
   const movementPercentage =
     activeDurationMs > 0 ? (movingDurationMs / activeDurationMs) * 100 : 0;
   const stationaryPercentage = 100 - movementPercentage;
@@ -176,7 +181,8 @@ export function buildPlayerActivitySummary(
     ? Math.max(0, now.getTime() - positionTimestamp)
     : 0;
   const statistics: MovementStatistics = {
-    timeWindowMs: Math.max(0, lastPoint.timestamp - firstPoint.timestamp),
+    selectedRangeMs: input.selectedRangeMs,
+    observedSpanMs: Math.max(0, lastPoint.timestamp - firstPoint.timestamp),
     firstActivityAt: firstPoint.capturedAt,
     lastActivityAt: lastPoint.capturedAt,
     activeDurationMs,
@@ -186,7 +192,7 @@ export function buildPlayerActivitySummary(
     renderedTrailSegments: input.renderedTrailSegments,
     approximateTravelDistance: travelDistance,
     averageMovementSpeed:
-      movingDurationMs > 0 ? travelDistance / (movingDurationMs / 1_000) : 0,
+      movingDurationMs > 0 ? movingDistance / (movingDurationMs / 1_000) : 0,
     maximumMovementSpeed: intervals.reduce(
       (maximum, interval) =>
         interval.moving ? Math.max(maximum, interval.speed) : maximum,
@@ -519,4 +525,12 @@ export function formatDistance(worldUnits: number): string {
 
 export function formatSpeed(worldUnitsPerSecond: number): string {
   return `${(worldUnitsPerSecond / 100).toFixed(1)} m/s`;
+}
+
+export function formatSelectedRange(rangeMs: number): string {
+  if (rangeMs === 15 * 60 * 1_000) return "Last 15 minutes";
+  if (rangeMs === 60 * 60 * 1_000) return "Last hour";
+  if (rangeMs === 6 * 60 * 60 * 1_000) return "Last 6 hours";
+  if (rangeMs === 24 * 60 * 60 * 1_000) return "Last 24 hours";
+  return `Last ${formatDuration(rangeMs)}`;
 }

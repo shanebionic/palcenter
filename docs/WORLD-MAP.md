@@ -237,17 +237,27 @@ position heartbeat without treating an idle player as disconnected.
 
 ### Movement calculations
 
-The statistics show the selected data window, first and last activity, valid
-active duration, moving and stationary durations, sample and rendered-line
-counts, approximate distance, average and peak speed, longest stationary
-period, separate disconnect and excluded-teleport counts, online state,
-position age, and moving/stationary percentages.
+The **Selected range** is the administrator's requested 15-minute, 1-hour,
+6-hour, or 24-hour preset. The **Observed span** is the elapsed time between
+the oldest and newest valid returned samples, so a 24-hour selection containing
+only 20 minutes of telemetry reports **Last 24 hours** and **20 minutes**
+separately. The selected range is display context only and does not affect
+movement calculations, classification, or trail fading.
+
+The statistics also show first and last activity, valid active duration, moving
+and stationary durations, sample and rendered-line counts, approximate
+distance, average and peak speed, longest stationary period, separate
+disconnect and excluded-teleport counts, online state, position age, and
+moving/stationary percentages. Active duration is the sum of valid adjacent
+sample intervals. Moving and stationary durations divide that active duration
+according to the movement threshold.
 
 Invalid coordinates, likely teleports, and disconnected gaps contribute no
 distance, speed, active duration, or moving/stationary time. Displayed metric
-units use 100 Palworld world units per meter. Average movement speed is valid
-travel distance divided by moving time only; stationary time does not reduce
-it. Maximum speed is the highest valid adjacent moving-sample speed.
+units use 100 Palworld world units per meter. Average movement speed is moving
+distance divided by moving time only; positional drift in stationary intervals
+does not inflate it. Approximate travel distance retains the complete valid
+path distance. Maximum speed is the highest valid adjacent moving-sample speed.
 Stationary accumulation and movement-transition state reset at every
 disconnect or excluded teleport, so separate continuous paths cannot combine
 into a false long-stationary period. Moving and stationary durations exclude

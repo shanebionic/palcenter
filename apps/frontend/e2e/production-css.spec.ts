@@ -396,13 +396,14 @@ test("player activity summary follows trail range, player, and clear controls", 
     ${stylesheetUrls.map((url) => `<link rel="stylesheet" href="${url}">`).join("")}
     <main style="width: 700px; padding: 2rem;">
       <div class="pc-activity-summary" role="region" aria-label="Player activity summary">
-        <p data-summary-executive>Exploring • Denalb • 1 hour</p>
+        <p data-summary-executive>Exploring • Denalb • 20 minutes observed</p>
         <h2>Activity classification</h2>
         <p data-summary-classification>Exploring</p>
         <h2>Operational flags</h2>
         <p>No notable events</p>
         <h2>Movement statistics</h2>
-        <p><span>Time window</span> <span data-summary-range>1 hour</span></p>
+        <p><span>Selected range</span> <span data-summary-range>Last hour</span></p>
+        <p><span>Observed span</span> <span data-summary-span>20 minutes</span></p>
         <h2>Timeline</h2>
         <p>12:01 PM Activity observed</p>
         <h2>Insights</h2>
@@ -421,8 +422,8 @@ test("player activity summary follows trail range, player, and clear controls", 
         const summary = document.querySelector("[data-summary-executive]");
         const range = document.querySelector("[data-summary-range]");
         if (summary)
-          summary.textContent = "Highly Active • Denalb • 15 minutes";
-        if (range) range.textContent = "15 minutes";
+          summary.textContent = "Highly Active • Denalb • 20 minutes observed";
+        if (range) range.textContent = "Last 15 minutes";
       });
     document
       .querySelector('[data-action="player"]')
@@ -447,8 +448,9 @@ test("player activity summary follows trail range, player, and clear controls", 
 
   await page.locator('[data-action="range"]').click();
   await expect(summary.locator("[data-summary-range]")).toContainText(
-    "15 minutes",
+    "Last 15 minutes",
   );
+  await expect(summary.locator("[data-summary-span]")).toHaveText("20 minutes");
   await expect(summary.locator("[data-summary-executive]")).toContainText(
     "Highly Active",
   );

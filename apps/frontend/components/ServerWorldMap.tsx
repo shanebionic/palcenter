@@ -293,6 +293,7 @@ export function ServerWorldMap({
       trail && trail.pointCount > 0
         ? buildPlayerActivitySummary({
             points: trailHistoryPoints,
+            selectedRangeMs: trailRangeMilliseconds[trailRange],
             renderedTrailSegments: renderedTrailSegments.length,
             currentlyOnline: selected !== null,
             currentPositionCapturedAt:
@@ -307,6 +308,7 @@ export function ServerWorldMap({
       telemetry.pollingIntervalSeconds,
       trail,
       trailHistoryPoints,
+      trailRange,
     ],
   );
   const contentState = mapContentState({

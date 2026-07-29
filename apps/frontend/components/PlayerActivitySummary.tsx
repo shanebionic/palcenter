@@ -13,6 +13,7 @@ import {
 import {
   formatDistance,
   formatDuration,
+  formatSelectedRange,
   formatSpeed,
   type ActivitySummary,
   type OperationalFlag,
@@ -93,8 +94,12 @@ export function PlayerActivitySummary({
             </Title>
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
               <ActivityValue
-                label="Time window"
-                value={formatDuration(statistics.timeWindowMs)}
+                label="Selected range"
+                value={formatSelectedRange(statistics.selectedRangeMs)}
+              />
+              <ActivityValue
+                label="Observed span"
+                value={formatDuration(statistics.observedSpanMs)}
               />
               <ActivityValue
                 label="Active duration"

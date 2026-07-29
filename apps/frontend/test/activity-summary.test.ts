@@ -4,6 +4,7 @@ import {
   activityThresholds,
   buildPlayerActivitySummary,
   classifyActivity,
+  formatSelectedRange,
 } from "../lib/world-map/activity-summary";
 import type { TrailHistoryPoint } from "../lib/world-map/trail";
 
@@ -242,7 +243,7 @@ test("keeps long stationary detection within one continuous path", () => {
 
 test("uses moving time rather than active time for average movement speed", () => {
   const summary = summaryFor(
-    [point(0, 0), point(1, 10_000), point(10, 10_000)],
+    [point(0, 0), point(1, 10_000), point(5, 10_050), point(10, 10_100)],
     {
       currentlyOnline: true,
       now: new Date(startedAt + 10 * 60_000),
@@ -251,9 +252,22 @@ test("uses moving time rather than active time for average movement speed", () =
 
   assert.equal(summary.statistics.movingDurationMs, 60_000);
   assert.equal(summary.statistics.stationaryDurationMs, 9 * 60_000);
+  assert.equal(summary.statistics.approximateTravelDistance, 10_100);
   assert.ok(
     Math.abs(summary.statistics.averageMovementSpeed - 166.6667) < 0.001,
   );
+});
+
+test("reports zero average movement speed for stationary positional drift", () => {
+  const summary = summaryFor([point(0, 0), point(1, 50), point(2, 100)], {
+    currentlyOnline: true,
+    now: new Date(startedAt + 2 * 60_000),
+  });
+
+  assert.equal(summary.statistics.approximateTravelDistance, 100);
+  assert.equal(summary.statistics.movingDurationMs, 0);
+  assert.equal(summary.statistics.averageMovementSpeed, 0);
+  assert.equal(summary.statistics.maximumMovementSpeed, 0);
 });
 
 test("excludes disconnects and teleports from average speed duration", () => {
@@ -277,6 +291,65 @@ test("excludes disconnects and teleports from average speed duration", () => {
   assert.equal(summary.statistics.activeDurationMs, 2 * 60_000);
   assert.ok(
     Math.abs(summary.statistics.averageMovementSpeed - 166.6667) < 0.001,
+  );
+});
+
+test("distinguishes selected trail ranges from complete observed spans", () => {
+  const fifteenMinutes = summaryFor(timedPoints([0, 0, 0, 0], 5 * 60_000), {
+    currentlyOnline: true,
+    now: new Date(startedAt + 15 * 60_000),
+    selectedRangeMs: 15 * 60_000,
+  });
+  const oneHour = summaryFor(timedPoints([0, 0, 0, 0, 0, 0, 0], 10 * 60_000), {
+    currentlyOnline: true,
+    now: new Date(startedAt + 60 * 60_000),
+    selectedRangeMs: 60 * 60_000,
+  });
+
+  assert.equal(fifteenMinutes.statistics.selectedRangeMs, 15 * 60_000);
+  assert.equal(fifteenMinutes.statistics.observedSpanMs, 15 * 60_000);
+  assert.equal(
+    formatSelectedRange(fifteenMinutes.statistics.selectedRangeMs),
+    "Last 15 minutes",
+  );
+  assert.equal(oneHour.statistics.selectedRangeMs, 60 * 60_000);
+  assert.equal(oneHour.statistics.observedSpanMs, 60 * 60_000);
+  assert.equal(
+    formatSelectedRange(oneHour.statistics.selectedRangeMs),
+    "Last hour",
+  );
+});
+
+test("keeps a partial observed span independent from selected range changes", () => {
+  const points = timedPoints([0, 0, 0], 10 * 60_000);
+  const oneHour = summaryFor(points, {
+    currentlyOnline: true,
+    now: new Date(startedAt + 20 * 60_000),
+    selectedRangeMs: 60 * 60_000,
+  });
+  const twentyFourHours = summaryFor(points, {
+    currentlyOnline: true,
+    now: new Date(startedAt + 20 * 60_000),
+    selectedRangeMs: 24 * 60 * 60_000,
+  });
+
+  assert.equal(oneHour.statistics.observedSpanMs, 20 * 60_000);
+  assert.equal(twentyFourHours.statistics.observedSpanMs, 20 * 60_000);
+  assert.equal(
+    formatSelectedRange(oneHour.statistics.selectedRangeMs),
+    "Last hour",
+  );
+  assert.equal(
+    formatSelectedRange(twentyFourHours.statistics.selectedRangeMs),
+    "Last 24 hours",
+  );
+  assert.equal(
+    twentyFourHours.statistics.activeDurationMs,
+    oneHour.statistics.activeDurationMs,
+  );
+  assert.equal(
+    twentyFourHours.statistics.movementPercentage,
+    oneHour.statistics.movementPercentage,
   );
 });
 
@@ -361,7 +434,11 @@ test("flags high observed movement speed without treating it as a teleport", () 
 
 function summaryFor(
   points: TrailHistoryPoint[],
-  options: { currentlyOnline: boolean; now: Date },
+  options: {
+    currentlyOnline: boolean;
+    now: Date;
+    selectedRangeMs?: number;
+  },
 ) {
   const valid = points.filter(
     (candidate) =>
@@ -369,6 +446,7 @@ function summaryFor(
   );
   const summary = buildPlayerActivitySummary({
     points,
+    selectedRangeMs: options.selectedRangeMs ?? 60 * 60_000,
     renderedTrailSegments: Math.max(0, valid.length - 1),
     currentlyOnline: options.currentlyOnline,
     currentPositionCapturedAt: valid.at(-1)?.capturedAt ?? null,
