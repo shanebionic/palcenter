@@ -202,6 +202,12 @@ classification, travel distance, observed duration, movement percentage, and
 current connection state. It does not use AI and does not infer gameplay
 intent.
 
+The normal summary keeps the classification, operational flags, selected
+range, observed span, travel distance, and current status immediately visible.
+Detailed movement statistics plus the event timeline and insights are available
+in expandable sections. This keeps routine review concise without removing
+diagnostic context.
+
 ### Activity classifications
 
 Classifications use these fixed thresholds:
@@ -272,6 +278,10 @@ most two concise statements derived from movement percentage and disconnected
 session count. They remain factual and do not speculate about player intent.
 
 ## Administrator calibration
+
+Calibration is an advanced administrator workflow. Open **Advanced map tools**
+above the map to select the calibration grid or enable calibration diagnostics.
+These controls are collapsed by default and are not shown to Moderators.
 
 Administrators can enable **Calibration** on the Map tab to inspect:
 

@@ -316,6 +316,20 @@ a {
   background: rgba(7, 18, 28, 0.72);
 }
 
+.pc-activity-details .mantine-Accordion-item,
+.pc-trail-technical-details .mantine-Accordion-item,
+.pc-world-map-advanced .mantine-Accordion-item {
+  border-color: rgba(148, 163, 184, 0.14);
+  background: rgba(8, 18, 29, 0.58);
+}
+
+.pc-activity-details .mantine-Accordion-control:focus-visible,
+.pc-trail-technical-details .mantine-Accordion-control:focus-visible,
+.pc-world-map-advanced .mantine-Accordion-control:focus-visible {
+  outline: 2px solid var(--mantine-color-cyan-4);
+  outline-offset: -2px;
+}
+
 .pc-activity-executive-summary {
   line-height: 1.45;
 }
@@ -343,6 +357,10 @@ a {
 .pc-activity-timeline-time {
   width: 4.5rem;
   flex: 0 0 4.5rem;
+}
+
+.pc-map-detail-value {
+  overflow-wrap: anywhere;
 }
 
 .pc-world-map-grid {
@@ -518,6 +536,24 @@ a {
 }
 
 @media (max-width: 62em) {
+  .pc-world-map-toolbar {
+    align-items: flex-start;
+  }
+
+  .pc-world-map-toolbar > :last-child {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .pc-world-map-advanced-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pc-world-map-advanced-controls > * {
+    width: 100% !important;
+  }
+
   .pc-world-map-viewport {
     height: clamp(22rem, 92vw, 38rem);
     min-height: 22rem;
@@ -532,6 +568,16 @@ a {
   .pc-world-map-expanded .pc-world-map-viewport {
     height: 100%;
     min-height: 0;
+  }
+}
+
+@media (max-width: 36em) {
+  .pc-world-map-toolbar > :last-child {
+    gap: 0.2rem;
+  }
+
+  .pc-world-map-toolbar .mantine-Button-root {
+    flex: 1 1 auto;
   }
 }
 

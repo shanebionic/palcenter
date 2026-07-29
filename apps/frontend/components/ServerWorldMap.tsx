@@ -2,6 +2,7 @@
 
 import {
   ActionIcon,
+  Accordion,
   Alert,
   Badge,
   Button,
@@ -29,7 +30,10 @@ import {
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { BrandedLoader } from "./BrandedLoader";
 import { PlayerActivitySummary } from "./PlayerActivitySummary";
+import { SectionCard } from "./ui/SectionCard";
+import { SectionHeader } from "./ui/SectionHeader";
 import {
   getPlayers,
   getPlayerTelemetry,
@@ -560,38 +564,10 @@ export function ServerWorldMap({
 
   return (
     <Stack gap="lg" pt="lg">
-      <Group justify="space-between" align="flex-end">
-        <div>
-          <Title order={2}>World Map</Title>
-          <Text c="dimmed">
-            Current connected players with recent position telemetry.
-          </Text>
-        </div>
-        <Group gap="sm">
-          {canCalibrate && (
-            <Select
-              label="Map layer"
-              aria-label="Map layer"
-              value={mapLayer}
-              onChange={(value) =>
-                setMapLayer((value as WorldMapLayer | null) ?? "map")
-              }
-              allowDeselect={false}
-              w={190}
-              data={[
-                { value: "map", label: "Palpagos map" },
-                { value: "grid", label: "Calibration grid" },
-                { value: "map-with-grid", label: "Map with grid overlay" },
-              ]}
-            />
-          )}
-          {canCalibrate && (
-            <Switch
-              label="Calibration"
-              checked={calibrating}
-              onChange={(event) => setCalibrating(event.currentTarget.checked)}
-            />
-          )}
+      <SectionHeader
+        title="World Map"
+        description="Current connected players with recent position telemetry."
+        action={
           <Button
             variant="light"
             onClick={() => loadMap(true)}
@@ -600,40 +576,116 @@ export function ServerWorldMap({
           >
             Refresh
           </Button>
-        </Group>
-      </Group>
+        }
+      />
+
+      {canCalibrate && (
+        <Accordion
+          variant="separated"
+          radius="md"
+          className="pc-world-map-advanced"
+        >
+          <Accordion.Item value="advanced-map-tools">
+            <Accordion.Control>Advanced map tools</Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="md">
+                <Text size="sm" c="dimmed">
+                  Administrator-only calibration and projection tools. Most
+                  server management does not require these settings.
+                </Text>
+                <Group
+                  align="flex-end"
+                  gap="lg"
+                  className="pc-world-map-advanced-controls"
+                >
+                  <Select
+                    label="Map layer"
+                    description="Use the grid only when validating map alignment."
+                    aria-label="Map layer"
+                    value={mapLayer}
+                    onChange={(value) =>
+                      setMapLayer((value as WorldMapLayer | null) ?? "map")
+                    }
+                    allowDeselect={false}
+                    w={240}
+                    data={[
+                      { value: "map", label: "Palpagos map" },
+                      { value: "grid", label: "Calibration grid" },
+                      {
+                        value: "map-with-grid",
+                        label: "Map with grid overlay",
+                      },
+                    ]}
+                  />
+                  <Switch
+                    label="Enable calibration diagnostics"
+                    description="Shows projection details and safe diagnostic tools."
+                    checked={calibrating}
+                    onChange={(event) =>
+                      setCalibrating(event.currentTarget.checked)
+                    }
+                  />
+                </Group>
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+        </Accordion>
+      )}
 
       {displayedContentState === "offline" && (
-        <Alert color="gray" title="Server offline">
-          Live player positions are unavailable until the server reconnects.
+        <Alert color="orange" title="Server is offline">
+          PalCenter cannot refresh player locations right now. Start the server
+          or restore its REST connection, then refresh the map.
         </Alert>
       )}
-      {error && <Alert color="red">{error}</Alert>}
+      {error && displayedContentState !== "offline" && (
+        <Alert color="red" title="Live map data is unavailable">
+          PalCenter could not refresh player and position data. Confirm the
+          server is online and its REST credentials are valid, then try again.
+        </Alert>
+      )}
 
       {displayedContentState === "loading" ? (
-        <Center mih={360}>
-          <Loader />
-        </Center>
-      ) : displayedContentState === "unavailable" ? (
-        <Card withBorder radius="md" padding="xl" className="pc-panel">
+        <SectionCard>
+          <BrandedLoader message="Loading the Palpagos player map" />
+        </SectionCard>
+      ) : displayedContentState === "offline" ? (
+        <SectionCard>
           <Center mih={220}>
             <Stack align="center" gap="xs">
-              <Title order={3}>Map unavailable</Title>
-              <Text c="dimmed" ta="center">
-                PalCenter could not verify the current connected players.
+              <Title order={3}>Player map paused</Title>
+              <Text c="dimmed" ta="center" maw={520}>
+                Player locations and movement history will return when the
+                server is reachable again. Existing PalCenter data is not
+                affected.
               </Text>
             </Stack>
           </Center>
-        </Card>
+        </SectionCard>
+      ) : displayedContentState === "unavailable" ? (
+        <SectionCard>
+          <Center mih={220}>
+            <Stack align="center" gap="xs">
+              <Title order={3}>Player data could not be loaded</Title>
+              <Text c="dimmed" ta="center" maw={520}>
+                The server responded, but PalCenter could not verify connected
+                players. Check the REST credentials and try Refresh.
+              </Text>
+            </Stack>
+          </Center>
+        </SectionCard>
       ) : displayedContentState === "empty" ? (
-        <Card withBorder radius="md" padding="xl" className="pc-panel">
+        <SectionCard>
           <Center mih={220}>
             <Stack align="center" gap="xs">
               <Title order={3}>No players online</Title>
-              <Text c="dimmed">Live player markers will appear here.</Text>
+              <Text c="dimmed" ta="center" maw={520}>
+                The map is ready. Player markers and movement trails will appear
+                after someone joins and PalCenter receives position telemetry.
+              </Text>
             </Stack>
           </Center>
-        </Card>
+        </SectionCard>
       ) : displayedContentState === "ready" ? (
         <div
           className={`pc-world-map-layout${expanded ? " pc-world-map-expanded" : ""}`}
@@ -649,7 +701,12 @@ export function ServerWorldMap({
             padding="sm"
             className="pc-panel pc-world-map-card"
           >
-            <Group justify="space-between" mb="sm">
+            <Group
+              justify="space-between"
+              mb="sm"
+              gap="xs"
+              className="pc-world-map-toolbar"
+            >
               <Group gap="xs">
                 <Badge color="cyan" variant="light">
                   {model.markers.length} mapped
@@ -1065,15 +1122,25 @@ function TrailControls({
             Clear trail
           </Button>
         </Group>
-        {error && <Alert color="red">{error}</Alert>}
+        {error && (
+          <Alert color="red" title="Movement history is unavailable">
+            PalCenter could not load this trail. Confirm the server connection,
+            then try refreshing the trail.
+          </Alert>
+        )}
         {enabled && loading && (
-          <Text size="sm" c="dimmed" role="status">
-            Loading movement history…
-          </Text>
+          <Group gap="xs" role="status">
+            <Loader size="xs" />
+            <Text size="sm" c="dimmed">
+              Loading movement history for {selectedPlayerName}…
+            </Text>
+          </Group>
         )}
         {enabled && !loading && !error && trail?.pointCount === 0 && (
-          <Alert color="gray">
-            No valid position history was captured in this time range.
+          <Alert color="gray" title="No movement history yet">
+            PalCenter has not captured valid positions for this player in the
+            selected range. Keep telemetry collection running and check again
+            after the player has been active.
           </Alert>
         )}
         {enabled && activitySummary && (
@@ -1094,43 +1161,59 @@ function TrailControls({
               <span aria-hidden="true" />
               <Text size="xs">Newer</Text>
             </div>
-            <SimpleGrid cols={2}>
-              <Detail
-                label="First position"
-                value={formatTimestamp(trail.firstTimestamp)}
-              />
-              <Detail
-                label="Last position"
-                value={formatTimestamp(trail.lastTimestamp)}
-              />
-              <Detail label="Trail points" value={String(trail.pointCount)} />
-              <Detail
-                label="Path segments"
-                value={String(trail.segments.length)}
-              />
-              <Detail
-                label="Rendered segments"
-                value={String(renderedSegmentCount)}
-              />
-              <Detail
-                label="Approx. distance"
-                value={`${Math.round(trail.approximateDistance).toLocaleString()} world units`}
-              />
-              <Detail
-                label="Player status"
-                value={currentlyOnline ? "Currently online" : "Not online"}
-              />
-              <Detail
-                label="Invalid points excluded"
-                value={String(trail.exclusions.invalid)}
-              />
-              <Detail
-                label="Discontinuities"
-                value={String(
-                  trail.exclusions.timeGap + trail.exclusions.teleport,
-                )}
-              />
-            </SimpleGrid>
+            <Accordion
+              variant="separated"
+              radius="md"
+              className="pc-trail-technical-details"
+            >
+              <Accordion.Item value="trail-details">
+                <Accordion.Control>Trail data details</Accordion.Control>
+                <Accordion.Panel>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                    <Detail
+                      label="First position"
+                      value={formatTimestamp(trail.firstTimestamp)}
+                    />
+                    <Detail
+                      label="Last position"
+                      value={formatTimestamp(trail.lastTimestamp)}
+                    />
+                    <Detail
+                      label="Trail points"
+                      value={String(trail.pointCount)}
+                    />
+                    <Detail
+                      label="Path segments"
+                      value={String(trail.segments.length)}
+                    />
+                    <Detail
+                      label="Rendered segments"
+                      value={String(renderedSegmentCount)}
+                    />
+                    <Detail
+                      label="Approx. distance"
+                      value={`${Math.round(trail.approximateDistance).toLocaleString()} world units`}
+                    />
+                    <Detail
+                      label="Player status"
+                      value={
+                        currentlyOnline ? "Currently online" : "Not online"
+                      }
+                    />
+                    <Detail
+                      label="Invalid points excluded"
+                      value={String(trail.exclusions.invalid)}
+                    />
+                    <Detail
+                      label="Discontinuities"
+                      value={String(
+                        trail.exclusions.timeGap + trail.exclusions.teleport,
+                      )}
+                    />
+                  </SimpleGrid>
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
             {truncated && (
               <Alert color="orange">
                 Showing the newest 5,000 captured positions in this range.
@@ -1243,7 +1326,11 @@ function Detail({
       <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
         {label}
       </Text>
-      <Text size="sm" ff={mono ? "monospace" : undefined} lineClamp={2}>
+      <Text
+        size="sm"
+        ff={mono ? "monospace" : undefined}
+        className="pc-map-detail-value"
+      >
         {value}
       </Text>
     </div>

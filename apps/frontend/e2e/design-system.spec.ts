@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function setPlayerMode(
   page: Page,
-  mode: "empty" | "populated",
+  mode: "empty" | "error" | "populated",
 ): Promise<void> {
   const response = await page.request.get(
     `http://127.0.0.1:3198/__test/players?mode=${mode}`,
@@ -172,7 +172,7 @@ test("danger zone communicates destructive intent beyond its color", async ({
   ).toBeVisible();
 });
 
-test("map and calibration surfaces retain production layout styling", async ({
+test("map keeps administrator calibration tools behind an advanced disclosure", async ({
   page,
 }) => {
   await setPlayerMode(page, "populated");
@@ -187,10 +187,96 @@ test("map and calibration surfaces retain production layout styling", async ({
     await viewport.evaluate((element) => element.clientHeight),
   ).toBeGreaterThanOrEqual(500);
 
-  await page.getByRole("switch", { name: "Calibration" }).check();
+  await expect(page.getByRole("combobox", { name: "Map layer" })).toBeHidden();
+  await page.getByRole("button", { name: "Advanced map tools" }).click();
+  await expect(page.getByRole("combobox", { name: "Map layer" })).toBeVisible();
+  await page
+    .getByRole("switch", { name: /Enable calibration diagnostics/ })
+    .check();
   const calibration = panelWithHeading(page, "Projection calibration");
   await expect(calibration).toHaveCount(1);
   await expect(calibration).toBeVisible();
+});
+
+test("activity summary prioritizes key status and discloses secondary details", async ({
+  page,
+}) => {
+  await setPlayerMode(page, "populated");
+  await openWorkspace(page);
+  await page.getByRole("tab", { name: "Map" }).click();
+  await page.getByRole("button", { name: "View Denalb on map" }).click();
+  await page.getByRole("switch", { name: "Show movement trail" }).check();
+
+  const summary = page.getByRole("region", {
+    name: "Player activity summary",
+  });
+  await expect(summary).toBeVisible();
+  await expect(summary).toContainText("Selected range");
+  await expect(summary).toContainText("Observed span");
+  await expect(summary).toContainText("Travel distance");
+  await expect(summary).toContainText("Player status");
+  await expect(summary.getByText("Average movement speed")).toBeHidden();
+
+  await summary
+    .getByRole("button", { name: "Detailed movement statistics" })
+    .click();
+  await expect(summary.getByText("Average movement speed")).toBeVisible();
+  await summary.getByRole("button", { name: "Timeline and insights" }).click();
+  await expect(
+    summary.getByRole("heading", { name: "Timeline" }),
+  ).toBeVisible();
+  await expect(
+    summary.getByRole("heading", { name: "Insights" }),
+  ).toBeVisible();
+});
+
+test("world map empty and failure states explain the next action", async ({
+  page,
+}) => {
+  await setPlayerMode(page, "empty");
+  await openWorkspace(page);
+  await page.getByRole("tab", { name: "Map" }).click();
+  await expect(
+    page.getByRole("heading", { name: "No players online" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/markers and movement trails will appear/),
+  ).toBeVisible();
+
+  await setPlayerMode(page, "error");
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Live map data is unavailable" }),
+  ).toContainText("REST credentials");
+  await expect(
+    page.getByRole("heading", { name: "Player data could not be loaded" }),
+  ).toBeVisible();
+  await expect(page.getByText("fetch failed")).toHaveCount(0);
+  await expect(page.getByText("database unavailable")).toHaveCount(0);
+});
+
+test("world map controls remain reachable without page overflow at narrow width", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 720, height: 900 });
+  await setPlayerMode(page, "populated");
+  await openWorkspace(page);
+  await page.getByRole("tab", { name: "Map" }).click();
+
+  await expect(
+    page.getByRole("button", { name: "Refresh", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Fit Map", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Zoom in")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
 });
 
 test("long StatCard values wrap fully without colliding with their icon", async ({
