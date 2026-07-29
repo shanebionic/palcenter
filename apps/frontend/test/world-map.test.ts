@@ -15,8 +15,18 @@ import {
   mapContentState,
   mapAccessForRole,
   playerMapDetailValues,
+  playerMarkerPresentation,
   telemetryFreshnessLabel,
 } from "../lib/world-map/model";
+import {
+  centerMapOnPosition,
+  clampMapZoom,
+  constrainMapPan,
+  fitMapView,
+  mapSurfaceSize,
+  rectanglesIntersect,
+  zoomMapAtPointer,
+} from "../lib/world-map/navigation";
 import {
   normalizedMapPositionToWorld,
   palpagosProjection,
@@ -380,6 +390,146 @@ test("calibration output contains coordinates but no network address", () => {
   const output = calibrationRecord(model.markers[0]!);
   assert.match(output, /World: 0, 0/);
   assert.doesNotMatch(output, /192\.0\.2\.10/);
+});
+
+test("starts fitted and computes a square surface from the available viewport", () => {
+  assert.deepEqual(fitMapView(), { zoom: 1, pan: { x: 0, y: 0 } });
+  assert.equal(mapSurfaceSize({ width: 1200, height: 700 }), 700);
+});
+
+test("centers a normalized marker without changing its projected position", () => {
+  const view = centerMapOnPosition(
+    { x: 0.6919, y: 0.4555 },
+    { width: 800, height: 600 },
+    600,
+    2,
+  );
+  assert.equal(view.zoom, 2);
+  assert.ok(Math.abs(view.pan.x - -230.28) < 0.001);
+  assert.ok(Math.abs(view.pan.y - 53.4) < 0.001);
+});
+
+test("zooms around the pointer and clamps zoom and recoverable pan", () => {
+  assert.equal(clampMapZoom(0), 1);
+  assert.equal(clampMapZoom(8), 4);
+  assert.deepEqual(
+    zoomMapAtPointer({
+      view: { zoom: 1, pan: { x: 0, y: 0 } },
+      nextZoom: 2,
+      pointer: { x: 100, y: -50 },
+      viewport: { width: 800, height: 600 },
+      surfaceSize: 600,
+    }),
+    { zoom: 2, pan: { x: -100, y: 50 } },
+  );
+  assert.deepEqual(
+    constrainMapPan(
+      { x: 50_000, y: -50_000 },
+      { width: 800, height: 600 },
+      600,
+      2,
+    ),
+    { x: 952, y: -852 },
+  );
+});
+
+test("detects whether a marker intersects the clipping viewport", () => {
+  const viewport = { left: 0, top: 0, right: 800, bottom: 600 };
+  assert.equal(
+    rectanglesIntersect(viewport, {
+      left: 100,
+      top: 100,
+      right: 120,
+      bottom: 120,
+    }),
+    true,
+  );
+  assert.equal(
+    rectanglesIntersect(viewport, {
+      left: 900,
+      top: 100,
+      right: 920,
+      bottom: 120,
+    }),
+    false,
+  );
+});
+
+test("presents player marker names once without substituting account names", () => {
+  assert.deepEqual(playerMarkerPresentation("Denalb"), {
+    displayName: "Denalb",
+    initial: "D",
+    accessibleName: "View Denalb on map",
+  });
+  assert.equal(
+    playerMarkerPresentation("Denalb").accessibleName.match(/Denalb/g)?.length,
+    1,
+  );
+  assert.deepEqual(playerMarkerPresentation("D"), {
+    displayName: "D",
+    initial: "D",
+    accessibleName: "View D on map",
+  });
+  assert.equal(playerMarkerPresentation("Élodie").initial, "É");
+  assert.equal(playerMarkerPresentation("").displayName, "Unknown player");
+  assert.equal(playerMarkerPresentation(null).displayName, "Unknown player");
+
+  const duplicates = [
+    { userId: "one", ...playerMarkerPresentation("Denalb") },
+    { userId: "two", ...playerMarkerPresentation("Denalb") },
+  ];
+  assert.equal(duplicates[0]?.displayName, duplicates[1]?.displayName);
+  assert.notEqual(duplicates[0]?.userId, duplicates[1]?.userId);
+  assert.notEqual(playerMarkerPresentation("Denalb").displayName, "Denalb3032");
+});
+
+test("keeps the marker initial and floating label decorative", async () => {
+  const source = await readFile(
+    new URL("../components/ServerWorldMap.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    source,
+    /<span aria-hidden="true">\{presentation\.initial\}<\/span>/,
+  );
+  assert.match(source, /aria-label=\{presentation\.accessibleName\}/);
+  assert.match(
+    source,
+    /className="pc-world-map-marker-label"\s+aria-hidden="true"[\s\S]*?\{presentation\.displayName\}/,
+  );
+  assert.equal(
+    source.match(/\{presentation\.displayName\}/g)?.length,
+    1,
+    "the floating visual label renders the display name exactly once",
+  );
+
+  const denalb = playerMarkerPresentation("Denalb");
+  assert.equal(denalb.accessibleName, "View Denalb on map");
+  assert.equal(denalb.accessibleName.match(/Denalb/g)?.length, 1);
+  assert.equal(denalb.displayName, "Denalb");
+});
+
+test("keeps the connected display name and telemetry account name distinct", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-denalb", "pid-denalb", "Denalb")],
+    [
+      {
+        ...snapshot({
+          userId: "uid-denalb",
+          playerId: "pid-denalb",
+          x: -211_552.453125,
+          y: 262_807.65625,
+        }),
+        accountName: "Denalb3032",
+      },
+    ],
+    palpagosProjection,
+    30,
+    null,
+  );
+  const details = playerMapDetailValues(model.markers[0]!);
+  assert.equal(details.playerName, "Denalb");
+  assert.equal(details.accountName, "Denalb3032");
 });
 
 function connectedPlayer(

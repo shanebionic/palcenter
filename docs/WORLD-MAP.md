@@ -131,10 +131,14 @@ The marker detail panel shows the player's display and account names, Palworld
 identifiers, level, ping, structure count, X/Y coordinates, age, and freshness.
 It does not display, copy, or log player IP addresses.
 
-The map supports mouse, touch/pointer panning, scroll zoom, explicit zoom and
-reset controls, keyboard-focusable marker buttons, accessible marker names,
-and a visible focus indicator. Its square viewport scales down for narrow
-screens, while details move beneath it.
+The map supports mouse and touch/pointer panning, pointer-centered wheel zoom,
+Fit Map, Center Player, Reset View, and an expanded full-viewport mode. Wheel
+input is captured only while the pointer is over the map. Pan limits keep part
+of the map recoverable, and Fit Map restores the complete square coordinate
+plane after navigation. Marker buttons are keyboard focusable, have one
+accessible name, and retain a visible focus indicator. Player labels preserve
+the capitalization returned by Palworld and truncate safely when space is
+limited.
 
 ## Administrator calibration
 
@@ -145,23 +149,24 @@ Administrators can enable **Calibration** on the Map tab to inspect:
 - raw X/Y and normalized/map percentages for a selected player;
 - the reason a connected player could not be mapped;
 - a copyable, credential-free calibration record.
+- safe viewport diagnostics covering the square surface, image, marker plane,
+  zoom/pan, selected normalized position, screen rectangles, and visibility.
 
 Administrators can select **Palpagos map**, **Calibration grid**, or **Map with
 grid overlay**. The map image, optional grid, and markers share the same square
 content box and transform, so zoom and pan remain synchronized.
 
-Validating the orientation against known in-game landmarks requires at least
-three observed player locations distributed across the world. Until that field
-calibration is recorded, exact visual alignment is not claimed.
+The safe diagnostics output deliberately excludes server addresses, credentials,
+tokens, passwords, and player IP addresses.
 
 ### Field calibration record
 
-The current projection constants have not yet passed a three-point field
-calibration against the PalDen server. PalCenter attempted to reach the
-configured PalDen REST API on July 28, 2026, but the server was unavailable
-from the validation host. No credentials or network address were recorded. A
-valid record must be collected while a player is standing at each named
-landmark:
+Live UAT on July 29, 2026 confirmed that the existing conversion and projection
+place a player at world position `X -211552.453125, Y 262807.65625` at
+`69.19%, 45.55%`, matching the observed in-game map position of approximately
+`230, -191`. This validates the telemetry join and that observation, but the
+projection constants still require three geographically separated landmarks
+before PalCenter claims full-map calibration accuracy:
 
 | World X/Y | Projected X/Y | Expected landmark | Observed alignment error |
 | --------- | ------------- | ----------------- | ------------------------ |
@@ -171,6 +176,22 @@ landmark:
 
 Do not treat the current overlay as survey-accurate until all three rows contain
 geographically separated live observations and acceptable measured error.
+
+## Manual navigation UAT
+
+Before release, verify in Chromium:
+
+- opening Map shows the complete map in Fit Map state;
+- wheel input over the map zooms without scrolling the page;
+- the page still scrolls normally outside the map;
+- Center Player reveals and briefly highlights the selected marker;
+- expanded mode retains the selected marker, layer, controls, and details;
+- Escape closes expanded mode;
+- Fit Map recovers from extreme zoom and pan;
+- the untransformed surface, image, grid, and marker plane remain square;
+- the known `69.19%, 45.55%` observation appears in the expected area;
+- copied diagnostics contain no server address, token, credential, password, or
+  player IP.
 
 ## Current limitations
 
