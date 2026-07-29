@@ -175,21 +175,24 @@ export class SqliteHistoryRepository implements HistoryRepository {
       CREATE TABLE IF NOT EXISTS player_position_snapshots (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         server_id TEXT NOT NULL,
-        player_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        player_id TEXT,
         player_name TEXT NOT NULL,
+        account_name TEXT,
         captured_at TEXT NOT NULL,
         x REAL,
         y REAL,
         z REAL,
         level INTEGER,
         ping REAL,
+        building_count INTEGER,
         guild_id TEXT,
         guild_name TEXT,
         created_at TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS player_position_snapshots_server_player_time
         ON player_position_snapshots (
-          server_id, player_id, captured_at DESC, id DESC
+          server_id, user_id, captured_at DESC, id DESC
         );
       CREATE INDEX IF NOT EXISTS player_position_snapshots_server_time
         ON player_position_snapshots (server_id, captured_at DESC, id DESC);

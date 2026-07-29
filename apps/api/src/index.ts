@@ -89,6 +89,7 @@ import {
   TelemetryServerNotFoundError,
   TelemetryService,
 } from "./telemetry/services/telemetry-service.js";
+import { telemetryRetentionDaysSchema } from "./telemetry/telemetry-configuration.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -110,6 +111,7 @@ const environmentSchema = z.object({
   CONFIG_DIR: z.string().min(1).default("./data"),
   HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
   TELEMETRY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+  TELEMETRY_RETENTION_DAYS: telemetryRetentionDaysSchema,
   AUTOMATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(15),
   PALCENTER_VERSION: z.preprocess(
     (value) => (value === "" ? undefined : value),
@@ -352,6 +354,7 @@ const telemetryService = new TelemetryService(
   telemetryRepository,
   new PlayerTelemetryCollector(),
   environment.TELEMETRY_INTERVAL_SECONDS * 1_000,
+  environment.TELEMETRY_RETENTION_DAYS,
   (serverId, error) => {
     app.log.warn(
       { err: error, serverId },
@@ -1006,15 +1009,20 @@ app.get("/api/servers/:id/telemetry/players/latest", async (request) => {
   return { players: await telemetryService.latest(parameters.id) };
 });
 
+const telemetryPlayerParametersSchema = z.object({
+  id: z.string().min(1),
+  userId: z.string().min(1),
+});
+
 app.get(
-  "/api/servers/:id/telemetry/players/:playerId/history",
+  "/api/servers/:id/telemetry/players/:userId/history",
   async (request) => {
-    const parameters = playerParametersSchema.parse(request.params);
+    const parameters = telemetryPlayerParametersSchema.parse(request.params);
     const query = telemetryHistoryQuerySchema.parse(request.query);
     return {
       snapshots: await telemetryService.history(
         parameters.id,
-        parameters.playerId,
+        parameters.userId,
         query,
       ),
     };

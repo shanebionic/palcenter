@@ -48,24 +48,27 @@ export class PlayerTelemetryCollector {
       return null;
     }
 
-    const playerId = this.text(player.userId);
-    if (!playerId) {
+    const userId = this.text(player.userId);
+    if (!userId) {
       return null;
     }
 
     return {
       serverId,
-      playerId,
+      userId,
+      playerId: this.text(player.playerId),
       playerName:
         this.text(player.name) ?? this.text(player.accountName) ?? "Unknown",
+      accountName: this.text(player.accountName),
       capturedAt,
       x: this.number(player.location_x),
       y: this.number(player.location_y),
-      z: this.number(player.location_z),
+      z: null,
       level: this.number(player.level),
       ping: this.number(player.ping),
-      guildId: this.text(player.guildId),
-      guildName: this.text(player.guildName),
+      buildingCount: this.number(player.building_count),
+      guildId: null,
+      guildName: null,
     };
   }
 

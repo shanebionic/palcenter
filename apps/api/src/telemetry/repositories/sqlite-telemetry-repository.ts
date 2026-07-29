@@ -15,14 +15,17 @@ import type { TelemetryRepository } from "./telemetry-repository.js";
 interface SnapshotRow {
   id: number;
   server_id: string;
-  player_id: string;
+  user_id: string;
+  player_id: string | null;
   player_name: string;
+  account_name: string | null;
   captured_at: string;
   x: number | null;
   y: number | null;
   z: number | null;
   level: number | null;
   ping: number | null;
+  building_count: number | null;
   guild_id: string | null;
   guild_name: string | null;
   created_at: string;
@@ -93,9 +96,10 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
     const database = this.requireDatabase();
     const insert = database.prepare(
       `INSERT INTO player_position_snapshots (
-        server_id, player_id, player_name, captured_at,
-        x, y, z, level, ping, guild_id, guild_name, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        server_id, user_id, player_id, player_name, account_name, captured_at,
+        x, y, z, level, ping, building_count,
+        guild_id, guild_name, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const createdAt = new Date().toISOString();
 
@@ -104,14 +108,17 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
       for (const snapshot of snapshots) {
         insert.run(
           snapshot.serverId,
+          snapshot.userId,
           snapshot.playerId,
           snapshot.playerName,
+          snapshot.accountName,
           snapshot.capturedAt,
           snapshot.x,
           snapshot.y,
           snapshot.z,
           snapshot.level,
           snapshot.ping,
+          snapshot.buildingCount,
           snapshot.guildId,
           snapshot.guildName,
           createdAt,
@@ -134,11 +141,11 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
              SELECT latest.id
              FROM player_position_snapshots latest
              WHERE latest.server_id = snapshot.server_id
-               AND latest.player_id = snapshot.player_id
+               AND latest.user_id = snapshot.user_id
              ORDER BY latest.captured_at DESC, latest.id DESC
              LIMIT 1
            )
-         ORDER BY snapshot.player_name COLLATE NOCASE, snapshot.player_id`,
+         ORDER BY snapshot.player_name COLLATE NOCASE, snapshot.user_id`,
       )
       .all(serverId) as unknown as SnapshotRow[];
 
@@ -147,11 +154,11 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
 
   playerHistory(
     serverId: string,
-    playerId: string,
+    userId: string,
     query: PlayerTelemetryHistoryQuery,
   ): PlayerPositionSnapshot[] {
-    const conditions = ["server_id = ?", "player_id = ?"];
-    const parameters: Array<string | number> = [serverId, playerId];
+    const conditions = ["server_id = ?", "user_id = ?"];
+    const parameters: Array<string | number> = [serverId, userId];
 
     if (query.from) {
       conditions.push("captured_at >= ?");
@@ -175,6 +182,22 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
     return rows.map((row) => this.snapshot(row)).reverse();
   }
 
+  deleteExpiredPlayerSnapshots(cutoff: string, limit: number): number {
+    const result = this.requireDatabase()
+      .prepare(
+        `DELETE FROM player_position_snapshots
+         WHERE id IN (
+           SELECT id FROM player_position_snapshots
+           WHERE captured_at < ?
+           ORDER BY captured_at, id
+           LIMIT ?
+         )`,
+      )
+      .run(cutoff, limit);
+
+    return Number(result.changes);
+  }
+
   deleteServerData(serverId: string): void {
     this.requireDatabase()
       .prepare("DELETE FROM player_position_snapshots WHERE server_id = ?")
@@ -185,14 +208,17 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
     return {
       id: row.id,
       serverId: row.server_id,
+      userId: row.user_id,
       playerId: row.player_id,
       playerName: row.player_name,
+      accountName: row.account_name,
       capturedAt: row.captured_at,
       x: row.x,
       y: row.y,
       z: row.z,
       level: row.level,
       ping: row.ping,
+      buildingCount: row.building_count,
       guildId: row.guild_id,
       guildName: row.guild_name,
       createdAt: row.created_at,

@@ -86,14 +86,17 @@ async function fixture() {
   telemetry.insertPlayerSnapshots([
     {
       serverId: "srv_test",
+      userId: "user_test",
       playerId: "player_test",
       playerName: "Backup Player",
+      accountName: "backup-account",
       capturedAt: "2026-07-23T00:00:00.000Z",
       x: 100,
       y: 200,
       z: null,
       level: 10,
       ping: 20,
+      buildingCount: 1,
       guildId: null,
       guildName: null,
     },

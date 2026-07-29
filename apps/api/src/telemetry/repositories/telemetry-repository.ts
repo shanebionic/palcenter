@@ -12,8 +12,9 @@ export interface TelemetryRepository {
   latestPlayerSnapshots(serverId: string): PlayerPositionSnapshot[];
   playerHistory(
     serverId: string,
-    playerId: string,
+    userId: string,
     query: PlayerTelemetryHistoryQuery,
   ): PlayerPositionSnapshot[];
+  deleteExpiredPlayerSnapshots(cutoff: string, limit: number): number;
   deleteServerData(serverId: string): void;
 }

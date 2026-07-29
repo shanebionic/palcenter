@@ -71,11 +71,8 @@ export interface PalworldPlayer {
   ping?: number;
   location_x?: number;
   location_y?: number;
-  location_z?: number;
   level?: number;
   building_count?: number;
-  guildId?: string;
-  guildName?: string;
 }
 
 export interface PalworldPlayersResponse {

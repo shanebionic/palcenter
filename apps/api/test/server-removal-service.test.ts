@@ -74,14 +74,17 @@ test("removes persisted connection and all server-scoped history without contact
       telemetry.insertPlayerSnapshots([
         {
           serverId: server.id,
+          userId: "user-1",
           playerId: "player-1",
           playerName: "Player",
+          accountName: "player-account",
           capturedAt: "2026-07-27T12:01:00.000Z",
           x: 10,
           y: 20,
           z: null,
           level: 10,
           ping: 20,
+          buildingCount: 1,
           guildId: null,
           guildName: null,
         },

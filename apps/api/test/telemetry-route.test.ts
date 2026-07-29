@@ -99,14 +99,17 @@ before(async () => {
   telemetry.insertPlayerSnapshots([
     {
       serverId: "srv_telemetry",
+      userId: "user-one",
       playerId: "player-one",
       playerName: "Bob",
+      accountName: "bob-account",
       capturedAt: "2026-07-28T12:00:00.000Z",
       x: 100,
       y: 200,
       z: null,
       level: 10,
       ping: 20,
+      buildingCount: 2,
       guildId: null,
       guildName: null,
     },
@@ -136,7 +139,10 @@ test("visitor can read latest player telemetry with normalized response", async 
   assert.equal(response.statusCode, 200);
   const body = response.json();
   assert.equal(body.players.length, 1);
+  assert.equal(body.players[0].userId, "user-one");
   assert.equal(body.players[0].playerId, "player-one");
+  assert.equal(body.players[0].accountName, "bob-account");
+  assert.equal(body.players[0].buildingCount, 2);
   assert.equal(body.players[0].x, 100);
   assert.equal("adminPassword" in body.players[0], false);
 });
@@ -145,7 +151,7 @@ test("history supports time ranges and bounded limits", async () => {
   const response = await app.inject({
     method: "GET",
     url:
-      "/api/servers/srv_telemetry/telemetry/players/player-one/history" +
+      "/api/servers/srv_telemetry/telemetry/players/user-one/history" +
       "?from=2026-07-28T11%3A00%3A00.000Z" +
       "&to=2026-07-28T13%3A00%3A00.000Z&limit=10",
     headers: { cookie: administratorCookie },

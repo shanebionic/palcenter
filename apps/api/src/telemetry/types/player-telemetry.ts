@@ -1,14 +1,17 @@
 export interface PlayerPositionSnapshot {
   id: number;
   serverId: string;
-  playerId: string;
+  userId: string;
+  playerId: string | null;
   playerName: string;
+  accountName: string | null;
   capturedAt: string;
   x: number | null;
   y: number | null;
   z: number | null;
   level: number | null;
   ping: number | null;
+  buildingCount: number | null;
   guildId: string | null;
   guildName: string | null;
   createdAt: string;

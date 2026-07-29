@@ -93,7 +93,7 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
   }, [players, search]);
 
   const telemetryByPlayer = useMemo(
-    () => new Map(telemetry.map((snapshot) => [snapshot.playerId, snapshot])),
+    () => new Map(telemetry.map((snapshot) => [snapshot.userId, snapshot])),
     [telemetry],
   );
 

@@ -9,6 +9,12 @@ import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repo
 import { PlayerTelemetryCollector } from "../src/telemetry/collectors/player-telemetry-collector.js";
 import { SqliteTelemetryRepository } from "../src/telemetry/repositories/sqlite-telemetry-repository.js";
 import { TelemetryService } from "../src/telemetry/services/telemetry-service.js";
+import {
+  defaultTelemetryRetentionDays,
+  maximumTelemetryRetentionDays,
+  minimumTelemetryRetentionDays,
+  telemetryRetentionDaysSchema,
+} from "../src/telemetry/telemetry-configuration.js";
 import type { NewPlayerPositionSnapshot } from "../src/telemetry/types/player-telemetry.js";
 import type {
   PalworldPlayersResponse,
@@ -41,7 +47,6 @@ function response(
         ping: 24,
         location_x: 12345,
         location_y: -5678,
-        location_z: 250,
         level: 42,
         building_count: 3,
         ...overrides,
@@ -56,14 +61,17 @@ function snapshot(
 ): NewPlayerPositionSnapshot {
   return {
     serverId: "srv_one",
-    playerId: "steam-user-id",
+    userId: "steam-user-id",
+    playerId: "pal-player-id",
     playerName: "Bob",
+    accountName: "bob-account",
     capturedAt,
     x: 10,
     y: 20,
     z: null,
     level: 42,
     ping: 24,
+    buildingCount: 3,
     guildId: null,
     guildName: null,
     ...overrides,
@@ -86,8 +94,7 @@ class MemoryConnections implements ConnectionRepository {
 
 test("collector normalizes player state and location without persisting credentials", async () => {
   const collector = new PlayerTelemetryCollector(() => ({
-    getPlayers: async () =>
-      response({ name: "  Renamed Bob  ", guildName: "Explorers" }),
+    getPlayers: async () => response({ name: "  Renamed Bob  " }),
   }));
 
   const snapshots = await collector.collect(connection("srv_one"), timestamp);
@@ -97,8 +104,7 @@ test("collector normalizes player state and location without persisting credenti
       playerName: "Renamed Bob",
       x: 12345,
       y: -5678,
-      z: 250,
-      guildName: "Explorers",
+      z: null,
     }),
   ]);
   assert.equal(JSON.stringify(snapshots).includes("not-logged"), false);
@@ -123,7 +129,7 @@ test("collector safely handles malformed players and missing coordinates", async
   const snapshots = await collector.collect(connection("srv_one"), timestamp);
 
   assert.equal(snapshots.length, 1);
-  assert.equal(snapshots[0]?.playerId, "valid-user");
+  assert.equal(snapshots[0]?.userId, "valid-user");
   assert.equal(snapshots[0]?.x, null);
   assert.equal(snapshots[0]?.y, null);
 });
@@ -145,15 +151,17 @@ test("repository inserts, orders, limits, and returns latest renamed players", a
         x: 30,
       }),
       snapshot("2026-07-28T12:01:00.000Z", {
-        playerId: "another-user",
+        userId: "another-user",
+        playerId: "another-pal-player",
         playerName: "Alice",
+        accountName: "alice-account",
       }),
     ]);
 
     const latest = repository.latestPlayerSnapshots("srv_one");
     assert.equal(latest.length, 2);
     assert.equal(
-      latest.find((item) => item.playerId === "steam-user-id")?.playerName,
+      latest.find((item) => item.userId === "steam-user-id")?.playerName,
       "Robert",
     );
 
@@ -217,6 +225,168 @@ test("v1.3 schema upgrades in place and preserves existing metrics", async () =>
   }
 });
 
+test("retention configuration enforces documented boundaries", () => {
+  assert.equal(
+    telemetryRetentionDaysSchema.parse(undefined),
+    defaultTelemetryRetentionDays,
+  );
+  assert.equal(
+    telemetryRetentionDaysSchema.parse(minimumTelemetryRetentionDays),
+    minimumTelemetryRetentionDays,
+  );
+  assert.equal(
+    telemetryRetentionDaysSchema.parse(maximumTelemetryRetentionDays),
+    maximumTelemetryRetentionDays,
+  );
+  assert.throws(() =>
+    telemetryRetentionDaysSchema.parse(minimumTelemetryRetentionDays - 1),
+  );
+  assert.throws(() =>
+    telemetryRetentionDaysSchema.parse(maximumTelemetryRetentionDays + 1),
+  );
+});
+
+test("repository removes expired snapshots in bounded batches", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "palcenter-telemetry-retention-"),
+  );
+  const history = new SqliteHistoryRepository(directory);
+  history.initialize();
+  const repository = new SqliteTelemetryRepository(directory);
+  repository.initialize();
+
+  try {
+    repository.insertPlayerSnapshots([
+      snapshot("2026-06-01T00:00:00.000Z"),
+      snapshot("2026-06-02T00:00:00.000Z"),
+      snapshot("2026-06-03T00:00:00.000Z"),
+      snapshot("2026-07-01T00:00:00.000Z"),
+      snapshot("2026-07-28T00:00:00.000Z"),
+    ]);
+
+    assert.equal(
+      repository.deleteExpiredPlayerSnapshots("2026-07-01T00:00:00.000Z", 2),
+      2,
+    );
+    assert.equal(
+      repository.deleteExpiredPlayerSnapshots("2026-07-01T00:00:00.000Z", 2),
+      1,
+    );
+    assert.equal(
+      repository.playerHistory("srv_one", "steam-user-id", {
+        limit: 100,
+      }).length,
+      2,
+    );
+  } finally {
+    repository.close();
+    history.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("service runs retention cleanup periodically with the bounded batch size", async () => {
+  let currentTime = new Date("2026-07-31T12:00:00.000Z");
+  const cleanupCalls: Array<{ cutoff: string; limit: number }> = [];
+  const repository = {
+    initialize() {},
+    close() {},
+    reopen() {},
+    insertPlayerSnapshots() {},
+    latestPlayerSnapshots() {
+      return [];
+    },
+    playerHistory() {
+      return [];
+    },
+    deleteExpiredPlayerSnapshots(cutoff: string, limit: number) {
+      cleanupCalls.push({ cutoff, limit });
+      return 0;
+    },
+    deleteServerData() {},
+  };
+  const service = new TelemetryService(
+    new MemoryConnections([]),
+    repository,
+    new PlayerTelemetryCollector(),
+    30_000,
+    30,
+    () => undefined,
+    () => currentTime,
+  );
+
+  await service.collectAll();
+  currentTime = new Date("2026-07-31T12:04:59.000Z");
+  await service.collectAll();
+  currentTime = new Date("2026-07-31T12:05:00.000Z");
+  await service.collectAll();
+
+  assert.deepEqual(cleanupCalls, [
+    { cutoff: "2026-07-01T12:00:00.000Z", limit: 1_000 },
+    { cutoff: "2026-07-01T12:05:00.000Z", limit: 1_000 },
+  ]);
+});
+
+test("service skips unchanged snapshots but records movement, state, and heartbeat", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "palcenter-telemetry-write-reduction-"),
+  );
+  const history = new SqliteHistoryRepository(directory);
+  history.initialize();
+  const repository = new SqliteTelemetryRepository(directory);
+  repository.initialize();
+  let currentTime = new Date("2026-07-28T12:00:00.000Z");
+  let currentX = 1_000;
+  let buildingCount = 3;
+  const collector = new PlayerTelemetryCollector(() => ({
+    getPlayers: async () =>
+      response({ location_x: currentX, building_count: buildingCount }),
+  }));
+  const service = new TelemetryService(
+    new MemoryConnections([connection("srv_one")]),
+    repository,
+    collector,
+    30_000,
+    30,
+    () => undefined,
+    () => currentTime,
+  );
+  const rows = () =>
+    repository.playerHistory("srv_one", "steam-user-id", { limit: 100 });
+
+  try {
+    await service.collectAll();
+    assert.equal(rows().length, 1);
+
+    currentTime = new Date("2026-07-28T12:00:30.000Z");
+    await service.collectAll();
+    assert.equal(rows().length, 1, "unchanged snapshot should be skipped");
+
+    currentX += 99;
+    currentTime = new Date("2026-07-28T12:01:00.000Z");
+    await service.collectAll();
+    assert.equal(rows().length, 1, "sub-threshold movement should be skipped");
+
+    currentX += 1;
+    currentTime = new Date("2026-07-28T12:01:30.000Z");
+    await service.collectAll();
+    assert.equal(rows().length, 2, "material movement should be stored");
+
+    buildingCount += 1;
+    currentTime = new Date("2026-07-28T12:02:00.000Z");
+    await service.collectAll();
+    assert.equal(rows().length, 3, "state changes should be stored");
+
+    currentTime = new Date("2026-07-28T12:07:00.000Z");
+    await service.collectAll();
+    assert.equal(rows().length, 4, "five-minute heartbeat should be stored");
+  } finally {
+    repository.close();
+    history.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("service collects configured servers concurrently and isolates offline failures", async () => {
   const connections = new MemoryConnections([
     connection("srv_online"),
@@ -237,6 +407,9 @@ test("service collects configured servers concurrently and isolates offline fail
     playerHistory() {
       return [];
     },
+    deleteExpiredPlayerSnapshots() {
+      return 0;
+    },
     deleteServerData() {},
   };
   const collector = new PlayerTelemetryCollector((server) => ({
@@ -252,6 +425,7 @@ test("service collects configured servers concurrently and isolates offline fail
     repository,
     collector,
     30_000,
+    30,
     (serverId) => failures.push(serverId),
   );
 
