@@ -66,6 +66,36 @@ const telemetryPlayer = {
 };
 
 let playerMode = "populated";
+let eventMode = "populated";
+let sessionRole = "administrator";
+
+const worldEvents = Array.from({ length: 55 }, (_, index) => {
+  const joined = index % 2 === 0;
+  return {
+    id: `wie-ui-${String(index).padStart(3, "0")}`,
+    serverId: connection.id,
+    userId: connectedPlayers[0].userId,
+    playerId: connectedPlayers[0].playerId,
+    timestamp: new Date(Date.parse(now) - index * 60_000).toISOString(),
+    type: joined ? "player_joined" : "session_started",
+    metadata: {
+      playerName: connectedPlayers[0].name,
+      note: index === 0 ? "Current roster observation" : "Retained event",
+    },
+    confidence: 1,
+    evidence: [
+      {
+        source: "players",
+        fact: "appeared",
+        value: "online_roster",
+      },
+    ],
+    position:
+      index === 0
+        ? { x: telemetryPlayer.x, y: telemetryPlayer.y, z: null }
+        : null,
+  };
+});
 
 function json(response, value, status = 200) {
   response.writeHead(status, {
@@ -83,8 +113,21 @@ export function startMockUiApi(port = 3198) {
       playerMode = url.searchParams.get("mode") ?? "populated";
       return json(response, { playerMode });
     }
+    if (url.pathname === "/__test/events") {
+      eventMode = url.searchParams.get("mode") ?? "populated";
+      return json(response, { eventMode });
+    }
+    if (url.pathname === "/__test/role") {
+      sessionRole = url.searchParams.get("role") ?? "administrator";
+      return json(response, { sessionRole });
+    }
 
-    if (url.pathname === "/api/auth/session") return json(response, session);
+    if (url.pathname === "/api/auth/session") {
+      return json(response, {
+        ...session,
+        user: { ...session.user, role: sessionRole },
+      });
+    }
     if (url.pathname === "/api/auth/setup-status") {
       return json(response, { setupRequired: false });
     }
@@ -164,6 +207,29 @@ export function startMockUiApi(port = 3198) {
         ],
         limit: 5000,
         truncated: false,
+      });
+    }
+    if (url.pathname === `/api/servers/${connection.id}/world-events`) {
+      if (eventMode === "error") {
+        return json(
+          response,
+          { error: "events_unavailable", message: "database unavailable" },
+          503,
+        );
+      }
+      if (eventMode === "empty") return json(response, { events: [] });
+      const userId = url.searchParams.get("userId");
+      const type = url.searchParams.get("type");
+      const to = url.searchParams.get("to");
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      const filtered = worldEvents.filter(
+        (event) =>
+          (!userId || event.userId === userId) &&
+          (!type || event.type === type) &&
+          (!to || event.timestamp <= to),
+      );
+      return json(response, {
+        events: filtered.slice(0, limit).reverse(),
       });
     }
     if (url.pathname === "/api/backup/info") {

@@ -45,6 +45,7 @@ import {
   InvalidBackupError,
 } from "./services/backup-service.js";
 import { notificationEventTypes } from "./types/notifications.js";
+import { worldEventTypes } from "./types/world-events.js";
 import { userRoles } from "./types/users.js";
 import { PasswordService } from "./services/password-service.js";
 import {
@@ -1013,6 +1014,7 @@ app.get("/api/servers/:id/events", async (request) => {
 const worldEventQuerySchema = z
   .object({
     userId: z.string().trim().min(1).max(200).optional(),
+    type: z.enum(worldEventTypes).optional(),
     from: z.string().datetime({ offset: true }).optional(),
     to: z.string().datetime({ offset: true }).optional(),
     limit: z.coerce.number().int().min(1).max(1_000).default(250),

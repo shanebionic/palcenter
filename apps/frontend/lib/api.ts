@@ -14,7 +14,10 @@ import type {
   ServerWorkspaceData,
   UserProfile,
   UserRole,
+  WorldEvent,
+  WorldEventQuery,
 } from "../types/servers";
+import { buildWorldEventQuery } from "./world-events";
 import type {
   AutomationExecution,
   AutomationExecutionDetail,
@@ -45,6 +48,10 @@ interface HistoryResponse {
 
 interface EventsResponse {
   events: ServerEvent[];
+}
+
+interface WorldEventsResponse {
+  events: WorldEvent[];
 }
 
 interface NotificationsResponse {
@@ -274,6 +281,18 @@ export async function getServerEvents(id: string): Promise<ServerEvent[]> {
     { cache: "no-store" },
   );
 
+  return result.events;
+}
+
+export async function getWorldEvents(
+  serverId: string,
+  query: WorldEventQuery,
+  signal?: AbortSignal,
+): Promise<WorldEvent[]> {
+  const result = await request<WorldEventsResponse>(
+    `/api/servers/${encodeURIComponent(serverId)}/world-events?${buildWorldEventQuery(query)}`,
+    { cache: "no-store", signal },
+  );
   return result.events;
 }
 

@@ -42,7 +42,32 @@ Authenticated clients can request chronological history from:
 
 `GET /api/servers/:id/world-events`
 
-Optional filters are `userId`, `from`, `to`, and `limit`. Results are ordered
-oldest to newest within the bounded response. Existing role-based read access
-applies; the endpoint does not expose Palworld credentials or private network
-configuration.
+Optional filters are `userId`, `type`, `from`, `to`, and `limit`. Results are
+ordered oldest to newest within the bounded response. Existing role-based read
+access applies; the endpoint does not expose Palworld credentials or private
+network configuration.
+
+## Events workspace
+
+Administrators and Moderators can open **Events** in a server workspace. The
+timeline is newest-first and identifies what happened, the involved player,
+when PalCenter observed it, and the confidence assigned by the event engine.
+Exact timestamps are shown alongside relative times.
+
+Use the player ID, event type, and time-range filters to narrow the server-side
+query. PalCenter retrieves events in bounded pages; **Load older events** adds
+the next page without duplicating entries. The timeline does not poll
+automatically.
+
+Each entry keeps evidence and metadata collapsed by default. Expanding
+**Evidence and details** shows the exact confidence percentage, source evidence,
+stable user ID, optional Palworld player ID, and any available position. When a
+position exists, **View on map** opens the existing Map tab and centers its
+shared coordinate plane on that observation.
+
+Events remain in `history.sqlite` for as long as the application data is
+retained. PalCenter does not currently apply a separate event-retention policy.
+Backups include the complete retained event table.
+
+Visitors cannot access the World Events timeline. This matches the existing
+privacy boundary for player trail history.

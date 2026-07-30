@@ -67,7 +67,10 @@ import {
   worldMapLayerClasses,
   type WorldMapLayer,
 } from "../lib/world-map/layers";
-import { palpagosProjection } from "../lib/world-map/projection";
+import {
+  palpagosProjection,
+  worldToNormalizedMapPosition,
+} from "../lib/world-map/projection";
 import { playerColor } from "../lib/world-map/player-color";
 import {
   buildPlayerActivitySummary,
@@ -79,12 +82,17 @@ import {
   type ProcessedTrail,
   type TrailHistoryPoint,
 } from "../lib/world-map/trail";
-import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
+import type {
+  ConnectedPlayer,
+  LatestPlayerTelemetry,
+  WorldEvent,
+} from "../types/servers";
 
 interface ServerWorldMapProps {
   serverId: string;
   serverOnline: boolean;
   canCalibrate: boolean;
+  focusEvent?: WorldEvent | null;
 }
 
 const defaultTelemetry: LatestPlayerTelemetry = {
@@ -105,6 +113,7 @@ export function ServerWorldMap({
   serverId,
   serverOnline,
   canCalibrate,
+  focusEvent,
 }: ServerWorldMapProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [telemetry, setTelemetry] =
@@ -121,6 +130,7 @@ export function ServerWorldMap({
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [expanded, setExpanded] = useState(false);
   const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
+  const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
   const [trailEnabled, setTrailEnabled] = useState(false);
   const [trailRange, setTrailRange] = useState<TrailRange>("1h");
   const [trail, setTrail] = useState<ProcessedTrail | null>(null);
@@ -417,6 +427,19 @@ export function ServerWorldMap({
   }, [applyFitMap, expanded]);
 
   useEffect(() => {
+    if (!focusEvent?.position || surfaceSize === 0) return;
+    const position = worldToNormalizedMapPosition(
+      focusEvent.position,
+      palpagosProjection,
+    );
+    if (!position) return;
+    const view = centerMapOnPosition(position, viewportSize, surfaceSize);
+    setZoom(view.zoom);
+    setPan(view.pan);
+    setFocusedEventId(focusEvent.id);
+  }, [focusEvent, surfaceSize, viewportSize]);
+
+  useEffect(() => {
     const element = viewport.current;
     if (!element || surfaceSize === 0) return;
     const onWheel = (event: WheelEvent) => {
@@ -578,6 +601,12 @@ export function ServerWorldMap({
           </Button>
         }
       />
+
+      {focusedEventId && (
+        <Alert color="cyan" title="Event location centered">
+          The map is centered on the selected event position.
+        </Alert>
+      )}
 
       {canCalibrate && (
         <Accordion
