@@ -42,7 +42,10 @@ export class AuthorizationService {
     }
     if (
       method === "GET" &&
-      /^\/api\/servers\/[^/]+\/telemetry\/players\/[^/]+\/history$/.test(path)
+      (/^\/api\/servers\/[^/]+\/telemetry\/players\/[^/]+\/history$/.test(
+        path,
+      ) ||
+        /^\/api\/servers\/[^/]+\/world-events$/.test(path))
     ) {
       return "operate";
     }

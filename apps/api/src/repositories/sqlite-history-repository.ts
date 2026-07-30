@@ -51,7 +51,7 @@ interface IntegrityCheckRow {
   quick_check: string;
 }
 
-const schemaVersion = 4;
+const schemaVersion = 5;
 
 export class SqliteHistoryRepository implements HistoryRepository {
   private database: DatabaseSync | null = null;
@@ -196,6 +196,33 @@ export class SqliteHistoryRepository implements HistoryRepository {
         );
       CREATE INDEX IF NOT EXISTS player_position_snapshots_server_time
         ON player_position_snapshots (server_id, captured_at DESC, id DESC);
+
+      CREATE TABLE IF NOT EXISTS world_events (
+        id TEXT PRIMARY KEY,
+        server_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        player_id TEXT,
+        occurred_at TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN (
+          'player_joined', 'player_disconnected',
+          'session_started', 'session_ended',
+          'player_died', 'player_respawned'
+        )),
+        metadata_json TEXT NOT NULL,
+        confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+        evidence_json TEXT NOT NULL,
+        position_x REAL,
+        position_y REAL,
+        position_z REAL,
+        CHECK (
+          (position_x IS NULL AND position_y IS NULL AND position_z IS NULL) OR
+          (position_x IS NOT NULL AND position_y IS NOT NULL)
+        )
+      );
+      CREATE INDEX IF NOT EXISTS world_events_server_time
+        ON world_events (server_id, occurred_at, id);
+      CREATE INDEX IF NOT EXISTS world_events_server_player_time
+        ON world_events (server_id, user_id, occurred_at, id);
 
       `);
       if (version < 3) {
@@ -427,6 +454,9 @@ export class SqliteHistoryRepository implements HistoryRepository {
         .run(serverId);
       database
         .prepare("DELETE FROM player_position_snapshots WHERE server_id = ?")
+        .run(serverId);
+      database
+        .prepare("DELETE FROM world_events WHERE server_id = ?")
         .run(serverId);
       database.exec("COMMIT");
     } catch (error) {
