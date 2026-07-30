@@ -1,0 +1,373 @@
+"use client";
+
+import {
+  Alert,
+  Badge,
+  Button,
+  Group,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+  ThemeIcon,
+  Title,
+} from "@mantine/core";
+import {
+  IconCalendarEvent,
+  IconMapPin,
+  IconRefresh,
+  IconTimeline,
+} from "@tabler/icons-react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { getWorldEvents } from "../lib/api";
+import {
+  exactWorldEventTime,
+  mergeWorldEventPages,
+  relativeWorldEventTime,
+  sortWorldEventsNewestFirst,
+  worldEventConfidence,
+  worldEventEvidenceText,
+  worldEventLabels,
+  worldEventPlayerName,
+  worldEventTimeRangeFromNow,
+} from "../lib/world-events";
+import {
+  worldEventTypes,
+  type WorldEvent,
+  type WorldEventType,
+} from "../types/servers";
+import { BrandedLoader } from "./BrandedLoader";
+import { SectionCard } from "./ui/SectionCard";
+import { SectionHeader } from "./ui/SectionHeader";
+
+interface ServerWorldEventsProps {
+  serverId: string;
+  serverOnline: boolean;
+  onViewOnMap: (event: WorldEvent) => void;
+}
+
+type TimeRange = "1h" | "6h" | "24h" | "7d" | "all";
+const pageSize = 50;
+
+const eventTypeOptions = worldEventTypes.map((value) => ({
+  value,
+  label: worldEventLabels[value],
+}));
+
+export function ServerWorldEvents({
+  serverId,
+  serverOnline,
+  onViewOnMap,
+}: ServerWorldEventsProps) {
+  const [events, setEvents] = useState<WorldEvent[]>([]);
+  const [playerFilter, setPlayerFilter] = useState("");
+  const [eventType, setEventType] = useState<WorldEventType | null>(null);
+  const [timeRange, setTimeRange] = useState<TimeRange>("24h");
+  const [applied, setApplied] = useState({
+    playerId: "",
+    eventType: null as WorldEventType | null,
+    timeRange: "24h" as TimeRange,
+  });
+  const [loading, setLoading] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [error, setError] = useState(false);
+  const [hasOlder, setHasOlder] = useState(false);
+
+  const load = useCallback(
+    async (older = false) => {
+      if (older) {
+        setLoadingOlder(true);
+      } else {
+        setLoading(true);
+      }
+      setError(false);
+      const oldest = older ? events.at(-1)?.timestamp : undefined;
+      try {
+        const next = await getWorldEvents(serverId, {
+          userId: applied.playerId || undefined,
+          type: applied.eventType ?? undefined,
+          from: worldEventTimeRangeFromNow(applied.timeRange),
+          to: oldest,
+          limit: pageSize,
+        });
+        setEvents((current) =>
+          older
+            ? mergeWorldEventPages(current, next)
+            : sortWorldEventsNewestFirst(next),
+        );
+        setHasOlder(next.length === pageSize);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+        setLoadingOlder(false);
+      }
+    },
+    [applied, events, serverId],
+  );
+
+  useEffect(() => {
+    void load();
+    // Reload only when the applied server-side filters change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applied, serverId]);
+
+  const filtersActive = Boolean(
+    applied.playerId || applied.eventType || applied.timeRange !== "24h",
+  );
+
+  const applyFilters = () =>
+    setApplied({
+      playerId: playerFilter.trim(),
+      eventType,
+      timeRange,
+    });
+  const resetFilters = () => {
+    setPlayerFilter("");
+    setEventType(null);
+    setTimeRange("24h");
+    setApplied({ playerId: "", eventType: null, timeRange: "24h" });
+  };
+
+  return (
+    <Stack gap="lg" pt="lg">
+      <SectionHeader
+        title="World Events"
+        description="An explainable timeline of player and session activity observed by PalCenter."
+        action={
+          <Button
+            variant="light"
+            leftSection={<IconRefresh size={16} />}
+            onClick={() => void load()}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+        }
+      />
+
+      {!serverOnline && (
+        <Alert color="yellow" title="Server offline">
+          Existing events remain available. New events will resume when
+          PalCenter can observe the server again.
+        </Alert>
+      )}
+
+      <SectionCard>
+        <Stack gap="md">
+          <Title order={3}>Filter events</Title>
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+            <TextInput
+              label="Player ID"
+              description="Use the stable user ID shown in event details."
+              placeholder="All players"
+              value={playerFilter}
+              onChange={(event) => setPlayerFilter(event.currentTarget.value)}
+            />
+            <Select
+              label="Event type"
+              placeholder="All event types"
+              clearable
+              searchable
+              data={eventTypeOptions}
+              value={eventType}
+              onChange={(value) => setEventType(value as WorldEventType | null)}
+            />
+            <Select
+              label="Time range"
+              data={[
+                { value: "1h", label: "Last hour" },
+                { value: "6h", label: "Last 6 hours" },
+                { value: "24h", label: "Last 24 hours" },
+                { value: "7d", label: "Last 7 days" },
+                { value: "all", label: "All retained history" },
+              ]}
+              value={timeRange}
+              onChange={(value) => setTimeRange((value ?? "24h") as TimeRange)}
+            />
+          </SimpleGrid>
+          <Group>
+            <Button onClick={applyFilters}>Apply filters</Button>
+            <Button variant="subtle" onClick={resetFilters}>
+              Reset filters
+            </Button>
+          </Group>
+        </Stack>
+      </SectionCard>
+
+      {loading ? (
+        <SectionCard>
+          <BrandedLoader message="Loading World Intelligence events" />
+        </SectionCard>
+      ) : error ? (
+        <SectionCard>
+          <Alert color="red" title="Events are temporarily unavailable">
+            PalCenter could not load the event timeline. Confirm your access and
+            try again. Existing event history has not been changed.
+          </Alert>
+        </SectionCard>
+      ) : events.length === 0 ? (
+        <SectionCard>
+          <Stack align="center" ta="center" py="xl">
+            <ThemeIcon size={48} radius="xl" variant="light">
+              <IconTimeline size={26} />
+            </ThemeIcon>
+            <Title order={3}>
+              {filtersActive
+                ? "No events match these filters"
+                : "No events recorded yet"}
+            </Title>
+            <Text c="dimmed" maw={560}>
+              {filtersActive
+                ? "Adjust or reset the filters to view other retained events."
+                : "Events begin accumulating after the World Intelligence engine is active. Earlier activity cannot be reconstructed."}
+            </Text>
+            {filtersActive && (
+              <Button variant="light" onClick={resetFilters}>
+                Reset filters
+              </Button>
+            )}
+          </Stack>
+        </SectionCard>
+      ) : (
+        <SectionCard>
+          <Stack gap="md">
+            <Title order={3}>Event timeline</Title>
+            <ol
+              className="pc-world-event-timeline"
+              aria-label="World event timeline"
+            >
+              {events.map((event) => (
+                <WorldEventEntry
+                  key={event.id}
+                  event={event}
+                  onViewOnMap={onViewOnMap}
+                />
+              ))}
+            </ol>
+            {hasOlder && (
+              <Button
+                variant="light"
+                onClick={() => void load(true)}
+                loading={loadingOlder}
+                mx="auto"
+              >
+                Load older events
+              </Button>
+            )}
+          </Stack>
+        </SectionCard>
+      )}
+    </Stack>
+  );
+}
+
+const WorldEventEntry = memo(function WorldEventEntry({
+  event,
+  onViewOnMap,
+}: {
+  event: WorldEvent;
+  onViewOnMap: (event: WorldEvent) => void;
+}) {
+  const confidence = worldEventConfidence(event.confidence);
+  const playerName = worldEventPlayerName(event);
+  const metadata = useMemo(
+    () =>
+      Object.entries(event.metadata).filter(([key]) => key !== "playerName"),
+    [event.metadata],
+  );
+
+  return (
+    <li className="pc-world-event-entry">
+      <Group align="flex-start" wrap="nowrap">
+        <ThemeIcon
+          variant="light"
+          radius="xl"
+          aria-hidden="true"
+          className="pc-world-event-icon"
+        >
+          <IconCalendarEvent size={18} />
+        </ThemeIcon>
+        <Stack gap="xs" className="pc-world-event-content">
+          <Group justify="space-between" align="flex-start">
+            <div>
+              <Title order={4}>{worldEventLabels[event.type]}</Title>
+              <Text size="sm">
+                <Text span fw={600}>
+                  {playerName}
+                </Text>{" "}
+                ·{" "}
+                {event.type.startsWith("session_")
+                  ? "Session boundary"
+                  : "Player activity"}
+              </Text>
+            </div>
+            <Badge
+              color={confidence.color}
+              variant="light"
+              aria-label={`Confidence: ${confidence.label}`}
+            >
+              {confidence.label}
+            </Badge>
+          </Group>
+          <Text
+            component="time"
+            dateTime={event.timestamp}
+            title={exactWorldEventTime(event.timestamp)}
+            size="sm"
+            c="dimmed"
+          >
+            {relativeWorldEventTime(event.timestamp)}
+            {" · "}
+            {exactWorldEventTime(event.timestamp)}
+          </Text>
+          <Group>
+            {event.position && (
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconMapPin size={14} />}
+                onClick={() => onViewOnMap(event)}
+              >
+                View on map
+              </Button>
+            )}
+          </Group>
+          <details className="pc-world-event-details">
+            <summary>Evidence and details</summary>
+            <Stack gap="xs" mt="xs">
+              <Text size="sm">
+                Confidence: {Math.round(event.confidence * 100)}%
+              </Text>
+              {event.evidence.map((item, index) => (
+                <Text size="sm" key={`${item.fact}-${item.value}-${index}`}>
+                  {worldEventEvidenceText(item)}
+                </Text>
+              ))}
+              <Text size="xs" c="dimmed">
+                User ID: {event.userId}
+              </Text>
+              {event.playerId && (
+                <Text size="xs" c="dimmed">
+                  Player ID: {event.playerId}
+                </Text>
+              )}
+              {event.position && (
+                <Text size="xs" c="dimmed">
+                  Position: X {event.position.x}, Y {event.position.y}
+                  {event.position.z === null ? "" : `, Z ${event.position.z}`}
+                </Text>
+              )}
+              {metadata.map(([key, value]) => (
+                <Text size="xs" c="dimmed" key={key}>
+                  {key}: {String(value)}
+                </Text>
+              ))}
+            </Stack>
+          </details>
+        </Stack>
+      </Group>
+    </li>
+  );
+});

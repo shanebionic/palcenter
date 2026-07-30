@@ -160,6 +160,47 @@ a {
   flex: 0 0 auto;
 }
 
+.pc-world-event-timeline {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pc-world-event-entry {
+  position: relative;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.pc-world-event-entry:last-child {
+  border-bottom: 0;
+}
+
+.pc-world-event-content {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.pc-world-event-icon {
+  flex: 0 0 auto;
+}
+
+.pc-world-event-details summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--mantine-color-cyan-3);
+  font-size: var(--mantine-font-size-sm);
+}
+
+.pc-world-event-details summary:focus-visible {
+  outline: 2px solid var(--mantine-color-cyan-5);
+  outline-offset: 3px;
+  border-radius: var(--mantine-radius-xs);
+}
+
 @media (max-width: 48em) {
   .pc-page-header.pc-page-header,
   .pc-section-header.pc-section-header {

@@ -43,6 +43,7 @@ export interface NewWorldEvent extends WorldEvent {}
 
 export interface WorldEventQuery {
   userId?: string;
+  type?: WorldEventType;
   from?: string;
   to?: string;
   limit: number;

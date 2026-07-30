@@ -149,6 +149,12 @@ test("repository serializes metadata and evidence and returns chronological hist
     assert.deepEqual(events.at(-1)?.evidence, [
       { source: "players", fact: "disappeared", value: "online_roster" },
     ]);
+    assert.deepEqual(
+      context.repository
+        .list(connection.id, { type: "session_started", limit: 10 })
+        .map(({ type }) => type),
+      ["session_started"],
+    );
   } finally {
     context.repository.close();
     context.history.close();

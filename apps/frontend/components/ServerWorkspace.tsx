@@ -13,6 +13,8 @@ import { ServerSettings } from "./ServerSettings";
 import { ServerDangerZone } from "./ServerDangerZone";
 import { ServerConnectionSettings } from "./ServerConnectionSettings";
 import { ServerWorldMap } from "./ServerWorldMap";
+import { ServerWorldEvents } from "./ServerWorldEvents";
+import type { WorldEvent } from "../types/servers";
 
 interface ServerWorkspaceProps {
   serverId: string;
@@ -25,6 +27,8 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
   const [canOperate, setCanOperate] = useState(false);
   const [canManage, setCanManage] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [mapEvent, setMapEvent] = useState<WorldEvent | null>(null);
 
   const loadServer = useCallback(
     async (background = false) => {
@@ -108,13 +112,15 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
 
           <Tabs
             className="pc-workspace-tabs"
-            defaultValue="overview"
+            value={activeTab}
+            onChange={(value) => setActiveTab(value ?? "overview")}
             keepMounted={false}
           >
             <Tabs.List>
               <Tabs.Tab value="overview">Overview</Tabs.Tab>
               {canOperate && <Tabs.Tab value="players">Players</Tabs.Tab>}
               {canOperate && <Tabs.Tab value="map">Map</Tabs.Tab>}
+              {canOperate && <Tabs.Tab value="events">Events</Tabs.Tab>}
               {canOperate && (
                 <Tabs.Tab value="administration">Administration</Tabs.Tab>
               )}
@@ -139,6 +145,19 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
                   serverId={server.connection.id}
                   serverOnline={server.status.status === "online"}
                   canCalibrate={canManage}
+                  focusEvent={mapEvent}
+                />
+              </Tabs.Panel>
+            )}
+            {canOperate && (
+              <Tabs.Panel value="events">
+                <ServerWorldEvents
+                  serverId={server.connection.id}
+                  serverOnline={server.status.status === "online"}
+                  onViewOnMap={(event) => {
+                    setMapEvent(event);
+                    setActiveTab("map");
+                  }}
                 />
               </Tabs.Panel>
             )}

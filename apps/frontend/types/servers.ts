@@ -83,6 +83,42 @@ export interface PlayerTrailHistory {
   truncated: boolean;
 }
 
+export const worldEventTypes = [
+  "player_joined",
+  "player_disconnected",
+  "session_started",
+  "session_ended",
+  "player_died",
+  "player_respawned",
+] as const;
+
+export type WorldEventType = (typeof worldEventTypes)[number];
+
+export interface WorldEvent {
+  id: string;
+  serverId: string;
+  userId: string;
+  playerId: string | null;
+  timestamp: string;
+  type: WorldEventType;
+  metadata: Record<string, string | number | boolean | null>;
+  confidence: number;
+  evidence: Array<{
+    source: "players";
+    fact: "appeared" | "disappeared" | "state_changed";
+    value: string;
+  }>;
+  position: { x: number; y: number; z: number | null } | null;
+}
+
+export interface WorldEventQuery {
+  userId?: string;
+  type?: WorldEventType;
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
 export interface ServerSettings {
   general: {
     serverName: string | null;

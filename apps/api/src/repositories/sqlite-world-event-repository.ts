@@ -120,6 +120,10 @@ export class SqliteWorldEventRepository implements WorldEventRepository {
       conditions.push("user_id = ?");
       parameters.push(query.userId);
     }
+    if (query.type) {
+      conditions.push("type = ?");
+      parameters.push(query.type);
+    }
     if (query.from) {
       conditions.push("occurred_at >= ?");
       parameters.push(query.from);
