@@ -7,7 +7,7 @@ tasks.
 
 ## Supported server operations
 
-PalCenter v1.3 supports exactly three automation task types:
+PalCenter supports exactly three automation task types:
 
 - **Broadcast Message** sends a required player-facing message of up to 500
   characters.
