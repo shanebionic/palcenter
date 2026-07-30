@@ -48,7 +48,7 @@ default.
 
 ## Coordinate sources
 
-The prototype uses these sources:
+The map projection uses these sources:
 
 - the [official Palworld REST API `/players` documentation](https://docs.palworldgame.com/0.2.4.0/api/rest-api/players/)
   for the documented `location_x` and `location_y` fields;
@@ -147,6 +147,8 @@ Administrators and Moderators can select a connected player and enable
 **Show movement trail**. Available ranges are 15 minutes, 1 hour, 6 hours, and
 24 hours. Changing the range refreshes the trail; **Refresh trail** requests it
 again, and **Clear trail** removes it without changing stored telemetry.
+
+![PalCenter movement trail](screenshots/movement-trail-after.png)
 
 Trails use the existing stable `userId` telemetry key and Palpagos projection.
 Each player receives a consistent marker and trail color derived from that
@@ -319,7 +321,7 @@ before PalCenter claims full-map calibration accuracy:
 Do not treat the current overlay as survey-accurate until all three rows contain
 geographically separated live observations and acceptable measured error.
 
-## Manual navigation UAT
+## Administrator navigation checks
 
 Before release, verify in Chromium:
 
@@ -344,7 +346,7 @@ Before release, verify in Chromium:
 
 ## Current limitations
 
-This milestone does not add or claim:
+The current release does not add or claim:
 
 - multiple islands or world/map variants with separate bounds;
 - heatmaps, analytics, or historical playback;

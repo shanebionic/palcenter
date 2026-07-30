@@ -26,8 +26,8 @@ The official template supplies these defaults:
 | Container user  | `99:100`        | Unraid `nobody:users`             |
 
 The web interface is available at `http://<unraid-ip>:3000`. Direct API access
-on port `3001` is not required for normal use. If you publish it, restrict it
-to a trusted management network.
+on port `3001` is not required for normal use. Keep it unpublished or restrict
+it to a trusted management network.
 
 The template selects Unraid's standard non-root `nobody:users` identity before
 PalCenter starts. It does not grant root access, add capabilities, or change
@@ -76,6 +76,42 @@ generate. PalCenter creates `system.json` in the persistent mapping.
 The Unraid host and container must be able to reach each Palworld REST URL.
 Use the Palworld host's LAN address or DNS name, not `localhost`.
 
+## Networking
+
+PalCenter makes outbound REST requests to each Palworld server. Confirm that
+Unraid's Docker network, VLAN rules, and host firewall permit the configured
+REST port. A Palworld container on the same Unraid host can be addressed by:
+
+- its LAN address when both containers use suitable bridge/custom networks; or
+- its container DNS name when PalCenter and Palworld intentionally share a
+  user-defined Docker network.
+
+Do not use `127.0.0.1` or `localhost` for a separate container. Do not mount the
+Docker socket to discover or control Palworld containers.
+
+For ordinary browser use, expose only the web port. The frontend proxies its own
+API traffic to port `3001` inside the PalCenter container.
+
+## Reverse proxy
+
+Create a dedicated hostname and proxy it to:
+
+```text
+http://<unraid-ip>:<PalCenter web port>
+```
+
+For example, Nginx Proxy Manager should forward to port `3000` (or the chosen
+host Web UI port), not the API port. Enable HTTPS and set the PalCenter
+container variable:
+
+```text
+PALCENTER_SESSION_COOKIE_SECURE=true
+```
+
+PalCenter v1.4 does not require WebSocket forwarding. Ensure the proxy upload
+limit accommodates backup restore archives. See the complete
+[reverse proxy guide](REVERSE-PROXY.md).
+
 ## Backup
 
 Use PalCenter's authenticated **Backup** page for portable backups. Archives
@@ -85,7 +121,7 @@ access-controlled storage.
 For a cold Unraid backup, stop the container and copy the complete
 `/mnt/user/appdata/palcenter` directory. Never copy only a live SQLite file.
 
-## Upgrade
+## Upgrade PalCenter
 
 1. Download a current backup from PalCenter.
 2. Record the currently deployed image tag.
@@ -99,4 +135,5 @@ Container recreation and upgrades preserve users, configuration, metrics,
 events, and the internal signing secret through `/app/data`.
 
 PalCenter remains available through standard Docker Compose or Docker run for
-non-Unraid users. See the main [README](../README.md).
+non-Unraid users. See the main [README](../README.md), the
+[first-run guide](FIRST-RUN.md), and [upgrade guidance](UPGRADING.md).
