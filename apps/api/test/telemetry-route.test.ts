@@ -5,6 +5,7 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 import type { FastifyInstance } from "fastify";
 import { JsonConnectionRepository } from "../src/repositories/json-connection-repository.js";
+import { SqliteWorldEventRepository } from "../src/repositories/sqlite-world-event-repository.js";
 import { SqliteTelemetryRepository } from "../src/telemetry/repositories/sqlite-telemetry-repository.js";
 
 const directory = await fs.mkdtemp(
@@ -166,6 +167,26 @@ before(async () => {
     },
   ]);
   telemetry.close();
+
+  const worldEvents = new SqliteWorldEventRepository(directory);
+  worldEvents.initialize();
+  worldEvents.append([
+    {
+      id: "wie_route_1",
+      serverId: "srv_telemetry",
+      userId: "user-one",
+      playerId: "player-one",
+      timestamp: "2026-07-28T12:03:00.000Z",
+      type: "player_joined",
+      metadata: { playerName: "Bob" },
+      confidence: 1,
+      evidence: [
+        { source: "players", fact: "appeared", value: "online_roster" },
+      ],
+      position: null,
+    },
+  ]);
+  worldEvents.close();
 });
 
 after(async () => {
@@ -304,4 +325,38 @@ test("telemetry routes return server_not_found for unknown server IDs", async ()
   });
   assert.equal(response.statusCode, 404);
   assert.equal(response.json().error, "server_not_found");
+});
+
+test("world event history is authenticated, chronological, bounded, and role protected", async () => {
+  const unauthenticated = await app.inject({
+    method: "GET",
+    url: "/api/servers/srv_telemetry/world-events",
+  });
+  assert.equal(unauthenticated.statusCode, 401);
+
+  for (const roleCookie of [administratorCookie, moderatorCookie]) {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/servers/srv_telemetry/world-events?userId=user-one&limit=1",
+      headers: { cookie: roleCookie },
+    });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().events[0].id, "wie_route_1");
+    assert.equal(JSON.stringify(response.json()).includes("not-used"), false);
+  }
+
+  const visitor = await app.inject({
+    method: "GET",
+    url: "/api/servers/srv_telemetry/world-events",
+    headers: { cookie: visitorCookie },
+  });
+  assert.equal(visitor.statusCode, 403);
+
+  const unknown = await app.inject({
+    method: "GET",
+    url: "/api/servers/unknown/world-events",
+    headers: { cookie: administratorCookie },
+  });
+  assert.equal(unknown.statusCode, 404);
+  assert.equal(unknown.json().error, "server_not_found");
 });

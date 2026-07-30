@@ -216,7 +216,7 @@ test("v1.3 schema upgrades in place and preserves existing metrics", async () =>
     const version = migrated.prepare("PRAGMA user_version").get() as {
       user_version: number;
     };
-    assert.equal(version.user_version, 4);
+    assert.equal(version.user_version, 5);
     migrated.close();
   } finally {
     telemetry.close();

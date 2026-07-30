@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
+import { SqliteWorldEventRepository } from "../src/repositories/sqlite-world-event-repository.js";
 import { SqliteAutomationRepository } from "../src/repositories/sqlite-automation-repository.js";
 import { SqliteUserRepository } from "../src/repositories/sqlite-user-repository.js";
 import { SystemConfigurationRepository } from "../src/repositories/system-configuration-repository.js";
@@ -101,6 +102,24 @@ async function fixture() {
       guildName: null,
     },
   ]);
+  const worldEvents = new SqliteWorldEventRepository(directory);
+  worldEvents.initialize();
+  worldEvents.append([
+    {
+      id: "wie_backup",
+      serverId: "srv_test",
+      userId: "user_test",
+      playerId: "player_test",
+      timestamp: "2026-07-23T00:00:00.000Z",
+      type: "session_started",
+      metadata: { playerName: "Backup Player" },
+      confidence: 1,
+      evidence: [
+        { source: "players", fact: "appeared", value: "online_roster" },
+      ],
+      position: { x: 100, y: 200, z: null },
+    },
+  ]);
   const automation = new SqliteAutomationRepository(directory);
   automation.initialize();
   automation.createTask({
@@ -187,11 +206,13 @@ async function fixture() {
       automation.close();
       history.close();
       telemetry.close();
+      worldEvents.close();
       users.close();
     },
     async resume() {
       history.reopen();
       telemetry.reopen();
+      worldEvents.reopen();
       automation.reopen();
       users.reopen();
     },
@@ -201,6 +222,7 @@ async function fixture() {
     directory,
     history,
     telemetry,
+    worldEvents,
     automation,
     users,
     system,
@@ -280,6 +302,7 @@ test("creates and restores all PalCenter data", async () => {
     assert.equal(context.history.listMetrics("srv_test", 10).length, 1);
     assert.equal(context.history.listEvents("srv_test", 10).length, 1);
     assert.equal(context.telemetry.latestPlayerSnapshots("srv_test").length, 1);
+    assert.equal(context.worldEvents.list("srv_test", { limit: 10 }).length, 1);
     assert.equal(
       context.automation.getTask("task_test")?.configuration.message,
       "This task must survive restore.",
@@ -297,6 +320,7 @@ test("creates and restores all PalCenter data", async () => {
   } finally {
     context.history.close();
     context.telemetry.close();
+    context.worldEvents.close();
     context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
@@ -323,6 +347,7 @@ test("rejects invalid uploads without changing current data", async () => {
   } finally {
     context.history.close();
     context.telemetry.close();
+    context.worldEvents.close();
     context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
@@ -371,6 +396,7 @@ test("restoring a format v1 backup preserves current users", async () => {
   } finally {
     context.history.close();
     context.telemetry.close();
+    context.worldEvents.close();
     context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });
@@ -406,6 +432,7 @@ test("restoring a format v2 backup preserves current system configuration", asyn
   } finally {
     context.history.close();
     context.telemetry.close();
+    context.worldEvents.close();
     context.automation.close();
     context.users.close();
     await fs.rm(context.directory, { recursive: true, force: true });

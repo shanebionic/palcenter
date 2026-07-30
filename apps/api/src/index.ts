@@ -8,6 +8,7 @@ import { JsonConnectionRepository } from "./repositories/json-connection-reposit
 import { JsonNotificationRepository } from "./repositories/json-notification-repository.js";
 import { SqliteAutomationRepository } from "./repositories/sqlite-automation-repository.js";
 import { SqliteHistoryRepository } from "./repositories/sqlite-history-repository.js";
+import { SqliteWorldEventRepository } from "./repositories/sqlite-world-event-repository.js";
 import { SqliteUserRepository } from "./repositories/sqlite-user-repository.js";
 import { SystemConfigurationRepository } from "./repositories/system-configuration-repository.js";
 import {
@@ -90,6 +91,10 @@ import {
   TelemetryService,
 } from "./telemetry/services/telemetry-service.js";
 import { telemetryRetentionDaysSchema } from "./telemetry/telemetry-configuration.js";
+import {
+  WorldEventServerNotFoundError,
+  WorldEventService,
+} from "./services/world-event-service.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -250,6 +255,10 @@ const telemetryRepository = new SqliteTelemetryRepository(
   environment.CONFIG_DIR,
   storagePermissionWarningHandler,
 );
+const worldEventRepository = new SqliteWorldEventRepository(
+  environment.CONFIG_DIR,
+  storagePermissionWarningHandler,
+);
 const automationRepository = new SqliteAutomationRepository(
   environment.CONFIG_DIR,
   storagePermissionWarningHandler,
@@ -341,13 +350,20 @@ const schedulerService = new SchedulerService(
 );
 const serverSettingsService = new ServerSettingsService(repository);
 const serverStatusService = new ServerStatusService(repository);
+const worldEventService = new WorldEventService(
+  repository,
+  worldEventRepository,
+);
 const serverHistoryService = new ServerHistoryService(
   repository,
   historyRepository,
   serverStatusService,
   playerService,
   environment.HISTORY_INTERVAL_SECONDS * 1_000,
-  (events) => notificationService.handle(events),
+  async (events) => {
+    worldEventService.recordServerEvents(events);
+    await notificationService.handle(events);
+  },
 );
 const telemetryService = new TelemetryService(
   repository,
@@ -389,11 +405,13 @@ const backupService = new BackupService(
       automationRepository.close();
       historyRepository.close();
       telemetryRepository.close();
+      worldEventRepository.close();
       userRepository.close();
     },
     async resume() {
       historyRepository.reopen();
       telemetryRepository.reopen();
+      worldEventRepository.reopen();
       automationRepository.reopen();
       userRepository.reopen();
       authenticationService.replaceSessionSecret(
@@ -411,6 +429,7 @@ try {
   await notificationRepository.initialize();
   historyRepository.initialize();
   telemetryRepository.initialize();
+  worldEventRepository.initialize();
   automationRepository.initialize();
   userRepository.initialize();
 } catch (error) {
@@ -429,6 +448,7 @@ app.addHook("onClose", async () => {
   automationRepository.close();
   historyRepository.close();
   telemetryRepository.close();
+  worldEventRepository.close();
   userRepository.close();
 });
 
@@ -990,6 +1010,29 @@ app.get("/api/servers/:id/events", async (request) => {
   };
 });
 
+const worldEventQuerySchema = z
+  .object({
+    userId: z.string().trim().min(1).max(200).optional(),
+    from: z.string().datetime({ offset: true }).optional(),
+    to: z.string().datetime({ offset: true }).optional(),
+    limit: z.coerce.number().int().min(1).max(1_000).default(250),
+  })
+  .refine(
+    (query) =>
+      !query.from ||
+      !query.to ||
+      Date.parse(query.from) <= Date.parse(query.to),
+    "The event start time must not be after the end time.",
+  );
+
+app.get("/api/servers/:id/world-events", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  const query = worldEventQuerySchema.parse(request.query);
+  return {
+    events: await worldEventService.list(parameters.id, query),
+  };
+});
+
 const telemetryHistoryQuerySchema = z
   .object({
     start: z.string().datetime({ offset: true }).optional(),
@@ -1266,6 +1309,7 @@ app.setErrorHandler((error, request, reply) => {
     error instanceof SettingsServerNotFoundError ||
     error instanceof HistoryServerNotFoundError ||
     error instanceof TelemetryServerNotFoundError ||
+    error instanceof WorldEventServerNotFoundError ||
     error instanceof RemovalServerNotFoundError ||
     error instanceof ConnectionNotFoundError
   ) {
