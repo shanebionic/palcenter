@@ -96,6 +96,7 @@ import {
   WorldEventServerNotFoundError,
   WorldEventService,
 } from "./services/world-event-service.js";
+import { PlayerActivityEventService } from "./services/player-activity-event-service.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -355,6 +356,9 @@ const worldEventService = new WorldEventService(
   repository,
   worldEventRepository,
 );
+const playerActivityEventService = new PlayerActivityEventService(
+  worldEventRepository,
+);
 const serverHistoryService = new ServerHistoryService(
   repository,
   historyRepository,
@@ -377,6 +381,10 @@ const telemetryService = new TelemetryService(
       { err: error, serverId },
       "Player telemetry collection failed.",
     );
+  },
+  undefined,
+  (serverId, snapshots) => {
+    playerActivityEventService.process(serverId, snapshots);
   },
 );
 const historyErrorHandler = (error: unknown) => {

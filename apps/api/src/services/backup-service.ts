@@ -276,7 +276,8 @@ export class BackupService {
            WHERE type = 'table' AND name IN (
              'server_metrics', 'server_events', 'active_players',
              'scheduled_tasks', 'task_executions',
-             'player_position_snapshots', 'world_events'
+             'player_position_snapshots', 'world_events',
+             'world_player_activity_state'
            )`,
         )
         .all() as unknown as Array<{ name: string }>;
@@ -284,7 +285,7 @@ export class BackupService {
       if (
         integrity?.quick_check !== "ok" ||
         !version ||
-        ![1, 2, 3, 4, 5].includes(version.user_version) ||
+        ![1, 2, 3, 4, 5, 6].includes(version.user_version) ||
         tables.length !==
           (version.user_version === 1
             ? 3
@@ -292,7 +293,9 @@ export class BackupService {
               ? 5
               : version.user_version < 5
                 ? 6
-                : 7)
+                : version.user_version < 6
+                  ? 7
+                  : 8)
       ) {
         throw new Error("SQLite validation failed.");
       }

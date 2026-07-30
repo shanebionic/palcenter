@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
 import type { ConnectionRepository } from "../src/repositories/connection-repository.js";
 import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
 import { SqliteWorldEventRepository } from "../src/repositories/sqlite-world-event-repository.js";
@@ -187,6 +188,57 @@ test("non-player, missing-identity, and unrelated player events are ignored", ()
   } finally {
     context.repository.close();
     context.history.close();
+    fs.rmSync(context.directory, { recursive: true, force: true });
+  }
+});
+
+test("schema version 5 events migrate to activity-aware schema version 6", () => {
+  const context = fixture();
+  context.repository.append([
+    {
+      id: "wie_existing",
+      serverId: connection.id,
+      userId: "user-1",
+      playerId: null,
+      timestamp: "2026-07-30T12:00:00.000Z",
+      type: "player_joined",
+      metadata: {},
+      confidence: 1,
+      evidence: [],
+      position: null,
+    },
+  ]);
+  context.repository.close();
+  context.history.close();
+  const databasePath = path.join(context.directory, "history.sqlite");
+  const database = new DatabaseSync(databasePath);
+  database.exec("PRAGMA user_version = 5");
+  database.close();
+
+  const migratedHistory = new SqliteHistoryRepository(context.directory);
+  const migratedEvents = new SqliteWorldEventRepository(context.directory);
+  try {
+    migratedHistory.initialize();
+    migratedEvents.initialize();
+    assert.equal(
+      migratedEvents.list(connection.id, { limit: 10 })[0]?.id,
+      "wie_existing",
+    );
+    const migrated = new DatabaseSync(databasePath, { readOnly: true });
+    const version = migrated.prepare("PRAGMA user_version").get() as {
+      user_version: number;
+    };
+    const activityTable = migrated
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE name = 'world_player_activity_state'",
+      )
+      .get();
+    migrated.close();
+    assert.equal(version.user_version, 6);
+    assert.ok(activityTable);
+  } finally {
+    migratedEvents.close();
+    migratedHistory.close();
     fs.rmSync(context.directory, { recursive: true, force: true });
   }
 });

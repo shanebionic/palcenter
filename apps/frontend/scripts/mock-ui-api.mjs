@@ -71,25 +71,47 @@ let sessionRole = "administrator";
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
   const joined = index % 2 === 0;
+  const type =
+    index === 0
+      ? "player_idle_started"
+      : index === 1
+        ? "player_afk_started"
+        : joined
+          ? "player_joined"
+          : "session_started";
   return {
     id: `wie-ui-${String(index).padStart(3, "0")}`,
     serverId: connection.id,
     userId: connectedPlayers[0].userId,
     playerId: connectedPlayers[0].playerId,
     timestamp: new Date(Date.parse(now) - index * 60_000).toISOString(),
-    type: joined ? "player_joined" : "session_started",
+    type,
     metadata: {
       playerName: connectedPlayers[0].name,
       note: index === 0 ? "Current roster observation" : "Retained event",
     },
-    confidence: 1,
-    evidence: [
-      {
-        source: "players",
-        fact: "appeared",
-        value: "online_roster",
-      },
-    ],
+    confidence: index <= 1 ? 0.9 : 1,
+    evidence:
+      index <= 1
+        ? [
+            {
+              source: "telemetry",
+              fact: "within_radius",
+              value: `300 world units for ${index === 0 ? 10 : 30} minutes`,
+            },
+            {
+              source: "players",
+              fact: "roster_present",
+              value: "online_roster",
+            },
+          ]
+        : [
+            {
+              source: "players",
+              fact: "appeared",
+              value: "online_roster",
+            },
+          ],
     position:
       index === 0
         ? { x: telemetryPlayer.x, y: telemetryPlayer.y, z: null }

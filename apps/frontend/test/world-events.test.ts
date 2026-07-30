@@ -38,6 +38,10 @@ test("formats every modeled event with a user-facing label", () => {
     "Session ended",
     "Player died",
     "Player respawned",
+    "Player became idle",
+    "Player resumed activity",
+    "Prolonged inactivity detected",
+    "Activity resumed",
   ]);
 });
 
@@ -60,6 +64,14 @@ test("renders only evidence supplied by the API", () => {
       value: "online_roster",
     }),
     "Player disappeared from the online roster.",
+  );
+  assert.equal(
+    worldEventEvidenceText({
+      source: "telemetry",
+      fact: "within_radius",
+      value: "300 world units for 10 minutes",
+    }),
+    "Player remained within 300 world units for 10 minutes.",
   );
 });
 

@@ -20,6 +20,10 @@ The initial model supports:
 - Session Ended
 - Player Died
 - Respawn
+- Player became idle
+- Player resumed activity
+- Prolonged inactivity detected
+- Activity resumed
 
 Join/disconnect and session events are currently generated from explicit
 changes in the official `/players` online roster. These observations have a
@@ -32,11 +36,44 @@ respawn therefore exist in the event model but are not inferred from movement,
 gaps, or map position. PalCenter will emit them only when an existing,
 authoritative server observation provides direct state evidence.
 
+## Idle and prolonged inactivity
+
+PalCenter classifies inactivity from existing position telemetry while a player
+remains in the online roster. These are operational classifications; PalCenter
+does not know whether a person is physically away from their keyboard.
+
+The centralized defaults are:
+
+- movement radius: 300 Palworld world-coordinate units;
+- idle threshold: 10 minutes within that radius;
+- prolonged-inactivity threshold: 30 minutes within that radius;
+- maximum continuous observation gap: 5 minutes.
+
+The radius is measured as straight-line X/Y displacement from the position
+where the current inactivity window began. It is not the sum of adjacent
+movement, so ordinary jitter cannot accumulate into false activity. Movement at
+or below 300 units remains inside the radius; movement beyond it proves the
+current inactivity state has ended.
+
+An Idle or prolonged-inactivity event is timestamped at the first telemetry
+sample that satisfies its duration threshold. A resumed event is timestamped at
+the first sample beyond the movement radius. These events use deterministic
+confidence `0.9` (**High confidence**): the engine transition is reproducible,
+but it describes observed inactivity rather than certainty about human
+behavior.
+
+Player activity checkpoints are persisted. Restarting PalCenter continues an
+uninterrupted observation window without rescanning telemetry or duplicating
+events. Disconnects remove the checkpoint without claiming activity resumed,
+and a new session starts clean. A telemetry gap longer than five minutes resets
+the checkpoint to Active without emitting a transition. Server downtime and
+telemetry outages therefore never count toward inactivity.
+
 ## Storage and API
 
-Events are stored in `history.sqlite` schema version 5 and are included
-automatically in PalCenter backups. The migration from schema version 4 creates
-the event tables without rewriting existing telemetry or history.
+Events and activity checkpoints are stored in `history.sqlite` schema version 6
+and are included automatically in PalCenter backups. The migration preserves
+existing events and history.
 
 Authenticated clients can request chronological history from:
 

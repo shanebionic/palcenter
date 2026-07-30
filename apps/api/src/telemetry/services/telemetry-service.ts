@@ -26,6 +26,11 @@ export type TelemetryCollectionErrorHandler = (
   error: unknown,
 ) => void;
 
+export type TelemetryObservationHandler = (
+  serverId: string,
+  snapshots: NewPlayerPositionSnapshot[],
+) => void;
+
 export class TelemetryService {
   private timer: ReturnType<typeof setInterval> | null = null;
   private collectionPromise: Promise<void> | null = null;
@@ -40,6 +45,8 @@ export class TelemetryService {
     private readonly retentionDays: number,
     private readonly onError: TelemetryCollectionErrorHandler,
     private readonly now: () => Date = () => new Date(),
+    private readonly onObservation: TelemetryObservationHandler = () =>
+      undefined,
   ) {}
 
   start(collectImmediately = true): void {
@@ -90,6 +97,7 @@ export class TelemetryService {
               .latestPlayerSnapshots(connection.id)
               .map((snapshot) => [snapshot.userId, snapshot]),
           );
+          this.onObservation(connection.id, snapshots);
           this.repository.insertPlayerSnapshots(
             snapshots.filter((snapshot) =>
               this.shouldStore(snapshot, previous.get(snapshot.userId)),

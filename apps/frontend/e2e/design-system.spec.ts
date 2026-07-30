@@ -354,13 +354,19 @@ test("World Events renders, filters, expands evidence, loads history, and links 
     page.getByRole("heading", { name: "Event timeline" }),
   ).toBeVisible();
   await expect(page.locator(".pc-world-event-entry")).toHaveCount(50);
-  await expect(page.getByText("Confirmed").first()).toBeVisible();
+  await expect(page.getByText("High confidence").first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Player became idle" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Prolonged inactivity detected" }),
+  ).toBeVisible();
 
   await page.getByText("Evidence and details").first().click();
   await expect(
-    page.getByText("Player appeared in the online roster.").first(),
+    page.getByText("Player remained within 300 world units for 10 minutes."),
   ).toBeVisible();
-  await expect(page.getByText(/Confidence: 100%/).first()).toBeVisible();
+  await expect(page.getByText(/Confidence: 90%/).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Load older events" }).click();
   await expect(page.locator(".pc-world-event-entry")).toHaveCount(55);
@@ -368,7 +374,7 @@ test("World Events renders, filters, expands evidence, loads history, and links 
   await page.getByRole("combobox", { name: "Event type" }).click();
   await page.getByRole("option", { name: "Session started" }).click();
   await page.getByRole("button", { name: "Apply filters" }).click();
-  await expect(page.locator(".pc-world-event-entry")).toHaveCount(27);
+  await expect(page.locator(".pc-world-event-entry")).toHaveCount(26);
   await expect(
     page.getByRole("heading", { name: "Session started" }).first(),
   ).toBeVisible();
