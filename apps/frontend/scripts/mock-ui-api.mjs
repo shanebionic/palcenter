@@ -122,6 +122,13 @@ export function startMockUiApi(port = 3198) {
       });
     }
     if (url.pathname === `/api/servers/${connection.id}/players`) {
+      if (playerMode === "error") {
+        return json(
+          response,
+          { error: "palworld_unavailable", message: "fetch failed" },
+          503,
+        );
+      }
       return json(response, {
         players: playerMode === "empty" ? [] : connectedPlayers,
       });
@@ -129,10 +136,34 @@ export function startMockUiApi(port = 3198) {
     if (
       url.pathname === `/api/servers/${connection.id}/telemetry/players/latest`
     ) {
+      if (playerMode === "error") {
+        return json(
+          response,
+          { error: "telemetry_unavailable", message: "database unavailable" },
+          503,
+        );
+      }
       return json(response, {
         players: playerMode === "empty" ? [] : [telemetryPlayer],
         pollingIntervalSeconds: 30,
         lastCollectedAt: now,
+      });
+    }
+    if (
+      url.pathname ===
+      `/api/servers/${connection.id}/telemetry/players/${connectedPlayers[0].userId}/history`
+    ) {
+      return json(response, {
+        points: [
+          { capturedAt: "2026-07-29T22:10:00.000Z", x: 85000, y: -110000 },
+          { capturedAt: "2026-07-29T22:14:00.000Z", x: 93000, y: -103000 },
+          { capturedAt: "2026-07-29T22:18:00.000Z", x: 102000, y: -95000 },
+          { capturedAt: "2026-07-29T22:22:00.000Z", x: 111000, y: -87000 },
+          { capturedAt: "2026-07-29T22:26:00.000Z", x: 119000, y: -80000 },
+          { capturedAt: now, x: telemetryPlayer.x, y: telemetryPlayer.y },
+        ],
+        limit: 5000,
+        truncated: false,
       });
     }
     if (url.pathname === "/api/backup/info") {
