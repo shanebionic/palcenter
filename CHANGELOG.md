@@ -2,6 +2,44 @@
 
 All notable PalCenter changes are documented here.
 
+## 1.4.0
+
+### Added
+
+- World Intelligence with a live Palpagos map, current player locations,
+  selectable movement trails, and responsive map controls.
+- Player Activity Summary with observed activity, movement and stationary time,
+  travel distance, speed, timeline, operational flags, and clear data-quality
+  context.
+- Player telemetry history with separate user, player, and account identities,
+  position, state, level, ping, and building count.
+
+### Changed
+
+- Refreshed the application surfaces with consistent cards, headers, empty
+  states, responsive layouts, focus states, and administrator-focused map
+  controls.
+- Reduced telemetry storage growth with configurable retention, bounded
+  cleanup, movement-aware writes, and periodic heartbeat snapshots.
+- Improved map performance with responsive bundled assets, bounded trail
+  rendering, stable marker sizing, and native AMD64/ARM64 image builds.
+- Improved Backup & Restore and Automation presentation while preserving
+  existing archives, tasks, schedules, and execution history.
+- Expanded backup, restore, upgrade, Docker Compose, Unraid, reverse proxy,
+  first-run, feature, FAQ, and troubleshooting documentation.
+- Added documented Compose settings for trusted proxies and automation polling.
+
+### Fixed
+
+- Preserved continuous movement trails while keeping rendered line counts
+  bounded and retaining the newest endpoint.
+- Corrected movement-speed calculations, observed-range reporting, marker
+  labels, trail fading, and player identity handling.
+- Stabilized the World Map viewport, zoom, pan, Fit Map, expanded mode, and
+  production CSS delivery.
+- Kept World Intelligence loading, empty, offline, permission, and telemetry
+  failure states actionable and accessible.
+
 ## 1.3.0
 
 ### Added
