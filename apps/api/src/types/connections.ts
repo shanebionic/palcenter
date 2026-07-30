@@ -68,11 +68,11 @@ export interface PalworldPlayer {
   playerId: string;
   userId: string;
   ip?: string;
-  ping: number;
-  location_x: number;
-  location_y: number;
-  level: number;
-  building_count: number;
+  ping?: number;
+  location_x?: number;
+  location_y?: number;
+  level?: number;
+  building_count?: number;
 }
 
 export interface PalworldPlayersResponse {

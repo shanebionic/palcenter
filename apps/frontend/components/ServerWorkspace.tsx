@@ -12,6 +12,7 @@ import { ServerPlayers } from "./ServerPlayers";
 import { ServerSettings } from "./ServerSettings";
 import { ServerDangerZone } from "./ServerDangerZone";
 import { ServerConnectionSettings } from "./ServerConnectionSettings";
+import { ServerWorldMap } from "./ServerWorldMap";
 
 interface ServerWorkspaceProps {
   serverId: string;
@@ -105,10 +106,15 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
             action={refreshing ? <Loader size="sm" /> : null}
           />
 
-          <Tabs defaultValue="overview" keepMounted={false}>
+          <Tabs
+            className="pc-workspace-tabs"
+            defaultValue="overview"
+            keepMounted={false}
+          >
             <Tabs.List>
               <Tabs.Tab value="overview">Overview</Tabs.Tab>
               {canOperate && <Tabs.Tab value="players">Players</Tabs.Tab>}
+              {canOperate && <Tabs.Tab value="map">Map</Tabs.Tab>}
               {canOperate && (
                 <Tabs.Tab value="administration">Administration</Tabs.Tab>
               )}
@@ -125,6 +131,15 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
             {canOperate && (
               <Tabs.Panel value="players">
                 <ServerPlayers serverId={server.connection.id} />
+              </Tabs.Panel>
+            )}
+            {canOperate && (
+              <Tabs.Panel value="map">
+                <ServerWorldMap
+                  serverId={server.connection.id}
+                  serverOnline={server.status.status === "online"}
+                  canCalibrate={canManage}
+                />
               </Tabs.Panel>
             )}
             {canOperate && (

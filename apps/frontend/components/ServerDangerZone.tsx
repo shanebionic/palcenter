@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  Alert,
-  Button,
-  Card,
-  Group,
-  Modal,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Alert, Button, Group, Modal, Stack, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -19,6 +10,8 @@ import {
   serverRemovalDescription,
   serverRemovalTitle,
 } from "../lib/server-removal";
+import { DangerCard } from "./ui/DangerCard";
+import { SectionHeader } from "./ui/SectionHeader";
 
 interface ServerDangerZoneProps {
   serverId: string;
@@ -63,13 +56,11 @@ export function ServerDangerZone({
   return (
     <>
       <Stack gap="md">
-        <div>
-          <Title order={2}>Danger zone</Title>
-          <Text c="dimmed" size="sm">
-            Permanently remove PalCenter-owned data for this server.
-          </Text>
-        </div>
-        <Card withBorder padding="lg" radius="md" bd="1px solid red.8">
+        <SectionHeader
+          title="Danger zone"
+          description="Permanently remove PalCenter-owned data for this server."
+        />
+        <DangerCard>
           <Group justify="space-between" align="center">
             <div>
               <Title order={3}>Remove server</Title>
@@ -86,7 +77,7 @@ export function ServerDangerZone({
               Remove server
             </Button>
           </Group>
-        </Card>
+        </DangerCard>
       </Stack>
 
       <Modal

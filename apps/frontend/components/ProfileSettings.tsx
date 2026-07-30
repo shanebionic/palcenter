@@ -4,19 +4,19 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   PasswordInput,
   SimpleGrid,
   Skeleton,
   Stack,
   Text,
-  Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useEffect, useState } from "react";
 import { changePassword, getCurrentUser } from "../lib/api";
 import type { UserProfile } from "../types/servers";
 import { PageHeader } from "./PageHeader";
+import { SectionCard } from "./ui/SectionCard";
+import { SectionHeader } from "./ui/SectionHeader";
 
 export function ProfileSettings() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -83,7 +83,7 @@ export function ProfileSettings() {
               Change the temporary password before accessing PalCenter.
             </Alert>
           )}
-          <Card withBorder radius="md" p="xl">
+          <SectionCard p="xl">
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <div>
                 <Text size="xs" c="dimmed">
@@ -128,40 +128,39 @@ export function ProfileSettings() {
                 </Text>
               </div>
             </SimpleGrid>
-          </Card>
-          <Card
-            component="form"
-            onSubmit={submit}
-            withBorder
-            radius="md"
-            p="xl"
-          >
-            <Stack>
-              <Title order={3}>Change password</Title>
-              <PasswordInput
-                label="Current password"
-                autoComplete="current-password"
-                required
-                {...form.getInputProps("currentPassword")}
-              />
-              <PasswordInput
-                label="New password"
-                description="At least 12 characters with upper/lowercase, a number, and a symbol."
-                autoComplete="new-password"
-                required
-                {...form.getInputProps("newPassword")}
-              />
-              <PasswordInput
-                label="Confirm new password"
-                autoComplete="new-password"
-                required
-                {...form.getInputProps("passwordConfirmation")}
-              />
-              <Button type="submit" loading={submitting}>
-                Change Password
-              </Button>
-            </Stack>
-          </Card>
+          </SectionCard>
+          <form onSubmit={submit}>
+            <SectionCard p="xl">
+              <Stack>
+                <SectionHeader
+                  title="Change password"
+                  description="Update your password and sign in again on every device."
+                />
+                <PasswordInput
+                  label="Current password"
+                  autoComplete="current-password"
+                  required
+                  {...form.getInputProps("currentPassword")}
+                />
+                <PasswordInput
+                  label="New password"
+                  description="At least 12 characters with upper/lowercase, a number, and a symbol."
+                  autoComplete="new-password"
+                  required
+                  {...form.getInputProps("newPassword")}
+                />
+                <PasswordInput
+                  label="Confirm new password"
+                  autoComplete="new-password"
+                  required
+                  {...form.getInputProps("passwordConfirmation")}
+                />
+                <Button type="submit" loading={submitting}>
+                  Change Password
+                </Button>
+              </Stack>
+            </SectionCard>
+          </form>
         </>
       )}
     </Stack>

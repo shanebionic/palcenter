@@ -4,7 +4,6 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   FileInput,
   Group,
   Modal,
@@ -18,6 +17,8 @@ import { useCallback, useEffect, useState } from "react";
 import { createBackup, getBackupInfo, restoreBackup } from "../lib/api";
 import type { BackupInfo } from "../types/servers";
 import { PageHeader } from "./PageHeader";
+import { SectionCard } from "./ui/SectionCard";
+import { SectionHeader } from "./ui/SectionHeader";
 
 function size(value: number | null): string {
   if (value === null) return "Unavailable";
@@ -120,7 +121,7 @@ export function BackupSettings() {
         {!info ? (
           <Skeleton height={210} radius="md" />
         ) : (
-          <Card withBorder radius="md" p="xl">
+          <SectionCard p="xl">
             <Stack>
               <Group justify="space-between">
                 <Title order={3}>Current data</Title>
@@ -144,12 +145,15 @@ export function BackupSettings() {
                 Create and Download Backup
               </Button>
             </Stack>
-          </Card>
+          </SectionCard>
         )}
 
-        <Card withBorder radius="md" p="xl">
+        <SectionCard p="xl">
           <Stack>
-            <Title order={3}>Restore a backup</Title>
+            <SectionHeader
+              title="Restore a backup"
+              description="Validate and replace the current PalCenter data set."
+            />
             <Alert color="yellow">
               A restore replaces all server connections, notification settings,
               historical metrics, events, users, roles, and login credentials.
@@ -178,7 +182,7 @@ export function BackupSettings() {
               Restore Backup
             </Button>
           </Stack>
-        </Card>
+        </SectionCard>
       </Stack>
 
       <Modal

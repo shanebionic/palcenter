@@ -1,12 +1,13 @@
 "use client";
 
-import { Button, Card, Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Button, Group, SimpleGrid, Stack, Text } from "@mantine/core";
 import { IconArrowRight, IconUsers } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ApplicationShell } from "../../components/ApplicationShell";
 import { BrandedLoader } from "../../components/BrandedLoader";
 import { PageHeader } from "../../components/PageHeader";
+import { SectionCard } from "../../components/ui/SectionCard";
 import { getServers } from "../../lib/api";
 import type { PublicConnection } from "../../types/servers";
 
@@ -30,7 +31,7 @@ export default function PlayersPage() {
         ) : (
           <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }}>
             {servers.map((server) => (
-              <Card key={server.id} className="pc-panel" withBorder radius="lg">
+              <SectionCard key={server.id}>
                 <Group justify="space-between">
                   <div>
                     <Text fw={700}>{server.name}</Text>
@@ -48,7 +49,7 @@ export default function PlayersPage() {
                     Open
                   </Button>
                 </Group>
-              </Card>
+              </SectionCard>
             ))}
           </SimpleGrid>
         )}

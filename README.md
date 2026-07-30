@@ -4,145 +4,201 @@
 
 **Palworld Server Command Center**
 
-PalCenter is a self-hosted web console for managing and monitoring existing
-Palworld dedicated servers.
+PalCenter is a self-hosted web console for administering existing Palworld
+dedicated servers. It connects to each server through the official Palworld
+REST API; it does not install Palworld, manage containers, or access save files.
 
-It connects to your existing Palworld server through the official REST API and provides a simple web interface for:
+![PalCenter World Intelligence map](docs/screenshots/world-intelligence-after.png)
 
-- Server monitoring
-- Player tracking
-- Server history
-- Notifications
-- Backup and restore
-- Scheduled server automation
-- User access management
-- Standalone PalWorldSettings.ini generation
+![PalCenter Player Activity Summary](docs/screenshots/player-activity-summary-after.png)
 
-PalCenter does not host or run the Palworld server itself. It connects to an existing dedicated server.
+## What PalCenter provides
 
-## Support PalCenter
+- Multi-server status, health, configuration, and connection management
+- Connected-player visibility plus kick and ban operations
+- World Intelligence: live Palpagos map, movement trails, and activity summaries
+- Broadcast, Save World, and Graceful Shutdown operations
+- Scheduled automation with immutable execution history
+- Discord webhook and ntfy notifications
+- Administrator, Moderator, and Visitor accounts
+- Portable backup and restore
+- A standalone `PalWorldSettings.ini` configuration generator
 
-PalCenter is free and open-source software. If you find it useful, consider supporting continued development, testing, documentation, and future improvements.
+## Supported environments
 
-[![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=github)](https://github.com/sponsors/shanebionic)
+PalCenter is distributed as a Linux container for `linux/amd64` and
+`linux/arm64`. It runs with Docker Engine, Docker Desktop, Docker Compose,
+Unraid Community Applications, and compatible NAS or VPS container platforms.
 
-## Installation
+### Requirements
 
-### Unraid Community Applications
+- Docker 24 or newer, or a current Unraid release
+- Persistent storage for `/app/data`
+- Network access from PalCenter to each Palworld REST API
+- An existing Palworld dedicated server with its REST API enabled
+- A modern browser
 
-For Unraid, install PalCenter from **Apps → Community Applications**. The
-official template configures the non-root `99:100` user mapping and persistent
-`/mnt/user/appdata/palcenter` storage. See the
-[Unraid deployment guide](docs/UNRAID.md) for upgrade and troubleshooting
-instructions.
+PalCenter itself does not require the Palworld host, save directory, SteamCMD,
+Docker socket, or privileged container access.
+
+## Quick start
+
+1. Save the repository's [`docker-compose.yml`](docker-compose.yml) and
+   [`.env.example`](.env.example) in a new directory.
+2. Rename `.env.example` to `.env`.
+3. Start PalCenter:
+
+   ```bash
+   docker compose up -d
+   ```
+
+4. Open `http://YOUR-Docker-HOST:3000`.
+5. Create the initial Administrator when prompted.
+6. Select **Add Server**, enter the Palworld REST URL and administrator
+   password, then test and save the connection.
+
+The default Compose deployment uses a Docker-managed volume and runs as the
+non-root `1000:1000` user.
+
+## Installation options
 
 ### Docker Compose
 
-Create a `docker-compose.yml`:
+The supplied [`docker-compose.yml`](docker-compose.yml) uses:
 
 ```yaml
 services:
   palcenter:
     image: ghcr.io/shanebionic/palcenter:latest
-    container_name: palcenter
     user: "${PALCENTER_UID:-1000}:${PALCENTER_GID:-1000}"
-    restart: unless-stopped
-
     ports:
-      - "3000:3000"
-
+      - "${PALCENTER_WEB_PORT:-3000}:3000"
+      - "${PALCENTER_API_PORT:-3001}:3001"
     volumes:
       - palcenter-data:/app/data
-
-volumes:
-  palcenter-data:
 ```
 
-Start PalCenter:
+Port `3000` serves the web application. Port `3001` is the direct API and is
+not needed by browsers using the normal same-origin web interface. Restrict or
+remove the host mapping for port `3001` unless an advanced integration needs
+it.
+
+See the [installation guide](docs/INSTALLATION.md) for environment variables,
+bind mounts, initial startup, and Palworld REST configuration.
+
+### Unraid
+
+Install **PalCenter** from **Apps → Community Applications**. The official
+template maps `/app/data` to `/mnt/user/appdata/palcenter` and runs as Unraid's
+non-root `nobody:users` identity (`99:100`).
+
+See the [Unraid guide](docs/UNRAID.md) for template settings, networking,
+permissions, reverse proxies, backups, and upgrades.
+
+## Production deployment
+
+Place PalCenter on a trusted management network. For remote access, proxy the
+web port through HTTPS, enable secure session cookies, and leave the direct API
+private. PalCenter currently uses normal HTTP requests; no WebSocket forwarding
+rule is required.
+
+Examples for Nginx Proxy Manager, Traefik, and Caddy are in the
+[reverse proxy guide](docs/REVERSE-PROXY.md).
+
+## Authentication and access
+
+There is no default account. The first-run wizard creates the initial
+Administrator. Passwords are stored as scrypt hashes, and authenticated
+sessions use signed HttpOnly cookies.
+
+| Role          | Access                                                                |
+| ------------- | --------------------------------------------------------------------- |
+| Administrator | Full configuration, user, backup, notification, and automation access |
+| Moderator     | Read access plus supported server and player operations               |
+| Visitor       | Read-only access                                                      |
+
+See [Security](SECURITY.md) and the [feature guide](docs/FEATURES.md).
+
+## Major workflows
+
+- **World Intelligence:** Select a server, open **Map**, choose a player, and
+  enable a movement trail. The summary distinguishes selected range from
+  observed telemetry. [World Map guide](docs/WORLD-MAP.md)
+- **Automation:** Schedule Broadcast Message, Save World, or Graceful Shutdown.
+  **Run Now** records history without changing the recurring schedule.
+  [Automation guide](docs/AUTOMATION.md)
+- **Backup and Restore:** Download an authenticated archive containing server
+  connections, notifications, history, users, automation data, and system
+  configuration. Treat archives as sensitive.
+  [Backup and upgrade guide](docs/UPGRADING.md)
+- **Notifications:** Configure Discord webhook or ntfy destinations and select
+  server/player events. Stored Discord webhook URLs are never returned to the
+  browser. [Feature guide](docs/FEATURES.md#notifications)
+- **Multi-server management:** Add each remote REST connection independently;
+  live state is fetched from Palworld and is not written to `servers.json`.
+  [Server management guide](docs/SERVER-MANAGEMENT.md)
+
+## Troubleshooting
+
+Start with:
 
 ```bash
-docker compose up -d
+docker compose ps
+docker compose logs --tail=200 palcenter
+curl http://127.0.0.1:3001/api/health
 ```
 
-Open:
+Common causes are an unwritable `/app/data` mount, a host port conflict, an
+incorrect Palworld REST URL, or container networking that cannot reach the
+Palworld host. See the [troubleshooting guide](docs/TROUBLESHOOTING.md) and
+[FAQ](docs/FAQ.md).
 
-```text
-http://YOUR_SERVER_IP:3000
-```
+## Documentation
 
-On first launch, complete the setup wizard to create your administrator account.
+- [Installation](docs/INSTALLATION.md)
+- [First run](docs/FIRST-RUN.md)
+- [Features and permissions](docs/FEATURES.md)
+- [Unraid](docs/UNRAID.md)
+- [Reverse proxy](docs/REVERSE-PROXY.md)
+- [Upgrading and rollback](docs/UPGRADING.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [FAQ](docs/FAQ.md)
+- [Server management](docs/SERVER-MANAGEMENT.md)
+- [Automation](docs/AUTOMATION.md)
+- [Telemetry](docs/TELEMETRY.md)
+- [World Map and Player Activity Summary](docs/WORLD-MAP.md)
+- [Configuration generator](docs/CONFIGURATION-GENERATOR.md)
+- [Security](SECURITY.md)
 
-### Development builds
+The [PalCenter Wiki](https://github.com/shanebionic/palcenter/wiki) provides an
+additional administrator-oriented copy of the deployment documentation.
 
-Production users should run:
+## Development builds
+
+Production:
 
 ```text
 ghcr.io/shanebionic/palcenter:latest
 ```
 
-Testers who want the current development channel can run:
+Testing channel:
 
 ```text
 ghcr.io/shanebionic/palcenter:dev
 ```
 
-Development builds may contain unfinished features, are intended for testing,
-and may change without notice. Each development build also has an immutable
-`dev-<git-sha>` image tag. The About PalCenter dialog identifies the build as
-Production or Development and includes the short commit for development builds.
-Development after `v1.2.1` is identified as `v1.3.0-DEV`; the production
-`v1.3.0` image receives its stable version and channel from the release tag.
+Development builds may contain unfinished work and change without notice. Use
+them only for testing and create a backup before switching channels.
 
-### Container user IDs
+## Support and license
 
-PalCenter runs as a non-root user. The supplied Compose deployment defaults to
-UID `1000` and GID `1000`, matching the image's built-in `node` user.
+Report bugs and request features through the
+[issue tracker](https://github.com/shanebionic/palcenter/issues). Report
+security vulnerabilities according to [SECURITY.md](SECURITY.md).
 
-To use a host bind mount owned by another non-root account, set the runtime
-identity before creating the container:
+PalCenter code and documentation are MIT licensed. Separately identified
+third-party assets are excluded; the bundled Palpagos map remains copyright
+Pocketpair, Inc. See [LICENSE](LICENSE) and
+[THIRD_PARTY_ASSETS.md](THIRD_PARTY_ASSETS.md).
 
-```env
-PALCENTER_UID=99
-PALCENTER_GID=100
-```
-
-The Compose file applies these values through Docker's `user` setting. PalCenter
-does not start as root and does not change ownership of mounted data. The host
-directory must already be writable by the selected UID/GID. Keep `1000:1000`
-when using the default Docker-managed volume.
-
-## Requirements
-
-- Docker
-- An existing Palworld dedicated server
-- Palworld REST API enabled
-
-PalCenter v1.3 adds scheduled Broadcast Message, Save World, and Graceful
-Shutdown tasks, immutable execution history, and safe editing of saved server
-connections. Existing v1.2.x data remains compatible and is upgraded in place.
-Download a PalCenter backup before upgrading any production installation.
-
-## Documentation
-
-Full installation, administration, backup, and troubleshooting guides are
-available in the [PalCenter Wiki](https://github.com/shanebionic/palcenter/wiki).
-The repository also includes the
-[configuration generator guide](docs/CONFIGURATION-GENERATOR.md) and
-[server management guide](docs/SERVER-MANAGEMENT.md). Scheduled task setup and
-operation are covered in the [server automation guide](docs/AUTOMATION.md).
-
-## Contributing and support
-
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before
-opening a pull request.
-
-Report bugs or request features through the
-[issue tracker](https://github.com/shanebionic/palcenter/issues). For security
-vulnerabilities, follow [SECURITY.md](SECURITY.md) instead of opening a public
-issue.
-
-## License
-
-PalCenter is licensed under the MIT License.
-
-See [LICENSE](LICENSE) for details.
+[![Sponsor PalCenter](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=github)](https://github.com/sponsors/shanebionic)

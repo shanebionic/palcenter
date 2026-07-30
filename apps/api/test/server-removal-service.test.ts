@@ -9,6 +9,7 @@ import {
   RemovalServerNotFoundError,
   ServerRemovalService,
 } from "../src/services/server-removal-service.js";
+import { SqliteTelemetryRepository } from "../src/telemetry/repositories/sqlite-telemetry-repository.js";
 import type { StoredConnection } from "../src/types/connections.js";
 
 const monitoring = {
@@ -35,10 +36,12 @@ test("removes persisted connection and all server-scoped history without contact
   );
   const connections = new JsonConnectionRepository(directory);
   const history = new SqliteHistoryRepository(directory);
+  const telemetry = new SqliteTelemetryRepository(directory);
 
   try {
     await connections.initialize();
     history.initialize();
+    telemetry.initialize();
 
     const removed = connection("srv_remove", "Remove Me");
     const retained = connection("srv_keep", "Keep Me");
@@ -68,6 +71,24 @@ test("removes persisted connection and all server-scoped history without contact
         ],
         [{ playerId: "player-1", name: "Player" }],
       );
+      telemetry.insertPlayerSnapshots([
+        {
+          serverId: server.id,
+          userId: "user-1",
+          playerId: "player-1",
+          playerName: "Player",
+          accountName: "player-account",
+          capturedAt: "2026-07-27T12:01:00.000Z",
+          x: 10,
+          y: 20,
+          z: null,
+          level: 10,
+          ping: 20,
+          buildingCount: 1,
+          guildId: null,
+          guildName: null,
+        },
+      ]);
     }
 
     await new ServerRemovalService(connections, history, monitoring).remove(
@@ -78,11 +99,13 @@ test("removes persisted connection and all server-scoped history without contact
     assert.deepEqual(history.listMetrics(removed.id, 100), []);
     assert.deepEqual(history.listEvents(removed.id, 100), []);
     assert.deepEqual(history.activePlayers(removed.id), []);
+    assert.deepEqual(telemetry.latestPlayerSnapshots(removed.id), []);
 
     assert.equal((await connections.get(retained.id))?.name, retained.name);
     assert.equal(history.listMetrics(retained.id, 100).length, 1);
     assert.equal(history.listEvents(retained.id, 100).length, 1);
     assert.equal(history.activePlayers(retained.id).length, 1);
+    assert.equal(telemetry.latestPlayerSnapshots(retained.id).length, 1);
 
     const reopenedConnections = new JsonConnectionRepository(directory);
     assert.equal(await reopenedConnections.get(removed.id), null);
@@ -92,6 +115,7 @@ test("removes persisted connection and all server-scoped history without contact
     );
   } finally {
     history.close();
+    telemetry.close();
     await fs.rm(directory, { recursive: true, force: true });
   }
 });

@@ -14,6 +14,8 @@ node_modules
 
 # Testing
 coverage
+apps/frontend/playwright-report/
+apps/frontend/test-results/
 
 # Runtime configuration
 apps/api/data/servers.json

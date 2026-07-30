@@ -3,14 +3,12 @@
 import {
   Alert,
   Button,
-  Card,
   Group,
   PasswordInput,
   SimpleGrid,
   Stack,
   Text,
   TextInput,
-  Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -26,6 +24,8 @@ import {
   untestedConnectionWarning,
 } from "../lib/server-connection";
 import type { PublicConnection } from "../types/servers";
+import { SectionCard } from "./ui/SectionCard";
+import { SectionHeader } from "./ui/SectionHeader";
 
 interface ServerConnectionSettingsProps {
   connection: PublicConnection;
@@ -120,15 +120,12 @@ export function ServerConnectionSettings({
 
   return (
     <Stack gap="lg" pt="lg">
-      <div>
-        <Title order={2}>Connection Settings</Title>
-        <Text c="dimmed" size="sm">
-          Edit how PalCenter connects to this server. These settings do not
-          modify PalWorldSettings.ini or remote gameplay configuration.
-        </Text>
-      </div>
+      <SectionHeader
+        title="Connection Settings"
+        description="Edit how PalCenter connects to this server. These settings do not modify PalWorldSettings.ini or remote gameplay configuration."
+      />
 
-      <Card withBorder radius="md" p="lg">
+      <SectionCard>
         <form onSubmit={save}>
           <Stack>
             <TextInput
@@ -191,7 +188,7 @@ export function ServerConnectionSettings({
             </Group>
           </Stack>
         </form>
-      </Card>
+      </SectionCard>
     </Stack>
   );
 }

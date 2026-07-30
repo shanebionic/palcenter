@@ -4,7 +4,6 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   Center,
   Group,
   Loader,
@@ -18,8 +17,15 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { banPlayer, getPlayers, kickPlayer } from "../lib/api";
-import type { ConnectedPlayer } from "../types/servers";
+import {
+  banPlayer,
+  getLatestPlayerTelemetry,
+  getPlayers,
+  kickPlayer,
+} from "../lib/api";
+import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
+import { SectionCard } from "./ui/SectionCard";
+import { SectionHeader } from "./ui/SectionHeader";
 
 type PlayerAction = "kick" | "ban";
 
@@ -34,6 +40,7 @@ interface ServerPlayersProps {
 
 export function ServerPlayers({ serverId }: ServerPlayersProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
+  const [telemetry, setTelemetry] = useState<PlayerPositionSnapshot[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,7 +57,12 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
       setError(null);
 
       try {
-        setPlayers(await getPlayers(serverId));
+        const [connectedPlayers, latestTelemetry] = await Promise.all([
+          getPlayers(serverId),
+          getLatestPlayerTelemetry(serverId).catch(() => []),
+        ]);
+        setPlayers(connectedPlayers);
+        setTelemetry(latestTelemetry);
       } catch (requestError) {
         setError(
           requestError instanceof Error
@@ -80,6 +92,33 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
       player.name.toLocaleLowerCase().includes(query),
     );
   }, [players, search]);
+
+  const telemetryByPlayer = useMemo(
+    () => new Map(telemetry.map((snapshot) => [snapshot.userId, snapshot])),
+    [telemetry],
+  );
+
+  const coordinate = (value: number | null) =>
+    value === null
+      ? "—"
+      : new Intl.NumberFormat(undefined, {
+          maximumFractionDigits: 1,
+        }).format(value);
+
+  const lastUpdated = (capturedAt: string | undefined) => {
+    if (!capturedAt) {
+      return "Not collected";
+    }
+    const seconds = Math.max(
+      0,
+      Math.round((Date.now() - new Date(capturedAt).getTime()) / 1_000),
+    );
+    if (seconds < 60) {
+      return `${seconds} seconds ago`;
+    }
+    const minutes = Math.round(seconds / 60);
+    return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+  };
 
   const confirmAction = async () => {
     if (!pending) {
@@ -118,20 +157,20 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
   return (
     <>
       <Stack gap="lg" pt="lg">
-        <Group justify="space-between" align="flex-end">
-          <div>
-            <Title order={2}>Players</Title>
-            <Text c="dimmed">View and manage connected players.</Text>
-          </div>
-          <Button
-            variant="light"
-            onClick={() => loadPlayers(true)}
-            loading={refreshing}
-            disabled={loading || submitting}
-          >
-            Refresh
-          </Button>
-        </Group>
+        <SectionHeader
+          title="Players"
+          description="View and manage connected players."
+          action={
+            <Button
+              variant="light"
+              onClick={() => loadPlayers(true)}
+              loading={refreshing}
+              disabled={loading || submitting}
+            >
+              Refresh
+            </Button>
+          }
+        />
 
         {error && <Alert color="red">{error}</Alert>}
 
@@ -147,75 +186,90 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
             <Loader />
           </Center>
         ) : players.length === 0 ? (
-          <Card withBorder radius="md" padding="xl">
+          <SectionCard p="xl">
             <Center mih={120}>
               <Stack align="center" gap="xs">
                 <Title order={3}>No players online</Title>
                 <Text c="dimmed">Connected players will appear here.</Text>
               </Stack>
             </Center>
-          </Card>
+          </SectionCard>
         ) : filteredPlayers.length === 0 ? (
           <Alert color="gray">No players match your search.</Alert>
         ) : (
-          <Card withBorder radius="md" padding={0}>
+          <SectionCard p={0}>
             <ScrollArea>
-              <Table striped highlightOnHover miw={720}>
+              <Table striped highlightOnHover miw={960}>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Player Name</Table.Th>
                     <Table.Th>Player ID</Table.Th>
                     <Table.Th>IP Address</Table.Th>
+                    <Table.Th>Coordinates</Table.Th>
+                    <Table.Th>Telemetry Updated</Table.Th>
                     <Table.Th>Status</Table.Th>
                     <Table.Th>Actions</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {filteredPlayers.map((player) => (
-                    <Table.Tr key={player.userId}>
-                      <Table.Td>{player.name}</Table.Td>
-                      <Table.Td>
-                        <Text ff="monospace" size="sm">
-                          {player.playerId}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>{player.ip ?? "Unavailable"}</Table.Td>
-                      <Table.Td>
-                        <Badge color="green" variant="light">
-                          Online
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>
-                        <Group gap="xs" wrap="nowrap">
-                          <Button
-                            size="xs"
-                            variant="light"
-                            color="orange"
-                            onClick={() =>
-                              setPending({ action: "kick", player })
-                            }
-                            disabled={submitting}
-                          >
-                            Kick
-                          </Button>
-                          <Button
-                            size="xs"
-                            color="red"
-                            onClick={() =>
-                              setPending({ action: "ban", player })
-                            }
-                            disabled={submitting}
-                          >
-                            Ban
-                          </Button>
-                        </Group>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
+                  {filteredPlayers.map((player) => {
+                    const snapshot = telemetryByPlayer.get(player.userId);
+                    return (
+                      <Table.Tr key={player.userId}>
+                        <Table.Td>{player.name}</Table.Td>
+                        <Table.Td>
+                          <Text ff="monospace" size="sm">
+                            {player.playerId}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>{player.ip ?? "Unavailable"}</Table.Td>
+                        <Table.Td>
+                          <Text ff="monospace" size="sm">
+                            X: {coordinate(snapshot?.x ?? null)} · Y:{" "}
+                            {coordinate(snapshot?.y ?? null)}
+                            {snapshot?.z !== null && snapshot?.z !== undefined
+                              ? ` · Z: ${coordinate(snapshot.z)}`
+                              : ""}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>{lastUpdated(snapshot?.capturedAt)}</Table.Td>
+                        <Table.Td>
+                          <Badge color="green" variant="light">
+                            Online
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap="xs" wrap="nowrap">
+                            <Button
+                              size="xs"
+                              variant="light"
+                              color="orange"
+                              onClick={() =>
+                                setPending({ action: "kick", player })
+                              }
+                              disabled={submitting}
+                            >
+                              Kick
+                            </Button>
+                            <Button
+                              size="xs"
+                              color="red"
+                              onClick={() =>
+                                setPending({ action: "ban", player })
+                              }
+                              disabled={submitting}
+                            >
+                              Ban
+                            </Button>
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  })}
                 </Table.Tbody>
               </Table>
             </ScrollArea>
-          </Card>
+          </SectionCard>
         )}
       </Stack>
 

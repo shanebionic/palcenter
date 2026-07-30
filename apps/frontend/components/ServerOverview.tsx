@@ -1,16 +1,9 @@
 "use client";
 
-import {
-  Badge,
-  Card,
-  Group,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Badge, Group, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import type { ReactNode } from "react";
 import type { ServerWorkspaceData } from "../types/servers";
+import { SectionCard } from "./ui/SectionCard";
 
 interface ServerOverviewProps {
   server: ServerWorkspaceData;
@@ -49,7 +42,7 @@ export function ServerOverview({ server }: ServerOverviewProps) {
 
   return (
     <Stack gap="lg">
-      <Card withBorder radius="md" p="lg">
+      <SectionCard>
         <Group justify="space-between" align="start">
           <div>
             <Text size="sm" c="dimmed">
@@ -62,10 +55,10 @@ export function ServerOverview({ server }: ServerOverviewProps) {
             {online ? "Online" : "Offline"}
           </Badge>
         </Group>
-      </Card>
+      </SectionCard>
 
       <SimpleGrid cols={{ base: 1, md: 2 }}>
-        <Card withBorder radius="md" p="lg">
+        <SectionCard>
           <Stack gap="md">
             <Title order={3}>Server Status</Title>
             <SimpleGrid cols={{ base: 1, xs: 2 }}>
@@ -93,9 +86,9 @@ export function ServerOverview({ server }: ServerOverviewProps) {
               />
             </SimpleGrid>
           </Stack>
-        </Card>
+        </SectionCard>
 
-        <Card withBorder radius="md" p="lg">
+        <SectionCard>
           <Stack gap="md">
             <Title order={3}>Configuration</Title>
             <SimpleGrid cols={{ base: 1, xs: 2 }}>
@@ -107,10 +100,10 @@ export function ServerOverview({ server }: ServerOverviewProps) {
               />
             </SimpleGrid>
           </Stack>
-        </Card>
+        </SectionCard>
       </SimpleGrid>
 
-      <Card withBorder radius="md" p="lg">
+      <SectionCard>
         <Stack gap="md">
           <Title order={3}>Networking</Title>
           <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }}>
@@ -133,7 +126,7 @@ export function ServerOverview({ server }: ServerOverviewProps) {
             <Detail label="RCON Port" value={known(configuration.rconPort)} />
           </SimpleGrid>
         </Stack>
-      </Card>
+      </SectionCard>
     </Stack>
   );
 }

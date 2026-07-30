@@ -3,7 +3,6 @@
 import {
   Alert,
   Badge,
-  Card,
   Drawer,
   Group,
   Loader,
@@ -17,6 +16,7 @@ import type {
   AutomationExecutionDetail,
   AutomationTask,
 } from "../types/automation";
+import { SectionCard } from "./ui/SectionCard";
 
 interface AutomationHistoryDrawerProps {
   task: AutomationTask | null;
@@ -77,7 +77,7 @@ export function AutomationHistoryDrawer({
       )}
       <Stack gap="md">
         {executions.map((execution) => (
-          <Card key={execution.id} withBorder radius="md" p="md">
+          <SectionCard key={execution.id} p="md">
             <Stack gap="xs">
               <Group justify="space-between" align="flex-start">
                 <div>
@@ -141,7 +141,7 @@ export function AutomationHistoryDrawer({
                 </Alert>
               )}
             </Stack>
-          </Card>
+          </SectionCard>
         ))}
       </Stack>
     </Drawer>

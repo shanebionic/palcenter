@@ -46,6 +46,43 @@ export interface ConnectedPlayer {
   status: "online";
 }
 
+export interface PlayerPositionSnapshot {
+  id: number;
+  serverId: string;
+  userId: string;
+  playerId: string | null;
+  playerName: string;
+  accountName: string | null;
+  capturedAt: string;
+  x: number | null;
+  y: number | null;
+  z: number | null;
+  level: number | null;
+  ping: number | null;
+  buildingCount: number | null;
+  guildId: string | null;
+  guildName: string | null;
+  createdAt: string;
+}
+
+export interface LatestPlayerTelemetry {
+  players: PlayerPositionSnapshot[];
+  pollingIntervalSeconds: number;
+  lastCollectedAt: string | null;
+}
+
+export interface PlayerTrailPoint {
+  capturedAt: string;
+  x: number | null;
+  y: number | null;
+}
+
+export interface PlayerTrailHistory {
+  points: PlayerTrailPoint[];
+  limit: number;
+  truncated: boolean;
+}
+
 export interface ServerSettings {
   general: {
     serverName: string | null;

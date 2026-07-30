@@ -2,7 +2,6 @@
 
 import {
   Button,
-  Card,
   Group,
   Loader,
   Modal,
@@ -28,6 +27,7 @@ import type {
   AutomationTaskInput,
   AutomationTaskType,
 } from "../types/automation";
+import { SectionCard } from "./ui/SectionCard";
 
 interface AutomationTaskDialogProps {
   opened: boolean;
@@ -260,7 +260,7 @@ export function AutomationTaskDialog({
             />
           )}
           {taskType === "save_world" && (
-            <Card withBorder radius="md" p="md">
+            <SectionCard p="md">
               <Text size="sm" fw={650}>
                 Save the current world state
               </Text>
@@ -268,7 +268,7 @@ export function AutomationTaskDialog({
                 This task uses the official Palworld Save World REST operation
                 and has no task-specific settings.
               </Text>
-            </Card>
+            </SectionCard>
           )}
           {taskType === "shutdown" && (
             <>
@@ -555,7 +555,7 @@ function IntervalScheduleEditor({
         />
       </Group>
 
-      <Card withBorder radius="md" p="md" bg="dark.7">
+      <SectionCard p="md">
         <Stack gap={6}>
           <Group justify="space-between" wrap="nowrap">
             <Text size="sm" fw={650}>
@@ -582,7 +582,7 @@ function IntervalScheduleEditor({
             </Text>
           </div>
         </Stack>
-      </Card>
+      </SectionCard>
     </Stack>
   );
 }
