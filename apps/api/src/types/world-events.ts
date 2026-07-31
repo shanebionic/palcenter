@@ -5,13 +5,24 @@ export const worldEventTypes = [
   "session_ended",
   "player_died",
   "player_respawned",
+  "player_idle_started",
+  "player_idle_ended",
+  "player_afk_started",
+  "player_afk_ended",
 ] as const;
 
 export type WorldEventType = (typeof worldEventTypes)[number];
 
 export interface WorldEventEvidence {
-  source: "players";
-  fact: "appeared" | "disappeared" | "state_changed";
+  source: "players" | "telemetry";
+  fact:
+    | "appeared"
+    | "disappeared"
+    | "state_changed"
+    | "within_radius"
+    | "roster_present"
+    | "moved_beyond_radius"
+    | "prior_state";
   value: string;
 }
 
@@ -47,4 +58,20 @@ export interface WorldEventQuery {
   from?: string;
   to?: string;
   limit: number;
+}
+
+export type PlayerActivityStateName = "active" | "idle" | "afk";
+
+export interface PlayerActivityState {
+  serverId: string;
+  userId: string;
+  playerId: string | null;
+  playerName: string;
+  state: PlayerActivityStateName;
+  anchorAt: string;
+  anchorX: number;
+  anchorY: number;
+  lastSampleAt: string;
+  lastX: number;
+  lastY: number;
 }

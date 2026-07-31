@@ -120,6 +120,25 @@ async function fixture() {
       position: { x: 100, y: 200, z: null },
     },
   ]);
+  worldEvents.commitActivityObservation(
+    "srv_test",
+    [
+      {
+        serverId: "srv_test",
+        userId: "user_test",
+        playerId: "player_test",
+        playerName: "Backup Player",
+        state: "idle",
+        anchorAt: "2026-07-23T00:00:00.000Z",
+        anchorX: 100,
+        anchorY: 200,
+        lastSampleAt: "2026-07-23T00:10:00.000Z",
+        lastX: 100,
+        lastY: 200,
+      },
+    ],
+    [],
+  );
   const automation = new SqliteAutomationRepository(directory);
   automation.initialize();
   automation.createTask({
@@ -303,6 +322,7 @@ test("creates and restores all PalCenter data", async () => {
     assert.equal(context.history.listEvents("srv_test", 10).length, 1);
     assert.equal(context.telemetry.latestPlayerSnapshots("srv_test").length, 1);
     assert.equal(context.worldEvents.list("srv_test", { limit: 10 }).length, 1);
+    assert.equal(context.worldEvents.activityStates("srv_test").length, 1);
     assert.equal(
       context.automation.getTask("task_test")?.configuration.message,
       "This task must survive restore.",

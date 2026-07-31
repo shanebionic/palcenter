@@ -51,7 +51,7 @@ interface IntegrityCheckRow {
   quick_check: string;
 }
 
-const schemaVersion = 5;
+const schemaVersion = 6;
 
 export class SqliteHistoryRepository implements HistoryRepository {
   private database: DatabaseSync | null = null;
@@ -206,7 +206,9 @@ export class SqliteHistoryRepository implements HistoryRepository {
         type TEXT NOT NULL CHECK (type IN (
           'player_joined', 'player_disconnected',
           'session_started', 'session_ended',
-          'player_died', 'player_respawned'
+          'player_died', 'player_respawned',
+          'player_idle_started', 'player_idle_ended',
+          'player_afk_started', 'player_afk_ended'
         )),
         metadata_json TEXT NOT NULL,
         confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
@@ -224,7 +226,65 @@ export class SqliteHistoryRepository implements HistoryRepository {
       CREATE INDEX IF NOT EXISTS world_events_server_player_time
         ON world_events (server_id, user_id, occurred_at, id);
 
+      CREATE TABLE IF NOT EXISTS world_player_activity_state (
+        server_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        player_id TEXT,
+        player_name TEXT NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('active', 'idle', 'afk')),
+        anchor_at TEXT NOT NULL,
+        anchor_x REAL NOT NULL,
+        anchor_y REAL NOT NULL,
+        last_sample_at TEXT NOT NULL,
+        last_x REAL NOT NULL,
+        last_y REAL NOT NULL,
+        PRIMARY KEY (server_id, user_id)
+      );
+
       `);
+      if (version === 5) {
+        database.exec(`
+          ALTER TABLE world_events RENAME TO world_events_v5;
+          CREATE TABLE world_events (
+            id TEXT PRIMARY KEY,
+            server_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            player_id TEXT,
+            occurred_at TEXT NOT NULL,
+            type TEXT NOT NULL CHECK (type IN (
+              'player_joined', 'player_disconnected',
+              'session_started', 'session_ended',
+              'player_died', 'player_respawned',
+              'player_idle_started', 'player_idle_ended',
+              'player_afk_started', 'player_afk_ended'
+            )),
+            metadata_json TEXT NOT NULL,
+            confidence REAL NOT NULL CHECK (
+              confidence >= 0 AND confidence <= 1
+            ),
+            evidence_json TEXT NOT NULL,
+            position_x REAL,
+            position_y REAL,
+            position_z REAL,
+            CHECK (
+              (
+                position_x IS NULL AND
+                position_y IS NULL AND
+                position_z IS NULL
+              ) OR (
+                position_x IS NOT NULL AND
+                position_y IS NOT NULL
+              )
+            )
+          );
+          INSERT INTO world_events SELECT * FROM world_events_v5;
+          DROP TABLE world_events_v5;
+          CREATE INDEX world_events_server_time
+            ON world_events (server_id, occurred_at, id);
+          CREATE INDEX world_events_server_player_time
+            ON world_events (server_id, user_id, occurred_at, id);
+        `);
+      }
       if (version < 3) {
         const columns = database
           .prepare("PRAGMA table_info(task_executions)")
@@ -457,6 +517,9 @@ export class SqliteHistoryRepository implements HistoryRepository {
         .run(serverId);
       database
         .prepare("DELETE FROM world_events WHERE server_id = ?")
+        .run(serverId);
+      database
+        .prepare("DELETE FROM world_player_activity_state WHERE server_id = ?")
         .run(serverId);
       database.exec("COMMIT");
     } catch (error) {

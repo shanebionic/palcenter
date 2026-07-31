@@ -7,6 +7,7 @@ import {
 } from "../services/storage-initialization-service.js";
 import type {
   NewWorldEvent,
+  PlayerActivityState,
   WorldEvent,
   WorldEventEvidence,
   WorldEventMetadata,
@@ -31,6 +32,20 @@ interface WorldEventRow {
   position_z: number | null;
 }
 
+interface ActivityStateRow {
+  server_id: string;
+  user_id: string;
+  player_id: string | null;
+  player_name: string;
+  state: PlayerActivityState["state"];
+  anchor_at: string;
+  anchor_x: number;
+  anchor_y: number;
+  last_sample_at: string;
+  last_x: number;
+  last_y: number;
+}
+
 export class SqliteWorldEventRepository implements WorldEventRepository {
   private database: DatabaseSync | null = null;
   private readonly databasePath: string;
@@ -47,12 +62,14 @@ export class SqliteWorldEventRepository implements WorldEventRepository {
   }
 
   initialize(): void {
-    const table = this.requireDatabase()
+    const tables = this.requireDatabase()
       .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'world_events'",
+        `SELECT name FROM sqlite_master
+         WHERE type = 'table'
+           AND name IN ('world_events', 'world_player_activity_state')`,
       )
-      .get();
-    if (!table) {
+      .all();
+    if (tables.length !== 2) {
       throw new Error(
         "World event storage is unavailable because history.sqlite has not been migrated.",
       );
@@ -78,6 +95,84 @@ export class SqliteWorldEventRepository implements WorldEventRepository {
   append(events: NewWorldEvent[]): WorldEvent[] {
     if (events.length === 0) return [];
     const database = this.requireDatabase();
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      const inserted = this.insertEvents(database, events);
+      database.exec("COMMIT");
+      return inserted;
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  activityStates(serverId: string): PlayerActivityState[] {
+    const rows = this.requireDatabase()
+      .prepare(
+        `SELECT * FROM world_player_activity_state
+         WHERE server_id = ? ORDER BY user_id`,
+      )
+      .all(serverId) as unknown as ActivityStateRow[];
+    return rows.map((row) => ({
+      serverId: row.server_id,
+      userId: row.user_id,
+      playerId: row.player_id,
+      playerName: row.player_name,
+      state: row.state,
+      anchorAt: row.anchor_at,
+      anchorX: row.anchor_x,
+      anchorY: row.anchor_y,
+      lastSampleAt: row.last_sample_at,
+      lastX: row.last_x,
+      lastY: row.last_y,
+    }));
+  }
+
+  commitActivityObservation(
+    serverId: string,
+    states: PlayerActivityState[],
+    events: NewWorldEvent[],
+  ): WorldEvent[] {
+    const database = this.requireDatabase();
+    const insertState = database.prepare(
+      `INSERT INTO world_player_activity_state (
+        server_id, user_id, player_id, player_name, state, anchor_at,
+        anchor_x, anchor_y, last_sample_at, last_x, last_y
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      const inserted = this.insertEvents(database, events);
+      database
+        .prepare("DELETE FROM world_player_activity_state WHERE server_id = ?")
+        .run(serverId);
+      for (const state of states) {
+        insertState.run(
+          state.serverId,
+          state.userId,
+          state.playerId,
+          state.playerName,
+          state.state,
+          state.anchorAt,
+          state.anchorX,
+          state.anchorY,
+          state.lastSampleAt,
+          state.lastX,
+          state.lastY,
+        );
+      }
+      database.exec("COMMIT");
+      return inserted;
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  private insertEvents(
+    database: DatabaseSync,
+    events: NewWorldEvent[],
+  ): WorldEvent[] {
     const insert = database.prepare(
       `INSERT OR IGNORE INTO world_events (
         id, server_id, user_id, player_id, occurred_at, type, metadata_json,
@@ -85,30 +180,22 @@ export class SqliteWorldEventRepository implements WorldEventRepository {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const inserted: WorldEvent[] = [];
-
-    database.exec("BEGIN IMMEDIATE");
-    try {
-      for (const event of events) {
-        const result = insert.run(
-          event.id,
-          event.serverId,
-          event.userId,
-          event.playerId,
-          event.timestamp,
-          event.type,
-          JSON.stringify(event.metadata),
-          event.confidence,
-          JSON.stringify(event.evidence),
-          event.position?.x ?? null,
-          event.position?.y ?? null,
-          event.position?.z ?? null,
-        );
-        if (result.changes > 0) inserted.push(event);
-      }
-      database.exec("COMMIT");
-    } catch (error) {
-      database.exec("ROLLBACK");
-      throw error;
+    for (const event of events) {
+      const result = insert.run(
+        event.id,
+        event.serverId,
+        event.userId,
+        event.playerId,
+        event.timestamp,
+        event.type,
+        JSON.stringify(event.metadata),
+        event.confidence,
+        JSON.stringify(event.evidence),
+        event.position?.x ?? null,
+        event.position?.y ?? null,
+        event.position?.z ?? null,
+      );
+      if (result.changes > 0) inserted.push(event);
     }
     return inserted;
   }
@@ -150,6 +237,9 @@ export class SqliteWorldEventRepository implements WorldEventRepository {
   deleteServerData(serverId: string): void {
     this.requireDatabase()
       .prepare("DELETE FROM world_events WHERE server_id = ?")
+      .run(serverId);
+    this.requireDatabase()
+      .prepare("DELETE FROM world_player_activity_state WHERE server_id = ?")
       .run(serverId);
   }
 

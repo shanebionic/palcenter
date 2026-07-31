@@ -11,6 +11,10 @@ export const worldEventLabels: Record<WorldEventType, string> = {
   session_ended: "Session ended",
   player_died: "Player died",
   player_respawned: "Player respawned",
+  player_idle_started: "Player became idle",
+  player_idle_ended: "Player resumed activity",
+  player_afk_started: "Prolonged inactivity detected",
+  player_afk_ended: "Activity resumed",
 };
 
 export function worldEventConfidence(confidence: number): {
@@ -37,6 +41,18 @@ export function worldEventEvidenceText(
   }
   if (evidence.fact === "disappeared") {
     return "Player disappeared from the online roster.";
+  }
+  if (evidence.fact === "within_radius") {
+    return `Player remained within ${evidence.value}.`;
+  }
+  if (evidence.fact === "roster_present") {
+    return "Player remained present in the online roster.";
+  }
+  if (evidence.fact === "moved_beyond_radius") {
+    return `Player moved ${evidence.value}, beyond the inactivity radius.`;
+  }
+  if (evidence.fact === "prior_state") {
+    return `Prior activity state was ${evidence.value}.`;
   }
   return "An explicit player state change was reported by the server.";
 }
