@@ -51,7 +51,7 @@ interface IntegrityCheckRow {
   quick_check: string;
 }
 
-const schemaVersion = 6;
+const schemaVersion = 7;
 
 export class SqliteHistoryRepository implements HistoryRepository {
   private database: DatabaseSync | null = null;
@@ -208,7 +208,8 @@ export class SqliteHistoryRepository implements HistoryRepository {
           'session_started', 'session_ended',
           'player_died', 'player_respawned',
           'player_idle_started', 'player_idle_ended',
-          'player_afk_started', 'player_afk_ended'
+          'player_afk_started', 'player_afk_ended',
+          'player_rapid_relocation'
         )),
         metadata_json TEXT NOT NULL,
         confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
@@ -242,9 +243,9 @@ export class SqliteHistoryRepository implements HistoryRepository {
       );
 
       `);
-      if (version === 5) {
+      if (version === 5 || version === 6) {
         database.exec(`
-          ALTER TABLE world_events RENAME TO world_events_v5;
+          ALTER TABLE world_events RENAME TO world_events_previous;
           CREATE TABLE world_events (
             id TEXT PRIMARY KEY,
             server_id TEXT NOT NULL,
@@ -256,7 +257,8 @@ export class SqliteHistoryRepository implements HistoryRepository {
               'session_started', 'session_ended',
               'player_died', 'player_respawned',
               'player_idle_started', 'player_idle_ended',
-              'player_afk_started', 'player_afk_ended'
+              'player_afk_started', 'player_afk_ended',
+              'player_rapid_relocation'
             )),
             metadata_json TEXT NOT NULL,
             confidence REAL NOT NULL CHECK (
@@ -277,8 +279,8 @@ export class SqliteHistoryRepository implements HistoryRepository {
               )
             )
           );
-          INSERT INTO world_events SELECT * FROM world_events_v5;
-          DROP TABLE world_events_v5;
+          INSERT INTO world_events SELECT * FROM world_events_previous;
+          DROP TABLE world_events_previous;
           CREATE INDEX world_events_server_time
             ON world_events (server_id, occurred_at, id);
           CREATE INDEX world_events_server_player_time

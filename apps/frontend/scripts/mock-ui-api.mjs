@@ -73,12 +73,16 @@ const worldEvents = Array.from({ length: 55 }, (_, index) => {
   const joined = index % 2 === 0;
   const type =
     index === 0
-      ? "player_idle_started"
+      ? "player_rapid_relocation"
       : index === 1
-        ? "player_afk_started"
-        : joined
-          ? "player_joined"
-          : "session_started";
+        ? "player_rapid_relocation"
+        : index === 2
+          ? "player_idle_started"
+          : index === 3
+            ? "player_afk_started"
+            : joined
+              ? "player_joined"
+              : "session_started";
   return {
     id: `wie-ui-${String(index).padStart(3, "0")}`,
     serverId: connection.id,
@@ -88,34 +92,66 @@ const worldEvents = Array.from({ length: 55 }, (_, index) => {
     type,
     metadata: {
       playerName: connectedPlayers[0].name,
-      note: index === 0 ? "Current roster observation" : "Retained event",
+      ...(index <= 1
+        ? {
+            classification:
+              index === 0 ? "unexplained_relocation" : "likely_fast_travel",
+            originTimestamp: new Date(
+              Date.parse(now) - (index * 60_000 + 30_000),
+            ).toISOString(),
+            originX: -120000,
+            originY: 85000,
+            destinationX: 210000,
+            destinationY: -95000,
+            elapsedSeconds: 30,
+            displacement: 375000,
+            impliedSpeed: 12500,
+          }
+        : {
+            note: index === 2 ? "Current roster observation" : "Retained event",
+          }),
     },
-    confidence: index <= 1 ? 0.9 : 1,
+    confidence: index <= 3 ? 0.9 : 1,
     evidence:
       index <= 1
         ? [
             {
               source: "telemetry",
-              fact: "within_radius",
-              value: `300 world units for ${index === 0 ? 10 : 30} minutes`,
+              fact: "rapid_displacement",
+              value: "375000 world units in 30 seconds",
             },
             {
-              source: "players",
-              fact: "roster_present",
-              value: "online_roster",
+              source: "telemetry",
+              fact: "implied_speed",
+              value: "12500 world units per second",
             },
           ]
-        : [
-            {
-              source: "players",
-              fact: "appeared",
-              value: "online_roster",
-            },
-          ],
+        : index <= 3
+          ? [
+              {
+                source: "telemetry",
+                fact: "within_radius",
+                value: `300 world units for ${index === 2 ? 10 : 30} minutes`,
+              },
+              {
+                source: "players",
+                fact: "roster_present",
+                value: "online_roster",
+              },
+            ]
+          : [
+              {
+                source: "players",
+                fact: "appeared",
+                value: "online_roster",
+              },
+            ],
     position:
-      index === 0
-        ? { x: telemetryPlayer.x, y: telemetryPlayer.y, z: null }
-        : null,
+      index <= 1
+        ? { x: 210000, y: -95000, z: null }
+        : index === 2
+          ? { x: telemetryPlayer.x, y: telemetryPlayer.y, z: null }
+          : null,
   };
 });
 

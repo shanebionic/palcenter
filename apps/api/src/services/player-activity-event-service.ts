@@ -7,12 +7,23 @@ import type {
   WorldEvent,
   WorldEventType,
 } from "../types/world-events.js";
+import {
+  impliedWorldSpeed,
+  planarWorldDisplacement,
+} from "./world-coordinate-math.js";
 
 export const playerActivityThresholds = {
   movementRadius: 300,
   idleDurationMs: 10 * 60 * 1_000,
   afkDurationMs: 30 * 60 * 1_000,
   maximumObservationGapMs: 5 * 60 * 1_000,
+} as const;
+
+export const rapidRelocationThresholds = {
+  minimumElapsedMs: 5_000,
+  maximumObservationGapMs: 90_000,
+  minimumDisplacement: 200_000,
+  minimumImplausibleSpeed: 2_500,
 } as const;
 
 export class PlayerActivityEventService {
@@ -44,6 +55,14 @@ export class PlayerActivityEventService {
         next.push(this.initialState(snapshot));
         continue;
       }
+      if (
+        existing.playerId &&
+        snapshot.playerId &&
+        existing.playerId !== snapshot.playerId
+      ) {
+        next.push(this.initialState(snapshot));
+        continue;
+      }
 
       const timestamp = Date.parse(snapshot.capturedAt);
       const lastTimestamp = Date.parse(existing.lastSampleAt);
@@ -59,13 +78,40 @@ export class PlayerActivityEventService {
         continue;
       }
 
-      const displacement = Math.hypot(
-        snapshot.x - existing.anchorX,
-        snapshot.y - existing.anchorY,
+      const elapsedMs = timestamp - lastTimestamp;
+      const consecutiveDisplacement = planarWorldDisplacement(
+        { x: existing.lastX, y: existing.lastY },
+        { x: snapshot.x, y: snapshot.y },
+      );
+      const consecutiveSpeed = impliedWorldSpeed(
+        consecutiveDisplacement,
+        elapsedMs,
+      );
+      const rapidRelocation =
+        elapsedMs >= rapidRelocationThresholds.minimumElapsedMs &&
+        elapsedMs <= rapidRelocationThresholds.maximumObservationGapMs &&
+        consecutiveDisplacement >=
+          rapidRelocationThresholds.minimumDisplacement &&
+        consecutiveSpeed >= rapidRelocationThresholds.minimumImplausibleSpeed;
+
+      const displacement = planarWorldDisplacement(
+        { x: existing.anchorX, y: existing.anchorY },
+        { x: snapshot.x, y: snapshot.y },
       );
       if (displacement > playerActivityThresholds.movementRadius) {
         if (existing.state === "idle" || existing.state === "afk") {
           events.push(this.activityEnded(snapshot, existing, displacement));
+        }
+        if (rapidRelocation) {
+          events.push(
+            this.rapidRelocation(
+              snapshot,
+              existing,
+              elapsedMs,
+              consecutiveDisplacement,
+              consecutiveSpeed,
+            ),
+          );
         }
         next.push(this.initialState(snapshot));
         continue;
@@ -188,6 +234,50 @@ export class PlayerActivityEventService {
           source: "telemetry",
           fact: "prior_state",
           value: previous.state,
+        },
+      ],
+    );
+  }
+
+  private rapidRelocation(
+    snapshot: NewPlayerPositionSnapshot,
+    previous: PlayerActivityState,
+    elapsedMs: number,
+    displacement: number,
+    speed: number,
+  ): NewWorldEvent {
+    const elapsedSeconds = elapsedMs / 1_000;
+    const roundedDistance = Math.round(displacement);
+    const roundedSpeed = Math.round(speed);
+    return this.event(
+      snapshot,
+      "player_rapid_relocation",
+      {
+        classification: "unexplained_relocation",
+        originTimestamp: previous.lastSampleAt,
+        originX: previous.lastX,
+        originY: previous.lastY,
+        destinationX: snapshot.x,
+        destinationY: snapshot.y,
+        elapsedSeconds,
+        displacement: roundedDistance,
+        impliedSpeed: roundedSpeed,
+      },
+      [
+        {
+          source: "telemetry",
+          fact: "rapid_displacement",
+          value: `${roundedDistance} world units in ${elapsedSeconds} seconds`,
+        },
+        {
+          source: "telemetry",
+          fact: "implied_speed",
+          value: `${roundedSpeed} world units per second`,
+        },
+        {
+          source: "telemetry",
+          fact: "observation_continuous",
+          value: `${elapsedSeconds} seconds between consecutive roster samples`,
         },
       ],
     );

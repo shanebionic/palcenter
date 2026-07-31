@@ -192,7 +192,7 @@ test("non-player, missing-identity, and unrelated player events are ignored", ()
   }
 });
 
-test("schema version 5 events migrate to activity-aware schema version 6", () => {
+test("schema version 6 events migrate to relocation-aware schema version 7", () => {
   const context = fixture();
   context.repository.append([
     {
@@ -212,7 +212,7 @@ test("schema version 5 events migrate to activity-aware schema version 6", () =>
   context.history.close();
   const databasePath = path.join(context.directory, "history.sqlite");
   const database = new DatabaseSync(databasePath);
-  database.exec("PRAGMA user_version = 5");
+  database.exec("PRAGMA user_version = 6");
   database.close();
 
   const migratedHistory = new SqliteHistoryRepository(context.directory);
@@ -234,7 +234,7 @@ test("schema version 5 events migrate to activity-aware schema version 6", () =>
       )
       .get();
     migrated.close();
-    assert.equal(version.user_version, 6);
+    assert.equal(version.user_version, 7);
     assert.ok(activityTable);
   } finally {
     migratedEvents.close();

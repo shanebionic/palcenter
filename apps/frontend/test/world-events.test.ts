@@ -8,8 +8,11 @@ import {
   sortWorldEventsNewestFirst,
   worldEventConfidence,
   worldEventEvidenceText,
+  worldEventLabel,
   worldEventLabels,
+  worldEventMetadataText,
   worldEventPlayerName,
+  worldEventRelocationPosition,
   worldEventTimeRangeFromNow,
 } from "../lib/world-events";
 import type { WorldEvent } from "../types/servers";
@@ -42,7 +45,57 @@ test("formats every modeled event with a user-facing label", () => {
     "Player resumed activity",
     "Prolonged inactivity detected",
     "Activity resumed",
+    "Rapid relocation detected",
   ]);
+});
+
+test("presents neutral relocation and supported likely-fast-travel classifications", () => {
+  const relocation = event({
+    type: "player_rapid_relocation",
+    metadata: {
+      playerName: "Denalb",
+      classification: "unexplained_relocation",
+      originX: -100_000,
+      originY: 50_000,
+      destinationX: 200_000,
+      destinationY: -75_000,
+    },
+  });
+  assert.equal(worldEventLabel(relocation), "Rapid relocation detected");
+  assert.equal(
+    worldEventLabel(
+      event({
+        ...relocation,
+        metadata: {
+          ...relocation.metadata,
+          classification: "likely_fast_travel",
+        },
+      }),
+    ),
+    "Likely fast travel",
+  );
+  assert.deepEqual(worldEventRelocationPosition(relocation, "origin"), {
+    x: -100_000,
+    y: 50_000,
+    z: null,
+  });
+  assert.deepEqual(worldEventRelocationPosition(relocation, "destination"), {
+    x: 200_000,
+    y: -75_000,
+    z: null,
+  });
+  assert.equal(
+    worldEventMetadataText("classification", "unexplained_relocation"),
+    "Classification: Movement discontinuity (cause unknown)",
+  );
+  assert.equal(
+    worldEventMetadataText("elapsedSeconds", 30),
+    "Elapsed time: 30 seconds",
+  );
+  assert.equal(
+    worldEventMetadataText("displacement", 375_000),
+    "Distance: 375000 world units",
+  );
 });
 
 test("maps deterministic confidence values to restrained categories", () => {
@@ -73,6 +126,22 @@ test("renders only evidence supplied by the API", () => {
     }),
     "Player remained within 300 world units for 10 minutes.",
   );
+  assert.equal(
+    worldEventEvidenceText({
+      source: "telemetry",
+      fact: "rapid_displacement",
+      value: "300000 world units in 30 seconds",
+    }),
+    "Player moved 300000 world units in 30 seconds.",
+  );
+  assert.equal(
+    worldEventEvidenceText({
+      source: "telemetry",
+      fact: "implied_speed",
+      value: "10000 world units per second",
+    }),
+    "Implied travel speed was 10000 world units per second.",
+  );
 });
 
 test("formats relative and exact timestamps", () => {
@@ -91,6 +160,24 @@ test("sorts newest first and deduplicates older pages by stable event ID", () =>
   assert.deepEqual(
     mergeWorldEventPages([newer, older], [older]).map(({ id }) => id),
     ["newer", "older"],
+  );
+});
+
+test("orders resumed activity before relocation at the same timestamp", () => {
+  const timestamp = "2026-07-30T13:00:00.000Z";
+  const relocation = event({
+    id: "relocation",
+    type: "player_rapid_relocation",
+    timestamp,
+  });
+  const resumed = event({
+    id: "resumed",
+    type: "player_afk_ended",
+    timestamp,
+  });
+  assert.deepEqual(
+    sortWorldEventsNewestFirst([relocation, resumed]).map(({ type }) => type),
+    ["player_afk_ended", "player_rapid_relocation"],
   );
 });
 
