@@ -9,6 +9,7 @@ export const worldEventTypes = [
   "player_idle_ended",
   "player_afk_started",
   "player_afk_ended",
+  "player_rapid_relocation",
 ] as const;
 
 export type WorldEventType = (typeof worldEventTypes)[number];
@@ -22,7 +23,10 @@ export interface WorldEventEvidence {
     | "within_radius"
     | "roster_present"
     | "moved_beyond_radius"
-    | "prior_state";
+    | "prior_state"
+    | "rapid_displacement"
+    | "implied_speed"
+    | "observation_continuous";
   value: string;
 }
 

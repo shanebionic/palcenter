@@ -24,6 +24,7 @@ The initial model supports:
 - Player resumed activity
 - Prolonged inactivity detected
 - Activity resumed
+- Rapid relocation detected
 
 Join/disconnect and session events are currently generated from explicit
 changes in the official `/players` online roster. These observations have a
@@ -69,9 +70,60 @@ and a new session starts clean. A telemetry gap longer than five minutes resets
 the checkpoint to Active without emitting a transition. Server downtime and
 telemetry outages therefore never count toward inactivity.
 
+## Rapid relocation
+
+PalCenter emits **Rapid relocation detected** when two consecutive, valid X/Y
+samples from the same continuously observed roster session show a movement
+discontinuity. It detects the observable position change; it does not claim to
+know the gameplay cause.
+
+The centralized conservative defaults are:
+
+- minimum elapsed time: 5 seconds;
+- maximum trusted sample interval: 90 seconds;
+- minimum X/Y displacement: 200,000 Palworld world-coordinate units;
+- minimum implied speed: 2,500 world units per second.
+
+Displacement is `sqrt((destinationX - originX)^2 + (destinationY -
+originY)^2)`. Implied speed is displacement divided by elapsed seconds. Both
+minimum thresholds must be satisfied, and the elapsed time must remain within
+the trusted interval. This avoids classifying coordinate jitter, ordinary fast
+mounts, gliding, falling, a single large coordinate change over a long period,
+or a high calculated speed over a small distance.
+
+The 200,000-unit boundary matches the existing movement-trail discontinuity
+boundary. The speed threshold is deliberately well above the existing
+high-movement warning. These values favor avoiding false positives over
+speculative gameplay claims.
+
+Relocation is never compared across a disconnect, new session, missing roster
+observation, server outage, or telemetry gap. Duplicate and out-of-order
+samples are ignored. A persisted checkpoint allows a restart to continue only
+when the next observation is still inside the 90-second continuity window;
+otherwise it establishes a fresh baseline without an event.
+
+The event timestamp is the destination sample—the first observation proving
+the discontinuity. Metadata retains the origin timestamp, both X/Y endpoints,
+elapsed seconds, displacement, implied speed, and the neutral
+`unexplained_relocation` classification. Confidence is deterministically `0.9`
+(**High confidence**) that a discontinuity was observed, not that a particular
+travel mechanism caused it.
+
+PalCenter does not currently bundle authoritative fast-travel-point data.
+Therefore the engine does not label generated events as confirmed or likely
+fast travel. The timeline understands a future `likely_fast_travel`
+classification, but it is displayed only when evidence supplied by the backend
+supports it. Administrator teleport commands and other server-side movement
+can appear identical in position telemetry and remain neutral.
+
+When relocation ends Idle or prolonged inactivity, PalCenter first records the
+appropriate resumed-activity event and then the rapid-relocation event at the
+same proving sample. This deterministic ordering closes the previous activity
+state before describing the movement discontinuity.
+
 ## Storage and API
 
-Events and activity checkpoints are stored in `history.sqlite` schema version 6
+Events and activity checkpoints are stored in `history.sqlite` schema version 7
 and are included automatically in PalCenter backups. The migration preserves
 existing events and history.
 
@@ -100,7 +152,8 @@ Each entry keeps evidence and metadata collapsed by default. Expanding
 **Evidence and details** shows the exact confidence percentage, source evidence,
 stable user ID, optional Palworld player ID, and any available position. When a
 position exists, **View on map** opens the existing Map tab and centers its
-shared coordinate plane on that observation.
+shared coordinate plane on that observation. Rapid-relocation entries provide
+separate **View origin on map** and **View destination on map** actions.
 
 Events remain in `history.sqlite` for as long as the application data is
 retained. PalCenter does not currently apply a separate event-retention policy.

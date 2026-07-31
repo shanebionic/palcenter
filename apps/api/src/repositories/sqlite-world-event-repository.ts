@@ -228,7 +228,13 @@ export class SqliteWorldEventRepository implements WorldEventRepository {
           WHERE ${conditions.join(" AND ")}
           ORDER BY occurred_at DESC, id DESC
           LIMIT ?
-        ) ORDER BY occurred_at, id`,
+        ) ORDER BY occurred_at,
+          CASE
+            WHEN type IN ('player_idle_ended', 'player_afk_ended') THEN 0
+            WHEN type = 'player_rapid_relocation' THEN 1
+            ELSE 0
+          END,
+          id`,
       )
       .all(...parameters) as unknown as WorldEventRow[];
     return rows.map((row) => this.event(row));

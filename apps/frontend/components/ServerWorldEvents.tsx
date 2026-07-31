@@ -28,8 +28,11 @@ import {
   sortWorldEventsNewestFirst,
   worldEventConfidence,
   worldEventEvidenceText,
+  worldEventLabel,
   worldEventLabels,
+  worldEventMetadataText,
   worldEventPlayerName,
+  worldEventRelocationPosition,
   worldEventTimeRangeFromNow,
 } from "../lib/world-events";
 import {
@@ -272,9 +275,15 @@ const WorldEventEntry = memo(function WorldEventEntry({
 }) {
   const confidence = worldEventConfidence(event.confidence);
   const playerName = worldEventPlayerName(event);
+  const origin = worldEventRelocationPosition(event, "origin");
+  const destination = worldEventRelocationPosition(event, "destination");
   const metadata = useMemo(
     () =>
-      Object.entries(event.metadata).filter(([key]) => key !== "playerName"),
+      Object.entries(event.metadata).filter(
+        ([key]) =>
+          key !== "playerName" &&
+          !["originX", "originY", "destinationX", "destinationY"].includes(key),
+      ),
     [event.metadata],
   );
 
@@ -292,7 +301,7 @@ const WorldEventEntry = memo(function WorldEventEntry({
         <Stack gap="xs" className="pc-world-event-content">
           <Group justify="space-between" align="flex-start">
             <div>
-              <Title order={4}>{worldEventLabels[event.type]}</Title>
+              <Title order={4}>{worldEventLabel(event)}</Title>
               <Text size="sm">
                 <Text span fw={600}>
                   {playerName}
@@ -323,7 +332,27 @@ const WorldEventEntry = memo(function WorldEventEntry({
             {exactWorldEventTime(event.timestamp)}
           </Text>
           <Group>
-            {event.position && (
+            {origin && (
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconMapPin size={14} />}
+                onClick={() => onViewOnMap({ ...event, position: origin })}
+              >
+                View origin on map
+              </Button>
+            )}
+            {destination && (
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconMapPin size={14} />}
+                onClick={() => onViewOnMap({ ...event, position: destination })}
+              >
+                View destination on map
+              </Button>
+            )}
+            {event.position && !origin && !destination && (
               <Button
                 size="xs"
                 variant="light"
@@ -353,15 +382,25 @@ const WorldEventEntry = memo(function WorldEventEntry({
                   Player ID: {event.playerId}
                 </Text>
               )}
-              {event.position && (
+              {event.position && !origin && !destination && (
                 <Text size="xs" c="dimmed">
                   Position: X {event.position.x}, Y {event.position.y}
                   {event.position.z === null ? "" : `, Z ${event.position.z}`}
                 </Text>
               )}
+              {origin && destination && (
+                <Text
+                  size="xs"
+                  c="dimmed"
+                  className="pc-world-event-coordinate"
+                >
+                  Origin: X {origin.x}, Y {origin.y} · Destination: X{" "}
+                  {destination.x}, Y {destination.y}
+                </Text>
+              )}
               {metadata.map(([key, value]) => (
                 <Text size="xs" c="dimmed" key={key}>
-                  {key}: {String(value)}
+                  {worldEventMetadataText(key, value)}
                 </Text>
               ))}
             </Stack>

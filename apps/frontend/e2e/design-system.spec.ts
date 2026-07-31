@@ -356,35 +356,53 @@ test("World Events renders, filters, expands evidence, loads history, and links 
   await expect(page.locator(".pc-world-event-entry")).toHaveCount(50);
   await expect(page.getByText("High confidence").first()).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Player became idle" }),
+    page.getByRole("heading", { name: "Rapid relocation detected" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Prolonged inactivity detected" }),
+    page.getByRole("heading", { name: "Likely fast travel" }),
   ).toBeVisible();
 
-  await page.getByText("Evidence and details").first().click();
+  const firstEvent = page.locator(".pc-world-event-entry").first();
+  await firstEvent.getByText("Evidence and details").click();
   await expect(
-    page.getByText("Player remained within 300 world units for 10 minutes."),
+    firstEvent.getByText("Player moved 375000 world units in 30 seconds."),
   ).toBeVisible();
-  await expect(page.getByText(/Confidence: 90%/).first()).toBeVisible();
+  await expect(
+    firstEvent.getByText(
+      "Implied travel speed was 12500 world units per second.",
+    ),
+  ).toBeVisible();
+  await expect(
+    firstEvent.getByText(/Origin: X -120000, Y 85000/),
+  ).toBeVisible();
+  await expect(firstEvent.getByText(/Confidence: 90%/)).toBeVisible();
 
   await page.getByRole("button", { name: "Load older events" }).click();
   await expect(page.locator(".pc-world-event-entry")).toHaveCount(55);
 
   await page.getByRole("combobox", { name: "Event type" }).click();
-  await page.getByRole("option", { name: "Session started" }).click();
+  await page.getByRole("option", { name: "Rapid relocation detected" }).click();
   await page.getByRole("button", { name: "Apply filters" }).click();
-  await expect(page.locator(".pc-world-event-entry")).toHaveCount(26);
+  await expect(page.locator(".pc-world-event-entry")).toHaveCount(2);
   await expect(
-    page.getByRole("heading", { name: "Session started" }).first(),
+    page.getByRole("heading", { name: "Rapid relocation detected" }).first(),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Reset filters" }).click();
-  await page.getByRole("button", { name: "View on map" }).click();
+  await page
+    .getByRole("button", { name: "View origin on map" })
+    .first()
+    .click();
   await expect(page.getByRole("tab", { name: "Map" })).toHaveAttribute(
     "data-active",
     "true",
   );
+  await expect(page.getByText("Event location centered")).toBeVisible();
+  await page.getByRole("tab", { name: "Events" }).click();
+  await page
+    .getByRole("button", { name: "View destination on map" })
+    .first()
+    .click();
   await expect(page.getByText("Event location centered")).toBeVisible();
 });
 
@@ -421,6 +439,9 @@ test("World Events remains responsive and is not offered to Visitors", async ({
   ).toBeVisible();
   await expect(
     page.getByRole("combobox", { name: "Time range" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Rapid relocation detected" }),
   ).toBeVisible();
   expect(
     await page.evaluate(

@@ -15,7 +15,15 @@ export const worldEventLabels: Record<WorldEventType, string> = {
   player_idle_ended: "Player resumed activity",
   player_afk_started: "Prolonged inactivity detected",
   player_afk_ended: "Activity resumed",
+  player_rapid_relocation: "Rapid relocation detected",
 };
+
+export function worldEventLabel(event: WorldEvent): string {
+  return event.type === "player_rapid_relocation" &&
+    event.metadata.classification === "likely_fast_travel"
+    ? "Likely fast travel"
+    : worldEventLabels[event.type];
+}
 
 export function worldEventConfidence(confidence: number): {
   label: string;
@@ -54,15 +62,63 @@ export function worldEventEvidenceText(
   if (evidence.fact === "prior_state") {
     return `Prior activity state was ${evidence.value}.`;
   }
+  if (evidence.fact === "rapid_displacement") {
+    return `Player moved ${evidence.value}.`;
+  }
+  if (evidence.fact === "implied_speed") {
+    return `Implied travel speed was ${evidence.value}.`;
+  }
+  if (evidence.fact === "observation_continuous") {
+    return `Observation continuity remained intact: ${evidence.value}.`;
+  }
   return "An explicit player state change was reported by the server.";
+}
+
+export function worldEventRelocationPosition(
+  event: WorldEvent,
+  endpoint: "origin" | "destination",
+): WorldEvent["position"] {
+  if (event.type !== "player_rapid_relocation") return null;
+  const x = event.metadata[`${endpoint}X`];
+  const y = event.metadata[`${endpoint}Y`];
+  return typeof x === "number" && typeof y === "number"
+    ? { x, y, z: null }
+    : null;
+}
+
+export function worldEventMetadataText(
+  key: string,
+  value: string | number | boolean | null,
+): string {
+  if (key === "classification") {
+    return value === "likely_fast_travel"
+      ? "Classification: Likely fast travel"
+      : "Classification: Movement discontinuity (cause unknown)";
+  }
+  if (key === "originTimestamp" && typeof value === "string") {
+    return `Origin sample: ${exactWorldEventTime(value)}`;
+  }
+  if (key === "elapsedSeconds") return `Elapsed time: ${String(value)} seconds`;
+  if (key === "displacement") return `Distance: ${String(value)} world units`;
+  if (key === "impliedSpeed") {
+    return `Implied speed: ${String(value)} world units per second`;
+  }
+  return `${key}: ${String(value)}`;
 }
 
 export function sortWorldEventsNewestFirst(events: WorldEvent[]): WorldEvent[] {
   return [...events].sort(
     (left, right) =>
       Date.parse(right.timestamp) - Date.parse(left.timestamp) ||
+      sameTimestampOrder(left.type) - sameTimestampOrder(right.type) ||
       right.id.localeCompare(left.id),
   );
+}
+
+function sameTimestampOrder(type: WorldEventType): number {
+  if (type === "player_idle_ended" || type === "player_afk_ended") return 0;
+  if (type === "player_rapid_relocation") return 1;
+  return 0;
 }
 
 export function mergeWorldEventPages(
