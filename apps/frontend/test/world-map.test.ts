@@ -49,6 +49,11 @@ import {
   trailStyle,
 } from "../lib/world-map/trail";
 import { isPlayerColor, playerColor } from "../lib/world-map/player-color";
+import {
+  enabledWorldMapDefinitions,
+  palpagosMapDefinition,
+  worldTreeMapDefinition,
+} from "../lib/world-map/map-definitions";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
 
 test("assigns stable readable player colors from userId", () => {
@@ -63,6 +68,18 @@ test("assigns stable readable player colors from userId", () => {
     assert.match(color, /^#[0-9a-f]{6}$/i);
     assert.equal(isPlayerColor(color), true);
   }
+});
+
+test("exposes only verified map definitions for selection", () => {
+  assert.equal(palpagosMapDefinition.supportsLivePlotting, true);
+  assert.equal(worldTreeMapDefinition.enabled, false);
+  assert.equal(worldTreeMapDefinition.projection, null);
+  assert.deepEqual(
+    enabledWorldMapDefinitions().map(
+      ({ coordinateSpaceId }) => coordinateSpaceId,
+    ),
+    ["palpagos"],
+  );
 });
 
 test("calculates safe timestamp-based trail age and bounded styles", () => {
@@ -575,7 +592,7 @@ test("maps only currently connected players with valid telemetry by userId", () 
   assert.equal(model.markers[0]?.freshness, "live");
   assert.deepEqual(
     model.unmappedPlayers.map((player) => player.reason),
-    ["invalid_coordinates", "missing_telemetry"],
+    ["stale_position", "invalid_coordinates", "missing_telemetry"],
   );
   assert.equal(JSON.stringify(model).includes("192.0.2.10"), false);
 });
@@ -606,6 +623,103 @@ test("represents online marker details without exposing the player IP", () => {
     telemetryAge: "30s ago",
   });
   assert.equal(JSON.stringify(details).includes("192.0.2.10"), false);
+});
+
+test("keeps unsupported coordinate spaces off Palpagos and preserves a trusted instance entrance", () => {
+  const player = connectedPlayer("uid-space", "pid-space", "Explorer");
+  const trusted = snapshot({
+    userId: player.userId,
+    playerId: player.playerId,
+    x: 100_000,
+    y: -80_000,
+    coordinateSpaceId: "palpagos",
+  });
+  const instance = {
+    ...trusted,
+    x: 12_345,
+    y: 67_890,
+    coordinateSpaceId: "instance:fixture-dungeon",
+  };
+  const model = buildLivePlayerMapModel(
+    [player],
+    [instance],
+    palpagosProjection,
+    30,
+    instance.capturedAt,
+    new Date(instance.capturedAt),
+    [trusted],
+  );
+  assert.equal(model.markers.length, 1);
+  assert.equal(model.markers[0]?.displayKind, "last_trusted_instance");
+  assert.equal(model.markers[0]?.worldX, trusted.x);
+  assert.equal(model.markers[0]?.reportedWorldX, instance.x);
+  assert.equal(model.unmappedPlayers[0]?.reason, "instanced_area");
+});
+
+test("World Tree and unknown positions are excluded from the Palpagos projection", () => {
+  for (const coordinateSpaceId of ["world_tree", "unknown", "tower:future"]) {
+    const player = connectedPlayer("uid-space", "pid-space", "Explorer");
+    const current = snapshot({
+      userId: player.userId,
+      playerId: player.playerId,
+      x: 10,
+      y: 20,
+      coordinateSpaceId,
+    });
+    const model = buildLivePlayerMapModel(
+      [player],
+      [current],
+      palpagosProjection,
+      30,
+      current.capturedAt,
+      new Date(current.capturedAt),
+    );
+    assert.equal(model.markers.length, 0);
+    assert.equal(model.unmappedPlayers.length, 1);
+  }
+});
+
+test("segments and totals include only the selected coordinate space", () => {
+  const trail = processMovementTrail(
+    [
+      {
+        capturedAt: "2026-07-28T12:00:00Z",
+        x: 0,
+        y: 0,
+        coordinateSpaceId: "palpagos",
+      },
+      {
+        capturedAt: "2026-07-28T12:01:00Z",
+        x: 1_000,
+        y: 0,
+        coordinateSpaceId: "palpagos",
+      },
+      {
+        capturedAt: "2026-07-28T12:02:00Z",
+        x: 50_000,
+        y: 50_000,
+        coordinateSpaceId: "instance:fixture",
+      },
+      {
+        capturedAt: "2026-07-28T12:03:00Z",
+        x: 2_000,
+        y: 0,
+        coordinateSpaceId: "palpagos",
+      },
+      {
+        capturedAt: "2026-07-28T12:04:00Z",
+        x: 3_000,
+        y: 0,
+        coordinateSpaceId: "palpagos",
+      },
+    ],
+    palpagosProjection,
+    { pollingIntervalSeconds: 30, coordinateSpaceId: "palpagos" },
+  );
+  assert.equal(trail.coordinateSpaceId, "palpagos");
+  assert.equal(trail.segments.length, 2);
+  assert.equal(trail.exclusions.coordinateSpace, 1);
+  assert.equal(trail.approximateDistance, 2_000);
 });
 
 test("marks out-of-bounds current players as unavailable", () => {
@@ -843,11 +957,9 @@ test("keeps the marker initial and floating label decorative", async () => {
     new URL("../components/ServerWorldMap.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(
-    source,
-    /<span aria-hidden="true">\{presentation\.initial\}<\/span>/,
-  );
-  assert.match(source, /aria-label=\{presentation\.accessibleName\}/);
+  assert.match(source, /<span aria-hidden="true">/);
+  assert.match(source, /presentation\.initial/);
+  assert.match(source, /presentation\.accessibleName/);
   assert.match(source, /className="pc-world-map-marker-position"/);
   assert.match(source, /className="pc-world-map-marker-visual"/);
   assert.match(
@@ -860,8 +972,8 @@ test("keeps the marker initial and floating label decorative", async () => {
   );
   assert.equal(
     source.match(/\{presentation\.displayName\}/g)?.length,
-    1,
-    "the floating visual label renders the display name exactly once",
+    2,
+    "the display name appears once in the visual label and once in the conditional accessible name",
   );
 
   const denalb = playerMarkerPresentation("Denalb");
@@ -944,7 +1056,8 @@ function connectedPlayer(
 }
 
 function snapshot(
-  overrides: Pick<PlayerPositionSnapshot, "userId" | "playerId" | "x" | "y">,
+  overrides: Pick<PlayerPositionSnapshot, "userId" | "playerId" | "x" | "y"> &
+    Partial<Pick<PlayerPositionSnapshot, "coordinateSpaceId">>,
 ): PlayerPositionSnapshot {
   return {
     id: 1,
@@ -962,6 +1075,7 @@ function snapshot(
     buildingCount: 3,
     guildId: null,
     guildName: null,
+    coordinateSpaceId: overrides.coordinateSpaceId ?? "palpagos",
     createdAt: "2026-07-28T12:00:00.000Z",
   };
 }

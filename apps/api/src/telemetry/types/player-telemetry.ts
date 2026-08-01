@@ -14,13 +14,14 @@ export interface PlayerPositionSnapshot {
   buildingCount: number | null;
   guildId: string | null;
   guildName: string | null;
+  coordinateSpaceId: string;
   createdAt: string;
 }
 
 export type NewPlayerPositionSnapshot = Omit<
   PlayerPositionSnapshot,
-  "id" | "createdAt"
->;
+  "id" | "createdAt" | "coordinateSpaceId"
+> & { coordinateSpaceId?: string };
 
 export interface PlayerTelemetryHistoryQuery {
   from?: string;
@@ -32,4 +33,5 @@ export interface PlayerTrailPoint {
   capturedAt: string;
   x: number | null;
   y: number | null;
+  coordinateSpaceId: string;
 }

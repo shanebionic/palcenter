@@ -51,7 +51,7 @@ interface IntegrityCheckRow {
   quick_check: string;
 }
 
-const schemaVersion = 8;
+const schemaVersion = 9;
 
 export class SqliteHistoryRepository implements HistoryRepository {
   private database: DatabaseSync | null = null;
@@ -188,6 +188,7 @@ export class SqliteHistoryRepository implements HistoryRepository {
         building_count INTEGER,
         guild_id TEXT,
         guild_name TEXT,
+        coordinate_space_id TEXT NOT NULL DEFAULT 'unknown',
         created_at TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS player_position_snapshots_server_player_time
@@ -291,6 +292,12 @@ export class SqliteHistoryRepository implements HistoryRepository {
       if (version === 7) {
         database.exec(`
           ALTER TABLE world_player_activity_state
+            ADD COLUMN coordinate_space_id TEXT NOT NULL DEFAULT 'unknown';
+        `);
+      }
+      if (version === 7 || version === 8) {
+        database.exec(`
+          ALTER TABLE player_position_snapshots
             ADD COLUMN coordinate_space_id TEXT NOT NULL DEFAULT 'unknown';
         `);
       }

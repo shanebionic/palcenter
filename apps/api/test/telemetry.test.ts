@@ -145,10 +145,13 @@ test("repository inserts, orders, limits, and returns latest renamed players", a
 
   try {
     repository.insertPlayerSnapshots([
-      snapshot("2026-07-28T12:00:00.000Z"),
+      snapshot("2026-07-28T12:00:00.000Z", {
+        coordinateSpaceId: "palpagos",
+      }),
       snapshot("2026-07-28T12:00:30.000Z", {
         playerName: "Robert",
         x: 30,
+        coordinateSpaceId: "instance:fixture-dungeon",
       }),
       snapshot("2026-07-28T12:01:00.000Z", {
         userId: "another-user",
@@ -164,6 +167,16 @@ test("repository inserts, orders, limits, and returns latest renamed players", a
       latest.find((item) => item.userId === "steam-user-id")?.playerName,
       "Robert",
     );
+    assert.equal(
+      latest.find((item) => item.userId === "steam-user-id")?.coordinateSpaceId,
+      "instance:fixture-dungeon",
+    );
+    const trusted = repository.latestPlayerSnapshotsInSpace(
+      "srv_one",
+      "palpagos",
+    );
+    assert.equal(trusted.length, 1);
+    assert.equal(trusted[0]?.x, 10);
 
     const historyRows = repository.playerHistory("srv_one", "steam-user-id", {
       from: "2026-07-28T12:00:00.000Z",
@@ -216,7 +229,7 @@ test("v1.3 schema upgrades in place and preserves existing metrics", async () =>
     const version = migrated.prepare("PRAGMA user_version").get() as {
       user_version: number;
     };
-    assert.equal(version.user_version, 8);
+    assert.equal(version.user_version, 9);
     migrated.close();
   } finally {
     telemetry.close();
@@ -296,6 +309,9 @@ test("service runs retention cleanup periodically with the bounded batch size", 
     latestPlayerSnapshots() {
       return [];
     },
+    latestPlayerSnapshotsInSpace() {
+      return [];
+    },
     playerHistory() {
       return [];
     },
@@ -313,6 +329,7 @@ test("service runs retention cleanup periodically with the bounded batch size", 
     30,
     () => undefined,
     () => currentTime,
+    () => new Map([["steam-user-id", "palpagos"]]),
   );
 
   await service.collectAll();
@@ -350,6 +367,7 @@ test("service skips unchanged snapshots but records movement, state, and heartbe
     30,
     () => undefined,
     () => currentTime,
+    () => new Map([["steam-user-id", "palpagos"]]),
   );
   const rows = () =>
     repository.playerHistory("srv_one", "steam-user-id", { limit: 100 });
@@ -357,6 +375,11 @@ test("service skips unchanged snapshots but records movement, state, and heartbe
   try {
     await service.collectAll();
     assert.equal(rows().length, 1);
+    assert.equal(rows()[0]?.coordinateSpaceId, "palpagos");
+    assert.equal(
+      (await service.latestTrustedPositions("srv_one", "palpagos")).length,
+      1,
+    );
 
     currentTime = new Date("2026-07-28T12:00:30.000Z");
     await service.collectAll();
@@ -402,6 +425,9 @@ test("service collects configured servers concurrently and isolates offline fail
       saved.push(items);
     },
     latestPlayerSnapshots() {
+      return [];
+    },
+    latestPlayerSnapshotsInSpace() {
       return [];
     },
     playerHistory() {

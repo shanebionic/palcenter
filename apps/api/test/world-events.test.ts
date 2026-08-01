@@ -192,7 +192,7 @@ test("non-player, missing-identity, and unrelated player events are ignored", ()
   }
 });
 
-test("schema version 7 checkpoints migrate to coordinate-aware schema version 8", () => {
+test("schema version 7 checkpoints migrate through coordinate-aware schema version 9", () => {
   const context = fixture();
   context.repository.append([
     {
@@ -234,6 +234,7 @@ test("schema version 7 checkpoints migrate to coordinate-aware schema version 8"
   const database = new DatabaseSync(databasePath);
   database.exec(`
     ALTER TABLE world_player_activity_state DROP COLUMN coordinate_space_id;
+    ALTER TABLE player_position_snapshots DROP COLUMN coordinate_space_id;
     PRAGMA user_version = 7;
   `);
   database.close();
@@ -259,11 +260,17 @@ test("schema version 7 checkpoints migrate to coordinate-aware schema version 8"
     const activityColumns = migrated
       .prepare("PRAGMA table_info(world_player_activity_state)")
       .all() as unknown as Array<{ name: string }>;
+    const telemetryColumns = migrated
+      .prepare("PRAGMA table_info(player_position_snapshots)")
+      .all() as unknown as Array<{ name: string }>;
     migrated.close();
-    assert.equal(version.user_version, 8);
+    assert.equal(version.user_version, 9);
     assert.ok(activityTable);
     assert.ok(
       activityColumns.some(({ name }) => name === "coordinate_space_id"),
+    );
+    assert.ok(
+      telemetryColumns.some(({ name }) => name === "coordinate_space_id"),
     );
     assert.equal(
       migratedEvents.activityStates(connection.id)[0]?.coordinateSpaceId,

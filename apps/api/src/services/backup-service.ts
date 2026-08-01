@@ -285,7 +285,7 @@ export class BackupService {
       if (
         integrity?.quick_check !== "ok" ||
         !version ||
-        ![1, 2, 3, 4, 5, 6, 7, 8].includes(version.user_version) ||
+        ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(version.user_version) ||
         tables.length !==
           (version.user_version === 1
             ? 3

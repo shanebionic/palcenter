@@ -165,7 +165,8 @@ state before describing the movement discontinuity.
 
 ## Storage and API
 
-Events and activity checkpoints are stored in `history.sqlite` schema version 8
+Events, activity checkpoints, and coordinate-tagged telemetry are stored in
+`history.sqlite` schema version 9
 and are included automatically in PalCenter backups. The migration preserves
 existing events and history.
 
