@@ -44,6 +44,7 @@ interface ActivityStateRow {
   last_sample_at: string;
   last_x: number;
   last_y: number;
+  coordinate_space_id: string;
 }
 
 export class SqliteWorldEventRepository implements WorldEventRepository {
@@ -125,6 +126,7 @@ export class SqliteWorldEventRepository implements WorldEventRepository {
       lastSampleAt: row.last_sample_at,
       lastX: row.last_x,
       lastY: row.last_y,
+      coordinateSpaceId: row.coordinate_space_id,
     }));
   }
 
@@ -137,8 +139,9 @@ export class SqliteWorldEventRepository implements WorldEventRepository {
     const insertState = database.prepare(
       `INSERT INTO world_player_activity_state (
         server_id, user_id, player_id, player_name, state, anchor_at,
-        anchor_x, anchor_y, last_sample_at, last_x, last_y
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        anchor_x, anchor_y, last_sample_at, last_x, last_y,
+        coordinate_space_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     database.exec("BEGIN IMMEDIATE");
     try {
@@ -159,6 +162,7 @@ export class SqliteWorldEventRepository implements WorldEventRepository {
           state.lastSampleAt,
           state.lastX,
           state.lastY,
+          state.coordinateSpaceId,
         );
       }
       database.exec("COMMIT");

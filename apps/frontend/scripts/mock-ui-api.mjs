@@ -72,17 +72,15 @@ let sessionRole = "administrator";
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
   const joined = index % 2 === 0;
   const type =
-    index === 0
+    index <= 2
       ? "player_rapid_relocation"
-      : index === 1
-        ? "player_rapid_relocation"
-        : index === 2
-          ? "player_idle_started"
-          : index === 3
-            ? "player_afk_started"
-            : joined
-              ? "player_joined"
-              : "session_started";
+      : index === 3
+        ? "player_idle_started"
+        : index === 4
+          ? "player_afk_started"
+          : joined
+            ? "player_joined"
+            : "session_started";
   return {
     id: `wie-ui-${String(index).padStart(3, "0")}`,
     serverId: connection.id,
@@ -92,28 +90,49 @@ const worldEvents = Array.from({ length: 55 }, (_, index) => {
     type,
     metadata: {
       playerName: connectedPlayers[0].name,
-      ...(index <= 1
+      ...(index <= 2
         ? {
             classification:
-              index === 0 ? "unexplained_relocation" : "likely_fast_travel",
+              index === 0
+                ? "unexplained_relocation"
+                : index === 1
+                  ? "likely_instance_transition"
+                  : "likely_map_transition",
+            ...(index > 0
+              ? {
+                  transitionDirection: "entry",
+                  matchedTransitionSignatureId: `fixture-signature-${index}`,
+                  matchedTransitionDisplayName:
+                    index === 1 ? "Fixture Dungeon" : "Fixture Secondary Map",
+                  transitionType: index === 1 ? "dungeon" : "secondary_map",
+                }
+              : {}),
             originTimestamp: new Date(
               Date.parse(now) - (index * 60_000 + 30_000),
             ).toISOString(),
+            originCoordinateSpaceId: "palpagos",
+            destinationCoordinateSpaceId:
+              index === 0
+                ? "palpagos"
+                : index === 1
+                  ? "instance:fixture-dungeon"
+                  : "world_tree",
             originX: -120000,
             originY: 85000,
             destinationX: 210000,
             destinationY: -95000,
             elapsedSeconds: 30,
-            displacement: 375000,
-            impliedSpeed: 12500,
+            ...(index === 0
+              ? { displacement: 375000, impliedSpeed: 12500 }
+              : {}),
           }
         : {
-            note: index === 2 ? "Current roster observation" : "Retained event",
+            note: index === 3 ? "Current roster observation" : "Retained event",
           }),
     },
-    confidence: index <= 3 ? 0.9 : 1,
+    confidence: index <= 4 ? 0.9 : 1,
     evidence:
-      index <= 1
+      index === 0
         ? [
             {
               source: "telemetry",
@@ -126,30 +145,47 @@ const worldEvents = Array.from({ length: 55 }, (_, index) => {
               value: "12500 world units per second",
             },
           ]
-        : index <= 3
+        : index <= 2
           ? [
               {
-                source: "telemetry",
-                fact: "within_radius",
-                value: `300 world units for ${index === 2 ? 10 : 30} minutes`,
+                source: "transition_registry",
+                fact: "transition_signature_matched",
+                value:
+                  index === 1 ? "Fixture Dungeon" : "Fixture Secondary Map",
               },
               {
-                source: "players",
-                fact: "roster_present",
-                value: "online_roster",
+                source: "transition_registry",
+                fact: "coordinate_space_changed",
+                value:
+                  index === 1
+                    ? "palpagos to instance:fixture-dungeon"
+                    : "palpagos to world_tree",
               },
             ]
-          : [
-              {
-                source: "players",
-                fact: "appeared",
-                value: "online_roster",
-              },
-            ],
+          : index <= 4
+            ? [
+                {
+                  source: "telemetry",
+                  fact: "within_radius",
+                  value: `300 world units for ${index === 3 ? 10 : 30} minutes`,
+                },
+                {
+                  source: "players",
+                  fact: "roster_present",
+                  value: "online_roster",
+                },
+              ]
+            : [
+                {
+                  source: "players",
+                  fact: "appeared",
+                  value: "online_roster",
+                },
+              ],
     position:
-      index <= 1
+      index <= 2
         ? { x: 210000, y: -95000, z: null }
-        : index === 2
+        : index === 3
           ? { x: telemetryPlayer.x, y: telemetryPlayer.y, z: null }
           : null,
   };

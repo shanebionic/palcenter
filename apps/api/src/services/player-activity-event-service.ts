@@ -5,12 +5,19 @@ import type {
   NewWorldEvent,
   PlayerActivityState,
   WorldEvent,
+  WorldEventEvidence,
+  WorldEventMetadata,
   WorldEventType,
 } from "../types/world-events.js";
 import {
   impliedWorldSpeed,
   planarWorldDisplacement,
 } from "./world-coordinate-math.js";
+import {
+  SpatialTransitionRegistry,
+  type MatchedSpatialTransition,
+  unknownCoordinateSpaceId,
+} from "./spatial-transition-registry.js";
 
 export const playerActivityThresholds = {
   movementRadius: 300,
@@ -27,7 +34,10 @@ export const rapidRelocationThresholds = {
 } as const;
 
 export class PlayerActivityEventService {
-  constructor(private readonly repository: WorldEventRepository) {}
+  constructor(
+    private readonly repository: WorldEventRepository,
+    private readonly transitionRegistry = new SpatialTransitionRegistry(),
+  ) {}
 
   process(
     serverId: string,
@@ -87,9 +97,19 @@ export class PlayerActivityEventService {
         consecutiveDisplacement,
         elapsedMs,
       );
-      const rapidRelocation =
+      const trustedSpatialInterval =
         elapsedMs >= rapidRelocationThresholds.minimumElapsedMs &&
-        elapsedMs <= rapidRelocationThresholds.maximumObservationGapMs &&
+        elapsedMs <= rapidRelocationThresholds.maximumObservationGapMs;
+      const transition = trustedSpatialInterval
+        ? this.transitionRegistry.match(
+            existing.coordinateSpaceId,
+            { x: existing.lastX, y: existing.lastY },
+            { x: snapshot.x, y: snapshot.y },
+          )
+        : null;
+      const rapidRelocation =
+        transition === null &&
+        trustedSpatialInterval &&
         consecutiveDisplacement >=
           rapidRelocationThresholds.minimumDisplacement &&
         consecutiveSpeed >= rapidRelocationThresholds.minimumImplausibleSpeed;
@@ -98,11 +118,22 @@ export class PlayerActivityEventService {
         { x: existing.anchorX, y: existing.anchorY },
         { x: snapshot.x, y: snapshot.y },
       );
-      if (displacement > playerActivityThresholds.movementRadius) {
+      if (
+        transition ||
+        displacement > playerActivityThresholds.movementRadius
+      ) {
         if (existing.state === "idle" || existing.state === "afk") {
-          events.push(this.activityEnded(snapshot, existing, displacement));
+          events.push(
+            transition
+              ? this.activityEndedByTransition(snapshot, existing, transition)
+              : this.activityEnded(snapshot, existing, displacement),
+          );
         }
-        if (rapidRelocation) {
+        if (transition) {
+          events.push(
+            this.spatialTransition(snapshot, existing, transition, elapsedMs),
+          );
+        } else if (rapidRelocation) {
           events.push(
             this.rapidRelocation(
               snapshot,
@@ -113,7 +144,13 @@ export class PlayerActivityEventService {
             ),
           );
         }
-        next.push(this.initialState(snapshot));
+        next.push(
+          this.initialState(
+            snapshot,
+            transition?.destinationCoordinateSpaceId ??
+              existing.coordinateSpaceId,
+          ),
+        );
         continue;
       }
 
@@ -157,6 +194,10 @@ export class PlayerActivityEventService {
 
   private initialState(
     snapshot: NewPlayerPositionSnapshot,
+    coordinateSpaceId = this.transitionRegistry.coordinateSpaceAt({
+      x: snapshot.x as number,
+      y: snapshot.y as number,
+    }),
   ): PlayerActivityState {
     return {
       serverId: snapshot.serverId,
@@ -170,6 +211,7 @@ export class PlayerActivityEventService {
       lastSampleAt: snapshot.capturedAt,
       lastX: snapshot.x as number,
       lastY: snapshot.y as number,
+      coordinateSpaceId,
     };
   }
 
@@ -239,6 +281,34 @@ export class PlayerActivityEventService {
     );
   }
 
+  private activityEndedByTransition(
+    snapshot: NewPlayerPositionSnapshot,
+    previous: PlayerActivityState,
+    transition: MatchedSpatialTransition,
+  ): NewWorldEvent {
+    return this.event(
+      snapshot,
+      previous.state === "afk" ? "player_afk_ended" : "player_idle_ended",
+      {
+        priorActivityState: previous.state,
+        originCoordinateSpaceId: transition.originCoordinateSpaceId,
+        destinationCoordinateSpaceId: transition.destinationCoordinateSpaceId,
+      },
+      [
+        {
+          source: "transition_registry",
+          fact: "coordinate_space_changed",
+          value: `${transition.originCoordinateSpaceId} to ${transition.destinationCoordinateSpaceId}`,
+        },
+        {
+          source: "telemetry",
+          fact: "prior_state",
+          value: previous.state,
+        },
+      ],
+    );
+  }
+
   private rapidRelocation(
     snapshot: NewPlayerPositionSnapshot,
     previous: PlayerActivityState,
@@ -249,35 +319,95 @@ export class PlayerActivityEventService {
     const elapsedSeconds = elapsedMs / 1_000;
     const roundedDistance = Math.round(displacement);
     const roundedSpeed = Math.round(speed);
+    const coordinateSpaceKnown =
+      previous.coordinateSpaceId !== unknownCoordinateSpaceId;
+    const comparableMovementMetadata: WorldEventMetadata = coordinateSpaceKnown
+      ? { displacement: roundedDistance, impliedSpeed: roundedSpeed }
+      : {};
+    const comparableMovementEvidence: WorldEventEvidence[] =
+      coordinateSpaceKnown
+        ? [
+            {
+              source: "telemetry",
+              fact: "rapid_displacement",
+              value: `${roundedDistance} world units in ${elapsedSeconds} seconds`,
+            },
+            {
+              source: "telemetry",
+              fact: "implied_speed",
+              value: `${roundedSpeed} world units per second`,
+            },
+          ]
+        : [];
     return this.event(
       snapshot,
       "player_rapid_relocation",
       {
         classification: "unexplained_relocation",
+        originCoordinateSpaceId: previous.coordinateSpaceId,
+        destinationCoordinateSpaceId: previous.coordinateSpaceId,
         originTimestamp: previous.lastSampleAt,
         originX: previous.lastX,
         originY: previous.lastY,
         destinationX: snapshot.x,
         destinationY: snapshot.y,
         elapsedSeconds,
-        displacement: roundedDistance,
-        impliedSpeed: roundedSpeed,
+        ...comparableMovementMetadata,
       },
       [
-        {
-          source: "telemetry",
-          fact: "rapid_displacement",
-          value: `${roundedDistance} world units in ${elapsedSeconds} seconds`,
-        },
-        {
-          source: "telemetry",
-          fact: "implied_speed",
-          value: `${roundedSpeed} world units per second`,
-        },
+        ...comparableMovementEvidence,
         {
           source: "telemetry",
           fact: "observation_continuous",
           value: `${elapsedSeconds} seconds between consecutive roster samples`,
+        },
+      ],
+    );
+  }
+
+  private spatialTransition(
+    snapshot: NewPlayerPositionSnapshot,
+    previous: PlayerActivityState,
+    transition: MatchedSpatialTransition,
+    elapsedMs: number,
+  ): NewWorldEvent {
+    const classification =
+      transition.signature.type === "secondary_map"
+        ? "likely_map_transition"
+        : "likely_instance_transition";
+    return this.event(
+      snapshot,
+      "player_rapid_relocation",
+      {
+        classification,
+        transitionDirection: transition.direction,
+        matchedTransitionSignatureId: transition.signature.id,
+        matchedTransitionDisplayName: transition.signature.displayName,
+        transitionType: transition.signature.type,
+        originTimestamp: previous.lastSampleAt,
+        originCoordinateSpaceId: transition.originCoordinateSpaceId,
+        destinationCoordinateSpaceId: transition.destinationCoordinateSpaceId,
+        originX: previous.lastX,
+        originY: previous.lastY,
+        destinationX: snapshot.x,
+        destinationY: snapshot.y,
+        elapsedSeconds: elapsedMs / 1_000,
+      },
+      [
+        {
+          source: "transition_registry",
+          fact: "transition_signature_matched",
+          value: transition.signature.displayName,
+        },
+        {
+          source: "transition_registry",
+          fact: "coordinate_space_changed",
+          value: `${transition.originCoordinateSpaceId} to ${transition.destinationCoordinateSpaceId}`,
+        },
+        {
+          source: "telemetry",
+          fact: "observation_continuous",
+          value: `${elapsedMs / 1_000} seconds between consecutive roster samples`,
         },
       ],
     );

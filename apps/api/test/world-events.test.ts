@@ -192,7 +192,7 @@ test("non-player, missing-identity, and unrelated player events are ignored", ()
   }
 });
 
-test("schema version 6 events migrate to relocation-aware schema version 7", () => {
+test("schema version 7 checkpoints migrate to coordinate-aware schema version 8", () => {
   const context = fixture();
   context.repository.append([
     {
@@ -208,11 +208,34 @@ test("schema version 6 events migrate to relocation-aware schema version 7", () 
       position: null,
     },
   ]);
+  context.repository.commitActivityObservation(
+    connection.id,
+    [
+      {
+        serverId: connection.id,
+        userId: "user-1",
+        playerId: null,
+        playerName: "Denalb",
+        state: "active",
+        anchorAt: "2026-07-30T12:00:00.000Z",
+        anchorX: 0,
+        anchorY: 0,
+        lastSampleAt: "2026-07-30T12:00:00.000Z",
+        lastX: 0,
+        lastY: 0,
+        coordinateSpaceId: "palpagos",
+      },
+    ],
+    [],
+  );
   context.repository.close();
   context.history.close();
   const databasePath = path.join(context.directory, "history.sqlite");
   const database = new DatabaseSync(databasePath);
-  database.exec("PRAGMA user_version = 6");
+  database.exec(`
+    ALTER TABLE world_player_activity_state DROP COLUMN coordinate_space_id;
+    PRAGMA user_version = 7;
+  `);
   database.close();
 
   const migratedHistory = new SqliteHistoryRepository(context.directory);
@@ -233,9 +256,19 @@ test("schema version 6 events migrate to relocation-aware schema version 7", () 
         "SELECT name FROM sqlite_master WHERE name = 'world_player_activity_state'",
       )
       .get();
+    const activityColumns = migrated
+      .prepare("PRAGMA table_info(world_player_activity_state)")
+      .all() as unknown as Array<{ name: string }>;
     migrated.close();
-    assert.equal(version.user_version, 7);
+    assert.equal(version.user_version, 8);
     assert.ok(activityTable);
+    assert.ok(
+      activityColumns.some(({ name }) => name === "coordinate_space_id"),
+    );
+    assert.equal(
+      migratedEvents.activityStates(connection.id)[0]?.coordinateSpaceId,
+      "unknown",
+    );
   } finally {
     migratedEvents.close();
     migratedHistory.close();
