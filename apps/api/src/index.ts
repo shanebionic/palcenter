@@ -385,6 +385,11 @@ const telemetryService = new TelemetryService(
   undefined,
   (serverId, snapshots) => {
     playerActivityEventService.process(serverId, snapshots);
+    return new Map(
+      worldEventRepository
+        .activityStates(serverId)
+        .map((state) => [state.userId, state.coordinateSpaceId]),
+    );
   },
 );
 const historyErrorHandler = (error: unknown) => {
@@ -1075,6 +1080,10 @@ app.get("/api/servers/:id/telemetry/players/latest", async (request) => {
   const parameters = serverIdSchema.parse(request.params);
   return {
     players: await telemetryService.latest(parameters.id),
+    trustedPositions: await telemetryService.latestTrustedPositions(
+      parameters.id,
+      "palpagos",
+    ),
     pollingIntervalSeconds: environment.TELEMETRY_INTERVAL_SECONDS,
     lastCollectedAt: telemetryService.lastCollectedAt(parameters.id),
   };

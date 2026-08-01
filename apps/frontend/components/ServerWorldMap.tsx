@@ -27,6 +27,7 @@ import {
   IconFocusCentered,
   IconMinus,
   IconPlus,
+  IconDoorEnter,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -42,6 +43,7 @@ import {
 import {
   buildLivePlayerMapModel,
   calibrationRecord,
+  formatTelemetryAge,
   mapContentState,
   playerMapDetailValues,
   playerMarkerPresentation,
@@ -82,6 +84,10 @@ import {
   type ProcessedTrail,
   type TrailHistoryPoint,
 } from "../lib/world-map/trail";
+import {
+  palpagosMapDefinition,
+  worldTreeMapDefinition,
+} from "../lib/world-map/map-definitions";
 import type {
   ConnectedPlayer,
   LatestPlayerTelemetry,
@@ -97,6 +103,7 @@ interface ServerWorldMapProps {
 
 const defaultTelemetry: LatestPlayerTelemetry = {
   players: [],
+  trustedPositions: [],
   pollingIntervalSeconds: 30,
   lastCollectedAt: null,
 };
@@ -287,6 +294,9 @@ export function ServerWorldMap({
         palpagosProjection,
         telemetry.pollingIntervalSeconds,
         telemetry.lastCollectedAt,
+        undefined,
+        telemetry.trustedPositions,
+        palpagosMapDefinition,
       ),
     [players, telemetry],
   );
@@ -306,7 +316,11 @@ export function ServerWorldMap({
     () =>
       trail && trail.pointCount > 0
         ? buildPlayerActivitySummary({
-            points: trailHistoryPoints,
+            points: trailHistoryPoints.map((point) =>
+              (point.coordinateSpaceId ?? "palpagos") === "palpagos"
+                ? point
+                : { ...point, x: null, y: null },
+            ),
             selectedRangeMs: trailRangeMilliseconds[trailRange],
             renderedTrailSegments: renderedTrailSegments.length,
             currentlyOnline: selected !== null,
@@ -362,6 +376,7 @@ export function ServerWorldMap({
         setTrail(
           processMovementTrail(history.points, palpagosProjection, {
             pollingIntervalSeconds: telemetry.pollingIntervalSeconds,
+            coordinateSpaceId: palpagosMapDefinition.coordinateSpaceId,
           }),
         );
         setTrailTruncated(history.truncated);
@@ -601,6 +616,31 @@ export function ServerWorldMap({
           </Button>
         }
       />
+
+      <Group align="flex-end" className="pc-world-map-space-selector">
+        <Select
+          label="Map"
+          description="Only verified coordinate spaces can be plotted."
+          aria-label="World map coordinate space"
+          value={palpagosMapDefinition.coordinateSpaceId}
+          allowDeselect={false}
+          data={[
+            {
+              value: palpagosMapDefinition.coordinateSpaceId,
+              label: palpagosMapDefinition.displayName,
+            },
+            {
+              value: worldTreeMapDefinition.coordinateSpaceId,
+              label: "World Tree (map unavailable)",
+              disabled: true,
+            },
+          ]}
+        />
+        <Text size="sm" c="dimmed">
+          World Tree locations remain off-map until a verified map and
+          projection are available.
+        </Text>
+      </Group>
 
       {focusedEventId && (
         <Alert color="cyan" title="Event location centered">
@@ -953,7 +993,7 @@ export function ServerWorldMap({
                         <button
                           type="button"
                           data-player-id={marker.userId}
-                          className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                          className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${marker.displayKind === "last_trusted_instance" ? " pc-world-map-marker-portal" : ""}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
                           style={{
                             backgroundColor: playerColor(marker.userId),
                           }}
@@ -961,16 +1001,29 @@ export function ServerWorldMap({
                             event.stopPropagation();
                             setSelectedId(marker.userId);
                           }}
-                          aria-label={presentation.accessibleName}
+                          aria-label={
+                            marker.displayKind === "last_trusted_instance"
+                              ? `View ${presentation.displayName}'s last trusted Palpagos location; currently inside an instance`
+                              : presentation.accessibleName
+                          }
                           aria-pressed={selected?.userId === marker.userId}
                         >
-                          <span aria-hidden="true">{presentation.initial}</span>
+                          <span aria-hidden="true">
+                            {marker.displayKind === "last_trusted_instance" ? (
+                              <IconDoorEnter size={17} />
+                            ) : (
+                              presentation.initial
+                            )}
+                          </span>
                         </button>
                         <span
                           className="pc-world-map-marker-label"
                           aria-hidden="true"
                         >
                           {presentation.displayName}
+                          {marker.displayKind === "last_trusted_instance"
+                            ? " · Inside instance"
+                            : ""}
                         </span>
                       </div>
                     </div>
@@ -989,6 +1042,24 @@ export function ServerWorldMap({
           </Card>
 
           <Stack gap="md" className="pc-world-map-details">
+            <OffMapPlayersPanel
+              players={model.unmappedPlayers}
+              onSelect={(userId) => {
+                const marker = model.markers.find(
+                  (candidate) => candidate.userId === userId,
+                );
+                setSelectedId(userId);
+                if (marker) {
+                  const view = centerMapOnPosition(
+                    marker.position,
+                    viewportSize,
+                    surfaceSize,
+                  );
+                  setZoom(view.zoom);
+                  setPan(view.pan);
+                }
+              }}
+            />
             {selected && diagnostics && !diagnostics.visible && (
               <Alert color="orange">
                 <Group justify="space-between">
@@ -1052,6 +1123,86 @@ export function ServerWorldMap({
         </div>
       ) : null}
     </Stack>
+  );
+}
+
+function OffMapPlayersPanel({
+  players,
+  onSelect,
+}: {
+  players: ReturnType<typeof buildLivePlayerMapModel>["unmappedPlayers"];
+  onSelect: (userId: string) => void;
+}) {
+  if (players.length === 0) return null;
+  const status = (reason: (typeof players)[number]["reason"]) => {
+    switch (reason) {
+      case "world_tree":
+        return "In World Tree — destination map unavailable";
+      case "instanced_area":
+        return "Inside an instanced area";
+      case "stale_position":
+        return "Position stale";
+      case "unknown_space":
+        return "Coordinate space unknown";
+      case "unsupported_space":
+        return "Unsupported location";
+      case "missing_telemetry":
+        return "Waiting for position telemetry";
+      case "invalid_coordinates":
+        return "Position unavailable";
+      case "outside_bounds":
+        return "Outside verified map bounds";
+    }
+  };
+  return (
+    <Card withBorder radius="md" padding="lg" className="pc-panel">
+      <Stack gap="sm">
+        <div>
+          <Title order={4}>Off-map players</Title>
+          <Text size="sm" c="dimmed">
+            These players are not plotted because their current position is
+            stale or does not belong to the active Palpagos projection.
+          </Text>
+        </div>
+        {players.map((player) => (
+          <Paper key={`${player.userId}-${player.reason}`} withBorder p="sm">
+            <Group justify="space-between" align="flex-start" wrap="nowrap">
+              <div className="pc-world-map-off-map-copy">
+                <Text fw={700}>{player.playerName}</Text>
+                <Text size="sm">{status(player.reason)}</Text>
+                <Text size="xs" c="dimmed">
+                  {player.lastTrustedPosition
+                    ? `Last trusted Palpagos position updated ${formatTelemetryAge(player.lastTrustedPosition.capturedAt)}`
+                    : "No trusted Palpagos position is available."}
+                </Text>
+                <Accordion variant="contained">
+                  <Accordion.Item value="raw-location">
+                    <Accordion.Control>
+                      Advanced location details
+                    </Accordion.Control>
+                    <Accordion.Panel>
+                      <Code className="pc-map-detail-value">
+                        {`Space: ${player.coordinateSpaceId}\nRaw: X ${player.snapshot?.x ?? "—"}, Y ${player.snapshot?.y ?? "—"}`}
+                      </Code>
+                    </Accordion.Panel>
+                  </Accordion.Item>
+                </Accordion>
+              </div>
+              <Button
+                size="compact-xs"
+                variant="light"
+                onClick={() => onSelect(player.userId)}
+              >
+                {player.reason === "instanced_area" &&
+                player.lastTrustedPosition
+                  ? "View entrance"
+                  : "View details"}
+              </Button>
+            </Group>
+          </Paper>
+        ))}
+      </Stack>
+    </Card>
   );
 }
 
@@ -1299,6 +1450,13 @@ function PlayerMapDetails({
               This position is more than five minutes old.
             </Alert>
           )}
+          {marker.displayKind === "last_trusted_instance" && (
+            <Alert color="violet" title="Inside an instanced area">
+              The marker shows this player&apos;s last trusted Palpagos
+              location. Their current internal coordinates are not plotted on
+              the overworld map.
+            </Alert>
+          )}
           <SimpleGrid cols={2}>
             <Detail label="Level" value={details.level} />
             <Detail label="Ping" value={details.ping} />
@@ -1308,7 +1466,11 @@ function PlayerMapDetails({
           <Detail label="Player ID" value={details.playerId} mono />
           <Detail label="User ID" value={details.userId} mono />
           <Detail
-            label="World coordinates"
+            label={
+              marker.displayKind === "last_trusted_instance"
+                ? "Last trusted Palpagos coordinates"
+                : "World coordinates"
+            }
             value={details.worldCoordinates}
             mono
           />

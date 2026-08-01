@@ -10,6 +10,10 @@ export interface TelemetryRepository {
   reopen(): void;
   insertPlayerSnapshots(snapshots: NewPlayerPositionSnapshot[]): void;
   latestPlayerSnapshots(serverId: string): PlayerPositionSnapshot[];
+  latestPlayerSnapshotsInSpace(
+    serverId: string,
+    coordinateSpaceId: string,
+  ): PlayerPositionSnapshot[];
   playerHistory(
     serverId: string,
     userId: string,

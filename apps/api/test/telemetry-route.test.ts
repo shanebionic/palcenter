@@ -238,6 +238,7 @@ test("history supports time ranges and bounded limits", async () => {
   assert.equal(body.truncated, true);
   assert.deepEqual(Object.keys(body.points[0]).sort(), [
     "capturedAt",
+    "coordinateSpaceId",
     "x",
     "y",
   ]);

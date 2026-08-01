@@ -62,6 +62,7 @@ const telemetryPlayer = {
   buildingCount: 4,
   guildId: null,
   guildName: null,
+  coordinateSpaceId: "palpagos",
   createdAt: now,
 };
 
@@ -280,10 +281,33 @@ export function startMockUiApi(port = 3198) {
           503,
         );
       }
+      const currentTelemetry =
+        playerMode === "instance"
+          ? {
+              ...telemetryPlayer,
+              x: 12345,
+              y: 67890,
+              coordinateSpaceId: "instance:fixture-dungeon",
+            }
+          : playerMode === "world-tree"
+            ? {
+                ...telemetryPlayer,
+                x: -42000,
+                y: 91000,
+                coordinateSpaceId: "world_tree",
+              }
+            : playerMode === "stale"
+              ? {
+                  ...telemetryPlayer,
+                  capturedAt: "2026-07-29T20:00:00.000Z",
+                }
+              : telemetryPlayer;
       return json(response, {
-        players: playerMode === "empty" ? [] : [telemetryPlayer],
+        players: playerMode === "empty" ? [] : [currentTelemetry],
+        trustedPositions: playerMode === "empty" ? [] : [telemetryPlayer],
         pollingIntervalSeconds: 30,
-        lastCollectedAt: now,
+        lastCollectedAt:
+          playerMode === "stale" ? currentTelemetry.capturedAt : now,
       });
     }
     if (
@@ -292,12 +316,42 @@ export function startMockUiApi(port = 3198) {
     ) {
       return json(response, {
         points: [
-          { capturedAt: "2026-07-29T22:10:00.000Z", x: 85000, y: -110000 },
-          { capturedAt: "2026-07-29T22:14:00.000Z", x: 93000, y: -103000 },
-          { capturedAt: "2026-07-29T22:18:00.000Z", x: 102000, y: -95000 },
-          { capturedAt: "2026-07-29T22:22:00.000Z", x: 111000, y: -87000 },
-          { capturedAt: "2026-07-29T22:26:00.000Z", x: 119000, y: -80000 },
-          { capturedAt: now, x: telemetryPlayer.x, y: telemetryPlayer.y },
+          {
+            capturedAt: "2026-07-29T22:10:00.000Z",
+            x: 85000,
+            y: -110000,
+            coordinateSpaceId: "palpagos",
+          },
+          {
+            capturedAt: "2026-07-29T22:14:00.000Z",
+            x: 93000,
+            y: -103000,
+            coordinateSpaceId: "palpagos",
+          },
+          {
+            capturedAt: "2026-07-29T22:18:00.000Z",
+            x: 102000,
+            y: -95000,
+            coordinateSpaceId: "palpagos",
+          },
+          {
+            capturedAt: "2026-07-29T22:22:00.000Z",
+            x: 111000,
+            y: -87000,
+            coordinateSpaceId: "palpagos",
+          },
+          {
+            capturedAt: "2026-07-29T22:26:00.000Z",
+            x: 119000,
+            y: -80000,
+            coordinateSpaceId: "palpagos",
+          },
+          {
+            capturedAt: now,
+            x: telemetryPlayer.x,
+            y: telemetryPlayer.y,
+            coordinateSpaceId: "palpagos",
+          },
         ],
         limit: 5000,
         truncated: false,

@@ -496,6 +496,22 @@ a {
   box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.18);
 }
 
+.pc-world-map-marker-portal {
+  border-style: dashed;
+  color: var(--mantine-color-gray-0);
+  background: var(--mantine-color-violet-7) !important;
+  box-shadow: 0 0 0 5px rgba(139, 92, 246, 0.22);
+}
+
+.pc-world-map-space-selector,
+.pc-world-map-off-map-copy {
+  min-width: 0;
+}
+
+.pc-world-map-off-map-copy {
+  overflow-wrap: anywhere;
+}
+
 .pc-world-map-marker:hover,
 .pc-world-map-marker[aria-pressed="true"] {
   z-index: 3;

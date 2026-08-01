@@ -29,7 +29,7 @@ export type TelemetryCollectionErrorHandler = (
 export type TelemetryObservationHandler = (
   serverId: string,
   snapshots: NewPlayerPositionSnapshot[],
-) => void;
+) => ReadonlyMap<string, string> | void;
 
 export class TelemetryService {
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -97,9 +97,14 @@ export class TelemetryService {
               .latestPlayerSnapshots(connection.id)
               .map((snapshot) => [snapshot.userId, snapshot]),
           );
-          this.onObservation(connection.id, snapshots);
+          const coordinateSpaces = this.onObservation(connection.id, snapshots);
+          const spatialSnapshots = snapshots.map((snapshot) => ({
+            ...snapshot,
+            coordinateSpaceId:
+              coordinateSpaces?.get(snapshot.userId) ?? "unknown",
+          }));
           this.repository.insertPlayerSnapshots(
-            snapshots.filter((snapshot) =>
+            spatialSnapshots.filter((snapshot) =>
               this.shouldStore(snapshot, previous.get(snapshot.userId)),
             ),
           );
@@ -115,6 +120,17 @@ export class TelemetryService {
   async latest(serverId: string): Promise<PlayerPositionSnapshot[]> {
     await this.requireServer(serverId);
     return this.repository.latestPlayerSnapshots(serverId);
+  }
+
+  async latestTrustedPositions(
+    serverId: string,
+    coordinateSpaceId: string,
+  ): Promise<PlayerPositionSnapshot[]> {
+    await this.requireServer(serverId);
+    return this.repository.latestPlayerSnapshotsInSpace(
+      serverId,
+      coordinateSpaceId,
+    );
   }
 
   lastCollectedAt(serverId: string): string | null {
@@ -142,7 +158,12 @@ export class TelemetryService {
     const truncated = snapshots.length > query.limit;
     const points = snapshots
       .slice(truncated ? 1 : 0)
-      .map(({ capturedAt, x, y }) => ({ capturedAt, x, y }));
+      .map(({ capturedAt, x, y, coordinateSpaceId }) => ({
+        capturedAt,
+        x,
+        y,
+        coordinateSpaceId,
+      }));
     return { points, truncated };
   }
 
@@ -162,6 +183,7 @@ export class TelemetryService {
       current.buildingCount !== previous.buildingCount ||
       current.guildId !== previous.guildId ||
       current.guildName !== previous.guildName ||
+      (current.coordinateSpaceId ?? "unknown") !== previous.coordinateSpaceId ||
       this.materialPingChange(current.ping, previous.ping) ||
       this.materialMovement(current, previous)
     ) {

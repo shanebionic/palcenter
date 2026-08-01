@@ -8,12 +8,14 @@ export interface TrailHistoryPoint {
   capturedAt: string;
   x: number | null;
   y: number | null;
+  coordinateSpaceId?: string;
 }
 
 export interface ProjectedTrailPoint extends NormalizedMapPosition {
   capturedAt: string;
   worldX: number;
   worldY: number;
+  coordinateSpaceId?: string;
 }
 
 export interface TrailExclusions {
@@ -22,6 +24,7 @@ export interface TrailExclusions {
   simplified: number;
   timeGap: number;
   teleport: number;
+  coordinateSpace?: number;
 }
 
 export interface ProcessedTrail {
@@ -31,12 +34,14 @@ export interface ProcessedTrail {
   firstTimestamp: string | null;
   lastTimestamp: string | null;
   exclusions: TrailExclusions;
+  coordinateSpaceId?: string;
 }
 
 export interface TrailProcessingOptions {
   pollingIntervalSeconds: number;
   teleportDistance?: number;
   minimumNormalizedMovement?: number;
+  coordinateSpaceId?: string;
 }
 
 export interface TrailSegmentStyle {
@@ -74,6 +79,7 @@ export function processMovementTrail(
     simplified: 0,
     timeGap: 0,
     teleport: 0,
+    coordinateSpace: 0,
   };
   const sorted = [...input].sort(
     (left, right) => Date.parse(left.capturedAt) - Date.parse(right.capturedAt),
@@ -82,6 +88,7 @@ export function processMovementTrail(
   const teleportDistance = options.teleportDistance ?? defaultTeleportDistance;
   const minimumMovement =
     options.minimumNormalizedMovement ?? defaultMinimumNormalizedMovement;
+  const coordinateSpaceId = options.coordinateSpaceId ?? "palpagos";
   const segments: ProjectedTrailPoint[][] = [];
   let current: ProjectedTrailPoint[] = [];
   let approximateDistance = 0;
@@ -93,6 +100,12 @@ export function processMovementTrail(
   };
 
   for (const point of sorted) {
+    if ((point.coordinateSpaceId ?? coordinateSpaceId) !== coordinateSpaceId) {
+      exclusions.coordinateSpace = (exclusions.coordinateSpace ?? 0) + 1;
+      finishSegment();
+      previous = null;
+      continue;
+    }
     const capturedAt = Date.parse(point.capturedAt);
     const projected =
       Number.isFinite(capturedAt) &&
@@ -113,6 +126,7 @@ export function processMovementTrail(
       capturedAt: point.capturedAt,
       worldX: point.x,
       worldY: point.y,
+      coordinateSpaceId,
     };
 
     if (previous) {
@@ -160,6 +174,7 @@ export function processMovementTrail(
     firstTimestamp: points.at(0)?.capturedAt ?? null,
     lastTimestamp: points.at(-1)?.capturedAt ?? null,
     exclusions,
+    coordinateSpaceId,
   };
 }
 
