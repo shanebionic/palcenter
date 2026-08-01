@@ -19,10 +19,24 @@ export const worldEventLabels: Record<WorldEventType, string> = {
 };
 
 export function worldEventLabel(event: WorldEvent): string {
-  return event.type === "player_rapid_relocation" &&
-    event.metadata.classification === "likely_fast_travel"
-    ? "Likely fast travel"
-    : worldEventLabels[event.type];
+  if (event.type !== "player_rapid_relocation") {
+    return worldEventLabels[event.type];
+  }
+  const classification = event.metadata.classification;
+  const direction = event.metadata.transitionDirection;
+  const destinationSpace = event.metadata.destinationCoordinateSpaceId;
+  if (classification === "likely_fast_travel") return "Likely fast travel";
+  if (classification === "likely_instance_transition") {
+    return direction === "exit"
+      ? "Exited an instanced area"
+      : "Entered an instanced area";
+  }
+  if (classification === "likely_map_transition") {
+    return direction === "exit" && destinationSpace === "palpagos"
+      ? "Returned to the overworld"
+      : "Changed map area";
+  }
+  return "Rapid relocation detected";
 }
 
 export function worldEventConfidence(confidence: number): {
@@ -71,7 +85,28 @@ export function worldEventEvidenceText(
   if (evidence.fact === "observation_continuous") {
     return `Observation continuity remained intact: ${evidence.value}.`;
   }
+  if (evidence.fact === "coordinate_space_changed") {
+    return `Coordinate space changed from ${evidence.value}.`;
+  }
+  if (evidence.fact === "transition_signature_matched") {
+    return `Matched verified transition signature: ${evidence.value}.`;
+  }
   return "An explicit player state change was reported by the server.";
+}
+
+export function worldEventCoordinateSpace(
+  event: WorldEvent,
+  endpoint: "origin" | "destination",
+): string | null {
+  const value = event.metadata[`${endpoint}CoordinateSpaceId`];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+export function worldEventPositionSupportsPalpagosMap(
+  event: WorldEvent,
+  endpoint: "origin" | "destination",
+): boolean {
+  return worldEventCoordinateSpace(event, endpoint) === "palpagos";
 }
 
 export function worldEventRelocationPosition(
@@ -91,9 +126,14 @@ export function worldEventMetadataText(
   value: string | number | boolean | null,
 ): string {
   if (key === "classification") {
-    return value === "likely_fast_travel"
-      ? "Classification: Likely fast travel"
-      : "Classification: Movement discontinuity (cause unknown)";
+    const labels: Record<string, string> = {
+      likely_fast_travel: "Likely fast travel",
+      likely_admin_teleport: "Likely administrator teleport",
+      likely_instance_transition: "Likely instance transition",
+      likely_map_transition: "Likely map transition",
+      unexplained_relocation: "Movement discontinuity (cause unknown)",
+    };
+    return `Classification: ${labels[String(value)] ?? String(value)}`;
   }
   if (key === "originTimestamp" && typeof value === "string") {
     return `Origin sample: ${exactWorldEventTime(value)}`;
@@ -102,6 +142,21 @@ export function worldEventMetadataText(
   if (key === "displacement") return `Distance: ${String(value)} world units`;
   if (key === "impliedSpeed") {
     return `Implied speed: ${String(value)} world units per second`;
+  }
+  if (key === "originCoordinateSpaceId") {
+    return `Origin coordinate space: ${String(value)}`;
+  }
+  if (key === "destinationCoordinateSpaceId") {
+    return `Destination coordinate space: ${String(value)}`;
+  }
+  if (key === "matchedTransitionDisplayName") {
+    return `Matched transition: ${String(value)}`;
+  }
+  if (key === "transitionDirection") {
+    return `Transition direction: ${String(value)}`;
+  }
+  if (key === "transitionType") {
+    return `Transition type: ${String(value).replaceAll("_", " ")}`;
   }
   return `${key}: ${String(value)}`;
 }

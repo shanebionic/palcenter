@@ -9,6 +9,10 @@ import {
   PlayerActivityEventService,
   rapidRelocationThresholds,
 } from "../src/services/player-activity-event-service.js";
+import {
+  SpatialTransitionRegistry,
+  type SpatialTransitionSignature,
+} from "../src/services/spatial-transition-registry.js";
 import type { NewPlayerPositionSnapshot } from "../src/telemetry/types/player-telemetry.js";
 
 const startedAt = Date.parse("2026-07-31T12:00:00.000Z");
@@ -36,7 +40,7 @@ function snapshot(
   };
 }
 
-function fixture() {
+function fixture(signatures: SpatialTransitionSignature[] = []) {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "palcenter-rapid-relocation-"),
   );
@@ -48,9 +52,66 @@ function fixture() {
     directory,
     history,
     repository,
-    service: new PlayerActivityEventService(repository),
+    service: new PlayerActivityEventService(
+      repository,
+      new SpatialTransitionRegistry(signatures),
+    ),
   };
 }
+
+const instanceSignature: SpatialTransitionSignature = {
+  id: "fixture-dungeon",
+  displayName: "Fixture Dungeon",
+  type: "dungeon",
+  destinationCoordinateSpaceId: "instance:fixture-dungeon",
+  arrivalRegion: { centerX: 300_000, centerY: 0, tolerance: 1_000 },
+  originRegions: [{ centerX: 0, centerY: 0, tolerance: 5_000 }],
+  exitRegions: [
+    {
+      centerX: 1_000,
+      centerY: 0,
+      tolerance: 1_000,
+      destinationCoordinateSpaceId: "palpagos",
+    },
+    {
+      centerX: 5_000,
+      centerY: 0,
+      tolerance: 1_000,
+      destinationCoordinateSpaceId: "palpagos",
+    },
+  ],
+  source: { name: "test fixture", version: "1" },
+  enabled: true,
+};
+
+const mapSignature: SpatialTransitionSignature = {
+  id: "fixture-world-tree",
+  displayName: "Fixture Secondary Map",
+  type: "secondary_map",
+  destinationCoordinateSpaceId: "world_tree",
+  arrivalRegion: { centerX: -300_000, centerY: 0, tolerance: 1_000 },
+  originRegions: [{ centerX: 0, centerY: 0, tolerance: 5_000 }],
+  exitRegions: [
+    {
+      centerX: -1_000,
+      centerY: 0,
+      tolerance: 1_000,
+      destinationCoordinateSpaceId: "palpagos",
+    },
+  ],
+  source: { name: "test fixture", version: "1" },
+  enabled: true,
+};
+
+const palpagosFixtureSignature: SpatialTransitionSignature = {
+  id: "fixture-palpagos-reference",
+  displayName: "Fixture Palpagos Reference",
+  type: "other",
+  destinationCoordinateSpaceId: "palpagos",
+  arrivalRegion: { centerX: 0, centerY: 0, tolerance: 5_000 },
+  source: { name: "test fixture", version: "1" },
+  enabled: true,
+};
 
 function cleanup(context: ReturnType<typeof fixture>) {
   context.repository.close();
@@ -95,12 +156,12 @@ test("exact conservative displacement and speed boundaries emit one neutral relo
     assert.equal(event?.metadata.originX, 0);
     assert.equal(event?.metadata.destinationX, 200_000);
     assert.equal(event?.metadata.elapsedSeconds, 80);
-    assert.equal(event?.metadata.displacement, 200_000);
-    assert.equal(event?.metadata.impliedSpeed, 2_500);
+    assert.equal("displacement" in (event?.metadata ?? {}), false);
+    assert.equal("impliedSpeed" in (event?.metadata ?? {}), false);
     assert.deepEqual(event?.position, { x: 200_000, y: 0, z: null });
     assert.deepEqual(
       event?.evidence.map(({ fact }) => fact),
-      ["rapid_displacement", "implied_speed", "observation_continuous"],
+      ["observation_continuous"],
     );
   } finally {
     cleanup(context);
@@ -305,5 +366,221 @@ test("identical inputs reproduce stable relocation IDs and timestamps", () => {
   } finally {
     cleanup(first);
     cleanup(second);
+  }
+});
+
+test("empty registry preserves neutral unknown-space relocation behavior", () => {
+  const context = fixture();
+  try {
+    context.service.process("srv-relocation", [snapshot(0)]);
+    const [event] = context.service.process("srv-relocation", [
+      snapshot(30, 300_000),
+    ]);
+    assert.equal(event?.metadata.classification, "unexplained_relocation");
+    assert.equal(event?.metadata.originCoordinateSpaceId, "unknown");
+    assert.equal(event?.metadata.destinationCoordinateSpaceId, "unknown");
+    assert.equal("displacement" in (event?.metadata ?? {}), false);
+    assert.equal("impliedSpeed" in (event?.metadata ?? {}), false);
+  } finally {
+    cleanup(context);
+  }
+});
+
+test("known same-space movement uses ordinary travel analysis", () => {
+  const context = fixture([palpagosFixtureSignature]);
+  try {
+    context.service.process("srv-relocation", [snapshot(0)]);
+    assert.deepEqual(
+      context.service.process("srv-relocation", [snapshot(30, 1_000)]),
+      [],
+    );
+    const [event] = context.service.process("srv-relocation", [
+      snapshot(60, 301_000),
+    ]);
+    assert.equal(event?.metadata.classification, "unexplained_relocation");
+    assert.equal(event?.metadata.originCoordinateSpaceId, "palpagos");
+    assert.equal(event?.metadata.destinationCoordinateSpaceId, "palpagos");
+    assert.equal(event?.metadata.displacement, 300_000);
+    assert.equal(event?.metadata.impliedSpeed, 10_000);
+  } finally {
+    cleanup(context);
+  }
+});
+
+test("verified instance entry and exits change spaces without cross-space travel math", () => {
+  const context = fixture([instanceSignature]);
+  try {
+    context.service.process("srv-relocation", [snapshot(0)]);
+    const [entry] = context.service.process("srv-relocation", [
+      snapshot(30, 300_000),
+    ]);
+    assert.equal(entry?.metadata.classification, "likely_instance_transition");
+    assert.equal(entry?.metadata.transitionDirection, "entry");
+    assert.equal(
+      entry?.metadata.matchedTransitionSignatureId,
+      "fixture-dungeon",
+    );
+    assert.equal(
+      entry?.metadata.matchedTransitionDisplayName,
+      "Fixture Dungeon",
+    );
+    assert.equal(entry?.metadata.originCoordinateSpaceId, "unknown");
+    assert.equal(
+      entry?.metadata.destinationCoordinateSpaceId,
+      "instance:fixture-dungeon",
+    );
+    assert.equal("displacement" in (entry?.metadata ?? {}), false);
+    assert.equal("impliedSpeed" in (entry?.metadata ?? {}), false);
+
+    const [exit] = context.service.process("srv-relocation", [
+      snapshot(60, 1_000),
+    ]);
+    assert.equal(exit?.metadata.transitionDirection, "exit");
+    assert.equal(exit?.metadata.destinationCoordinateSpaceId, "palpagos");
+
+    context.service.process("srv-relocation", [snapshot(90, 0)]);
+    context.service.process("srv-relocation", [snapshot(120, 300_000)]);
+    const [alternateExit] = context.service.process("srv-relocation", [
+      snapshot(150, 5_000),
+    ]);
+    assert.equal(alternateExit?.metadata.transitionDirection, "exit");
+    assert.equal(alternateExit?.metadata.destinationX, 5_000);
+  } finally {
+    cleanup(context);
+  }
+});
+
+test("verified secondary-map signature produces a map transition", () => {
+  const context = fixture([mapSignature]);
+  try {
+    context.service.process("srv-relocation", [snapshot(0)]);
+    const [event] = context.service.process("srv-relocation", [
+      snapshot(30, -300_000),
+    ]);
+    assert.equal(event?.metadata.classification, "likely_map_transition");
+    assert.equal(event?.metadata.destinationCoordinateSpaceId, "world_tree");
+    assert.equal("displacement" in (event?.metadata ?? {}), false);
+  } finally {
+    cleanup(context);
+  }
+});
+
+test("unmatched destinations retain neutral fallback with a populated registry", () => {
+  const context = fixture([instanceSignature, mapSignature]);
+  try {
+    context.service.process("srv-relocation", [snapshot(0)]);
+    const [event] = context.service.process("srv-relocation", [
+      snapshot(30, 500_000),
+    ]);
+    assert.equal(event?.metadata.classification, "unexplained_relocation");
+    assert.equal(
+      "matchedTransitionSignatureId" in (event?.metadata ?? {}),
+      false,
+    );
+  } finally {
+    cleanup(context);
+  }
+});
+
+test("signature tolerance is inclusive and overlapping matches are deterministic", () => {
+  const broad: SpatialTransitionSignature = {
+    ...instanceSignature,
+    id: "a-broad",
+    displayName: "Broad Fixture",
+    arrivalRegion: { centerX: 300_000, centerY: 0, tolerance: 2_000 },
+  };
+  const narrow: SpatialTransitionSignature = {
+    ...instanceSignature,
+    id: "z-narrow",
+    displayName: "Narrow Fixture",
+    arrivalRegion: { centerX: 300_000, centerY: 0, tolerance: 1_000 },
+  };
+  const boundary = fixture([narrow]);
+  const overlap = fixture([broad, narrow]);
+  try {
+    boundary.service.process("srv-relocation", [snapshot(0)]);
+    const [boundaryEvent] = boundary.service.process("srv-relocation", [
+      snapshot(30, 301_000),
+    ]);
+    assert.equal(
+      boundaryEvent?.metadata.matchedTransitionSignatureId,
+      "z-narrow",
+    );
+
+    overlap.service.process("srv-relocation", [snapshot(0)]);
+    const [overlapEvent] = overlap.service.process("srv-relocation", [
+      snapshot(30, 300_500),
+    ]);
+    assert.equal(
+      overlapEvent?.metadata.matchedTransitionSignatureId,
+      "z-narrow",
+    );
+  } finally {
+    cleanup(boundary);
+    cleanup(overlap);
+  }
+});
+
+test("coordinate-space checkpoints survive restart and stale samples reset safely", () => {
+  const context = fixture([instanceSignature]);
+  try {
+    context.service.process("srv-relocation", [snapshot(0)]);
+    context.service.process("srv-relocation", [snapshot(30, 300_000)]);
+    assert.equal(
+      context.repository.activityStates("srv-relocation")[0]?.coordinateSpaceId,
+      "instance:fixture-dungeon",
+    );
+
+    const restarted = new PlayerActivityEventService(
+      context.repository,
+      new SpatialTransitionRegistry([instanceSignature]),
+    );
+    assert.equal(
+      restarted.process("srv-relocation", [snapshot(60, 1_000)])[0]?.metadata
+        .transitionDirection,
+      "exit",
+    );
+    assert.deepEqual(
+      restarted.process("srv-relocation", [snapshot(300, 300_000)]),
+      [],
+    );
+  } finally {
+    cleanup(context);
+  }
+});
+
+test("Idle and AFK transitions resume before cross-space events", () => {
+  const idle = fixture([instanceSignature]);
+  const afk = fixture([mapSignature]);
+  try {
+    for (const seconds of [0, 300, 600]) {
+      idle.service.process("srv-relocation", [snapshot(seconds)]);
+    }
+    const idleEvents = idle.service.process("srv-relocation", [
+      snapshot(630, 300_000),
+    ]);
+    assert.deepEqual(
+      idleEvents.map(({ type }) => type),
+      ["player_idle_ended", "player_rapid_relocation"],
+    );
+    assert.equal("displacement" in (idleEvents[0]?.metadata ?? {}), false);
+
+    for (const seconds of [0, 300, 600, 900, 1_200, 1_500, 1_800]) {
+      afk.service.process("srv-relocation", [snapshot(seconds)]);
+    }
+    const afkEvents = afk.service.process("srv-relocation", [
+      snapshot(1_830, -300_000),
+    ]);
+    assert.deepEqual(
+      afkEvents.map(({ type }) => type),
+      ["player_afk_ended", "player_rapid_relocation"],
+    );
+    assert.equal(
+      afkEvents[1]?.metadata.classification,
+      "likely_map_transition",
+    );
+  } finally {
+    cleanup(idle);
+    cleanup(afk);
   }
 });

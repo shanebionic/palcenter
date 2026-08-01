@@ -109,7 +109,7 @@ export interface WorldEvent {
   metadata: Record<string, string | number | boolean | null>;
   confidence: number;
   evidence: Array<{
-    source: "players" | "telemetry";
+    source: "players" | "telemetry" | "transition_registry";
     fact:
       | "appeared"
       | "disappeared"
@@ -120,7 +120,9 @@ export interface WorldEvent {
       | "prior_state"
       | "rapid_displacement"
       | "implied_speed"
-      | "observation_continuous";
+      | "observation_continuous"
+      | "coordinate_space_changed"
+      | "transition_signature_matched";
     value: string;
   }>;
   position: { x: number; y: number; z: number | null } | null;

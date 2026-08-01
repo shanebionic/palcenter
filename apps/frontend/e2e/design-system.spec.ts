@@ -359,8 +359,25 @@ test("World Events renders, filters, expands evidence, loads history, and links 
     page.getByRole("heading", { name: "Rapid relocation detected" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Likely fast travel" }),
+    page.getByRole("heading", { name: "Entered an instanced area" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Changed map area" }),
+  ).toBeVisible();
+  const instanceEvent = page
+    .locator(".pc-world-event-entry")
+    .filter({ hasText: "Entered an instanced area" });
+  await expect(
+    instanceEvent.getByText(
+      "Destination map unavailable (instance:fixture-dungeon coordinate space).",
+    ),
+  ).toBeVisible();
+  await instanceEvent.getByText("Evidence and details").click();
+  await expect(
+    instanceEvent.getByText("Matched transition: Fixture Dungeon"),
+  ).toBeVisible();
+  await expect(instanceEvent.getByText(/^Distance:/)).toHaveCount(0);
+  await expect(instanceEvent.getByText(/^Implied speed:/)).toHaveCount(0);
 
   const firstEvent = page.locator(".pc-world-event-entry").first();
   await firstEvent.getByText("Evidence and details").click();
@@ -383,7 +400,7 @@ test("World Events renders, filters, expands evidence, loads history, and links 
   await page.getByRole("combobox", { name: "Event type" }).click();
   await page.getByRole("option", { name: "Rapid relocation detected" }).click();
   await page.getByRole("button", { name: "Apply filters" }).click();
-  await expect(page.locator(".pc-world-event-entry")).toHaveCount(2);
+  await expect(page.locator(".pc-world-event-entry")).toHaveCount(3);
   await expect(
     page.getByRole("heading", { name: "Rapid relocation detected" }).first(),
   ).toBeVisible();

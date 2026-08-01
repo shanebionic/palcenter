@@ -15,7 +15,7 @@ export const worldEventTypes = [
 export type WorldEventType = (typeof worldEventTypes)[number];
 
 export interface WorldEventEvidence {
-  source: "players" | "telemetry";
+  source: "players" | "telemetry" | "transition_registry";
   fact:
     | "appeared"
     | "disappeared"
@@ -26,7 +26,9 @@ export interface WorldEventEvidence {
     | "prior_state"
     | "rapid_displacement"
     | "implied_speed"
-    | "observation_continuous";
+    | "observation_continuous"
+    | "coordinate_space_changed"
+    | "transition_signature_matched";
   value: string;
 }
 
@@ -78,4 +80,5 @@ export interface PlayerActivityState {
   lastSampleAt: string;
   lastX: number;
   lastY: number;
+  coordinateSpaceId: string;
 }

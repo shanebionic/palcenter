@@ -104,10 +104,46 @@ otherwise it establishes a fresh baseline without an event.
 
 The event timestamp is the destination sample—the first observation proving
 the discontinuity. Metadata retains the origin timestamp, both X/Y endpoints,
-elapsed seconds, displacement, implied speed, and the neutral
-`unexplained_relocation` classification. Confidence is deterministically `0.9`
+elapsed seconds, and the neutral `unexplained_relocation` classification.
+Distance and implied speed are included only when both samples belong to the
+same known coordinate space; they are omitted when the space is `unknown`.
+Confidence is deterministically `0.9`
 (**High confidence**) that a discontinuity was observed, not that a particular
 travel mechanism caused it.
+
+### Coordinate spaces and transition signatures
+
+Spatial checkpoints carry a coordinate-space ID such as `palpagos`,
+`world_tree`, `instance:<identifier>`, or `unknown`. The official `/players`
+telemetry currently provides only X/Y coordinates. It does not provide an
+authoritative map, level, dungeon, tower, or instance identifier, so PalCenter
+does not assume every coordinate belongs to the Palpagos overworld.
+
+Verified spatial transitions are matched through a centralized signature
+registry. A signature can describe an arrival region, optional overworld
+origins, multiple exit regions, tolerance, destination coordinate space,
+transition type, provenance/version, and enabled state. Overlapping matches are
+resolved deterministically by the smallest tolerance and then signature ID.
+
+The production registry is intentionally empty until transition locations are
+verified. PalCenter does not ship guessed dungeon, tower, World Tree, arena, or
+secondary-map coordinates. Tests use synthetic fixtures only.
+
+When a verified signature eventually matches:
+
+- dungeon, tower, arena, and special-instance signatures are classified as
+  `likely_instance_transition`;
+- secondary-map signatures are classified as `likely_map_transition`;
+- entry and any configured alternate exit regions use the same signature;
+- the checkpoint moves to the matched destination coordinate space;
+- ordinary distance and implied speed are omitted because coordinates from
+  different spaces are not comparable.
+
+Without a signature match, the existing neutral `unexplained_relocation`
+fallback remains. An `unknown` space means the coordinate frame could not be
+authoritatively identified; it does not prove the point is on Palpagos.
+PalCenter may know that a discontinuity occurred without knowing its exact
+gameplay cause.
 
 PalCenter does not currently bundle authoritative fast-travel-point data.
 Therefore the engine does not label generated events as confirmed or likely
@@ -116,6 +152,12 @@ classification, but it is displayed only when evidence supplied by the backend
 supports it. Administrator teleport commands and other server-side movement
 can appear identical in position telemetry and remain neutral.
 
+The model reserves future classifications for `likely_fast_travel` and
+`likely_admin_teleport`, but neither is generated without verified supporting
+evidence. World Tree is modeled as the separate `world_tree` coordinate-space
+use case. No World Tree projection or map asset is included, and its points are
+never plotted on the Palpagos map.
+
 When relocation ends Idle or prolonged inactivity, PalCenter first records the
 appropriate resumed-activity event and then the rapid-relocation event at the
 same proving sample. This deterministic ordering closes the previous activity
@@ -123,7 +165,7 @@ state before describing the movement discontinuity.
 
 ## Storage and API
 
-Events and activity checkpoints are stored in `history.sqlite` schema version 7
+Events and activity checkpoints are stored in `history.sqlite` schema version 8
 and are included automatically in PalCenter backups. The migration preserves
 existing events and history.
 
@@ -153,7 +195,10 @@ Each entry keeps evidence and metadata collapsed by default. Expanding
 stable user ID, optional Palworld player ID, and any available position. When a
 position exists, **View on map** opens the existing Map tab and centers its
 shared coordinate plane on that observation. Rapid-relocation entries provide
-separate **View origin on map** and **View destination on map** actions.
+separate **View origin on map** and **View destination on map** actions only
+when that endpoint is explicitly identified as `palpagos`. Unknown, instance,
+World Tree, and other unsupported coordinate spaces display a clear unavailable
+message instead of plotting the point on the wrong map.
 
 Events remain in `history.sqlite` for as long as the application data is
 retained. PalCenter does not currently apply a separate event-retention policy.

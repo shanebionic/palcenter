@@ -51,7 +51,7 @@ interface IntegrityCheckRow {
   quick_check: string;
 }
 
-const schemaVersion = 7;
+const schemaVersion = 8;
 
 export class SqliteHistoryRepository implements HistoryRepository {
   private database: DatabaseSync | null = null;
@@ -239,6 +239,7 @@ export class SqliteHistoryRepository implements HistoryRepository {
         last_sample_at TEXT NOT NULL,
         last_x REAL NOT NULL,
         last_y REAL NOT NULL,
+        coordinate_space_id TEXT NOT NULL,
         PRIMARY KEY (server_id, user_id)
       );
 
@@ -285,6 +286,12 @@ export class SqliteHistoryRepository implements HistoryRepository {
             ON world_events (server_id, occurred_at, id);
           CREATE INDEX world_events_server_player_time
             ON world_events (server_id, user_id, occurred_at, id);
+        `);
+      }
+      if (version === 7) {
+        database.exec(`
+          ALTER TABLE world_player_activity_state
+            ADD COLUMN coordinate_space_id TEXT NOT NULL DEFAULT 'unknown';
         `);
       }
       if (version < 3) {

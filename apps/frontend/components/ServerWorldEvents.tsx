@@ -27,11 +27,13 @@ import {
   relativeWorldEventTime,
   sortWorldEventsNewestFirst,
   worldEventConfidence,
+  worldEventCoordinateSpace,
   worldEventEvidenceText,
   worldEventLabel,
   worldEventLabels,
   worldEventMetadataText,
   worldEventPlayerName,
+  worldEventPositionSupportsPalpagosMap,
   worldEventRelocationPosition,
   worldEventTimeRangeFromNow,
 } from "../lib/world-events";
@@ -277,11 +279,22 @@ const WorldEventEntry = memo(function WorldEventEntry({
   const playerName = worldEventPlayerName(event);
   const origin = worldEventRelocationPosition(event, "origin");
   const destination = worldEventRelocationPosition(event, "destination");
+  const originSpace = worldEventCoordinateSpace(event, "origin");
+  const destinationSpace = worldEventCoordinateSpace(event, "destination");
+  const originMapSupported = worldEventPositionSupportsPalpagosMap(
+    event,
+    "origin",
+  );
+  const destinationMapSupported = worldEventPositionSupportsPalpagosMap(
+    event,
+    "destination",
+  );
   const metadata = useMemo(
     () =>
       Object.entries(event.metadata).filter(
         ([key]) =>
           key !== "playerName" &&
+          key !== "matchedTransitionSignatureId" &&
           !["originX", "originY", "destinationX", "destinationY"].includes(key),
       ),
     [event.metadata],
@@ -332,7 +345,7 @@ const WorldEventEntry = memo(function WorldEventEntry({
             {exactWorldEventTime(event.timestamp)}
           </Text>
           <Group>
-            {origin && (
+            {origin && originMapSupported && (
               <Button
                 size="xs"
                 variant="light"
@@ -342,7 +355,7 @@ const WorldEventEntry = memo(function WorldEventEntry({
                 View origin on map
               </Button>
             )}
-            {destination && (
+            {destination && destinationMapSupported && (
               <Button
                 size="xs"
                 variant="light"
@@ -363,6 +376,18 @@ const WorldEventEntry = memo(function WorldEventEntry({
               </Button>
             )}
           </Group>
+          {origin && !originMapSupported && (
+            <Text size="xs" c="dimmed">
+              Origin map unavailable ({originSpace ?? "unknown"} coordinate
+              space).
+            </Text>
+          )}
+          {destination && !destinationMapSupported && (
+            <Text size="xs" c="dimmed">
+              Destination map unavailable ({destinationSpace ?? "unknown"}{" "}
+              coordinate space).
+            </Text>
+          )}
           <details className="pc-world-event-details">
             <summary>Evidence and details</summary>
             <Stack gap="xs" mt="xs">

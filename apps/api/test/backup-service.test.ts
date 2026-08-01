@@ -135,6 +135,7 @@ async function fixture() {
         lastSampleAt: "2026-07-23T00:10:00.000Z",
         lastX: 100,
         lastY: 200,
+        coordinateSpaceId: "unknown",
       },
     ],
     [],
@@ -322,7 +323,10 @@ test("creates and restores all PalCenter data", async () => {
     assert.equal(context.history.listEvents("srv_test", 10).length, 1);
     assert.equal(context.telemetry.latestPlayerSnapshots("srv_test").length, 1);
     assert.equal(context.worldEvents.list("srv_test", { limit: 10 }).length, 1);
-    assert.equal(context.worldEvents.activityStates("srv_test").length, 1);
+    assert.equal(
+      context.worldEvents.activityStates("srv_test")[0]?.coordinateSpaceId,
+      "unknown",
+    );
     assert.equal(
       context.automation.getTask("task_test")?.configuration.message,
       "This task must survive restore.",

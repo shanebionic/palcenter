@@ -7,11 +7,13 @@ import {
   relativeWorldEventTime,
   sortWorldEventsNewestFirst,
   worldEventConfidence,
+  worldEventCoordinateSpace,
   worldEventEvidenceText,
   worldEventLabel,
   worldEventLabels,
   worldEventMetadataText,
   worldEventPlayerName,
+  worldEventPositionSupportsPalpagosMap,
   worldEventRelocationPosition,
   worldEventTimeRangeFromNow,
 } from "../lib/world-events";
@@ -98,6 +100,72 @@ test("presents neutral relocation and supported likely-fast-travel classificatio
   );
 });
 
+test("presents instance and map transitions without mapping unsupported spaces", () => {
+  const baseMetadata = {
+    playerName: "Denalb",
+    originCoordinateSpaceId: "palpagos",
+    originX: 0,
+    originY: 0,
+    destinationX: 300_000,
+    destinationY: 0,
+  };
+  const entry = event({
+    type: "player_rapid_relocation",
+    metadata: {
+      ...baseMetadata,
+      classification: "likely_instance_transition",
+      transitionDirection: "entry",
+      destinationCoordinateSpaceId: "instance:fixture-dungeon",
+      matchedTransitionDisplayName: "Fixture Dungeon",
+    },
+  });
+  assert.equal(worldEventLabel(entry), "Entered an instanced area");
+  assert.equal(worldEventCoordinateSpace(entry, "origin"), "palpagos");
+  assert.equal(
+    worldEventCoordinateSpace(entry, "destination"),
+    "instance:fixture-dungeon",
+  );
+  assert.equal(worldEventPositionSupportsPalpagosMap(entry, "origin"), true);
+  assert.equal(
+    worldEventPositionSupportsPalpagosMap(entry, "destination"),
+    false,
+  );
+
+  const exit = event({
+    ...entry,
+    metadata: {
+      ...entry.metadata,
+      transitionDirection: "exit",
+      originCoordinateSpaceId: "instance:fixture-dungeon",
+      destinationCoordinateSpaceId: "palpagos",
+    },
+  });
+  assert.equal(worldEventLabel(exit), "Exited an instanced area");
+
+  const mapEntry = event({
+    ...entry,
+    metadata: {
+      ...entry.metadata,
+      classification: "likely_map_transition",
+      destinationCoordinateSpaceId: "world_tree",
+    },
+  });
+  assert.equal(worldEventLabel(mapEntry), "Changed map area");
+  const mapExit = event({
+    ...mapEntry,
+    metadata: {
+      ...mapEntry.metadata,
+      transitionDirection: "exit",
+      destinationCoordinateSpaceId: "palpagos",
+    },
+  });
+  assert.equal(worldEventLabel(mapExit), "Returned to the overworld");
+  assert.equal(
+    worldEventMetadataText("matchedTransitionDisplayName", "Fixture Dungeon"),
+    "Matched transition: Fixture Dungeon",
+  );
+});
+
 test("maps deterministic confidence values to restrained categories", () => {
   assert.equal(worldEventConfidence(1).label, "Confirmed");
   assert.equal(worldEventConfidence(0.9).label, "High confidence");
@@ -125,6 +193,14 @@ test("renders only evidence supplied by the API", () => {
       value: "300 world units for 10 minutes",
     }),
     "Player remained within 300 world units for 10 minutes.",
+  );
+  assert.equal(
+    worldEventEvidenceText({
+      source: "transition_registry",
+      fact: "transition_signature_matched",
+      value: "Fixture Dungeon",
+    }),
+    "Matched verified transition signature: Fixture Dungeon.",
   );
   assert.equal(
     worldEventEvidenceText({
