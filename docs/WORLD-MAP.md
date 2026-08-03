@@ -1,5 +1,23 @@
 # Palpagos world map
 
+## Living World Map
+
+The map is the quickest way to see what is happening on a server. The large
+Palpagos view shows connected players, while the right side lists everyone who
+is online, selected-player details, and recent joins or departures.
+
+- Select a player to open their details.
+- Use **Follow Player** to keep the selected player centered while they move.
+- Switch between **Palpagos** and **World Tree** manually.
+- Players in a confirmed special area receive a clear off-map view instead of
+  misleading Palpagos coordinates.
+
+PalCenter still works with the official REST API alone. When PalCenter
+Companion supplies server-owned location information, PalCenter uses it
+automatically. The first Companion location release distinguishes the main
+world from an active special-stage instance; it does not guess the type of
+special area.
+
 PalCenter v1.4 includes an interactive Palpagos reference map for current
 connected players. The position pipeline, controls, freshness indicators,
 access controls, and administrator calibration tooling remain independent from

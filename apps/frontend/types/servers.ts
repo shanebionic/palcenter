@@ -69,6 +69,7 @@ export interface PlayerPositionSnapshot {
   guildId: string | null;
   guildName: string | null;
   coordinateSpaceId: string | null;
+  locationAuthority?: "standard" | "companion";
   createdAt: string;
 }
 

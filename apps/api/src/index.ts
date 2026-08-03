@@ -1097,8 +1097,37 @@ const telemetryHistoryQuerySchema = z
 
 app.get("/api/servers/:id/telemetry/players/latest", async (request) => {
   const parameters = serverIdSchema.parse(request.params);
+  const [restPlayers, companionLocations] = await Promise.all([
+    telemetryService.latest(parameters.id),
+    companionDiscoveryService.locations(parameters.id),
+  ]);
+  const locationsByIdentity = new Map(
+    (companionLocations ?? []).flatMap((location) => {
+      const identities = [
+        location.player.userId,
+        location.player.playerId,
+      ].filter((value): value is string => Boolean(value));
+      return identities.map((identity) => [identity, location] as const);
+    }),
+  );
+  const players = restPlayers.map((player) => {
+    const location =
+      locationsByIdentity.get(player.userId) ??
+      (player.playerId ? locationsByIdentity.get(player.playerId) : undefined);
+    return location
+      ? {
+          ...player,
+          x: location.position.x,
+          y: location.position.y,
+          z: location.position.z,
+          coordinateSpaceId: location.coordinateSpaceId,
+          capturedAt: location.capturedAt,
+          locationAuthority: "companion" as const,
+        }
+      : { ...player, locationAuthority: "standard" as const };
+  });
   return {
-    players: await telemetryService.latest(parameters.id),
+    players,
     trustedPositions: await telemetryService.latestTrustedPositions(
       parameters.id,
       "palpagos",
@@ -1106,7 +1135,7 @@ app.get("/api/servers/:id/telemetry/players/latest", async (request) => {
     // REST telemetry does not prove which Palworld map owns a coordinate.
     // A future Companion location collector will set this only when its
     // coordinate-space capability supplied the returned positions.
-    coordinateSpacesAuthoritative: false,
+    coordinateSpacesAuthoritative: companionLocations !== null,
     pollingIntervalSeconds: environment.TELEMETRY_INTERVAL_SECONDS,
     lastCollectedAt: telemetryService.lastCollectedAt(parameters.id),
   };

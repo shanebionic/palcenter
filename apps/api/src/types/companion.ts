@@ -53,3 +53,12 @@ export interface CompanionPlayerActivity {
   durationSeconds: number | null;
   metadata: Record<string, unknown>;
 }
+
+export interface CompanionPlayerLocation {
+  player: { userId: string | null; playerId: string | null; name: string };
+  position: { x: number; y: number; z: number };
+  coordinateSpaceId: "palpagos" | "special_area";
+  stageInstanceId: string | null;
+  capturedAt: string;
+  source: "palworld_server_state";
+}
