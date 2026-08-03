@@ -3,6 +3,7 @@ import type { ConnectionRepository } from "../repositories/connection-repository
 import type {
   CompanionConnectionState,
   CompanionPlayerActivity,
+  CompanionPlayerLocation,
   CompanionStatus,
 } from "../types/companion.js";
 
@@ -61,6 +62,21 @@ const activityRecordSchema = z
 const activityResponseSchema = z
   .object({ activity: z.array(activityRecordSchema).max(200) })
   .passthrough();
+const locationSchema = z.object({
+  player: z.object({
+    userId: z.string().max(200).nullable(),
+    playerId: z.string().max(200).nullable(),
+    name: z.string().max(200),
+  }),
+  position: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+  coordinateSpaceId: z.enum(["palpagos", "special_area"]),
+  stageInstanceId: z.string().max(64).nullable(),
+  capturedAt: z.string().datetime({ offset: true }),
+  source: z.literal("palworld_server_state"),
+});
+const locationsResponseSchema = z.object({
+  locations: z.array(locationSchema).max(200),
+});
 
 class CompanionAuthenticationError extends Error {}
 class CompanionResponseError extends Error {}
@@ -186,6 +202,32 @@ export class CompanionDiscoveryService {
       ).activity;
     } catch {
       return [];
+    }
+  }
+
+  async locations(serverId: string): Promise<CompanionPlayerLocation[] | null> {
+    const status = await this.discover(serverId);
+    if (
+      status.state !== "connected" ||
+      status.capabilities.playerLocations?.supported !== true ||
+      status.capabilities.coordinateSpaces?.supported !== true
+    )
+      return null;
+    const connection = await this.connections.get(serverId);
+    if (!connection?.companionApiToken) return null;
+    try {
+      const origin = this.origin(
+        connection.baseUrl,
+        connection.companionHost,
+        connection.companionPort ?? 8213,
+      );
+      return locationsResponseSchema.parse(
+        await this.read(origin, "locations", {
+          Authorization: `Bearer ${connection.companionApiToken}`,
+        }),
+      ).locations;
+    } catch {
+      return null;
     }
   }
 

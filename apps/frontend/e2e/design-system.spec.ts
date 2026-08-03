@@ -396,11 +396,18 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
     }),
   ).toBeVisible();
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Online now" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "View Denalb on the living world map" }),
+  ).toBeVisible();
   await expect(page.getByText("Off-map players")).toHaveCount(0);
   await page.getByLabel("View Denalb on map").click();
   await expect(
     page.getByRole("button", { name: "Center Player" }),
   ).toBeEnabled();
+  const follow = page.getByRole("button", { name: "Follow Player" });
+  await follow.click();
+  await expect(follow).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("switch", { name: "Show movement trail" }).check();
   await expect(
     page.locator(".pc-world-map-trail-segment").first(),
@@ -409,9 +416,17 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
     page.getByRole("region", { name: "Player activity summary" }),
   ).toContainText("Travel distance");
   await page.screenshot({
-    path: "../../docs/screenshots/rest-map-fallback.png",
+    path: "../../docs/screenshots/living-world-map.png",
     fullPage: true,
   });
+
+  await page.getByLabel("Choose world map").getByText("World Tree").click();
+  await expect(page.getByText("World Tree map coming later")).toBeVisible();
+  await page.screenshot({
+    path: "../../docs/screenshots/living-world-map-world-tree.png",
+    fullPage: true,
+  });
+  await page.getByLabel("Choose world map").getByText("Palpagos").click();
 
   await setPlayerMode(page, "instance");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();

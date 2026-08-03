@@ -639,7 +639,7 @@ test("keeps unsupported coordinate spaces off Palpagos and preserves a trusted i
     ...trusted,
     x: 12_345,
     y: 67_890,
-    coordinateSpaceId: "instance:fixture-dungeon",
+    coordinateSpaceId: "special_area",
   };
   const model = buildLivePlayerMapModel(
     [player],
@@ -744,6 +744,33 @@ test("exact map behavior requires connection, capability support, and authoritat
     }),
     "companion",
   );
+});
+
+test("REST fallback remains mapped when another player has Companion location data", () => {
+  const player = connectedPlayer("uid-rest", "pid-rest", "REST player");
+  const current = {
+    ...snapshot({
+      userId: player.userId,
+      playerId: player.playerId,
+      x: 10,
+      y: 20,
+      coordinateSpaceId: "unknown",
+    }),
+    locationAuthority: "standard" as const,
+  };
+  const model = buildLivePlayerMapModel(
+    [player],
+    [current],
+    palpagosProjection,
+    30,
+    current.capturedAt,
+    new Date(current.capturedAt),
+    [],
+    palpagosMapDefinition,
+    "companion",
+  );
+  assert.equal(model.markers.length, 1);
+  assert.equal(model.unmappedPlayers.length, 0);
 });
 
 test("stale standard positions stay mapped without an off-map duplicate", () => {

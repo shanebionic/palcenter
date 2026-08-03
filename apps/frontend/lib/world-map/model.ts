@@ -244,8 +244,12 @@ export function buildLivePlayerMapModel(
       pollingIntervalSeconds,
       now,
     );
-    const isInstance = coordinateSpaceId.startsWith("instance:");
-    const hasAuthoritativeSpace = locationAuthority === "companion";
+    const isInstance =
+      coordinateSpaceId === "special_area" ||
+      coordinateSpaceId.startsWith("instance:");
+    const hasAuthoritativeSpace = snapshot.locationAuthority
+      ? snapshot.locationAuthority === "companion"
+      : locationAuthority === "companion";
     const spatialState: PlayerSpatialState =
       freshness === "stale"
         ? "stale_position"

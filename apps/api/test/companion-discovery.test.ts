@@ -106,6 +106,46 @@ test("parses bounded authenticated player activity and ignores unknown fields", 
   assert.match(request?.url ?? "", /limit=25/);
   assert.match(request?.url ?? "", /player=user-one/);
 });
+
+test("accepts only explicit Companion coordinate spaces for live locations", async () => {
+  const fetcher: typeof fetch = async (input) => {
+    const key = new URL(String(input)).pathname.split("/").at(-1) ?? "";
+    if (key === "capabilities")
+      return json({
+        categories: {
+          playerLocations: { supported: true, capabilityVersion: "1" },
+          coordinateSpaces: { supported: true, capabilityVersion: "1" },
+        },
+      });
+    if (key === "locations")
+      return json({
+        locations: [
+          {
+            player: {
+              userId: "user-one",
+              playerId: "player-one",
+              name: "Denalb",
+            },
+            position: { x: 10, y: 20, z: 30 },
+            coordinateSpaceId: "special_area",
+            stageInstanceId: "ABC",
+            capturedAt: "2026-08-03T12:00:00.000Z",
+            source: "palworld_server_state",
+          },
+        ],
+      });
+    return json(documents[key]);
+  };
+  const service = new CompanionDiscoveryService(
+    repository(base),
+    100,
+    0,
+    fetcher,
+  );
+  const locations = await service.locations(base.id);
+  assert.equal(locations?.[0]?.coordinateSpaceId, "special_area");
+  assert.equal(locations?.[0]?.position.x, 10);
+});
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
