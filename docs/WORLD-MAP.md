@@ -62,38 +62,29 @@ The last source is community research rather than an official Palworld API
 contract. The constants and orientation must therefore be treated as
 calibration assumptions, not guaranteed game metadata.
 
-## Coordinate-space-aware display
+## Standard and exact locations
 
-PalCenter does not plot coordinates on a map unless the coordinate space and
-projection are known. Each stored telemetry sample is tagged with its current
-coordinate-space ID. The map definition keeps the asset, projection, source,
-version, and supported operations outside the React component.
+PalCenter can show player locations and movement trails using the standard
+Palworld REST API. Valid REST coordinates use the Palpagos projection even when
+older or unverified telemetry does not identify a map area. Stale positions
+remain visible with a clear age label and are never described as live.
 
-- `palpagos` samples can be plotted on the Palpagos map.
-- `world_tree` samples remain in the off-map panel. A verified World Tree map
-  asset and transform are not currently available, so the selector option is
-  disabled and PalCenter does not fake a projection.
-- `instance:*` samples are never drawn as overworld coordinates. When a prior
-  trusted Palpagos sample exists, a portal-style marker shows that last trusted
-  overworld location while the player is inside the instance.
-- `unknown` and unsupported spaces remain off-map and expose raw coordinates
-  only under advanced location details.
+The standard API cannot reliably identify dungeons, boss towers, the World
+Tree, or other secondary areas. Players in those areas may therefore appear in
+the wrong place on Palpagos. PalCenter keeps them visible rather than making the
+normal map unusable.
 
-The off-map panel explains whether a player is in World Tree, inside an
-instance, stale, waiting for telemetry, or in an unsupported space. A stale
-online player is explicitly labeled and includes the exact last-update age;
-marker color is not the only indication.
+A future PalCenter Companion location capability can provide exact map-area
+information. Capability negotiation—not a Companion version number—will enable
+that mode. Once both the capability and authoritative position data are
+available, known unsupported areas remain off-map, known map boundaries split
+movement trails, and Companion information takes precedence over the standard
+fallback.
 
-Reported position means the raw position received from telemetry. Display
-position means a position that belongs to the active verified map projection.
-They may differ for an instance player because the display position is the
-last trusted Palpagos location.
-
-Movement trails are filtered and segmented by coordinate-space ID. Palpagos
-distance totals contain only Palpagos segments. Samples from instances, World
-Tree, unknown spaces, and other maps end the current segment; PalCenter never
-draws or measures a line across that boundary. Existing schema-v8 telemetry is
-migrated as `unknown`, which favors omission over misleading placement.
+The existing coordinate-space fields, map definitions, last trusted Palpagos
+positions, and trail segmentation remain in place for that future support. No
+historical rows are destructively rewritten. Current schema-v9 `unknown`
+samples remain usable at display time.
 
 ## Projection
 

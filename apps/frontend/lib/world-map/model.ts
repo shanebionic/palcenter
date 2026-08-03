@@ -14,6 +14,19 @@ import {
 } from "./map-definitions";
 
 export type TelemetryFreshness = "live" | "delayed" | "stale";
+export type PlayerLocationAuthority = "standard" | "companion";
+
+export function playerLocationAuthority(input: {
+  companionConnected: boolean;
+  coordinateSpaceCapabilitySupported: boolean;
+  telemetryAuthoritative: boolean;
+}): PlayerLocationAuthority {
+  return input.companionConnected &&
+    input.coordinateSpaceCapabilitySupported &&
+    input.telemetryAuthoritative
+    ? "companion"
+    : "standard";
+}
 export type UnmappedPlayerReason =
   | "missing_telemetry"
   | "invalid_coordinates"
@@ -50,6 +63,7 @@ export interface LivePlayerMapMarker {
   displayKind: "live" | "last_trusted_instance";
   reportedWorldX: number;
   reportedWorldY: number;
+  locationAuthority: PlayerLocationAuthority;
 }
 
 export interface UnmappedPlayer {
@@ -193,6 +207,7 @@ export function buildLivePlayerMapModel(
   now = new Date(),
   trustedPositions: PlayerPositionSnapshot[] = [],
   mapDefinition: WorldMapDefinition = palpagosMapDefinition,
+  locationAuthority: PlayerLocationAuthority = "standard",
 ): LivePlayerMapModel {
   const telemetryByUserId = new Map(
     telemetry.map((snapshot) => [snapshot.userId, snapshot]),
@@ -230,6 +245,7 @@ export function buildLivePlayerMapModel(
       now,
     );
     const isInstance = coordinateSpaceId.startsWith("instance:");
+    const hasAuthoritativeSpace = locationAuthority === "companion";
     const spatialState: PlayerSpatialState =
       freshness === "stale"
         ? "stale_position"
@@ -242,7 +258,10 @@ export function buildLivePlayerMapModel(
               : coordinateSpaceId === "unknown"
                 ? "unknown_space"
                 : "unsupported_space";
-    if (coordinateSpaceId !== mapDefinition.coordinateSpaceId) {
+    if (
+      hasAuthoritativeSpace &&
+      coordinateSpaceId !== mapDefinition.coordinateSpaceId
+    ) {
       const lastTrustedPosition = trustedByUserId.get(player.userId) ?? null;
       unmappedPlayers.push({
         userId: player.userId,
@@ -286,6 +305,7 @@ export function buildLivePlayerMapModel(
             coordinateSpaceId,
             spatialState,
             displayKind: "last_trusted_instance",
+            locationAuthority,
           });
         }
       }
@@ -357,18 +377,8 @@ export function buildLivePlayerMapModel(
       coordinateSpaceId,
       spatialState,
       displayKind: "live",
+      locationAuthority,
     });
-    if (freshness === "stale") {
-      unmappedPlayers.push({
-        userId: player.userId,
-        playerName: player.name,
-        reason: "stale_position",
-        snapshot,
-        coordinateSpaceId,
-        spatialState,
-        lastTrustedPosition: snapshot,
-      });
-    }
   }
 
   return { markers, unmappedPlayers };

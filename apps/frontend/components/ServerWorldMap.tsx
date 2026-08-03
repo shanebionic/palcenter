@@ -36,6 +36,7 @@ import { PlayerActivitySummary } from "./PlayerActivitySummary";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
 import {
+  getCompanionStatus,
   getPlayers,
   getPlayerTelemetry,
   getPlayerTrailHistory,
@@ -46,6 +47,7 @@ import {
   formatTelemetryAge,
   mapContentState,
   playerMapDetailValues,
+  playerLocationAuthority,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
   type LivePlayerMapMarker,
@@ -84,10 +86,8 @@ import {
   type ProcessedTrail,
   type TrailHistoryPoint,
 } from "../lib/world-map/trail";
-import {
-  palpagosMapDefinition,
-  worldTreeMapDefinition,
-} from "../lib/world-map/map-definitions";
+import { palpagosMapDefinition } from "../lib/world-map/map-definitions";
+import type { CompanionStatus } from "../types/companion";
 import type {
   ConnectedPlayer,
   LatestPlayerTelemetry,
@@ -104,6 +104,7 @@ interface ServerWorldMapProps {
 const defaultTelemetry: LatestPlayerTelemetry = {
   players: [],
   trustedPositions: [],
+  coordinateSpacesAuthoritative: false,
   pollingIntervalSeconds: 30,
   lastCollectedAt: null,
 };
@@ -129,6 +130,8 @@ export function ServerWorldMap({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playerRequestFailed, setPlayerRequestFailed] = useState(false);
+  const [companionStatus, setCompanionStatus] =
+    useState<CompanionStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [calibrating, setCalibrating] = useState(false);
   const [mapLayer, setMapLayer] = useState<WorldMapLayer>(defaultWorldMapLayer);
@@ -181,10 +184,12 @@ export function ServerWorldMap({
       setError(null);
       setPlayerRequestFailed(false);
 
-      const [playersResult, telemetryResult] = await Promise.allSettled([
-        getPlayers(serverId),
-        getPlayerTelemetry(serverId),
-      ]);
+      const [playersResult, telemetryResult, companionResult] =
+        await Promise.allSettled([
+          getPlayers(serverId),
+          getPlayerTelemetry(serverId),
+          getCompanionStatus(serverId),
+        ]);
 
       if (playersResult.status === "fulfilled") {
         setPlayers(playersResult.value);
@@ -208,6 +213,10 @@ export function ServerWorldMap({
             : "Position telemetry is unavailable.",
         );
       }
+
+      setCompanionStatus(
+        companionResult.status === "fulfilled" ? companionResult.value : null,
+      );
 
       setLoading(false);
       setRefreshing(false);
@@ -297,9 +306,22 @@ export function ServerWorldMap({
         undefined,
         telemetry.trustedPositions,
         palpagosMapDefinition,
+        playerLocationAuthority({
+          companionConnected: companionStatus?.state === "connected",
+          coordinateSpaceCapabilitySupported:
+            companionStatus?.capabilities.coordinateSpaces?.supported === true,
+          telemetryAuthoritative: telemetry.coordinateSpacesAuthoritative,
+        }),
       ),
-    [players, telemetry],
+    [companionStatus, players, telemetry],
   );
+  const exactCompanionLocations =
+    playerLocationAuthority({
+      companionConnected: companionStatus?.state === "connected",
+      coordinateSpaceCapabilitySupported:
+        companionStatus?.capabilities.coordinateSpaces?.supported === true,
+      telemetryAuthoritative: telemetry.coordinateSpacesAuthoritative,
+    }) === "companion";
   const selected =
     model.markers.find((marker) => marker.userId === selectedId) ?? null;
   const selectedTelemetry =
@@ -317,9 +339,10 @@ export function ServerWorldMap({
       trail && trail.pointCount > 0
         ? buildPlayerActivitySummary({
             points: trailHistoryPoints.map((point) =>
-              (point.coordinateSpaceId ?? "palpagos") === "palpagos"
-                ? point
-                : { ...point, x: null, y: null },
+              exactCompanionLocations &&
+              (point.coordinateSpaceId ?? "palpagos") !== "palpagos"
+                ? { ...point, x: null, y: null }
+                : point,
             ),
             selectedRangeMs: trailRangeMilliseconds[trailRange],
             renderedTrailSegments: renderedTrailSegments.length,
@@ -337,6 +360,7 @@ export function ServerWorldMap({
       trail,
       trailHistoryPoints,
       trailRange,
+      exactCompanionLocations,
     ],
   );
   const contentState = mapContentState({
@@ -377,6 +401,7 @@ export function ServerWorldMap({
           processMovementTrail(history.points, palpagosProjection, {
             pollingIntervalSeconds: telemetry.pollingIntervalSeconds,
             coordinateSpaceId: palpagosMapDefinition.coordinateSpaceId,
+            coordinateSpacesAuthoritative: exactCompanionLocations,
           }),
         );
         setTrailTruncated(history.truncated);
@@ -393,7 +418,7 @@ export function ServerWorldMap({
         if (!controller.signal.aborted) setTrailLoading(false);
       }
     },
-    [serverId, telemetry.pollingIntervalSeconds],
+    [exactCompanionLocations, serverId, telemetry.pollingIntervalSeconds],
   );
 
   useEffect(() => {
@@ -617,30 +642,17 @@ export function ServerWorldMap({
         }
       />
 
-      <Group align="flex-end" className="pc-world-map-space-selector">
-        <Select
-          label="Map"
-          description="Only verified coordinate spaces can be plotted."
-          aria-label="World map coordinate space"
-          value={palpagosMapDefinition.coordinateSpaceId}
-          allowDeselect={false}
-          data={[
-            {
-              value: palpagosMapDefinition.coordinateSpaceId,
-              label: palpagosMapDefinition.displayName,
-            },
-            {
-              value: worldTreeMapDefinition.coordinateSpaceId,
-              label: "World Tree (map unavailable)",
-              disabled: true,
-            },
-          ]}
-        />
-        <Text size="sm" c="dimmed">
-          World Tree locations remain off-map until a verified map and
-          projection are available.
-        </Text>
-      </Group>
+      {exactCompanionLocations ? (
+        <Alert color="cyan" title="Exact location from Companion">
+          PalCenter is using exact map information supplied by PalCenter
+          Companion.
+        </Alert>
+      ) : (
+        <Alert color="blue" title="Special areas may not appear correctly">
+          Without PalCenter Companion location support, players inside dungeons,
+          towers, or the World Tree may appear in the wrong place on the map.
+        </Alert>
+      )}
 
       {focusedEventId && (
         <Alert color="cyan" title="Event location centered">
@@ -1143,7 +1155,7 @@ function OffMapPlayersPanel({
       case "stale_position":
         return "Position stale";
       case "unknown_space":
-        return "Coordinate space unknown";
+        return "Map area unavailable";
       case "unsupported_space":
         return "Unsupported location";
       case "missing_telemetry":
@@ -1160,8 +1172,8 @@ function OffMapPlayersPanel({
         <div>
           <Title order={4}>Off-map players</Title>
           <Text size="sm" c="dimmed">
-            These players are not plotted because their current position is
-            stale or does not belong to the active Palpagos projection.
+            These players are not plotted because PalCenter does not have a
+            usable position for the active map.
           </Text>
         </div>
         {players.map((player) => (

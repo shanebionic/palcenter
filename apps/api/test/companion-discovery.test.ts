@@ -42,6 +42,7 @@ const documents: Record<string, unknown> = {
     categories: {
       health: { supported: true, capabilityVersion: "1" },
       playerActivity: { supported: true, capabilityVersion: "1" },
+      coordinateSpaces: { supported: false, capabilityVersion: "1" },
       futureCapability: {
         supported: true,
         capabilityVersion: "7",
@@ -132,6 +133,7 @@ test("derives defaults, sends bearer auth, and preserves unknown capabilities", 
   assert.equal(requests[0]?.authorization, null);
   assert.equal(requests[1]?.authorization, "Bearer secret");
   assert.equal(result.capabilities.futureCapability?.capabilityVersion, "7");
+  assert.equal(result.capabilities.coordinateSpaces?.supported, false);
 });
 
 test("honors explicit host and port overrides", async () => {

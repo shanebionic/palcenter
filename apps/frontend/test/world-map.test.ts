@@ -15,6 +15,7 @@ import {
   mapContentState,
   mapAccessForRole,
   playerMapDetailValues,
+  playerLocationAuthority,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
 } from "../lib/world-map/model";
@@ -592,7 +593,7 @@ test("maps only currently connected players with valid telemetry by userId", () 
   assert.equal(model.markers[0]?.freshness, "live");
   assert.deepEqual(
     model.unmappedPlayers.map((player) => player.reason),
-    ["stale_position", "invalid_coordinates", "missing_telemetry"],
+    ["invalid_coordinates", "missing_telemetry"],
   );
   assert.equal(JSON.stringify(model).includes("192.0.2.10"), false);
 });
@@ -648,6 +649,8 @@ test("keeps unsupported coordinate spaces off Palpagos and preserves a trusted i
     instance.capturedAt,
     new Date(instance.capturedAt),
     [trusted],
+    palpagosMapDefinition,
+    "companion",
   );
   assert.equal(model.markers.length, 1);
   assert.equal(model.markers[0]?.displayKind, "last_trusted_instance");
@@ -656,7 +659,7 @@ test("keeps unsupported coordinate spaces off Palpagos and preserves a trusted i
   assert.equal(model.unmappedPlayers[0]?.reason, "instanced_area");
 });
 
-test("World Tree and unknown positions are excluded from the Palpagos projection", () => {
+test("authoritative World Tree and unknown positions are excluded from Palpagos", () => {
   for (const coordinateSpaceId of ["world_tree", "unknown", "tower:future"]) {
     const player = connectedPlayer("uid-space", "pid-space", "Explorer");
     const current = snapshot({
@@ -673,10 +676,98 @@ test("World Tree and unknown positions are excluded from the Palpagos projection
       30,
       current.capturedAt,
       new Date(current.capturedAt),
+      [],
+      palpagosMapDefinition,
+      "companion",
     );
     assert.equal(model.markers.length, 0);
     assert.equal(model.unmappedPlayers.length, 1);
   }
+});
+
+test("standard REST positions remain visible when their coordinate space is unknown, null, or unverified", () => {
+  for (const coordinateSpaceId of ["unknown", null, "world_tree"]) {
+    const player = connectedPlayer("uid-rest", "pid-rest", "Explorer");
+    const current = {
+      ...snapshot({
+        userId: player.userId,
+        playerId: player.playerId,
+        x: 10,
+        y: 20,
+      }),
+      coordinateSpaceId,
+    };
+    const model = buildLivePlayerMapModel(
+      [player],
+      [current],
+      palpagosProjection,
+      30,
+      current.capturedAt,
+      new Date(current.capturedAt),
+    );
+    assert.equal(model.markers.length, 1);
+    assert.equal(model.markers[0]?.locationAuthority, "standard");
+    assert.equal(model.unmappedPlayers.length, 0);
+  }
+});
+
+test("exact map behavior requires connection, capability support, and authoritative telemetry", () => {
+  assert.equal(
+    playerLocationAuthority({
+      companionConnected: false,
+      coordinateSpaceCapabilitySupported: false,
+      telemetryAuthoritative: false,
+    }),
+    "standard",
+  );
+  assert.equal(
+    playerLocationAuthority({
+      companionConnected: true,
+      coordinateSpaceCapabilitySupported: false,
+      telemetryAuthoritative: true,
+    }),
+    "standard",
+  );
+  assert.equal(
+    playerLocationAuthority({
+      companionConnected: true,
+      coordinateSpaceCapabilitySupported: true,
+      telemetryAuthoritative: false,
+    }),
+    "standard",
+  );
+  assert.equal(
+    playerLocationAuthority({
+      companionConnected: true,
+      coordinateSpaceCapabilitySupported: true,
+      telemetryAuthoritative: true,
+    }),
+    "companion",
+  );
+});
+
+test("stale standard positions stay mapped without an off-map duplicate", () => {
+  const player = connectedPlayer("uid-stale", "pid-stale", "Explorer");
+  const current = {
+    ...snapshot({
+      userId: player.userId,
+      playerId: player.playerId,
+      x: 10,
+      y: 20,
+      coordinateSpaceId: "unknown",
+    }),
+    capturedAt: "2026-07-28T11:00:00.000Z",
+  };
+  const model = buildLivePlayerMapModel(
+    [player],
+    [current],
+    palpagosProjection,
+    30,
+    current.capturedAt,
+    new Date("2026-07-28T12:00:00.000Z"),
+  );
+  assert.equal(model.markers[0]?.freshness, "stale");
+  assert.equal(model.unmappedPlayers.length, 0);
 });
 
 test("segments and totals include only the selected coordinate space", () => {
@@ -714,12 +805,52 @@ test("segments and totals include only the selected coordinate space", () => {
       },
     ],
     palpagosProjection,
-    { pollingIntervalSeconds: 30, coordinateSpaceId: "palpagos" },
+    {
+      pollingIntervalSeconds: 30,
+      coordinateSpaceId: "palpagos",
+      coordinateSpacesAuthoritative: true,
+    },
   );
   assert.equal(trail.coordinateSpaceId, "palpagos");
   assert.equal(trail.segments.length, 2);
   assert.equal(trail.exclusions.coordinateSpace, 1);
   assert.equal(trail.approximateDistance, 2_000);
+});
+
+test("standard REST trails retain unknown history while authoritative trails split spaces", () => {
+  const points = [
+    {
+      capturedAt: "2026-07-28T12:00:00Z",
+      x: 0,
+      y: 0,
+      coordinateSpaceId: "unknown",
+    },
+    {
+      capturedAt: "2026-07-28T12:01:00Z",
+      x: 1_000,
+      y: 0,
+      coordinateSpaceId: "unknown",
+    },
+    {
+      capturedAt: "2026-07-28T12:02:00Z",
+      x: 2_000,
+      y: 0,
+      coordinateSpaceId: "palpagos",
+    },
+  ];
+  const standard = processMovementTrail(points, palpagosProjection, {
+    pollingIntervalSeconds: 30,
+    coordinateSpaceId: "palpagos",
+  });
+  const exact = processMovementTrail(points, palpagosProjection, {
+    pollingIntervalSeconds: 30,
+    coordinateSpaceId: "palpagos",
+    coordinateSpacesAuthoritative: true,
+  });
+  assert.equal(standard.pointCount, 3);
+  assert.equal(standard.approximateDistance, 2_000);
+  assert.equal(exact.pointCount, 1);
+  assert.equal(exact.exclusions.coordinateSpace, 2);
 });
 
 test("marks out-of-bounds current players as unavailable", () => {

@@ -8,14 +8,14 @@ export interface TrailHistoryPoint {
   capturedAt: string;
   x: number | null;
   y: number | null;
-  coordinateSpaceId?: string;
+  coordinateSpaceId?: string | null;
 }
 
 export interface ProjectedTrailPoint extends NormalizedMapPosition {
   capturedAt: string;
   worldX: number;
   worldY: number;
-  coordinateSpaceId?: string;
+  coordinateSpaceId?: string | null;
 }
 
 export interface TrailExclusions {
@@ -42,6 +42,7 @@ export interface TrailProcessingOptions {
   teleportDistance?: number;
   minimumNormalizedMovement?: number;
   coordinateSpaceId?: string;
+  coordinateSpacesAuthoritative?: boolean;
 }
 
 export interface TrailSegmentStyle {
@@ -100,7 +101,10 @@ export function processMovementTrail(
   };
 
   for (const point of sorted) {
-    if ((point.coordinateSpaceId ?? coordinateSpaceId) !== coordinateSpaceId) {
+    if (
+      options.coordinateSpacesAuthoritative === true &&
+      (point.coordinateSpaceId ?? coordinateSpaceId) !== coordinateSpaceId
+    ) {
       exclusions.coordinateSpace = (exclusions.coordinateSpace ?? 0) + 1;
       finishSegment();
       previous = null;
