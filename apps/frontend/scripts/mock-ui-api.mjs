@@ -34,6 +34,12 @@ const connection = {
   baseUrl: "http://palworld.example:8212",
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: now,
+  companion: {
+    enabled: true,
+    host: "companion.internal",
+    port: 18213,
+    tokenConfigured: true,
+  },
 };
 
 const connectedPlayers = [
@@ -265,29 +271,21 @@ export function startMockUiApi(port = 3198) {
       });
     }
     if (url.pathname.startsWith(`/api/servers/${connection.id}/companion`)) {
-      if (companionMode === "disconnected") {
+      if (companionMode !== "connected") {
         return json(response, {
-          status: "unavailable",
+          state:
+            companionMode === "disconnected" ? "unreachable" : companionMode,
           checkedAt: now,
-          reason: "not_installed",
           health: null,
           version: null,
           capabilities: {},
         });
       }
       return json(response, {
-        status: "connected",
+        state: "connected",
         checkedAt: now,
         reason: null,
-        health: {
-          status: "healthy",
-          applicationVersion: "0.1.0",
-          apiVersion: "v1",
-          startedAt: now,
-          uptimeSeconds: 7200,
-          instanceId: "fixture",
-          checks: { configuration: "healthy", httpListener: "healthy" },
-        },
+        health: "healthy",
         version: {
           applicationVersion: "0.1.0",
           apiVersion: "v1",
@@ -298,6 +296,12 @@ export function startMockUiApi(port = 3198) {
           palworldVersion: "v1.0.2.101103",
           ue4ssVersion: null,
           compatibility: {},
+          runtime: {
+            startedAt: now,
+            uptimeSeconds: 7200,
+            instanceId: "fixture",
+            checks: { configuration: "healthy", httpListener: "healthy" },
+          },
         },
         capabilities: {
           health: { supported: true, capabilityVersion: "1" },

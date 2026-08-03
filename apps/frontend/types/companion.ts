@@ -1,21 +1,19 @@
+export type CompanionConnectionState =
+  | "connected"
+  | "disabled"
+  | "unreachable"
+  | "authentication_required"
+  | "authentication_failed"
+  | "malformed_response"
+  | "incompatible_contract";
 export interface CompanionCapability {
   supported: boolean;
   capabilityVersion: string;
 }
-
 export interface CompanionStatus {
-  status: "connected" | "unavailable";
+  state: CompanionConnectionState;
   checkedAt: string;
-  reason: "not_installed" | "timeout" | "invalid_response" | null;
-  health: {
-    status: string;
-    applicationVersion: string;
-    apiVersion: string;
-    startedAt: string;
-    uptimeSeconds: number;
-    instanceId: string | null;
-    checks: Record<string, string>;
-  } | null;
+  health: "healthy" | null;
   version: {
     applicationVersion: string;
     apiVersion: string;
@@ -26,6 +24,12 @@ export interface CompanionStatus {
     palworldVersion: string | null;
     ue4ssVersion: string | null;
     compatibility: Record<string, string>;
+    runtime: {
+      startedAt: string;
+      uptimeSeconds: number;
+      instanceId: string | null;
+      checks: Record<string, string>;
+    } | null;
   } | null;
   capabilities: Record<string, CompanionCapability>;
 }

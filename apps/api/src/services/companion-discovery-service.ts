@@ -1,12 +1,13 @@
 import { z } from "zod";
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
-import type { CompanionStatus } from "../types/companion.js";
+import type {
+  CompanionConnectionState,
+  CompanionStatus,
+} from "../types/companion.js";
 
-const healthSchema = z
+const healthSchema = z.object({ status: z.literal("healthy") }).passthrough();
+const runtimeSchema = z
   .object({
-    status: z.string(),
-    applicationVersion: z.string(),
-    apiVersion: z.string(),
     startedAt: z.string(),
     uptimeSeconds: z.number().nonnegative(),
     instanceId: z.string().nullable().optional(),
@@ -24,23 +25,24 @@ const versionSchema = z
     palworldVersion: z.string().nullable().optional(),
     ue4ssVersion: z.string().nullable().optional(),
     compatibility: z.record(z.string(), z.string()).optional(),
+    runtime: runtimeSchema.nullable().optional(),
   })
   .passthrough();
 const capabilitySchema = z
   .object({ supported: z.boolean(), capabilityVersion: z.string() })
   .passthrough();
 const capabilitiesSchema = z
-  .object({
-    categories: z.record(z.string(), capabilitySchema),
-  })
+  .object({ categories: z.record(z.string(), capabilitySchema) })
   .passthrough();
+
+class CompanionAuthenticationError extends Error {}
+class CompanionResponseError extends Error {}
 
 export class CompanionDiscoveryService {
   private readonly cache = new Map<
     string,
     { expiresAt: number; value: CompanionStatus }
   >();
-
   constructor(
     private readonly connections: ConnectionRepository,
     private readonly timeoutMs = 2_500,
@@ -53,23 +55,48 @@ export class CompanionDiscoveryService {
     if (!refresh && cached && cached.expiresAt > Date.now())
       return cached.value;
     const connection = await this.connections.get(serverId);
-    if (!connection) return this.unavailable("not_installed");
-    const origin = new URL(connection.baseUrl);
-    origin.port = "8213";
-    origin.pathname = "/palcenter/v1/";
-    origin.search = "";
+    if (!connection || connection.companionEnabled === false)
+      return this.result("disabled");
     const checkedAt = new Date().toISOString();
     try {
-      const [health, version, capabilities] = await this.readDocuments(origin);
-      const value: CompanionStatus = {
-        status: "connected",
+      const origin = this.origin(
+        connection.baseUrl,
+        connection.companionHost,
+        connection.companionPort ?? 8213,
+      );
+      healthSchema.parse(await this.read(origin, "health"));
+      if (!connection.companionApiToken)
+        return this.store(
+          serverId,
+          this.result("authentication_required", checkedAt, "healthy"),
+        );
+      const headers = {
+        Authorization: `Bearer ${connection.companionApiToken}`,
+      };
+      const version = versionSchema.parse(
+        await this.read(origin, "version", headers),
+      );
+      if (version.apiVersion !== "v1")
+        return this.store(
+          serverId,
+          this.result("incompatible_contract", checkedAt, "healthy"),
+        );
+      const rawCapabilities = await this.read(origin, "capabilities", headers);
+      const modern = capabilitiesSchema.safeParse(rawCapabilities);
+      const categories = modern.success
+        ? modern.data.categories
+        : Object.fromEntries(
+            Object.entries(
+              z.record(z.string(), z.boolean()).parse(rawCapabilities),
+            ).map(([name, supported]) => [
+              name,
+              { supported, capabilityVersion: "legacy" },
+            ]),
+          );
+      return this.store(serverId, {
+        state: "connected",
         checkedAt,
-        reason: null,
-        health: {
-          ...health,
-          instanceId: health.instanceId ?? null,
-          checks: health.checks ?? {},
-        },
+        health: "healthy",
         version: {
           ...version,
           buildCommit: version.buildCommit ?? null,
@@ -79,74 +106,77 @@ export class CompanionDiscoveryService {
           palworldVersion: version.palworldVersion ?? null,
           ue4ssVersion: version.ue4ssVersion ?? null,
           compatibility: version.compatibility ?? {},
+          runtime: version.runtime
+            ? {
+                ...version.runtime,
+                instanceId: version.runtime.instanceId ?? null,
+                checks: version.runtime.checks ?? {},
+              }
+            : null,
         },
-        capabilities: capabilities.categories,
-      };
-      this.cache.set(serverId, { expiresAt: Date.now() + this.cacheMs, value });
-      return value;
+        capabilities: categories,
+      });
     } catch (error) {
-      const reason =
-        error instanceof DOMException && error.name === "TimeoutError"
-          ? "timeout"
-          : error instanceof SyntaxError || error instanceof z.ZodError
-            ? "invalid_response"
-            : "not_installed";
-      const value = this.unavailable(reason, checkedAt);
-      this.cache.set(serverId, { expiresAt: Date.now() + this.cacheMs, value });
-      return value;
+      const state: CompanionConnectionState =
+        error instanceof CompanionAuthenticationError
+          ? "authentication_failed"
+          : error instanceof CompanionResponseError ||
+              error instanceof SyntaxError ||
+              error instanceof z.ZodError
+            ? "malformed_response"
+            : "unreachable";
+      return this.store(serverId, this.result(state, checkedAt));
     }
   }
 
-  private async readDocuments(origin: URL) {
-    const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(new DOMException("Timed out", "TimeoutError")),
-      this.timeoutMs,
-    );
-    try {
-      const read = async (path: string): Promise<unknown> => {
-        const response = await this.fetcher(new URL(path, origin), {
-          signal: controller.signal,
-          headers: { accept: "application/json" },
-        });
-        if (!response.ok)
-          throw new Error(`Companion returned HTTP ${response.status}`);
-        return response.json() as Promise<unknown>;
-      };
-      const health = healthSchema.parse(await read("health"));
-      const version = versionSchema.parse(await read("version"));
-      const rawCapabilities = await read("capabilities");
-      const modern = capabilitiesSchema.safeParse(rawCapabilities);
-      if (modern.success) return [health, version, modern.data] as const;
-      const legacy = z.record(z.string(), z.boolean()).parse(rawCapabilities);
-      return [
-        health,
-        version,
-        {
-          categories: Object.fromEntries(
-            Object.entries(legacy).map(([name, supported]) => [
-              name,
-              { supported, capabilityVersion: "legacy" },
-            ]),
-          ),
-        },
-      ] as const;
-    } finally {
-      clearTimeout(timeout);
-    }
+  private origin(
+    baseUrl: string,
+    host: string | null | undefined,
+    port: number,
+  ): URL {
+    const rest = new URL(baseUrl);
+    const origin = host?.includes("://") ? new URL(host) : new URL(rest.origin);
+    if (host && !host.includes("://")) origin.hostname = host;
+    origin.port = String(port);
+    origin.pathname = "/palcenter/v1/";
+    origin.search = "";
+    origin.hash = "";
+    return origin;
   }
 
-  private unavailable(
-    reason: CompanionStatus["reason"],
+  private async read(
+    origin: URL,
+    path: string,
+    headers: Record<string, string> = {},
+  ): Promise<unknown> {
+    const response = await this.fetcher(new URL(path, origin), {
+      headers: { accept: "application/json", ...headers },
+      redirect: "manual",
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+    if (response.status === 401) throw new CompanionAuthenticationError();
+    if (!response.ok || response.type === "opaqueredirect")
+      throw new Error("Companion unavailable");
+    if (
+      !(response.headers.get("content-type") ?? "")
+        .toLowerCase()
+        .includes("application/json")
+    )
+      throw new CompanionResponseError();
+    const text = await response.text();
+    if (text.length > 65_536) throw new CompanionResponseError();
+    return JSON.parse(text) as unknown;
+  }
+
+  private result(
+    state: CompanionConnectionState,
     checkedAt = new Date().toISOString(),
+    health: "healthy" | null = null,
   ): CompanionStatus {
-    return {
-      status: "unavailable",
-      checkedAt,
-      reason,
-      health: null,
-      version: null,
-      capabilities: {},
-    };
+    return { state, checkedAt, health, version: null, capabilities: {} };
+  }
+  private store(serverId: string, value: CompanionStatus): CompanionStatus {
+    this.cache.set(serverId, { expiresAt: Date.now() + this.cacheMs, value });
+    return value;
   }
 }

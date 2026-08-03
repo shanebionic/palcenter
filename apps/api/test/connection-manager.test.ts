@@ -14,6 +14,10 @@ const original: StoredConnection = {
   name: "Original",
   baseUrl: "http://old.example:8212",
   adminPassword: "original-secret",
+  companionEnabled: true,
+  companionHost: "companion.internal",
+  companionPort: 18213,
+  companionApiToken: "companion-secret",
   createdAt: "2026-07-28T00:00:00.000Z",
   updatedAt: "2026-07-28T00:00:00.000Z",
 };
@@ -83,6 +87,8 @@ test("connection updates preserve identity, credentials, and server-scoped data"
     assert.equal(publicConnection.baseUrl, "https://new.example:9443");
     assert.equal(stored?.createdAt, original.createdAt);
     assert.equal(stored?.adminPassword, original.adminPassword);
+    assert.equal(stored?.companionApiToken, original.companionApiToken);
+    assert.equal(publicConnection.companion.tokenConfigured, true);
     assert.equal(history.listMetrics(original.id, 10).length, 1);
     assert.equal(history.listEvents(original.id, 10).length, 1);
     assert.equal(history.activePlayers(original.id).length, 1);
@@ -92,6 +98,7 @@ test("connection updates preserve identity, credentials, and server-scoped data"
       name: "Updated",
       baseUrl: "https://new.example:9443",
       adminPassword: "replacement-secret",
+      companionApiToken: "replacement-companion-secret",
     });
     assert.equal(
       (await connections.get(original.id))?.adminPassword,
@@ -102,6 +109,11 @@ test("connection updates preserve identity, credentials, and server-scoped data"
       false,
       "Public responses must not expose the stored credential.",
     );
+    assert.equal(
+      (await connections.get(original.id))?.companionApiToken,
+      "replacement-companion-secret",
+    );
+    assert.equal("companionApiToken" in publicConnection, false);
   } finally {
     automation.close();
     history.close();

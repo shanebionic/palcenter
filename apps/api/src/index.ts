@@ -192,6 +192,7 @@ const app = Fastify({
         "req.headers.cookie",
         "res.headers.set-cookie",
         "req.body.adminPassword",
+        "req.body.companionApiToken",
         "req.body.password",
         "req.body.currentPassword",
         "req.body.newPassword",
@@ -844,6 +845,10 @@ const connectionInputSchema = z
     name: z.string().trim().min(1).max(80),
     baseUrl: baseHttpUrlSchema,
     adminPassword: z.string().min(1).max(1_024),
+    companionEnabled: z.boolean().optional(),
+    companionHost: z.string().trim().min(1).max(253).nullable().optional(),
+    companionPort: z.number().int().min(1).max(65535).optional(),
+    companionApiToken: z.string().max(512).optional(),
   })
   .strict();
 const connectionUpdateSchema = connectionInputSchema.extend({

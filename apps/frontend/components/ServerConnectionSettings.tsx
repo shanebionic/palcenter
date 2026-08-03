@@ -2,9 +2,12 @@
 
 import {
   Alert,
+  Accordion,
   Button,
   Group,
   PasswordInput,
+  NumberInput,
+  Switch,
   SimpleGrid,
   Stack,
   Text,
@@ -16,6 +19,7 @@ import { useState } from "react";
 import {
   testServerUpdate,
   updateServer,
+  refreshCompanionStatus,
   type ConnectionTestResult,
   type ServerConnectionUpdate,
 } from "../lib/api";
@@ -42,6 +46,10 @@ export function ServerConnectionSettings({
       name: connection.name,
       baseUrl: connection.baseUrl,
       adminPassword: "",
+      companionEnabled: connection.companion.enabled,
+      companionHost: connection.companion.host,
+      companionPort: connection.companion.port,
+      companionApiToken: "",
     },
     validate: {
       name: (value) => (value.trim() ? null : "Display name is required."),
@@ -80,6 +88,7 @@ export function ServerConnectionSettings({
         baseUrl: form.values.baseUrl,
         adminPassword: form.values.adminPassword ?? "",
       });
+      await refreshCompanionStatus(connection.id);
       setTestResult(result);
       setTestedKey(connectionKey(form.values));
     } catch (error) {
@@ -99,6 +108,7 @@ export function ServerConnectionSettings({
     setSaving(true);
     try {
       await updateServer(connection.id, serverConnectionPayload(values));
+      await refreshCompanionStatus(connection.id);
       notifications.show({
         color: "teal",
         title: "Connection updated",
@@ -146,6 +156,49 @@ export function ServerConnectionSettings({
               description="Leave blank to keep the currently stored password."
               {...form.getInputProps("adminPassword")}
             />
+            <Accordion variant="separated">
+              <Accordion.Item value="companion">
+                <Accordion.Control>
+                  Advanced Companion Connection
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <Stack>
+                    <Switch
+                      label="Enable Companion discovery"
+                      {...form.getInputProps("companionEnabled", {
+                        type: "checkbox",
+                      })}
+                    />
+                    <TextInput
+                      label="Companion host"
+                      description="Leave blank to inherit the Palworld REST host."
+                      placeholder="palworld-server"
+                      {...form.getInputProps("companionHost")}
+                    />
+                    <NumberInput
+                      label="Companion port"
+                      min={1}
+                      max={65535}
+                      {...form.getInputProps("companionPort")}
+                    />
+                    <PasswordInput
+                      label="Companion API token"
+                      description={
+                        connection.companion.tokenConfigured
+                          ? "A token is configured. Leave blank to keep it."
+                          : "Paste the token from PalCenterCompanion.token."
+                      }
+                      placeholder={
+                        connection.companion.tokenConfigured
+                          ? "Configured"
+                          : "Not configured"
+                      }
+                      {...form.getInputProps("companionApiToken")}
+                    />
+                  </Stack>
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
 
             {testError && (
               <Alert color="orange" title="Connection test failed">

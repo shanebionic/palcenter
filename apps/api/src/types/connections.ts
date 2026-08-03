@@ -3,6 +3,10 @@ export interface StoredConnection {
   name: string;
   baseUrl: string;
   adminPassword: string;
+  companionEnabled?: boolean;
+  companionHost?: string | null;
+  companionPort?: number;
+  companionApiToken?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -13,6 +17,12 @@ export interface PublicConnection {
   baseUrl: string;
   createdAt: string;
   updatedAt: string;
+  companion: {
+    enabled: boolean;
+    host: string | null;
+    port: number;
+    tokenConfigured: boolean;
+  };
 }
 
 export interface ConnectionFile {

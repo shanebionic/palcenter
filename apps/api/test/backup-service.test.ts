@@ -32,6 +32,10 @@ async function fixture() {
           name: "Test Server",
           baseUrl: "http://127.0.0.1:8212",
           adminPassword: "secret-password",
+          companionEnabled: true,
+          companionHost: "companion.internal",
+          companionPort: 8213,
+          companionApiToken: "companion-secret",
           createdAt: "2026-07-23T00:00:00.000Z",
           updatedAt: "2026-07-23T00:00:00.000Z",
         },
@@ -309,7 +313,7 @@ test("creates and restores all PalCenter data", async () => {
 
     const servers = JSON.parse(
       await fs.readFile(path.join(context.directory, "servers.json"), "utf8"),
-    ) as { servers: unknown[] };
+    ) as { servers: Array<{ companionApiToken?: string }> };
     const notifications = JSON.parse(
       await fs.readFile(
         path.join(context.directory, "notifications.json"),
@@ -318,6 +322,7 @@ test("creates and restores all PalCenter data", async () => {
     ) as { providers: unknown[] };
 
     assert.equal(servers.servers.length, 1);
+    assert.equal(servers.servers[0]?.companionApiToken, "companion-secret");
     assert.equal(notifications.providers.length, 1);
     assert.equal(context.history.listMetrics("srv_test", 10).length, 1);
     assert.equal(context.history.listEvents("srv_test", 10).length, 1);

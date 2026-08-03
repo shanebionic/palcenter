@@ -151,6 +151,12 @@ export class ServerStatusService {
       baseUrl: connection.baseUrl,
       createdAt: connection.createdAt,
       updatedAt: connection.updatedAt,
+      companion: {
+        enabled: connection.companionEnabled ?? true,
+        host: connection.companionHost ?? null,
+        port: connection.companionPort ?? 8213,
+        tokenConfigured: (connection.companionApiToken?.length ?? 0) > 0,
+      },
     };
   }
 }

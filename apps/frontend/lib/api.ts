@@ -77,12 +77,20 @@ export interface ServerConnectionInput {
   name: string;
   baseUrl: string;
   adminPassword: string;
+  companionEnabled?: boolean;
+  companionHost?: string | null;
+  companionPort?: number;
+  companionApiToken?: string;
 }
 
 export interface ServerConnectionUpdate {
   name: string;
   baseUrl: string;
   adminPassword?: string;
+  companionEnabled?: boolean;
+  companionHost?: string | null;
+  companionPort?: number;
+  companionApiToken?: string;
 }
 
 export interface ServerTestInput {

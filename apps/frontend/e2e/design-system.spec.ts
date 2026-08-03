@@ -32,7 +32,11 @@ async function setSessionRole(
 
 async function setCompanionMode(
   page: Page,
-  mode: "connected" | "disconnected",
+  mode:
+    | "connected"
+    | "disconnected"
+    | "authentication_required"
+    | "authentication_failed",
 ) {
   const response = await page.request.get(
     `http://127.0.0.1:3198/__test/companion?mode=${mode}`,
@@ -83,7 +87,19 @@ test("Companion discovery presents connected, disconnected, refresh, and respons
   const companion = panelWithHeading(page, "PalCenter Companion");
   await expect(companion).toContainText("Healthy");
   await expect(companion).toContainText("Version: 0.1.0");
+  await expect(companion).toContainText("Supported capabilities: 2");
+  await companion.getByRole("button", { name: "Advanced details" }).click();
   await expect(companion).toContainText("Capabilities: health, version");
+  const settings = page.getByRole("button", {
+    name: "Advanced Companion Connection",
+  });
+  await settings.click();
+  await expect(page.getByLabel("Companion host")).toHaveValue(
+    "companion.internal",
+  );
+  await expect(page.getByLabel("Companion port")).toHaveValue("18213");
+  await expect(page.getByLabel("Companion API token")).toHaveValue("");
+  await expect(page.getByText(/A token is configured/)).toBeVisible();
   await page.screenshot({
     path: "../../docs/screenshots/companion-connected.png",
     fullPage: true,
@@ -91,7 +107,14 @@ test("Companion discovery presents connected, disconnected, refresh, and respons
 
   await setCompanionMode(page, "disconnected");
   await companion.getByRole("button", { name: "Refresh" }).click();
-  await expect(companion).toContainText("Not installed or unavailable");
+  await expect(companion).toContainText("Unreachable");
+
+  await setCompanionMode(page, "authentication_required");
+  await companion.getByRole("button", { name: "Refresh" }).click();
+  await expect(companion).toContainText("Authentication required");
+  await setCompanionMode(page, "authentication_failed");
+  await companion.getByRole("button", { name: "Refresh" }).click();
+  await expect(companion).toContainText("Authentication failed");
   await page.screenshot({
     path: "../../docs/screenshots/companion-disconnected.png",
     fullPage: true,
