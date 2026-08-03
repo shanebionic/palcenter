@@ -6,10 +6,23 @@ For each configured server, PalCenter inherits the REST API host and uses port `
 
 The Companion creates `PalCenterCompanion/config/PalCenterCompanion.token` on first startup. Copy that value into PalCenter's masked **Companion API token** field. It is stored with the existing server credentials, included in authenticated backups, never returned by the API, and preserved when the edit field is left blank.
 
-PalCenter probes the public health endpoint first. When a token is configured, it sends `Authorization: Bearer <token>` only to the version and capability endpoints. Results are cached for 30 seconds only when requested; there is no background Companion polling loop. **Refresh** bypasses the cache.
+PalCenter probes the public health endpoint first. When a token is configured, it sends `Authorization: Bearer <token>` to the version, capability, and bounded Activity endpoints. Discovery results are cached for 30 seconds when requested. **Refresh** bypasses the discovery cache.
 
 The Connection Settings page shows whether the Companion is connected, its reported versions and build, uptime, health, and supported capabilities. Timeouts, invalid JSON, older flat capability documents, future fields, and unknown capabilities do not interrupt normal server management.
 
 Capabilities—not application version numbers—control future feature availability. Capability identifiers are permanent and additive. PalCenter ignores unknown metadata and treats missing or malformed entries as unsupported.
+
+When `playerActivity` is supported, PalCenter uses the Companion’s exact join,
+leave, and online-session records in the existing **Activity** timeline. A
+completed session includes how long the player was online. Stable Companion
+event IDs prevent duplicate history. If a matching standard `/players`
+observation exists within 60 seconds, the exact Companion record wins. If the
+Companion is missing, disconnected, or does not support this capability,
+PalCenter continues showing activity inferred from standard server information.
+The Activity page identifies this fallback in plain language.
+
+The Companion Activity buffer is bounded and memory-only. Restarting PalServer
+starts a new buffer; PalCenter keeps history it already received and continues
+from new records without trying to reconstruct the gap.
 
 If PalCenter and Palworld run in separate containers, bind the Companion to the Palworld container's private interface, publish/map port `8213` when needed, and use the container hostname in PalCenter. For remote hosts, allow the configured private address through the firewall. Bearer tokens do not encrypt traffic: use trusted private networking or a TLS reverse proxy and do not expose Companion directly to the public Internet.

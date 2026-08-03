@@ -41,6 +41,7 @@ const documents: Record<string, unknown> = {
     schemaVersion: "1",
     categories: {
       health: { supported: true, capabilityVersion: "1" },
+      playerActivity: { supported: true, capabilityVersion: "1" },
       futureCapability: {
         supported: true,
         capabilityVersion: "7",
@@ -49,6 +50,61 @@ const documents: Record<string, unknown> = {
     },
   },
 };
+
+test("parses bounded authenticated player activity and ignores unknown fields", async () => {
+  const requests: Array<{ url: string; authorization: string | null }> = [];
+  const fetcher: typeof fetch = async (input, init) => {
+    const url = new URL(String(input));
+    requests.push({
+      url: url.toString(),
+      authorization: new Headers(init?.headers).get("authorization"),
+    });
+    if (url.pathname.endsWith("/activity")) {
+      return json({
+        schemaVersion: "1",
+        restartBehavior: "memory_only",
+        unknownEnvelopeField: true,
+        activity: [
+          {
+            eventId: "event-one",
+            eventType: "player_joined",
+            timestamp: "2026-08-03T12:00:00.000Z",
+            serverInstanceId: "instance",
+            player: {
+              userId: "user-one",
+              playerId: "player-one",
+              name: "Denalb",
+            },
+            sessionId: "session-one",
+            source: "palworld_server_hook",
+            schemaVersion: "1",
+            durationSeconds: null,
+            metadata: { future: "ignored safely" },
+            futureRecordField: true,
+          },
+        ],
+      });
+    }
+    return json(documents[url.pathname.split("/").at(-1) ?? ""]);
+  };
+  const service = new CompanionDiscoveryService(
+    repository(base),
+    100,
+    30_000,
+    fetcher,
+  );
+  const activity = await service.activity(base.id, {
+    after: "2026-08-03T11:00:00.000Z",
+    player: "user-one",
+    limit: 25,
+  });
+  assert.equal(activity.length, 1);
+  assert.equal(activity[0]?.player.name, "Denalb");
+  const request = requests.find(({ url }) => url.includes("/activity?"));
+  assert.equal(request?.authorization, "Bearer secret");
+  assert.match(request?.url ?? "", /limit=25/);
+  assert.match(request?.url ?? "", /player=user-one/);
+});
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,

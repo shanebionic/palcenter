@@ -34,3 +34,22 @@ export interface CompanionStatus {
   } | null;
   capabilities: Record<string, CompanionCapability>;
 }
+
+export type CompanionPlayerActivityType =
+  | "player_joined"
+  | "player_left"
+  | "session_started"
+  | "session_ended";
+
+export interface CompanionPlayerActivity {
+  eventId: string;
+  eventType: CompanionPlayerActivityType;
+  timestamp: string;
+  serverInstanceId: string;
+  player: { userId: string | null; playerId: string | null; name: string };
+  sessionId: string;
+  source: "palworld_server_hook";
+  schemaVersion: "1";
+  durationSeconds: number | null;
+  metadata: Record<string, unknown>;
+}

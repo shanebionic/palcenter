@@ -27,6 +27,7 @@ export class ServerHistoryService {
     private readonly players: PlayerService,
     private readonly intervalMs: number,
     private readonly onEvents: (events: ServerEvent[]) => Promise<void>,
+    private readonly onServerCaptured?: (serverId: string) => Promise<void>,
   ) {}
 
   start(onError: (error: unknown) => void, collectImmediately = true): void {
@@ -123,6 +124,7 @@ export class ServerHistoryService {
     if (persistedEvents.length > 0) {
       await this.onEvents(persistedEvents);
     }
+    await this.onServerCaptured?.(status.id);
   }
 
   private statusEvents(

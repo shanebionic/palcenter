@@ -6,6 +6,7 @@ import {
   mergeWorldEventPages,
   relativeWorldEventTime,
   sortWorldEventsNewestFirst,
+  worldEventSentence,
   worldEventConfidence,
   worldEventCoordinateSpace,
   worldEventEvidenceText,
@@ -18,6 +19,31 @@ import {
   worldEventTimeRangeFromNow,
 } from "../lib/world-events";
 import type { WorldEvent } from "../types/servers";
+
+test("player activity uses plain language without raw enum names", () => {
+  const joined = event({
+    type: "player_joined",
+    metadata: { playerName: "Denalb", activitySource: "companion" },
+  });
+  const left = event({
+    type: "player_disconnected",
+    metadata: { playerName: "Denalb", departureKind: "left" },
+  });
+  assert.equal(worldEventSentence(joined), "Denalb joined the server.");
+  assert.equal(worldEventSentence(left), "Denalb left the server.");
+  assert.doesNotMatch(worldEventSentence(joined), /player_joined/);
+});
+
+test("completed sessions describe their exact online duration", () => {
+  const ended = event({
+    type: "session_ended",
+    metadata: { playerName: "Denalb", durationSeconds: 130 },
+  });
+  assert.equal(
+    worldEventSentence(ended),
+    "Denalb's session ended after 2 minutes.",
+  );
+});
 
 function event(overrides: Partial<WorldEvent> = {}): WorldEvent {
   return {

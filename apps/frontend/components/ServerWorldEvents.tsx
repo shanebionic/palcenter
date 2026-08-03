@@ -20,7 +20,7 @@ import {
   IconTimeline,
 } from "@tabler/icons-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { getWorldEvents } from "../lib/api";
+import { getCompanionStatus, getWorldEvents } from "../lib/api";
 import {
   exactWorldEventTime,
   mergeWorldEventPages,
@@ -29,12 +29,12 @@ import {
   worldEventConfidence,
   worldEventCoordinateSpace,
   worldEventEvidenceText,
-  worldEventLabel,
   worldEventLabels,
   worldEventMetadataText,
   worldEventPlayerName,
   worldEventPositionSupportsPalpagosMap,
   worldEventRelocationPosition,
+  worldEventSentence,
   worldEventTimeRangeFromNow,
 } from "../lib/world-events";
 import {
@@ -42,6 +42,7 @@ import {
   type WorldEvent,
   type WorldEventType,
 } from "../types/servers";
+import type { CompanionStatus } from "../types/companion";
 import { BrandedLoader } from "./BrandedLoader";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
@@ -78,6 +79,8 @@ export function ServerWorldEvents({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState(false);
   const [hasOlder, setHasOlder] = useState(false);
+  const [companionStatus, setCompanionStatus] =
+    useState<CompanionStatus | null>(null);
 
   const load = useCallback(
     async (older = false) => {
@@ -118,6 +121,16 @@ export function ServerWorldEvents({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applied, serverId]);
 
+  useEffect(() => {
+    void getCompanionStatus(serverId)
+      .then(setCompanionStatus)
+      .catch(() => setCompanionStatus(null));
+  }, [serverId]);
+
+  const exactActivityAvailable =
+    companionStatus?.state === "connected" &&
+    companionStatus.capabilities.playerActivity?.supported === true;
+
   const filtersActive = Boolean(
     applied.playerId || applied.eventType || applied.timeRange !== "24h",
   );
@@ -138,8 +151,8 @@ export function ServerWorldEvents({
   return (
     <Stack gap="lg" pt="lg">
       <SectionHeader
-        title="World Events"
-        description="An explainable timeline of player and session activity observed by PalCenter."
+        title="Player Activity"
+        description="See when players join, leave, disconnect, and return."
         action={
           <Button
             variant="light"
@@ -154,14 +167,31 @@ export function ServerWorldEvents({
 
       {!serverOnline && (
         <Alert color="yellow" title="Server offline">
-          Existing events remain available. New events will resume when
+          Existing activity remains available. New activity will resume when
           PalCenter can observe the server again.
+        </Alert>
+      )}
+
+      {companionStatus && !exactActivityAvailable && (
+        <Alert
+          color={
+            companionStatus.state === "authentication_failed" ? "red" : "blue"
+          }
+          title={
+            companionStatus.state === "authentication_failed"
+              ? "Companion authentication failed"
+              : "Using standard server information"
+          }
+        >
+          {companionStatus.state === "authentication_failed"
+            ? "Check the Companion API token in Connection Settings."
+            : "PalCenter will show inferred player activity until a compatible Companion reconnects."}
         </Alert>
       )}
 
       <SectionCard>
         <Stack gap="md">
-          <Title order={3}>Filter events</Title>
+          <Title order={3}>Filter activity</Title>
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
             <TextInput
               label="Player ID"
@@ -171,8 +201,8 @@ export function ServerWorldEvents({
               onChange={(event) => setPlayerFilter(event.currentTarget.value)}
             />
             <Select
-              label="Event type"
-              placeholder="All event types"
+              label="Activity type"
+              placeholder="All activity"
               clearable
               searchable
               data={eventTypeOptions}
@@ -203,13 +233,13 @@ export function ServerWorldEvents({
 
       {loading ? (
         <SectionCard>
-          <BrandedLoader message="Loading World Intelligence events" />
+          <BrandedLoader message="Loading player activity" />
         </SectionCard>
       ) : error ? (
         <SectionCard>
-          <Alert color="red" title="Events are temporarily unavailable">
-            PalCenter could not load the event timeline. Confirm your access and
-            try again. Existing event history has not been changed.
+          <Alert color="red" title="Player activity is temporarily unavailable">
+            PalCenter could not load recent activity. Check the server
+            connection and try again. Existing history has not been changed.
           </Alert>
         </SectionCard>
       ) : events.length === 0 ? (
@@ -220,13 +250,13 @@ export function ServerWorldEvents({
             </ThemeIcon>
             <Title order={3}>
               {filtersActive
-                ? "No events match these filters"
-                : "No events recorded yet"}
+                ? "No activity matches these filters"
+                : "No activity yet"}
             </Title>
             <Text c="dimmed" maw={560}>
               {filtersActive
-                ? "Adjust or reset the filters to view other retained events."
-                : "Events begin accumulating after the World Intelligence engine is active. Earlier activity cannot be reconstructed."}
+                ? "Adjust or reset the filters to view other recent activity."
+                : "Player activity will appear here after someone joins or leaves the server."}
             </Text>
             {filtersActive && (
               <Button variant="light" onClick={resetFilters}>
@@ -238,10 +268,10 @@ export function ServerWorldEvents({
       ) : (
         <SectionCard>
           <Stack gap="md">
-            <Title order={3}>Event timeline</Title>
+            <Title order={3}>Recent Activity</Title>
             <ol
               className="pc-world-event-timeline"
-              aria-label="World event timeline"
+              aria-label="Player activity timeline"
             >
               {events.map((event) => (
                 <WorldEventEntry
@@ -258,7 +288,7 @@ export function ServerWorldEvents({
                 loading={loadingOlder}
                 mx="auto"
               >
-                Load older events
+                Load older activity
               </Button>
             )}
           </Stack>
@@ -314,14 +344,14 @@ const WorldEventEntry = memo(function WorldEventEntry({
         <Stack gap="xs" className="pc-world-event-content">
           <Group justify="space-between" align="flex-start">
             <div>
-              <Title order={4}>{worldEventLabel(event)}</Title>
+              <Title order={4}>{worldEventSentence(event)}</Title>
               <Text size="sm">
                 <Text span fw={600}>
                   {playerName}
                 </Text>{" "}
                 ·{" "}
                 {event.type.startsWith("session_")
-                  ? "Session boundary"
+                  ? "Online session"
                   : "Player activity"}
               </Text>
             </div>

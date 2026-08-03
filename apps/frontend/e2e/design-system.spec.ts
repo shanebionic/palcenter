@@ -86,10 +86,12 @@ test("Companion discovery presents connected, disconnected, refresh, and respons
   await page.getByRole("tab", { name: "Connection Settings" }).click();
   const companion = panelWithHeading(page, "PalCenter Companion");
   await expect(companion).toContainText("Healthy");
-  await expect(companion).toContainText("Version: 0.1.0");
-  await expect(companion).toContainText("Supported capabilities: 2");
+  await expect(companion).toContainText("Version: 0.3.0");
+  await expect(companion).toContainText("Supported capabilities: 3");
   await companion.getByRole("button", { name: "Advanced details" }).click();
-  await expect(companion).toContainText("Capabilities: health, version");
+  await expect(companion).toContainText(
+    "Capabilities: health, version, playerActivity",
+  );
   const settings = page.getByRole("button", {
     name: "Advanced Companion Connection",
   });
@@ -480,16 +482,17 @@ test("long StatCard values wrap fully without colliding with their icon", async 
   expect(layout.pageOverflow).toBe(false);
 });
 
-test("World Events renders, filters, expands evidence, loads history, and links to the map", async ({
+test("Player Activity renders, filters, expands evidence, loads history, and links to the map", async ({
   page,
 }) => {
   await setSessionRole(page, "administrator");
   await setEventMode(page, "populated");
+  await setCompanionMode(page, "connected");
   await openWorkspace(page);
-  await page.getByRole("tab", { name: "Events" }).click();
+  await page.getByRole("tab", { name: "Activity" }).click();
 
   await expect(
-    page.getByRole("heading", { name: "Event timeline" }),
+    page.getByRole("heading", { name: "Recent Activity" }),
   ).toBeVisible();
   await expect(page.locator(".pc-world-event-entry")).toHaveCount(50);
   await expect(page.getByText("High confidence").first()).toBeVisible();
@@ -532,10 +535,10 @@ test("World Events renders, filters, expands evidence, loads history, and links 
   ).toBeVisible();
   await expect(firstEvent.getByText(/Confidence: 90%/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Load older events" }).click();
+  await page.getByRole("button", { name: "Load older activity" }).click();
   await expect(page.locator(".pc-world-event-entry")).toHaveCount(55);
 
-  await page.getByRole("combobox", { name: "Event type" }).click();
+  await page.getByRole("combobox", { name: "Activity type" }).click();
   await page.getByRole("option", { name: "Rapid relocation detected" }).click();
   await page.getByRole("button", { name: "Apply filters" }).click();
   await expect(page.locator(".pc-world-event-entry")).toHaveCount(3);
@@ -553,7 +556,7 @@ test("World Events renders, filters, expands evidence, loads history, and links 
     "true",
   );
   await expect(page.getByText("Event location centered")).toBeVisible();
-  await page.getByRole("tab", { name: "Events" }).click();
+  await page.getByRole("tab", { name: "Activity" }).click();
   await page
     .getByRole("button", { name: "View destination on map" })
     .first()
@@ -561,36 +564,41 @@ test("World Events renders, filters, expands evidence, loads history, and links 
   await expect(page.getByText("Event location centered")).toBeVisible();
 });
 
-test("World Events provides useful empty and unavailable states", async ({
+test("Player Activity provides useful empty and unavailable states", async ({
   page,
 }) => {
   await setSessionRole(page, "administrator");
   await setEventMode(page, "empty");
+  await setCompanionMode(page, "disconnected");
   await openWorkspace(page);
-  await page.getByRole("tab", { name: "Events" }).click();
-  await expect(page.getByText("No events recorded yet")).toBeVisible();
+  await page.getByRole("tab", { name: "Activity" }).click();
+  await expect(page.getByText("No activity yet")).toBeVisible();
   await expect(
-    page.getByText(/Earlier activity cannot be reconstructed/),
+    page.getByText(/Player activity will appear here/),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Using standard server information"),
   ).toBeVisible();
 
   await setEventMode(page, "error");
   await page.getByRole("button", { name: "Refresh" }).click();
   await expect(
-    page.getByText("Events are temporarily unavailable"),
+    page.getByText("Player activity is temporarily unavailable"),
   ).toBeVisible();
 });
 
-test("World Events remains responsive and is not offered to Visitors", async ({
+test("Player Activity remains responsive and is not offered to Visitors", async ({
   page,
 }) => {
   await setSessionRole(page, "administrator");
   await setEventMode(page, "populated");
+  await setCompanionMode(page, "connected");
   await page.setViewportSize({ width: 390, height: 844 });
   await openWorkspace(page);
-  await page.getByRole("tab", { name: "Events" }).click();
+  await page.getByRole("tab", { name: "Activity" }).click();
   await expect(page.getByLabel("Player ID")).toBeVisible();
   await expect(
-    page.getByRole("combobox", { name: "Event type" }),
+    page.getByRole("combobox", { name: "Activity type" }),
   ).toBeVisible();
   await expect(
     page.getByRole("combobox", { name: "Time range" }),
@@ -608,5 +616,5 @@ test("World Events remains responsive and is not offered to Visitors", async ({
 
   await setSessionRole(page, "visitor");
   await page.reload();
-  await expect(page.getByRole("tab", { name: "Events" })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Activity" })).toHaveCount(0);
 });

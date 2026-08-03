@@ -118,7 +118,7 @@ export interface WorldEvent {
   metadata: Record<string, string | number | boolean | null>;
   confidence: number;
   evidence: Array<{
-    source: "players" | "telemetry" | "transition_registry";
+    source: "players" | "telemetry" | "transition_registry" | "companion";
     fact:
       | "appeared"
       | "disappeared"
@@ -131,7 +131,8 @@ export interface WorldEvent {
       | "implied_speed"
       | "observation_continuous"
       | "coordinate_space_changed"
-      | "transition_signature_matched";
+      | "transition_signature_matched"
+      | "server_hook";
     value: string;
   }>;
   position: { x: number; y: number; z: number | null } | null;

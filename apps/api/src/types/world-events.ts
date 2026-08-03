@@ -15,7 +15,7 @@ export const worldEventTypes = [
 export type WorldEventType = (typeof worldEventTypes)[number];
 
 export interface WorldEventEvidence {
-  source: "players" | "telemetry" | "transition_registry";
+  source: "players" | "telemetry" | "transition_registry" | "companion";
   fact:
     | "appeared"
     | "disappeared"
@@ -28,7 +28,8 @@ export interface WorldEventEvidence {
     | "implied_speed"
     | "observation_continuous"
     | "coordinate_space_changed"
-    | "transition_signature_matched";
+    | "transition_signature_matched"
+    | "server_hook";
   value: string;
 }
 
