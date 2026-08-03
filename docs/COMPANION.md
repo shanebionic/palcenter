@@ -12,6 +12,12 @@ The Connection Settings page shows whether the Companion is connected, its repor
 
 Capabilities—not application version numbers—control future feature availability. Capability identifiers are permanent and additive. PalCenter ignores unknown metadata and treats missing or malformed entries as unsupported.
 
+The player map continues using standard Palworld REST coordinates while exact
+Companion location support is unavailable. Dungeons, towers, and the World Tree
+may appear in the wrong place during this fallback. A future additive
+`coordinateSpaces` capability can enable exact map-area handling only after the
+Companion also supplies authoritative position data.
+
 When `playerActivity` is supported, PalCenter uses the Companion’s exact join,
 leave, and online-session records in the existing **Activity** timeline. A
 completed session includes how long the player was online. Stable Companion

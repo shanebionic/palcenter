@@ -2,7 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function setPlayerMode(
   page: Page,
-  mode: "empty" | "error" | "populated" | "instance" | "world-tree" | "stale",
+  mode:
+    | "empty"
+    | "error"
+    | "populated"
+    | "unknown"
+    | "instance"
+    | "world-tree"
+    | "stale",
 ): Promise<void> {
   const response = await page.request.get(
     `http://127.0.0.1:3198/__test/players?mode=${mode}`,
@@ -34,6 +41,7 @@ async function setCompanionMode(
   page: Page,
   mode:
     | "connected"
+    | "exact-location"
     | "disconnected"
     | "authentication_required"
     | "authentication_failed",
@@ -374,58 +382,75 @@ test("world map controls remain reachable without page overflow at narrow width"
   ).toBe(true);
 });
 
-test("coordinate-aware map keeps unsupported locations off Palpagos", async ({
+test("REST map fallback keeps unverified locations visible and authoritative locations off-map", async ({
   page,
 }) => {
   await setSessionRole(page, "administrator");
-  await setPlayerMode(page, "populated");
+  await setCompanionMode(page, "connected");
+  await setPlayerMode(page, "unknown");
   await openWorkspace(page);
   await page.getByRole("tab", { name: "Map" }).click();
+  await expect(
+    page.getByRole("alert").filter({
+      hasText: "Special areas may not appear correctly",
+    }),
+  ).toBeVisible();
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
+  await expect(page.getByText("Off-map players")).toHaveCount(0);
+  await page.getByLabel("View Denalb on map").click();
+  await expect(
+    page.getByRole("button", { name: "Center Player" }),
+  ).toBeEnabled();
+  await page.getByRole("switch", { name: "Show movement trail" }).check();
+  await expect(
+    page.locator(".pc-world-map-trail-segment").first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Player activity summary" }),
+  ).toContainText("Travel distance");
   await page.screenshot({
-    path: "../../docs/screenshots/coordinate-map-palpagos.png",
+    path: "../../docs/screenshots/rest-map-fallback.png",
     fullPage: true,
   });
 
   await setPlayerMode(page, "instance");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(
-    page.getByText("Inside an instanced area").first(),
-  ).toBeVisible();
-  await expect(
-    page.getByLabel(
-      /last trusted Palpagos location; currently inside an instance/,
-    ),
-  ).toBeVisible();
-  await expect(page.getByText(/Raw: X 12345, Y 67890/)).not.toBeVisible();
-  await page.screenshot({
-    path: "../../docs/screenshots/coordinate-map-instance.png",
-    fullPage: true,
-  });
-  await page.screenshot({
-    path: "../../docs/screenshots/coordinate-map-off-map-panel.png",
-    fullPage: true,
-  });
+  await expect(page.getByLabel("View Denalb on map")).toBeVisible();
+  await expect(page.getByText("Off-map players")).toHaveCount(0);
 
+  await setCompanionMode(page, "exact-location");
   await setPlayerMode(page, "world-tree");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(page.getByText("Exact location from Companion")).toBeVisible();
   await expect(page.getByText(/In World Tree/).first()).toBeVisible();
   await expect(page.getByLabel("View Denalb on map")).toHaveCount(0);
-  await page.getByLabel("World map coordinate space").click();
-  await expect(
-    page.getByRole("option", { name: "World Tree (map unavailable)" }),
-  ).toHaveAttribute("data-combobox-disabled", "true");
   await page.screenshot({
-    path: "../../docs/screenshots/coordinate-map-world-tree.png",
+    path: "../../docs/screenshots/rest-map-authoritative-off-map.png",
     fullPage: true,
   });
 
+  await setCompanionMode(page, "connected");
   await setPlayerMode(page, "stale");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(page.getByText("Position stale").first()).toBeVisible();
+  await expect(page.getByLabel("View Denalb on map")).toBeVisible();
+  await expect(page.getByText("Stale").first()).toBeVisible();
+  await expect(page.getByText("Off-map players")).toHaveCount(0);
+  await setPlayerMode(page, "unknown");
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await page.setViewportSize({ width: 720, height: 900 });
+  const closeNavigation = page.getByRole("button", {
+    name: "Close navigation",
+  });
+  if (await closeNavigation.isVisible()) await closeNavigation.click();
+  await page.screenshot({
+    path: "../../docs/screenshots/rest-map-fallback-narrow.png",
+    fullPage: true,
+  });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByLabel("World map coordinate space").focus();
-  await expect(page.getByLabel("World map coordinate space")).toBeFocused();
+  await page.getByRole("button", { name: "Fit Map", exact: true }).focus();
+  await expect(
+    page.getByRole("button", { name: "Fit Map", exact: true }),
+  ).toBeFocused();
   expect(
     await page.evaluate(
       () =>
@@ -433,10 +458,6 @@ test("coordinate-aware map keeps unsupported locations off Palpagos", async ({
         document.documentElement.clientWidth,
     ),
   ).toBe(false);
-  await page.screenshot({
-    path: "../../docs/screenshots/coordinate-map-narrow.png",
-    fullPage: true,
-  });
 });
 
 test("long StatCard values wrap fully without colliding with their icon", async ({

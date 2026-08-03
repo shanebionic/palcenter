@@ -271,7 +271,7 @@ export function startMockUiApi(port = 3198) {
       });
     }
     if (url.pathname.startsWith(`/api/servers/${connection.id}/companion`)) {
-      if (companionMode !== "connected") {
+      if (!["connected", "exact-location"].includes(companionMode)) {
         return json(response, {
           state:
             companionMode === "disconnected" ? "unreachable" : companionMode,
@@ -307,6 +307,10 @@ export function startMockUiApi(port = 3198) {
           health: { supported: true, capabilityVersion: "1" },
           version: { supported: true, capabilityVersion: "1" },
           playerActivity: { supported: true, capabilityVersion: "1" },
+          coordinateSpaces: {
+            supported: companionMode === "exact-location",
+            capabilityVersion: "1",
+          },
           futureCapability: { supported: false, capabilityVersion: "1" },
         },
       });
@@ -333,76 +337,89 @@ export function startMockUiApi(port = 3198) {
           503,
         );
       }
+      const liveTelemetry = {
+        ...telemetryPlayer,
+        capturedAt: new Date().toISOString(),
+      };
       const currentTelemetry =
         playerMode === "instance"
           ? {
-              ...telemetryPlayer,
+              ...liveTelemetry,
               x: 12345,
               y: 67890,
               coordinateSpaceId: "instance:fixture-dungeon",
             }
           : playerMode === "world-tree"
             ? {
-                ...telemetryPlayer,
+                ...liveTelemetry,
                 x: -42000,
                 y: 91000,
                 coordinateSpaceId: "world_tree",
               }
-            : playerMode === "stale"
-              ? {
-                  ...telemetryPlayer,
-                  capturedAt: "2026-07-29T20:00:00.000Z",
-                }
-              : telemetryPlayer;
+            : playerMode === "unknown"
+              ? { ...liveTelemetry, coordinateSpaceId: "unknown" }
+              : playerMode === "stale"
+                ? {
+                    ...telemetryPlayer,
+                    capturedAt: "2026-07-29T20:00:00.000Z",
+                  }
+                : liveTelemetry;
       return json(response, {
         players: playerMode === "empty" ? [] : [currentTelemetry],
         trustedPositions: playerMode === "empty" ? [] : [telemetryPlayer],
+        coordinateSpacesAuthoritative: companionMode === "exact-location",
         pollingIntervalSeconds: 30,
-        lastCollectedAt:
-          playerMode === "stale" ? currentTelemetry.capturedAt : now,
+        lastCollectedAt: currentTelemetry.capturedAt,
       });
     }
     if (
       url.pathname ===
       `/api/servers/${connection.id}/telemetry/players/${connectedPlayers[0].userId}/history`
     ) {
+      const historyNow = Date.now();
       return json(response, {
         points: [
           {
-            capturedAt: "2026-07-29T22:10:00.000Z",
+            capturedAt: new Date(historyNow - 10 * 60_000).toISOString(),
             x: 85000,
             y: -110000,
-            coordinateSpaceId: "palpagos",
+            coordinateSpaceId:
+              playerMode === "unknown" ? "unknown" : "palpagos",
           },
           {
-            capturedAt: "2026-07-29T22:14:00.000Z",
+            capturedAt: new Date(historyNow - 8 * 60_000).toISOString(),
             x: 93000,
             y: -103000,
-            coordinateSpaceId: "palpagos",
+            coordinateSpaceId:
+              playerMode === "unknown" ? "unknown" : "palpagos",
           },
           {
-            capturedAt: "2026-07-29T22:18:00.000Z",
+            capturedAt: new Date(historyNow - 6 * 60_000).toISOString(),
             x: 102000,
             y: -95000,
-            coordinateSpaceId: "palpagos",
+            coordinateSpaceId:
+              playerMode === "unknown" ? "unknown" : "palpagos",
           },
           {
-            capturedAt: "2026-07-29T22:22:00.000Z",
+            capturedAt: new Date(historyNow - 4 * 60_000).toISOString(),
             x: 111000,
             y: -87000,
-            coordinateSpaceId: "palpagos",
+            coordinateSpaceId:
+              playerMode === "unknown" ? "unknown" : "palpagos",
           },
           {
-            capturedAt: "2026-07-29T22:26:00.000Z",
+            capturedAt: new Date(historyNow - 2 * 60_000).toISOString(),
             x: 119000,
             y: -80000,
-            coordinateSpaceId: "palpagos",
+            coordinateSpaceId:
+              playerMode === "unknown" ? "unknown" : "palpagos",
           },
           {
-            capturedAt: now,
+            capturedAt: new Date(historyNow).toISOString(),
             x: telemetryPlayer.x,
             y: telemetryPlayer.y,
-            coordinateSpaceId: "palpagos",
+            coordinateSpaceId:
+              playerMode === "unknown" ? "unknown" : "palpagos",
           },
         ],
         limit: 5000,

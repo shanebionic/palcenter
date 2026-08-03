@@ -68,13 +68,14 @@ export interface PlayerPositionSnapshot {
   buildingCount: number | null;
   guildId: string | null;
   guildName: string | null;
-  coordinateSpaceId: string;
+  coordinateSpaceId: string | null;
   createdAt: string;
 }
 
 export interface LatestPlayerTelemetry {
   players: PlayerPositionSnapshot[];
   trustedPositions: PlayerPositionSnapshot[];
+  coordinateSpacesAuthoritative: boolean;
   pollingIntervalSeconds: number;
   lastCollectedAt: string | null;
 }
@@ -83,7 +84,7 @@ export interface PlayerTrailPoint {
   capturedAt: string;
   x: number | null;
   y: number | null;
-  coordinateSpaceId: string;
+  coordinateSpaceId: string | null;
 }
 
 export interface PlayerTrailHistory {

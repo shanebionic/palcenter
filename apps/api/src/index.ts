@@ -1103,6 +1103,10 @@ app.get("/api/servers/:id/telemetry/players/latest", async (request) => {
       parameters.id,
       "palpagos",
     ),
+    // REST telemetry does not prove which Palworld map owns a coordinate.
+    // A future Companion location collector will set this only when its
+    // coordinate-space capability supplied the returned positions.
+    coordinateSpacesAuthoritative: false,
     pollingIntervalSeconds: environment.TELEMETRY_INTERVAL_SECONDS,
     lastCollectedAt: telemetryService.lastCollectedAt(parameters.id),
   };
