@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
 import type {
   CompanionConnectionState,
+  CompanionPlayerActivity,
   CompanionStatus,
 } from "../types/companion.js";
 
@@ -33,6 +34,32 @@ const capabilitySchema = z
   .passthrough();
 const capabilitiesSchema = z
   .object({ categories: z.record(z.string(), capabilitySchema) })
+  .passthrough();
+const activityRecordSchema = z
+  .object({
+    eventId: z.string().min(1).max(200),
+    eventType: z.enum([
+      "player_joined",
+      "player_left",
+      "session_started",
+      "session_ended",
+    ]),
+    timestamp: z.string().datetime({ offset: true }),
+    serverInstanceId: z.string().min(1).max(200),
+    player: z.object({
+      userId: z.string().max(200).nullable(),
+      playerId: z.string().max(200).nullable(),
+      name: z.string().max(200),
+    }),
+    sessionId: z.string().min(1).max(200),
+    source: z.literal("palworld_server_hook"),
+    schemaVersion: z.literal("1"),
+    durationSeconds: z.number().int().nonnegative().nullable(),
+    metadata: z.record(z.string(), z.unknown()),
+  })
+  .passthrough();
+const activityResponseSchema = z
+  .object({ activity: z.array(activityRecordSchema).max(200) })
   .passthrough();
 
 class CompanionAuthenticationError extends Error {}
@@ -126,6 +153,39 @@ export class CompanionDiscoveryService {
             ? "malformed_response"
             : "unreachable";
       return this.store(serverId, this.result(state, checkedAt));
+    }
+  }
+
+  async activity(
+    serverId: string,
+    options: { after?: string; player?: string; limit?: number } = {},
+  ): Promise<CompanionPlayerActivity[]> {
+    const status = await this.discover(serverId);
+    if (
+      status.state !== "connected" ||
+      status.capabilities.playerActivity?.supported !== true
+    )
+      return [];
+    const connection = await this.connections.get(serverId);
+    if (!connection?.companionApiToken) return [];
+    const origin = this.origin(
+      connection.baseUrl,
+      connection.companionHost,
+      connection.companionPort ?? 8213,
+    );
+    const search = new URLSearchParams({
+      limit: String(Math.min(Math.max(options.limit ?? 200, 1), 200)),
+    });
+    if (options.after) search.set("after", options.after);
+    if (options.player) search.set("player", options.player);
+    try {
+      return activityResponseSchema.parse(
+        await this.read(origin, `activity?${search}`, {
+          Authorization: `Bearer ${connection.companionApiToken}`,
+        }),
+      ).activity;
+    } catch {
+      return [];
     }
   }
 

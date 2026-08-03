@@ -287,7 +287,7 @@ export function startMockUiApi(port = 3198) {
         reason: null,
         health: "healthy",
         version: {
-          applicationVersion: "0.1.0",
+          applicationVersion: "0.3.0",
           apiVersion: "v1",
           buildCommit: "abc1234",
           buildBranch: "main",
@@ -306,6 +306,7 @@ export function startMockUiApi(port = 3198) {
         capabilities: {
           health: { supported: true, capabilityVersion: "1" },
           version: { supported: true, capabilityVersion: "1" },
+          playerActivity: { supported: true, capabilityVersion: "1" },
           futureCapability: { supported: false, capabilityVersion: "1" },
         },
       });

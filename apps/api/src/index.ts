@@ -358,6 +358,7 @@ const serverStatusService = new ServerStatusService(repository);
 const worldEventService = new WorldEventService(
   repository,
   worldEventRepository,
+  companionDiscoveryService,
 );
 const playerActivityEventService = new PlayerActivityEventService(
   worldEventRepository,
@@ -372,6 +373,7 @@ const serverHistoryService = new ServerHistoryService(
     worldEventService.recordServerEvents(events);
     await notificationService.handle(events);
   },
+  (serverId) => worldEventService.syncCompanion(serverId),
 );
 const telemetryService = new TelemetryService(
   repository,

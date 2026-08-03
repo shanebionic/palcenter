@@ -120,7 +120,7 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
               <Tabs.Tab value="overview">Overview</Tabs.Tab>
               {canOperate && <Tabs.Tab value="players">Players</Tabs.Tab>}
               {canOperate && <Tabs.Tab value="map">Map</Tabs.Tab>}
-              {canOperate && <Tabs.Tab value="events">Events</Tabs.Tab>}
+              {canOperate && <Tabs.Tab value="events">Activity</Tabs.Tab>}
               {canOperate && (
                 <Tabs.Tab value="administration">Administration</Tabs.Tab>
               )}

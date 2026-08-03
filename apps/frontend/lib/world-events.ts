@@ -39,6 +39,38 @@ export function worldEventLabel(event: WorldEvent): string {
   return "Rapid relocation detected";
 }
 
+export function worldEventSentence(event: WorldEvent): string {
+  const player = worldEventPlayerName(event);
+  if (event.type === "player_joined") return `${player} joined the server.`;
+  if (event.type === "player_disconnected") {
+    return event.metadata.departureKind === "left"
+      ? `${player} left the server.`
+      : `${player} disconnected.`;
+  }
+  if (event.type === "session_started") return `${player} came online.`;
+  if (event.type === "session_ended") {
+    const duration = event.metadata.durationSeconds;
+    return typeof duration === "number"
+      ? `${player}'s session ended after ${formatActivityDuration(duration)}.`
+      : `${player}'s session ended.`;
+  }
+  return `${player}: ${worldEventLabel(event)}.`;
+}
+
+export function formatActivityDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(seconds / 3_600);
+  const minutes = Math.floor((seconds % 3_600) / 60);
+  const remainder = seconds % 60;
+  const parts: string[] = [];
+  if (hours) parts.push(`${hours} ${hours === 1 ? "hour" : "hours"}`);
+  if (minutes) parts.push(`${minutes} ${minutes === 1 ? "minute" : "minutes"}`);
+  if (!hours && !minutes) {
+    parts.push(`${remainder} ${remainder === 1 ? "second" : "seconds"}`);
+  }
+  return parts.join(" ");
+}
+
 export function worldEventConfidence(confidence: number): {
   label: string;
   color: string;
@@ -58,6 +90,9 @@ export function worldEventPlayerName(event: WorldEvent): string {
 export function worldEventEvidenceText(
   evidence: WorldEvent["evidence"][number],
 ): string {
+  if (evidence.fact === "server_hook") {
+    return "Reported directly by Palworld through PalCenter Companion.";
+  }
   if (evidence.fact === "appeared") {
     return "Player appeared in the online roster.";
   }
@@ -157,6 +192,14 @@ export function worldEventMetadataText(
   }
   if (key === "transitionType") {
     return `Transition type: ${String(value).replaceAll("_", " ")}`;
+  }
+  if (key === "sessionId") return `Session ID: ${String(value)}`;
+  if (key === "activitySource") {
+    return `Activity source: ${value === "companion" ? "PalCenter Companion" : "Standard server information"}`;
+  }
+  if (key === "departureKind") return `Departure: ${String(value)}`;
+  if (key === "durationSeconds" && typeof value === "number") {
+    return `Online duration: ${formatActivityDuration(value)}`;
   }
   return `${key}: ${String(value)}`;
 }

@@ -30,7 +30,9 @@ const connections: ConnectionRepository = {
   async delete() {},
 };
 
-function fixture() {
+function fixture(
+  companion?: ConstructorParameters<typeof WorldEventService>[2],
+) {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "palcenter-world-events-"),
   );
@@ -42,9 +44,99 @@ function fixture() {
     directory,
     history,
     repository,
-    service: new WorldEventService(connections, repository),
+    service: new WorldEventService(connections, repository, companion),
   };
 }
+
+test("Companion activity replaces matching REST inference without duplicates", async () => {
+  const companion = {
+    async activity() {
+      return [
+        {
+          eventId: "event-one",
+          eventType: "player_joined" as const,
+          timestamp: "2026-08-03T12:00:10.000Z",
+          serverInstanceId: "instance-one",
+          player: { userId: "user-1", playerId: "player-1", name: "Denalb" },
+          sessionId: "session-one",
+          source: "palworld_server_hook" as const,
+          schemaVersion: "1" as const,
+          durationSeconds: null,
+          metadata: {},
+        },
+      ];
+    },
+  };
+  const context = fixture(companion);
+  try {
+    context.service.recordServerEvents([
+      {
+        id: 1,
+        serverId: connection.id,
+        type: "player_joined",
+        playerId: "user-1",
+        playerName: "Denalb",
+        occurredAt: "2026-08-03T12:00:00.000Z",
+      },
+    ]);
+    const first = await context.service.list(connection.id, { limit: 100 });
+    const second = await context.service.list(connection.id, { limit: 100 });
+    assert.equal(
+      first.filter(({ type }) => type === "player_joined").length,
+      1,
+    );
+    assert.equal(
+      first.find(({ type }) => type === "player_joined")?.id,
+      "companion_event-one",
+    );
+    assert.equal(
+      second.filter(({ id }) => id === "companion_event-one").length,
+      1,
+    );
+    assert.equal(
+      first.find(({ id }) => id === "companion_event-one")?.metadata.playerName,
+      "Denalb",
+    );
+  } finally {
+    context.repository.close();
+    context.history.close();
+    fs.rmSync(context.directory, { recursive: true, force: true });
+  }
+});
+
+test("background Companion sync stores completed session duration", async () => {
+  const companion = {
+    async activity() {
+      return [
+        {
+          eventId: "event-ended",
+          eventType: "session_ended" as const,
+          timestamp: "2026-08-03T12:02:10.000Z",
+          serverInstanceId: "instance-one",
+          player: { userId: null, playerId: "player-1", name: "Denalb" },
+          sessionId: "session-one",
+          source: "palworld_server_hook" as const,
+          schemaVersion: "1" as const,
+          durationSeconds: 130,
+          metadata: {},
+        },
+      ];
+    },
+  };
+  const context = fixture(companion);
+  try {
+    await context.service.syncCompanion(connection.id);
+    const stored = context.repository.list(connection.id, { limit: 10 });
+    assert.equal(stored.length, 1);
+    assert.equal(stored[0]?.id, "companion_event-ended");
+    assert.equal(stored[0]?.metadata.durationSeconds, 130);
+    assert.equal(stored[0]?.metadata.sessionId, "session-one");
+  } finally {
+    context.repository.close();
+    context.history.close();
+    fs.rmSync(context.directory, { recursive: true, force: true });
+  }
+});
 
 test("join and disconnect observations produce deterministic session events", () => {
   const context = fixture();
