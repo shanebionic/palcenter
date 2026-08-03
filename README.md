@@ -167,6 +167,7 @@ Palworld host. See the [troubleshooting guide](docs/TROUBLESHOOTING.md) and
 - [Automation](docs/AUTOMATION.md)
 - [Telemetry](docs/TELEMETRY.md)
 - [World Map and Player Activity Summary](docs/WORLD-MAP.md)
+- [PalCenter Companion](docs/COMPANION.md)
 - [Configuration generator](docs/CONFIGURATION-GENERATOR.md)
 - [Security](SECURITY.md)
 

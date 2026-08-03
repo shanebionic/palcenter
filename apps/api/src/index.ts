@@ -97,6 +97,7 @@ import {
   WorldEventService,
 } from "./services/world-event-service.js";
 import { PlayerActivityEventService } from "./services/player-activity-event-service.js";
+import { CompanionDiscoveryService } from "./services/companion-discovery-service.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -191,6 +192,7 @@ const app = Fastify({
         "req.headers.cookie",
         "res.headers.set-cookie",
         "req.body.adminPassword",
+        "req.body.companionApiToken",
         "req.body.password",
         "req.body.currentPassword",
         "req.body.newPassword",
@@ -351,6 +353,7 @@ const schedulerService = new SchedulerService(
   },
 );
 const serverSettingsService = new ServerSettingsService(repository);
+const companionDiscoveryService = new CompanionDiscoveryService(repository);
 const serverStatusService = new ServerStatusService(repository);
 const worldEventService = new WorldEventService(
   repository,
@@ -842,6 +845,10 @@ const connectionInputSchema = z
     name: z.string().trim().min(1).max(80),
     baseUrl: baseHttpUrlSchema,
     adminPassword: z.string().min(1).max(1_024),
+    companionEnabled: z.boolean().optional(),
+    companionHost: z.string().trim().min(1).max(253).nullable().optional(),
+    companionPort: z.number().int().min(1).max(65535).optional(),
+    companionApiToken: z.string().max(512).optional(),
   })
   .strict();
 const connectionUpdateSchema = connectionInputSchema.extend({
@@ -1000,6 +1007,16 @@ app.get("/api/servers/:id/settings", async (request) => {
   const parameters = serverIdSchema.parse(request.params);
 
   return serverSettingsService.get(parameters.id);
+});
+
+app.get("/api/servers/:id/companion", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  return companionDiscoveryService.discover(parameters.id);
+});
+
+app.post("/api/servers/:id/companion/refresh", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  return companionDiscoveryService.discover(parameters.id, true);
 });
 
 const historyQuerySchema = z.object({

@@ -13,6 +13,10 @@ const storedConnectionSchema = z.object({
   name: z.string().min(1),
   baseUrl: z.string().url(),
   adminPassword: z.string().min(1),
+  companionEnabled: z.boolean().default(true),
+  companionHost: z.string().trim().min(1).nullable().default(null),
+  companionPort: z.number().int().min(1).max(65535).default(8213),
+  companionApiToken: z.string().max(512).default(""),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

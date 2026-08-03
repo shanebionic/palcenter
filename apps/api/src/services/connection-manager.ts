@@ -11,12 +11,20 @@ export interface AddConnectionInput {
   name: string;
   baseUrl: string;
   adminPassword: string;
+  companionEnabled?: boolean;
+  companionHost?: string | null;
+  companionPort?: number;
+  companionApiToken?: string;
 }
 
 export interface UpdateConnectionInput {
   name: string;
   baseUrl: string;
   adminPassword?: string;
+  companionEnabled?: boolean;
+  companionHost?: string | null;
+  companionPort?: number;
+  companionApiToken?: string;
 }
 
 export class ConnectionNotFoundError extends Error {
@@ -70,6 +78,10 @@ export class ConnectionManager {
       name: input.name.trim(),
       baseUrl: input.baseUrl.replace(/\/+$/, ""),
       adminPassword: input.adminPassword,
+      companionEnabled: input.companionEnabled ?? true,
+      companionHost: input.companionHost?.trim() || null,
+      companionPort: input.companionPort ?? 8213,
+      companionApiToken: input.companionApiToken ?? "",
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -92,6 +104,17 @@ export class ConnectionManager {
         input.adminPassword === undefined || input.adminPassword === ""
           ? existing.adminPassword
           : input.adminPassword,
+      companionEnabled:
+        input.companionEnabled ?? existing.companionEnabled ?? true,
+      companionHost:
+        input.companionHost === undefined
+          ? existing.companionHost
+          : input.companionHost?.trim() || null,
+      companionPort: input.companionPort ?? existing.companionPort ?? 8213,
+      companionApiToken:
+        input.companionApiToken === undefined || input.companionApiToken === ""
+          ? (existing.companionApiToken ?? "")
+          : input.companionApiToken,
       updatedAt: new Date().toISOString(),
     };
     await this.repository.update(connection);
@@ -117,6 +140,12 @@ export class ConnectionManager {
       baseUrl: baseUrl.toString().replace(/\/$/, ""),
       createdAt: connection.createdAt,
       updatedAt: connection.updatedAt,
+      companion: {
+        enabled: connection.companionEnabled ?? true,
+        host: connection.companionHost ?? null,
+        port: connection.companionPort ?? 8213,
+        tokenConfigured: (connection.companionApiToken?.length ?? 0) > 0,
+      },
     };
   }
 }

@@ -4,6 +4,12 @@ export interface PublicConnection {
   baseUrl: string;
   createdAt: string;
   updatedAt: string;
+  companion: {
+    enabled: boolean;
+    host: string | null;
+    port: number;
+    tokenConfigured: boolean;
+  };
 }
 
 export interface ServerStatus {
