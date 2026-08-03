@@ -26,6 +26,7 @@ import type {
   AutomationTask,
   AutomationTaskInput,
 } from "../types/automation";
+import type { CompanionStatus } from "../types/companion";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ?? "";
 
@@ -263,6 +264,20 @@ export function getServerSettings(id: string): Promise<ServerSettings> {
   return request<ServerSettings>(
     `/api/servers/${encodeURIComponent(id)}/settings`,
     { cache: "no-store" },
+  );
+}
+
+export function getCompanionStatus(id: string): Promise<CompanionStatus> {
+  return request<CompanionStatus>(
+    `/api/servers/${encodeURIComponent(id)}/companion`,
+    { cache: "no-store" },
+  );
+}
+
+export function refreshCompanionStatus(id: string): Promise<CompanionStatus> {
+  return request<CompanionStatus>(
+    `/api/servers/${encodeURIComponent(id)}/companion/refresh`,
+    { method: "POST" },
   );
 }
 

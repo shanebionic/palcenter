@@ -26,6 +26,7 @@ import {
 import type { PublicConnection } from "../types/servers";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
+import { CompanionStatusCard } from "./CompanionStatusCard";
 
 interface ServerConnectionSettingsProps {
   connection: PublicConnection;
@@ -189,6 +190,7 @@ export function ServerConnectionSettings({
           </Stack>
         </form>
       </SectionCard>
+      <CompanionStatusCard serverId={connection.id} />
     </Stack>
   );
 }

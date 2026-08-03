@@ -30,6 +30,16 @@ async function setSessionRole(
   expect(response.ok()).toBe(true);
 }
 
+async function setCompanionMode(
+  page: Page,
+  mode: "connected" | "disconnected",
+) {
+  const response = await page.request.get(
+    `http://127.0.0.1:3198/__test/companion?mode=${mode}`,
+  );
+  expect(response.ok()).toBe(true);
+}
+
 async function openWorkspace(page: Page): Promise<void> {
   await page.goto("/servers/srv-test");
   await expect(
@@ -62,6 +72,46 @@ test("server overview uses branded status, configuration, and networking surface
   ).toBeVisible();
   await expect(page.getByText("North America")).toBeVisible();
   await expect(page.getByText("203.0.113.10")).toBeVisible();
+});
+
+test("Companion discovery presents connected, disconnected, refresh, and responsive states", async ({
+  page,
+}) => {
+  await setCompanionMode(page, "connected");
+  await openWorkspace(page);
+  await page.getByRole("tab", { name: "Connection Settings" }).click();
+  const companion = panelWithHeading(page, "PalCenter Companion");
+  await expect(companion).toContainText("Healthy");
+  await expect(companion).toContainText("Version: 0.1.0");
+  await expect(companion).toContainText("Capabilities: health, version");
+  await page.screenshot({
+    path: "../../docs/screenshots/companion-connected.png",
+    fullPage: true,
+  });
+
+  await setCompanionMode(page, "disconnected");
+  await companion.getByRole("button", { name: "Refresh" }).click();
+  await expect(companion).toContainText("Not installed or unavailable");
+  await page.screenshot({
+    path: "../../docs/screenshots/companion-disconnected.png",
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    companion.getByRole("button", { name: "Refresh" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth,
+    ),
+  ).toBe(false);
+  await page.screenshot({
+    path: "../../docs/screenshots/companion-responsive.png",
+    fullPage: true,
+  });
 });
 
 test("players empty and populated states remain branded and scroll safely", async ({

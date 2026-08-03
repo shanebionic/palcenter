@@ -68,6 +68,7 @@ const telemetryPlayer = {
 
 let playerMode = "populated";
 let eventMode = "populated";
+let companionMode = "connected";
 let sessionRole = "administrator";
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
@@ -216,6 +217,10 @@ export function startMockUiApi(port = 3198) {
       sessionRole = url.searchParams.get("role") ?? "administrator";
       return json(response, { sessionRole });
     }
+    if (url.pathname === "/__test/companion") {
+      companionMode = url.searchParams.get("mode") ?? "connected";
+      return json(response, { companionMode });
+    }
 
     if (url.pathname === "/api/auth/session") {
       return json(response, {
@@ -256,6 +261,48 @@ export function startMockUiApi(port = 3198) {
           rconPort: 25575,
           region: "North America",
           crossplayPlatforms: "Steam, Xbox",
+        },
+      });
+    }
+    if (url.pathname.startsWith(`/api/servers/${connection.id}/companion`)) {
+      if (companionMode === "disconnected") {
+        return json(response, {
+          status: "unavailable",
+          checkedAt: now,
+          reason: "not_installed",
+          health: null,
+          version: null,
+          capabilities: {},
+        });
+      }
+      return json(response, {
+        status: "connected",
+        checkedAt: now,
+        reason: null,
+        health: {
+          status: "healthy",
+          applicationVersion: "0.1.0",
+          apiVersion: "v1",
+          startedAt: now,
+          uptimeSeconds: 7200,
+          instanceId: "fixture",
+          checks: { configuration: "healthy", httpListener: "healthy" },
+        },
+        version: {
+          applicationVersion: "0.1.0",
+          apiVersion: "v1",
+          buildCommit: "abc1234",
+          buildBranch: "main",
+          buildDate: now,
+          compiler: "C++20",
+          palworldVersion: "v1.0.2.101103",
+          ue4ssVersion: null,
+          compatibility: {},
+        },
+        capabilities: {
+          health: { supported: true, capabilityVersion: "1" },
+          version: { supported: true, capabilityVersion: "1" },
+          futureCapability: { supported: false, capabilityVersion: "1" },
         },
       });
     }

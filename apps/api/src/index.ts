@@ -97,6 +97,7 @@ import {
   WorldEventService,
 } from "./services/world-event-service.js";
 import { PlayerActivityEventService } from "./services/player-activity-event-service.js";
+import { CompanionDiscoveryService } from "./services/companion-discovery-service.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -351,6 +352,7 @@ const schedulerService = new SchedulerService(
   },
 );
 const serverSettingsService = new ServerSettingsService(repository);
+const companionDiscoveryService = new CompanionDiscoveryService(repository);
 const serverStatusService = new ServerStatusService(repository);
 const worldEventService = new WorldEventService(
   repository,
@@ -1000,6 +1002,16 @@ app.get("/api/servers/:id/settings", async (request) => {
   const parameters = serverIdSchema.parse(request.params);
 
   return serverSettingsService.get(parameters.id);
+});
+
+app.get("/api/servers/:id/companion", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  return companionDiscoveryService.discover(parameters.id);
+});
+
+app.post("/api/servers/:id/companion/refresh", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  return companionDiscoveryService.discover(parameters.id, true);
 });
 
 const historyQuerySchema = z.object({
