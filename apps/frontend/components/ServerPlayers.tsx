@@ -27,7 +27,10 @@ import {
 } from "../lib/api";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
 import type { CompanionStatus } from "../types/companion";
-import { supportsMapTeleport } from "../lib/teleport";
+import {
+  mapTeleportUnavailableReason,
+  supportsMapTeleport,
+} from "../lib/teleport";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
 
@@ -179,6 +182,7 @@ export function ServerPlayers({
         : "teleportPlayerToAdmin"
     ] === true;
   const mapTeleportSupported = supportsMapTeleport(companion);
+  const mapTeleportUnavailable = mapTeleportUnavailableReason(companion);
   const confirmTeleport = async () => {
     if (!pendingTeleport || submitting) return;
     setSubmitting(true);
@@ -231,6 +235,12 @@ export function ServerPlayers({
         />
 
         {error && <Alert color="red">{error}</Alert>}
+
+        {teleportSupported("admin-to-player") && !mapTeleportSupported && (
+          <Alert color="blue" title="Map teleport unavailable">
+            {mapTeleportUnavailable}
+          </Alert>
+        )}
 
         <TextInput
           label="Search players"

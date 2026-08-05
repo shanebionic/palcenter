@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { supportsMapTeleport } from "../lib/teleport";
+import {
+  mapTeleportUnavailableReason,
+  supportsMapTeleport,
+} from "../lib/teleport";
 import type { CompanionStatus } from "../types/companion";
 
 test("requires the Companion safe-height map teleport capability", () => {
@@ -29,5 +32,9 @@ test("requires the Companion safe-height map teleport capability", () => {
   assert.equal(
     supportsMapTeleport(disabledAction as unknown as CompanionStatus),
     false,
+  );
+  assert.equal(
+    mapTeleportUnavailableReason(disabledAction as unknown as CompanionStatus),
+    "Companion has not enabled safe map teleport. Enable TeleportPlayerToLocationEnabled and ensure the installed runtime supports it.",
   );
 });
