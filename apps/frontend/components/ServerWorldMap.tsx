@@ -11,6 +11,8 @@ import {
   Code,
   Group,
   Loader,
+  Modal,
+  NumberInput,
   Paper,
   SegmentedControl,
   Select,
@@ -32,7 +34,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { BrandedLoader } from "./BrandedLoader";
 import { PlayerActivitySummary } from "./PlayerActivitySummary";
 import { SectionCard } from "./ui/SectionCard";
@@ -43,6 +45,7 @@ import {
   getPlayerTelemetry,
   getPlayerTrailHistory,
   getWorldEvents,
+  teleportPlayer,
 } from "../lib/api";
 import {
   buildLivePlayerMapModel,
@@ -76,6 +79,7 @@ import {
 } from "../lib/world-map/layers";
 import {
   palpagosProjection,
+  normalizedMapPositionToWorld,
   worldToNormalizedMapPosition,
 } from "../lib/world-map/projection";
 import { playerColor } from "../lib/world-map/player-color";
@@ -156,6 +160,10 @@ export function ServerWorldMap({
   const [trailLoading, setTrailLoading] = useState(false);
   const [trailError, setTrailError] = useState<string | null>(null);
   const [trailTruncated, setTrailTruncated] = useState(false);
+  const [teleportSelecting, setTeleportSelecting] = useState(false);
+  const [teleportDestination, setTeleportDestination] = useState<{ x: number; y: number } | null>(null);
+  const [teleportZ, setTeleportZ] = useState<number | string>("");
+  const [teleportSubmitting, setTeleportSubmitting] = useState(false);
   const trailRequest = useRef<AbortController | null>(null);
   const [diagnostics, setDiagnostics] = useState<{
     viewport: MapRect;
@@ -663,6 +671,37 @@ export function ServerWorldMap({
       });
     }
   };
+  const selectedTeleportPlayer = players.find((player) => player.userId === selectedId) ?? null;
+  const administratorOnline = players.some((player) => player.playerId === companionStatus?.administratorPlayerId);
+  const canTeleportToLocation =
+    activeView === "palpagos" &&
+    companionStatus?.state === "connected" &&
+    companionStatus.adminActions?.teleportPlayerToLocation === true &&
+    administratorOnline &&
+    selectedTeleportPlayer !== null;
+  const chooseTeleportDestination = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!teleportSelecting || !surface.current) return;
+    const rect = surface.current.getBoundingClientRect();
+    const position = { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height };
+    const world = normalizedMapPositionToWorld(position, palpagosProjection);
+    if (!world) return;
+    setTeleportDestination(world);
+    setTeleportSelecting(false);
+  };
+  const confirmLocationTeleport = async () => {
+    if (!selectedTeleportPlayer || !teleportDestination || !Number.isFinite(Number(teleportZ)) || teleportSubmitting) return;
+    setTeleportSubmitting(true);
+    try {
+      const result = await teleportPlayer(serverId, "player-to-location", {
+        requestId: `pc-${crypto.randomUUID()}`, targetPlayerId: selectedTeleportPlayer.playerId,
+        destination: { coordinateSpace: "palpagos", verification: "palpagos_map", x: teleportDestination.x, y: teleportDestination.y, z: Number(teleportZ) },
+      });
+      notifications.show({ color: result.status === "succeeded" ? "green" : "red", title: result.status === "succeeded" ? "Teleport completed" : "Teleport rejected", message: result.message });
+      if (result.status === "succeeded") { setTeleportDestination(null); setTeleportZ(""); void loadMap(true); }
+    } catch (error) {
+      notifications.show({ color: "orange", title: "Teleport result uncertain", message: error instanceof Error ? `${error.message} Verify the player's location before trying again.` : "Verify the player's location before trying again." });
+    } finally { setTeleportSubmitting(false); }
+  };
 
   return (
     <Stack gap="lg" pt="lg">
@@ -866,6 +905,11 @@ export function ServerWorldMap({
                 >
                   Center Player
                 </Button>
+                {canTeleportToLocation && (
+                  <Button size="compact-xs" color="violet" variant={teleportSelecting ? "filled" : "light"} onClick={() => { setTeleportDestination(null); setTeleportSelecting((value) => !value); }}>
+                    {teleportSelecting ? "Cancel destination" : "Send player to map location"}
+                  </Button>
+                )}
                 <Button
                   size="compact-xs"
                   variant={followPlayer ? "filled" : "subtle"}
@@ -915,6 +959,10 @@ export function ServerWorldMap({
               role="region"
               aria-label="Palpagos live player map"
               onPointerDown={(event) => {
+                if (teleportSelecting && event.button === 0) {
+                  chooseTeleportDestination(event);
+                  return;
+                }
                 if (
                   zoom <= 1 ||
                   event.button !== 0 ||
@@ -1237,6 +1285,13 @@ export function ServerWorldMap({
           </Stack>
         </div>
       ) : null}
+      <Modal opened={teleportDestination !== null} onClose={() => !teleportSubmitting && setTeleportDestination(null)} title="Confirm map teleport" centered>
+        <Stack>
+          <Alert color="violet">Move {selectedTeleportPlayer?.name ?? "the selected player"} to Palpagos: X {teleportDestination?.x.toFixed(1)} · Y {teleportDestination?.y.toFixed(1)}.</Alert>
+          <NumberInput label="Destination height (advanced)" description="PalCenter does not guess height. Supply the Z value required by the Companion contract; the Companion checks the floor and collision." value={teleportZ} onChange={setTeleportZ} required />
+          <Group justify="flex-end"><Button variant="default" onClick={() => setTeleportDestination(null)} disabled={teleportSubmitting}>Cancel</Button><Button color="violet" onClick={confirmLocationTeleport} loading={teleportSubmitting} disabled={!Number.isFinite(Number(teleportZ))}>Confirm teleport</Button></Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

@@ -81,6 +81,7 @@ export interface ServerConnectionInput {
   companionHost?: string | null;
   companionPort?: number;
   companionApiToken?: string;
+  administratorPlayerId?: string | null;
 }
 
 export interface ServerConnectionUpdate {
@@ -91,6 +92,7 @@ export interface ServerConnectionUpdate {
   companionHost?: string | null;
   companionPort?: number;
   companionApiToken?: string;
+  administratorPlayerId?: string | null;
 }
 
 export interface ServerTestInput {
@@ -287,6 +289,15 @@ export function refreshCompanionStatus(id: string): Promise<CompanionStatus> {
     `/api/servers/${encodeURIComponent(id)}/companion/refresh`,
     { method: "POST" },
   );
+}
+
+export interface TeleportActionResult { requestId: string; action: string; status: "succeeded" | "rejected"; error: string | null; message: string; }
+export function teleportPlayer(
+  serverId: string,
+  action: "admin-to-player" | "player-to-admin" | "player-to-location",
+  body: { requestId: string; targetPlayerId: string; destination?: { coordinateSpace: "palpagos"; verification: "palpagos_map"; x: number; y: number; z: number } },
+): Promise<TeleportActionResult> {
+  return jsonRequest<TeleportActionResult>(`/api/servers/${encodeURIComponent(serverId)}/teleport/${action}`, body);
 }
 
 export async function getServerHistory(id: string): Promise<ServerMetric[]> {

@@ -9,6 +9,7 @@ export interface PublicConnection {
     host: string | null;
     port: number;
     tokenConfigured: boolean;
+    administratorPlayerId: string | null;
   };
 }
 

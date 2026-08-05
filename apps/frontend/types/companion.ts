@@ -32,4 +32,6 @@ export interface CompanionStatus {
     } | null;
   } | null;
   capabilities: Record<string, CompanionCapability>;
+  adminActions?: Record<string, boolean>;
+  administratorPlayerId?: string | null;
 }

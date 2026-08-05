@@ -7,6 +7,7 @@ export interface StoredConnection {
   companionHost?: string | null;
   companionPort?: number;
   companionApiToken?: string;
+  administratorPlayerId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,6 +23,7 @@ export interface PublicConnection {
     host: string | null;
     port: number;
     tokenConfigured: boolean;
+    administratorPlayerId: string | null;
   };
 }
 

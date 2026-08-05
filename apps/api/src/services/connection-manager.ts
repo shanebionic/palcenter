@@ -15,6 +15,7 @@ export interface AddConnectionInput {
   companionHost?: string | null;
   companionPort?: number;
   companionApiToken?: string;
+  administratorPlayerId?: string | null;
 }
 
 export interface UpdateConnectionInput {
@@ -25,6 +26,7 @@ export interface UpdateConnectionInput {
   companionHost?: string | null;
   companionPort?: number;
   companionApiToken?: string;
+  administratorPlayerId?: string | null;
 }
 
 export class ConnectionNotFoundError extends Error {
@@ -82,6 +84,7 @@ export class ConnectionManager {
       companionHost: input.companionHost?.trim() || null,
       companionPort: input.companionPort ?? 8213,
       companionApiToken: input.companionApiToken ?? "",
+      administratorPlayerId: input.administratorPlayerId ?? null,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -115,6 +118,10 @@ export class ConnectionManager {
         input.companionApiToken === undefined || input.companionApiToken === ""
           ? (existing.companionApiToken ?? "")
           : input.companionApiToken,
+      administratorPlayerId:
+        input.administratorPlayerId === undefined
+          ? (existing.administratorPlayerId ?? null)
+          : input.administratorPlayerId,
       updatedAt: new Date().toISOString(),
     };
     await this.repository.update(connection);
@@ -145,6 +152,7 @@ export class ConnectionManager {
         host: connection.companionHost ?? null,
         port: connection.companionPort ?? 8213,
         tokenConfigured: (connection.companionApiToken?.length ?? 0) > 0,
+        administratorPlayerId: connection.administratorPlayerId ?? null,
       },
     };
   }

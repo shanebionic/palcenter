@@ -9,17 +9,19 @@ import {
   NumberInput,
   Switch,
   SimpleGrid,
+  Select,
   Stack,
   Text,
   TextInput,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   testServerUpdate,
   updateServer,
   refreshCompanionStatus,
+  getPlayers,
   type ConnectionTestResult,
   type ServerConnectionUpdate,
 } from "../lib/api";
@@ -50,6 +52,7 @@ export function ServerConnectionSettings({
       companionHost: connection.companion.host,
       companionPort: connection.companion.port,
       companionApiToken: "",
+      administratorPlayerId: connection.companion.administratorPlayerId,
     },
     validate: {
       name: (value) => (value.trim() ? null : "Display name is required."),
@@ -72,6 +75,12 @@ export function ServerConnectionSettings({
   const [testError, setTestError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [onlineCharacters, setOnlineCharacters] = useState<{ value: string; label: string }[]>([]);
+  useEffect(() => {
+    void getPlayers(connection.id).then((players) =>
+      setOnlineCharacters(players.map((player) => ({ value: player.playerId, label: `${player.name} (${player.playerId})` }))),
+    ).catch(() => setOnlineCharacters([]));
+  }, [connection.id]);
 
   const connectionKey = (values: ServerConnectionUpdate) =>
     `${values.baseUrl}\u0000${values.adminPassword ?? ""}`;
@@ -195,6 +204,16 @@ export function ServerConnectionSettings({
                       }
                       {...form.getInputProps("companionApiToken")}
                     />
+                    <Select
+                      label="Administrator character"
+                      description="Choose your online character by its stable in-game player ID. This is never inferred from your PalCenter account."
+                      placeholder="Choose when the character is online"
+                      searchable clearable data={onlineCharacters}
+                      {...form.getInputProps("administratorPlayerId")}
+                    />
+                    {form.values.administratorPlayerId && !onlineCharacters.some((player) => player.value === form.values.administratorPlayerId) && (
+                      <Alert color="orange">The configured administrator character is offline or unavailable. Teleport actions will stay disabled.</Alert>
+                    )}
                   </Stack>
                 </Accordion.Panel>
               </Accordion.Item>
