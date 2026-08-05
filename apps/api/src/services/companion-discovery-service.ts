@@ -37,14 +37,23 @@ const capabilitySchema = z
 const capabilitiesSchema = z
   .object({ categories: z.record(z.string(), z.unknown()) })
   .passthrough();
-const adminActionsSchema = z.object({
-  actions: z.record(z.string(), z.boolean()),
-}).passthrough();
-const adminActionResponseSchema = z.object({
-  requestId: z.string(), action: z.string(), status: z.enum(["succeeded", "rejected"]),
-  error: z.string().nullable(), message: z.string(),
-  resolvedDestination: z.object({ x: z.number(), y: z.number(), z: z.number() }).nullable(),
-}).passthrough();
+const adminActionsSchema = z
+  .object({
+    actions: z.record(z.string(), z.boolean()),
+  })
+  .passthrough();
+const adminActionResponseSchema = z
+  .object({
+    requestId: z.string(),
+    action: z.string(),
+    status: z.enum(["succeeded", "rejected"]),
+    error: z.string().nullable(),
+    message: z.string(),
+    resolvedDestination: z
+      .object({ x: z.number(), y: z.number(), z: z.number() })
+      .nullable(),
+  })
+  .passthrough();
 const activityRecordSchema = z
   .object({
     eventId: z.string().min(1).max(200),
@@ -172,9 +181,13 @@ export class CompanionDiscoveryService {
             : null,
         },
         capabilities: categories,
-        adminActions: modern.success && adminActionsSchema.safeParse(modern.data.categories.adminActions).success
-          ? adminActionsSchema.parse(modern.data.categories.adminActions).actions
-          : undefined,
+        adminActions:
+          modern.success &&
+          adminActionsSchema.safeParse(modern.data.categories.adminActions)
+            .success
+            ? adminActionsSchema.parse(modern.data.categories.adminActions)
+                .actions
+            : undefined,
       });
     } catch (error) {
       const state: CompanionConnectionState =
@@ -250,28 +263,43 @@ export class CompanionDiscoveryService {
 
   async adminAction(
     serverId: string,
-    action: "teleportAdminToPlayer" | "teleportPlayerToAdmin" | "teleportPlayerToLocation",
+    action:
+      | "teleportAdminToPlayer"
+      | "teleportPlayerToAdmin"
+      | "teleportPlayerToLocation",
     payload: Record<string, unknown>,
   ): Promise<CompanionAdminActionResponse> {
     const status = await this.discover(serverId, true);
-    if (status.state !== "connected") throw new Error("PalCenter Companion is unavailable.");
+    if (status.state !== "connected")
+      throw new Error("PalCenter Companion is unavailable.");
     if (status.adminActions?.[action] !== true)
-      throw new Error("This Companion does not currently allow that teleport action.");
+      throw new Error(
+        "This Companion does not currently allow that teleport action.",
+      );
     if (
       action === "teleportPlayerToLocation" &&
       status.capabilities.adminActions?.capabilityVersion !== "2"
     )
-      throw new Error("This Companion does not support safe-height map teleports.");
+      throw new Error(
+        "This Companion does not support safe-height map teleports.",
+      );
     const connection = await this.connections.get(serverId);
-    if (!connection?.companionApiToken) throw new Error("Companion authentication is not configured.");
+    if (!connection?.companionApiToken)
+      throw new Error("Companion authentication is not configured.");
     const paths = {
       teleportAdminToPlayer: "admin-actions/teleport-admin-to-player",
       teleportPlayerToAdmin: "admin-actions/teleport-player-to-admin",
       teleportPlayerToLocation: "admin-actions/teleport-player-to-location",
     } as const;
     const response = await this.write(
-      this.origin(connection.baseUrl, connection.companionHost, connection.companionPort ?? 8213),
-      paths[action], payload, { Authorization: `Bearer ${connection.companionApiToken}` },
+      this.origin(
+        connection.baseUrl,
+        connection.companionHost,
+        connection.companionPort ?? 8213,
+      ),
+      paths[action],
+      payload,
+      { Authorization: `Bearer ${connection.companionApiToken}` },
     );
     return adminActionResponseSchema.parse(response);
   }
@@ -314,21 +342,43 @@ export class CompanionDiscoveryService {
     if (text.length > 65_536) throw new CompanionResponseError();
     return JSON.parse(text) as unknown;
   }
-  private async write(origin: URL, path: string, body: Record<string, unknown>, headers: Record<string, string>): Promise<unknown> {
+  private async write(
+    origin: URL,
+    path: string,
+    body: Record<string, unknown>,
+    headers: Record<string, string>,
+  ): Promise<unknown> {
     let response: Response;
     try {
       response = await this.fetcher(new URL(path, origin), {
-        method: "POST", headers: { accept: "application/json", "content-type": "application/json", ...headers },
-        body: JSON.stringify(body), redirect: "manual", signal: AbortSignal.timeout(this.timeoutMs),
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify(body),
+        redirect: "manual",
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch {
-      throw new Error("The teleport result is uncertain. Verify the player's location before trying again.");
+      throw new Error(
+        "The teleport result is uncertain. Verify the player's location before trying again.",
+      );
     }
-    if (response.status === 401 || response.status === 403) throw new Error("The Companion denied this teleport request.");
+    if (response.status === 401 || response.status === 403)
+      throw new Error("The Companion denied this teleport request.");
     const text = await response.text();
     if (!response.ok) {
-      try { const value = JSON.parse(text) as { message?: string }; throw new Error(value.message ?? "The Companion rejected this teleport request."); }
-      catch (error) { if (error instanceof Error) throw error; throw new Error("The Companion rejected this teleport request."); }
+      try {
+        const value = JSON.parse(text) as { message?: string };
+        throw new Error(
+          value.message ?? "The Companion rejected this teleport request.",
+        );
+      } catch (error) {
+        if (error instanceof Error) throw error;
+        throw new Error("The Companion rejected this teleport request.");
+      }
     }
     return JSON.parse(text) as unknown;
   }

@@ -291,13 +291,30 @@ export function refreshCompanionStatus(id: string): Promise<CompanionStatus> {
   );
 }
 
-export interface TeleportActionResult { requestId: string; action: string; status: "succeeded" | "rejected"; error: string | null; message: string; resolvedDestination: { x: number; y: number; z: number } | null; }
+export interface TeleportActionResult {
+  requestId: string;
+  action: string;
+  status: "succeeded" | "rejected";
+  error: string | null;
+  message: string;
+  resolvedDestination: { x: number; y: number; z: number } | null;
+}
 export function teleportPlayer(
   serverId: string,
   action: "admin-to-player" | "player-to-admin" | "player-to-location",
-  body: { requestId: string; targetPlayerId: string; coordinateSpace?: "palpagos"; verification?: "palpagos_map"; x?: number; y?: number },
+  body: {
+    requestId: string;
+    targetPlayerId: string;
+    coordinateSpace?: "palpagos";
+    verification?: "palpagos_map";
+    x?: number;
+    y?: number;
+  },
 ): Promise<TeleportActionResult> {
-  return jsonRequest<TeleportActionResult>(`/api/servers/${encodeURIComponent(serverId)}/teleport/${action}`, body);
+  return jsonRequest<TeleportActionResult>(
+    `/api/servers/${encodeURIComponent(serverId)}/teleport/${action}`,
+    body,
+  );
 }
 
 export async function getServerHistory(id: string): Promise<ServerMetric[]> {

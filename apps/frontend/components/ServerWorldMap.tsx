@@ -160,7 +160,10 @@ export function ServerWorldMap({
   const [trailError, setTrailError] = useState<string | null>(null);
   const [trailTruncated, setTrailTruncated] = useState(false);
   const [teleportSelecting, setTeleportSelecting] = useState(false);
-  const [teleportDestination, setTeleportDestination] = useState<{ x: number; y: number } | null>(null);
+  const [teleportDestination, setTeleportDestination] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [teleportSubmitting, setTeleportSubmitting] = useState(false);
   const trailRequest = useRef<AbortController | null>(null);
   const [diagnostics, setDiagnostics] = useState<{
@@ -669,8 +672,11 @@ export function ServerWorldMap({
       });
     }
   };
-  const selectedTeleportPlayer = players.find((player) => player.userId === selectedId) ?? null;
-  const administratorOnline = players.some((player) => player.playerId === companionStatus?.administratorPlayerId);
+  const selectedTeleportPlayer =
+    players.find((player) => player.userId === selectedId) ?? null;
+  const administratorOnline = players.some(
+    (player) => player.playerId === companionStatus?.administratorPlayerId,
+  );
   const canTeleportToLocation =
     activeView === "palpagos" &&
     companionStatus?.state === "connected" &&
@@ -678,29 +684,61 @@ export function ServerWorldMap({
     companionStatus.adminActions?.teleportPlayerToLocation === true &&
     administratorOnline &&
     selectedTeleportPlayer !== null;
-  const chooseTeleportDestination = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const chooseTeleportDestination = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
     if (!teleportSelecting || !surface.current) return;
     const rect = surface.current.getBoundingClientRect();
-    const position = { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height };
+    const position = {
+      x: (event.clientX - rect.left) / rect.width,
+      y: (event.clientY - rect.top) / rect.height,
+    };
     const world = normalizedMapPositionToWorld(position, palpagosProjection);
     if (!world) return;
     setTeleportDestination(world);
     setTeleportSelecting(false);
   };
   const confirmLocationTeleport = async () => {
-    if (!selectedTeleportPlayer || !teleportDestination || teleportSubmitting) return;
+    if (!selectedTeleportPlayer || !teleportDestination || teleportSubmitting)
+      return;
     setTeleportSubmitting(true);
     try {
       const result = await teleportPlayer(serverId, "player-to-location", {
-        requestId: `pc-${crypto.randomUUID()}`, targetPlayerId: selectedTeleportPlayer.playerId,
-        coordinateSpace: "palpagos", verification: "palpagos_map", x: teleportDestination.x, y: teleportDestination.y,
+        requestId: `pc-${crypto.randomUUID()}`,
+        targetPlayerId: selectedTeleportPlayer.playerId,
+        coordinateSpace: "palpagos",
+        verification: "palpagos_map",
+        x: teleportDestination.x,
+        y: teleportDestination.y,
       });
       const resolved = result.resolvedDestination;
-      notifications.show({ color: result.status === "succeeded" ? "green" : "red", title: result.status === "succeeded" ? "Teleport completed" : "Teleport rejected", message: result.status === "succeeded" && resolved ? `${result.message} Resolved destination: X ${resolved.x.toFixed(1)} · Y ${resolved.y.toFixed(1)} · Z ${resolved.z.toFixed(1)}.` : result.message });
-      if (result.status === "succeeded") { setTeleportDestination(null); void loadMap(true); }
+      notifications.show({
+        color: result.status === "succeeded" ? "green" : "red",
+        title:
+          result.status === "succeeded"
+            ? "Teleport completed"
+            : "Teleport rejected",
+        message:
+          result.status === "succeeded" && resolved
+            ? `${result.message} Resolved destination: X ${resolved.x.toFixed(1)} · Y ${resolved.y.toFixed(1)} · Z ${resolved.z.toFixed(1)}.`
+            : result.message,
+      });
+      if (result.status === "succeeded") {
+        setTeleportDestination(null);
+        void loadMap(true);
+      }
     } catch (error) {
-      notifications.show({ color: "orange", title: "Teleport result uncertain", message: error instanceof Error ? `${error.message} Verify the player's location before trying again.` : "Verify the player's location before trying again." });
-    } finally { setTeleportSubmitting(false); }
+      notifications.show({
+        color: "orange",
+        title: "Teleport result uncertain",
+        message:
+          error instanceof Error
+            ? `${error.message} Verify the player's location before trying again.`
+            : "Verify the player's location before trying again.",
+      });
+    } finally {
+      setTeleportSubmitting(false);
+    }
   };
 
   return (
@@ -906,8 +944,18 @@ export function ServerWorldMap({
                   Center Player
                 </Button>
                 {canTeleportToLocation && (
-                  <Button size="compact-xs" color="violet" variant={teleportSelecting ? "filled" : "light"} onClick={() => { setTeleportDestination(null); setTeleportSelecting((value) => !value); }}>
-                    {teleportSelecting ? "Cancel destination" : "Send player to map location"}
+                  <Button
+                    size="compact-xs"
+                    color="violet"
+                    variant={teleportSelecting ? "filled" : "light"}
+                    onClick={() => {
+                      setTeleportDestination(null);
+                      setTeleportSelecting((value) => !value);
+                    }}
+                  >
+                    {teleportSelecting
+                      ? "Cancel destination"
+                      : "Send player to map location"}
                   </Button>
                 )}
                 <Button
@@ -1285,10 +1333,35 @@ export function ServerWorldMap({
           </Stack>
         </div>
       ) : null}
-      <Modal opened={teleportDestination !== null} onClose={() => !teleportSubmitting && setTeleportDestination(null)} title="Confirm map teleport" centered>
+      <Modal
+        opened={teleportDestination !== null}
+        onClose={() => !teleportSubmitting && setTeleportDestination(null)}
+        title="Confirm map teleport"
+        centered
+      >
         <Stack>
-          <Alert color="violet">Move {selectedTeleportPlayer?.name ?? "the selected player"} to Palpagos: X {teleportDestination?.x.toFixed(1)} · Y {teleportDestination?.y.toFixed(1)}. Companion will resolve a safe destination height.</Alert>
-          <Group justify="flex-end"><Button variant="default" onClick={() => setTeleportDestination(null)} disabled={teleportSubmitting}>Cancel</Button><Button color="violet" onClick={confirmLocationTeleport} loading={teleportSubmitting}>Confirm teleport</Button></Group>
+          <Alert color="violet">
+            Move {selectedTeleportPlayer?.name ?? "the selected player"} to
+            Palpagos: X {teleportDestination?.x.toFixed(1)} · Y{" "}
+            {teleportDestination?.y.toFixed(1)}. Companion will resolve a safe
+            destination height.
+          </Alert>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setTeleportDestination(null)}
+              disabled={teleportSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="violet"
+              onClick={confirmLocationTeleport}
+              loading={teleportSubmitting}
+            >
+              Confirm teleport
+            </Button>
+          </Group>
         </Stack>
       </Modal>
     </Stack>

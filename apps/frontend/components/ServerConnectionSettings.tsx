@@ -75,11 +75,20 @@ export function ServerConnectionSettings({
   const [testError, setTestError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [onlineCharacters, setOnlineCharacters] = useState<{ value: string; label: string }[]>([]);
+  const [onlineCharacters, setOnlineCharacters] = useState<
+    { value: string; label: string }[]
+  >([]);
   useEffect(() => {
-    void getPlayers(connection.id).then((players) =>
-      setOnlineCharacters(players.map((player) => ({ value: player.playerId, label: `${player.name} (${player.playerId})` }))),
-    ).catch(() => setOnlineCharacters([]));
+    void getPlayers(connection.id)
+      .then((players) =>
+        setOnlineCharacters(
+          players.map((player) => ({
+            value: player.playerId,
+            label: `${player.name} (${player.playerId})`,
+          })),
+        ),
+      )
+      .catch(() => setOnlineCharacters([]));
   }, [connection.id]);
 
   const connectionKey = (values: ServerConnectionUpdate) =>
@@ -208,12 +217,21 @@ export function ServerConnectionSettings({
                       label="Administrator character"
                       description="Choose your online character by its stable in-game player ID. This is never inferred from your PalCenter account."
                       placeholder="Choose when the character is online"
-                      searchable clearable data={onlineCharacters}
+                      searchable
+                      clearable
+                      data={onlineCharacters}
                       {...form.getInputProps("administratorPlayerId")}
                     />
-                    {form.values.administratorPlayerId && !onlineCharacters.some((player) => player.value === form.values.administratorPlayerId) && (
-                      <Alert color="orange">The configured administrator character is offline or unavailable. Teleport actions will stay disabled.</Alert>
-                    )}
+                    {form.values.administratorPlayerId &&
+                      !onlineCharacters.some(
+                        (player) =>
+                          player.value === form.values.administratorPlayerId,
+                      ) && (
+                        <Alert color="orange">
+                          The configured administrator character is offline or
+                          unavailable. Teleport actions will stay disabled.
+                        </Alert>
+                      )}
                   </Stack>
                 </Accordion.Panel>
               </Accordion.Item>

@@ -52,7 +52,10 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
   const [pending, setPending] = useState<PendingPlayerAction | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [companion, setCompanion] = useState<CompanionStatus | null>(null);
-  const [pendingTeleport, setPendingTeleport] = useState<{ action: TeleportAction; player: ConnectedPlayer } | null>(null);
+  const [pendingTeleport, setPendingTeleport] = useState<{
+    action: TeleportAction;
+    player: ConnectedPlayer;
+  } | null>(null);
 
   const loadPlayers = useCallback(
     async (background = false) => {
@@ -160,21 +163,47 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
       setSubmitting(false);
     }
   };
-  const administratorOnline = players.some((player) => player.playerId === companion?.administratorPlayerId);
+  const administratorOnline = players.some(
+    (player) => player.playerId === companion?.administratorPlayerId,
+  );
   const teleportSupported = (action: TeleportAction) =>
-    companion?.state === "connected" && companion.adminActions?.[action === "admin-to-player" ? "teleportAdminToPlayer" : "teleportPlayerToAdmin"] === true;
+    companion?.state === "connected" &&
+    companion.adminActions?.[
+      action === "admin-to-player"
+        ? "teleportAdminToPlayer"
+        : "teleportPlayerToAdmin"
+    ] === true;
   const confirmTeleport = async () => {
     if (!pendingTeleport || submitting) return;
     setSubmitting(true);
     try {
       const requestId = `pc-${crypto.randomUUID()}`;
-      const result = await teleportPlayer(serverId, pendingTeleport.action, { requestId, targetPlayerId: pendingTeleport.player.playerId });
-      notifications.show({ color: result.status === "succeeded" ? "green" : "red", title: result.status === "succeeded" ? "Teleport completed" : "Teleport rejected", message: result.message });
+      const result = await teleportPlayer(serverId, pendingTeleport.action, {
+        requestId,
+        targetPlayerId: pendingTeleport.player.playerId,
+      });
+      notifications.show({
+        color: result.status === "succeeded" ? "green" : "red",
+        title:
+          result.status === "succeeded"
+            ? "Teleport completed"
+            : "Teleport rejected",
+        message: result.message,
+      });
       if (result.status === "succeeded") await loadPlayers(true);
       setPendingTeleport(null);
     } catch (error) {
-      notifications.show({ color: "orange", title: "Teleport result uncertain", message: error instanceof Error ? `${error.message} Verify the player's location before trying again.` : "Verify the player's location before trying again." });
-    } finally { setSubmitting(false); }
+      notifications.show({
+        color: "orange",
+        title: "Teleport result uncertain",
+        message:
+          error instanceof Error
+            ? `${error.message} Verify the player's location before trying again.`
+            : "Verify the player's location before trying again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -285,10 +314,36 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
                               Ban
                             </Button>
                             {teleportSupported("admin-to-player") && (
-                              <Button size="xs" variant="light" color="violet" onClick={() => setPendingTeleport({ action: "admin-to-player", player })} disabled={submitting || !administratorOnline}>Go to player</Button>
+                              <Button
+                                size="xs"
+                                variant="light"
+                                color="violet"
+                                onClick={() =>
+                                  setPendingTeleport({
+                                    action: "admin-to-player",
+                                    player,
+                                  })
+                                }
+                                disabled={submitting || !administratorOnline}
+                              >
+                                Go to player
+                              </Button>
                             )}
                             {teleportSupported("player-to-admin") && (
-                              <Button size="xs" variant="light" color="violet" onClick={() => setPendingTeleport({ action: "player-to-admin", player })} disabled={submitting || !administratorOnline}>Bring player to me</Button>
+                              <Button
+                                size="xs"
+                                variant="light"
+                                color="violet"
+                                onClick={() =>
+                                  setPendingTeleport({
+                                    action: "player-to-admin",
+                                    player,
+                                  })
+                                }
+                                disabled={submitting || !administratorOnline}
+                              >
+                                Bring player to me
+                              </Button>
                             )}
                           </Group>
                         </Table.Td>
@@ -343,11 +398,41 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
           </Group>
         </Stack>
       </Modal>
-      <Modal opened={pendingTeleport !== null} onClose={() => !submitting && setPendingTeleport(null)} title="Confirm teleport" centered closeOnClickOutside={!submitting} closeOnEscape={!submitting}>
+      <Modal
+        opened={pendingTeleport !== null}
+        onClose={() => !submitting && setPendingTeleport(null)}
+        title="Confirm teleport"
+        centered
+        closeOnClickOutside={!submitting}
+        closeOnEscape={!submitting}
+      >
         <Stack>
-          <Alert color="violet">{pendingTeleport?.action === "admin-to-player" ? `Move your configured administrator character to ${pendingTeleport.player.name}.` : `Move ${pendingTeleport?.player.name} to your configured administrator character.`} This uses the Companion’s live player location and coordinate space.</Alert>
-          <Text size="sm">The selected player must remain online. A unique request ID will be used and this request will not be retried automatically.</Text>
-          <Group justify="flex-end"><Button variant="default" onClick={() => setPendingTeleport(null)} disabled={submitting}>Cancel</Button><Button color="violet" onClick={confirmTeleport} loading={submitting}>Confirm teleport</Button></Group>
+          <Alert color="violet">
+            {pendingTeleport?.action === "admin-to-player"
+              ? `Move your configured administrator character to ${pendingTeleport.player.name}.`
+              : `Move ${pendingTeleport?.player.name} to your configured administrator character.`}{" "}
+            This uses the Companion’s live player location and coordinate space.
+          </Alert>
+          <Text size="sm">
+            The selected player must remain online. A unique request ID will be
+            used and this request will not be retried automatically.
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setPendingTeleport(null)}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="violet"
+              onClick={confirmTeleport}
+              loading={submitting}
+            >
+              Confirm teleport
+            </Button>
+          </Group>
         </Stack>
       </Modal>
     </>

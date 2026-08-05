@@ -174,16 +174,25 @@ test("uses the version 2 map-teleport contract without a caller-provided height"
     }
     return json(documents[path.split("/").at(-1) ?? ""]);
   };
-  const service = new CompanionDiscoveryService(repository(base), 100, 0, fetcher);
-  const result = await service.adminAction(base.id, "teleportPlayerToLocation", {
-    requestId: "pc-request-123",
-    administratorPlayerId: "0123456789abcdef0123456789abcdef",
-    targetPlayerId: "fedcba9876543210fedcba9876543210",
-    coordinateSpace: "palpagos",
-    x: 100,
-    y: 200,
-    verification: "palpagos_map",
-  });
+  const service = new CompanionDiscoveryService(
+    repository(base),
+    100,
+    0,
+    fetcher,
+  );
+  const result = await service.adminAction(
+    base.id,
+    "teleportPlayerToLocation",
+    {
+      requestId: "pc-request-123",
+      administratorPlayerId: "0123456789abcdef0123456789abcdef",
+      targetPlayerId: "fedcba9876543210fedcba9876543210",
+      coordinateSpace: "palpagos",
+      x: 100,
+      y: 200,
+      verification: "palpagos_map",
+    },
+  );
 
   assert.deepEqual(sentBody, {
     requestId: "pc-request-123",
@@ -198,20 +207,25 @@ test("uses the version 2 map-teleport contract without a caller-provided height"
 });
 
 test("does not send safe-height map teleports to an older Companion contract", async () => {
-  const service = new CompanionDiscoveryService(repository(base), 100, 0, async (input) => {
-    const path = new URL(String(input)).pathname;
-    if (path.endsWith("/capabilities"))
-      return json({
-        categories: {
-          adminActions: {
-            supported: true,
-            capabilityVersion: "1",
-            actions: { teleportPlayerToLocation: true },
+  const service = new CompanionDiscoveryService(
+    repository(base),
+    100,
+    0,
+    async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/capabilities"))
+        return json({
+          categories: {
+            adminActions: {
+              supported: true,
+              capabilityVersion: "1",
+              actions: { teleportPlayerToLocation: true },
+            },
           },
-        },
-      });
-    return json(documents[path.split("/").at(-1) ?? ""]);
-  });
+        });
+      return json(documents[path.split("/").at(-1) ?? ""]);
+    },
+  );
 
   await assert.rejects(
     service.adminAction(base.id, "teleportPlayerToLocation", {
