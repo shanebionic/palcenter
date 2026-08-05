@@ -27,6 +27,7 @@ import {
 } from "../lib/api";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
 import type { CompanionStatus } from "../types/companion";
+import { supportsMapTeleport } from "../lib/teleport";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
 
@@ -40,9 +41,13 @@ interface PendingPlayerAction {
 
 interface ServerPlayersProps {
   serverId: string;
+  onSendToMapLocation(playerId: string): void;
 }
 
-export function ServerPlayers({ serverId }: ServerPlayersProps) {
+export function ServerPlayers({
+  serverId,
+  onSendToMapLocation,
+}: ServerPlayersProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [telemetry, setTelemetry] = useState<PlayerPositionSnapshot[]>([]);
   const [search, setSearch] = useState("");
@@ -173,6 +178,7 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
         ? "teleportAdminToPlayer"
         : "teleportPlayerToAdmin"
     ] === true;
+  const mapTeleportSupported = supportsMapTeleport(companion);
   const confirmTeleport = async () => {
     if (!pendingTeleport || submitting) return;
     setSubmitting(true);
@@ -343,6 +349,19 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
                                 disabled={submitting || !administratorOnline}
                               >
                                 Bring player to me
+                              </Button>
+                            )}
+                            {mapTeleportSupported && (
+                              <Button
+                                size="xs"
+                                variant="light"
+                                color="violet"
+                                onClick={() =>
+                                  onSendToMapLocation(player.playerId)
+                                }
+                                disabled={submitting || !administratorOnline}
+                              >
+                                Send to map location
                               </Button>
                             )}
                           </Group>

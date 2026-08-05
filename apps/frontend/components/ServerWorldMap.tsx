@@ -93,6 +93,7 @@ import {
   type TrailHistoryPoint,
 } from "../lib/world-map/trail";
 import { palpagosMapDefinition } from "../lib/world-map/map-definitions";
+import { supportsMapTeleport } from "../lib/teleport";
 import type { CompanionStatus } from "../types/companion";
 import type {
   ConnectedPlayer,
@@ -105,6 +106,7 @@ interface ServerWorldMapProps {
   serverOnline: boolean;
   canCalibrate: boolean;
   focusEvent?: WorldEvent | null;
+  selectedTeleportPlayerId?: string | null;
 }
 
 const defaultTelemetry: LatestPlayerTelemetry = {
@@ -128,6 +130,7 @@ export function ServerWorldMap({
   serverOnline,
   canCalibrate,
   focusEvent,
+  selectedTeleportPlayerId,
 }: ServerWorldMapProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [recentActivity, setRecentActivity] = useState<WorldEvent[]>([]);
@@ -314,6 +317,19 @@ export function ServerWorldMap({
     observer.observe(element);
     return () => observer.disconnect();
   }, [loading, serverOnline]);
+
+  useEffect(() => {
+    if (!selectedTeleportPlayerId) return;
+    const player = players.find(
+      (candidate) =>
+        candidate.playerId === selectedTeleportPlayerId ||
+        candidate.userId === selectedTeleportPlayerId,
+    );
+    if (!player) return;
+    setSelectedId(player.userId);
+    setMapView("palpagos");
+    setFollowPlayer(false);
+  }, [players, selectedTeleportPlayerId]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -677,11 +693,10 @@ export function ServerWorldMap({
   const administratorOnline = players.some(
     (player) => player.playerId === companionStatus?.administratorPlayerId,
   );
+  const mapTeleportSupported = supportsMapTeleport(companionStatus);
   const canTeleportToLocation =
     activeView === "palpagos" &&
-    companionStatus?.state === "connected" &&
-    companionStatus.capabilities.adminActions?.capabilityVersion === "2" &&
-    companionStatus.adminActions?.teleportPlayerToLocation === true &&
+    mapTeleportSupported &&
     administratorOnline &&
     selectedTeleportPlayer !== null;
   const chooseTeleportDestination = (
@@ -943,11 +958,19 @@ export function ServerWorldMap({
                 >
                   Center Player
                 </Button>
-                {canTeleportToLocation && (
+                {activeView === "palpagos" && mapTeleportSupported && (
                   <Button
                     size="compact-xs"
                     color="violet"
                     variant={teleportSelecting ? "filled" : "light"}
+                    disabled={!canTeleportToLocation}
+                    title={
+                      selectedTeleportPlayer === null
+                        ? "Select an online player before choosing a map destination."
+                        : !administratorOnline
+                          ? "The configured administrator character is offline or unavailable."
+                          : undefined
+                    }
                     onClick={() => {
                       setTeleportDestination(null);
                       setTeleportSelecting((value) => !value);
