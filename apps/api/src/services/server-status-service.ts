@@ -156,6 +156,7 @@ export class ServerStatusService {
         host: connection.companionHost ?? null,
         port: connection.companionPort ?? 8213,
         tokenConfigured: (connection.companionApiToken?.length ?? 0) > 0,
+        administratorPlayerId: connection.administratorPlayerId ?? null,
       },
     };
   }

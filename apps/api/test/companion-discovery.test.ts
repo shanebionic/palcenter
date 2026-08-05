@@ -146,6 +146,86 @@ test("accepts only explicit Companion coordinate spaces for live locations", asy
   assert.equal(locations?.[0]?.coordinateSpaceId, "special_area");
   assert.equal(locations?.[0]?.position.x, 10);
 });
+
+test("uses the version 2 map-teleport contract without a caller-provided height", async () => {
+  let sentBody: unknown = null;
+  const fetcher: typeof fetch = async (input, init) => {
+    const path = new URL(String(input)).pathname;
+    if (path.endsWith("/capabilities"))
+      return json({
+        categories: {
+          adminActions: {
+            supported: true,
+            capabilityVersion: "2",
+            actions: { teleportPlayerToLocation: true },
+          },
+        },
+      });
+    if (path.endsWith("/teleport-player-to-location")) {
+      sentBody = JSON.parse(String(init?.body));
+      return json({
+        requestId: "pc-request-123",
+        action: "teleportPlayerToLocation",
+        status: "succeeded",
+        error: null,
+        message: "Teleported safely.",
+        resolvedDestination: { x: 100, y: 200, z: 345 },
+      });
+    }
+    return json(documents[path.split("/").at(-1) ?? ""]);
+  };
+  const service = new CompanionDiscoveryService(repository(base), 100, 0, fetcher);
+  const result = await service.adminAction(base.id, "teleportPlayerToLocation", {
+    requestId: "pc-request-123",
+    administratorPlayerId: "0123456789abcdef0123456789abcdef",
+    targetPlayerId: "fedcba9876543210fedcba9876543210",
+    coordinateSpace: "palpagos",
+    x: 100,
+    y: 200,
+    verification: "palpagos_map",
+  });
+
+  assert.deepEqual(sentBody, {
+    requestId: "pc-request-123",
+    administratorPlayerId: "0123456789abcdef0123456789abcdef",
+    targetPlayerId: "fedcba9876543210fedcba9876543210",
+    coordinateSpace: "palpagos",
+    x: 100,
+    y: 200,
+    verification: "palpagos_map",
+  });
+  assert.deepEqual(result.resolvedDestination, { x: 100, y: 200, z: 345 });
+});
+
+test("does not send safe-height map teleports to an older Companion contract", async () => {
+  const service = new CompanionDiscoveryService(repository(base), 100, 0, async (input) => {
+    const path = new URL(String(input)).pathname;
+    if (path.endsWith("/capabilities"))
+      return json({
+        categories: {
+          adminActions: {
+            supported: true,
+            capabilityVersion: "1",
+            actions: { teleportPlayerToLocation: true },
+          },
+        },
+      });
+    return json(documents[path.split("/").at(-1) ?? ""]);
+  });
+
+  await assert.rejects(
+    service.adminAction(base.id, "teleportPlayerToLocation", {
+      requestId: "pc-request-123",
+      administratorPlayerId: "0123456789abcdef0123456789abcdef",
+      targetPlayerId: "fedcba9876543210fedcba9876543210",
+      coordinateSpace: "palpagos",
+      x: 100,
+      y: 200,
+      verification: "palpagos_map",
+    }),
+    /does not support safe-height map teleports/,
+  );
+});
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,

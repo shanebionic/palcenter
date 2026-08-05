@@ -52,7 +52,8 @@ export class AuthorizationService {
     if (
       method === "POST" &&
       (/^\/api\/servers\/[^/]+\/admin\//.test(path) ||
-        /^\/api\/servers\/[^/]+\/players\/[^/]+\//.test(path))
+        /^\/api\/servers\/[^/]+\/players\/[^/]+\//.test(path) ||
+        /^\/api\/servers\/[^/]+\/teleport\//.test(path))
     ) {
       return "operate";
     }

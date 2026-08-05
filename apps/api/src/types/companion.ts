@@ -33,6 +33,17 @@ export interface CompanionStatus {
     } | null;
   } | null;
   capabilities: Record<string, CompanionCapability>;
+  adminActions?: Record<string, boolean>;
+  administratorPlayerId?: string | null;
+}
+
+export interface CompanionAdminActionResponse {
+  requestId: string;
+  action: string;
+  status: "succeeded" | "rejected";
+  error: string | null;
+  message: string;
+  resolvedDestination: { x: number; y: number; z: number } | null;
 }
 
 export type CompanionPlayerActivityType =

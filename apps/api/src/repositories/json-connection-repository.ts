@@ -17,6 +17,7 @@ const storedConnectionSchema = z.object({
   companionHost: z.string().trim().min(1).nullable().default(null),
   companionPort: z.number().int().min(1).max(65535).default(8213),
   companionApiToken: z.string().max(512).default(""),
+  administratorPlayerId: z.string().regex(/^[0-9A-Fa-f]{32}$/).nullable().default(null),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

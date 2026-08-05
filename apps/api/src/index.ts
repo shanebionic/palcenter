@@ -851,6 +851,7 @@ const connectionInputSchema = z
     companionHost: z.string().trim().min(1).max(253).nullable().optional(),
     companionPort: z.number().int().min(1).max(65535).optional(),
     companionApiToken: z.string().max(512).optional(),
+    administratorPlayerId: z.string().regex(/^[0-9A-Fa-f]{32}$/).nullable().optional(),
   })
   .strict();
 const connectionUpdateSchema = connectionInputSchema.extend({
@@ -1013,12 +1014,51 @@ app.get("/api/servers/:id/settings", async (request) => {
 
 app.get("/api/servers/:id/companion", async (request) => {
   const parameters = serverIdSchema.parse(request.params);
-  return companionDiscoveryService.discover(parameters.id);
+  const [status, connection] = await Promise.all([companionDiscoveryService.discover(parameters.id), repository.get(parameters.id)]);
+  return { ...status, administratorPlayerId: connection?.administratorPlayerId ?? null };
 });
 
 app.post("/api/servers/:id/companion/refresh", async (request) => {
   const parameters = serverIdSchema.parse(request.params);
-  return companionDiscoveryService.discover(parameters.id, true);
+  const [status, connection] = await Promise.all([companionDiscoveryService.discover(parameters.id, true), repository.get(parameters.id)]);
+  return { ...status, administratorPlayerId: connection?.administratorPlayerId ?? null };
+});
+
+const stablePlayerIdSchema = z.string().regex(/^[0-9A-Fa-f]{32}$/);
+const teleportRequestSchema = z.object({
+  requestId: z.string().min(8).max(128).regex(/^[A-Za-z0-9._:-]+$/),
+  targetPlayerId: stablePlayerIdSchema,
+}).strict();
+const locationTeleportRequestSchema = teleportRequestSchema.extend({
+  coordinateSpace: z.literal("palpagos"),
+  x: z.number().min(-999_940).max(447_900),
+  y: z.number().min(-738_920).max(708_920),
+  verification: z.literal("palpagos_map"),
+}).strict();
+async function companionTeleport(
+  serverId: string,
+  action: "teleportAdminToPlayer" | "teleportPlayerToAdmin" | "teleportPlayerToLocation",
+  input: Record<string, unknown>,
+) {
+  const connection = await repository.get(serverId);
+  if (!connection) throw new Error("The requested server does not exist.");
+  if (!connection.administratorPlayerId)
+    throw new Error("Choose the administrator character in Connection Settings before teleporting.");
+  return companionDiscoveryService.adminAction(serverId, action, {
+    ...input, administratorPlayerId: connection.administratorPlayerId,
+  });
+}
+app.post("/api/servers/:id/teleport/admin-to-player", async (request) => {
+  const { id } = serverIdSchema.parse(request.params);
+  return companionTeleport(id, "teleportAdminToPlayer", teleportRequestSchema.parse(request.body));
+});
+app.post("/api/servers/:id/teleport/player-to-admin", async (request) => {
+  const { id } = serverIdSchema.parse(request.params);
+  return companionTeleport(id, "teleportPlayerToAdmin", teleportRequestSchema.parse(request.body));
+});
+app.post("/api/servers/:id/teleport/player-to-location", async (request) => {
+  const { id } = serverIdSchema.parse(request.params);
+  return companionTeleport(id, "teleportPlayerToLocation", locationTeleportRequestSchema.parse(request.body));
 });
 
 const historyQuerySchema = z.object({

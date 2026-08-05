@@ -19,6 +19,9 @@ export function serverConnectionPayload(
     ...(values.companionApiToken
       ? { companionApiToken: values.companionApiToken }
       : {}),
+    ...(values.administratorPlayerId !== undefined
+      ? { administratorPlayerId: values.administratorPlayerId }
+      : {}),
   };
 }
 
