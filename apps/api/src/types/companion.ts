@@ -43,6 +43,7 @@ export interface CompanionAdminActionResponse {
   status: "succeeded" | "rejected";
   error: string | null;
   message: string;
+  resolvedDestination: { x: number; y: number; z: number } | null;
 }
 
 export type CompanionPlayerActivityType =

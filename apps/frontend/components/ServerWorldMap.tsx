@@ -12,7 +12,6 @@ import {
   Group,
   Loader,
   Modal,
-  NumberInput,
   Paper,
   SegmentedControl,
   Select,
@@ -162,7 +161,6 @@ export function ServerWorldMap({
   const [trailTruncated, setTrailTruncated] = useState(false);
   const [teleportSelecting, setTeleportSelecting] = useState(false);
   const [teleportDestination, setTeleportDestination] = useState<{ x: number; y: number } | null>(null);
-  const [teleportZ, setTeleportZ] = useState<number | string>("");
   const [teleportSubmitting, setTeleportSubmitting] = useState(false);
   const trailRequest = useRef<AbortController | null>(null);
   const [diagnostics, setDiagnostics] = useState<{
@@ -676,6 +674,7 @@ export function ServerWorldMap({
   const canTeleportToLocation =
     activeView === "palpagos" &&
     companionStatus?.state === "connected" &&
+    companionStatus.capabilities.adminActions?.capabilityVersion === "2" &&
     companionStatus.adminActions?.teleportPlayerToLocation === true &&
     administratorOnline &&
     selectedTeleportPlayer !== null;
@@ -689,15 +688,16 @@ export function ServerWorldMap({
     setTeleportSelecting(false);
   };
   const confirmLocationTeleport = async () => {
-    if (!selectedTeleportPlayer || !teleportDestination || !Number.isFinite(Number(teleportZ)) || teleportSubmitting) return;
+    if (!selectedTeleportPlayer || !teleportDestination || teleportSubmitting) return;
     setTeleportSubmitting(true);
     try {
       const result = await teleportPlayer(serverId, "player-to-location", {
         requestId: `pc-${crypto.randomUUID()}`, targetPlayerId: selectedTeleportPlayer.playerId,
-        destination: { coordinateSpace: "palpagos", verification: "palpagos_map", x: teleportDestination.x, y: teleportDestination.y, z: Number(teleportZ) },
+        coordinateSpace: "palpagos", verification: "palpagos_map", x: teleportDestination.x, y: teleportDestination.y,
       });
-      notifications.show({ color: result.status === "succeeded" ? "green" : "red", title: result.status === "succeeded" ? "Teleport completed" : "Teleport rejected", message: result.message });
-      if (result.status === "succeeded") { setTeleportDestination(null); setTeleportZ(""); void loadMap(true); }
+      const resolved = result.resolvedDestination;
+      notifications.show({ color: result.status === "succeeded" ? "green" : "red", title: result.status === "succeeded" ? "Teleport completed" : "Teleport rejected", message: result.status === "succeeded" && resolved ? `${result.message} Resolved destination: X ${resolved.x.toFixed(1)} · Y ${resolved.y.toFixed(1)} · Z ${resolved.z.toFixed(1)}.` : result.message });
+      if (result.status === "succeeded") { setTeleportDestination(null); void loadMap(true); }
     } catch (error) {
       notifications.show({ color: "orange", title: "Teleport result uncertain", message: error instanceof Error ? `${error.message} Verify the player's location before trying again.` : "Verify the player's location before trying again." });
     } finally { setTeleportSubmitting(false); }
@@ -1287,9 +1287,8 @@ export function ServerWorldMap({
       ) : null}
       <Modal opened={teleportDestination !== null} onClose={() => !teleportSubmitting && setTeleportDestination(null)} title="Confirm map teleport" centered>
         <Stack>
-          <Alert color="violet">Move {selectedTeleportPlayer?.name ?? "the selected player"} to Palpagos: X {teleportDestination?.x.toFixed(1)} · Y {teleportDestination?.y.toFixed(1)}.</Alert>
-          <NumberInput label="Destination height (advanced)" description="PalCenter does not guess height. Supply the Z value required by the Companion contract; the Companion checks the floor and collision." value={teleportZ} onChange={setTeleportZ} required />
-          <Group justify="flex-end"><Button variant="default" onClick={() => setTeleportDestination(null)} disabled={teleportSubmitting}>Cancel</Button><Button color="violet" onClick={confirmLocationTeleport} loading={teleportSubmitting} disabled={!Number.isFinite(Number(teleportZ))}>Confirm teleport</Button></Group>
+          <Alert color="violet">Move {selectedTeleportPlayer?.name ?? "the selected player"} to Palpagos: X {teleportDestination?.x.toFixed(1)} · Y {teleportDestination?.y.toFixed(1)}. Companion will resolve a safe destination height.</Alert>
+          <Group justify="flex-end"><Button variant="default" onClick={() => setTeleportDestination(null)} disabled={teleportSubmitting}>Cancel</Button><Button color="violet" onClick={confirmLocationTeleport} loading={teleportSubmitting}>Confirm teleport</Button></Group>
         </Stack>
       </Modal>
     </Stack>

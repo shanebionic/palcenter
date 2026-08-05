@@ -1030,11 +1030,10 @@ const teleportRequestSchema = z.object({
   targetPlayerId: stablePlayerIdSchema,
 }).strict();
 const locationTeleportRequestSchema = teleportRequestSchema.extend({
-  destination: z.object({
-    coordinateSpace: z.literal("palpagos"), verification: z.literal("palpagos_map"),
-    x: z.number().min(-999_940).max(447_900), y: z.number().min(-738_920).max(708_920),
-    z: z.number().min(-200_000).max(1_000_000),
-  }).strict(),
+  coordinateSpace: z.literal("palpagos"),
+  x: z.number().min(-999_940).max(447_900),
+  y: z.number().min(-738_920).max(708_920),
+  verification: z.literal("palpagos_map"),
 }).strict();
 async function companionTeleport(
   serverId: string,

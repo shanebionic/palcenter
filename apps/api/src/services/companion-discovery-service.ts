@@ -43,6 +43,7 @@ const adminActionsSchema = z.object({
 const adminActionResponseSchema = z.object({
   requestId: z.string(), action: z.string(), status: z.enum(["succeeded", "rejected"]),
   error: z.string().nullable(), message: z.string(),
+  resolvedDestination: z.object({ x: z.number(), y: z.number(), z: z.number() }).nullable(),
 }).passthrough();
 const activityRecordSchema = z
   .object({
@@ -256,6 +257,11 @@ export class CompanionDiscoveryService {
     if (status.state !== "connected") throw new Error("PalCenter Companion is unavailable.");
     if (status.adminActions?.[action] !== true)
       throw new Error("This Companion does not currently allow that teleport action.");
+    if (
+      action === "teleportPlayerToLocation" &&
+      status.capabilities.adminActions?.capabilityVersion !== "2"
+    )
+      throw new Error("This Companion does not support safe-height map teleports.");
     const connection = await this.connections.get(serverId);
     if (!connection?.companionApiToken) throw new Error("Companion authentication is not configured.");
     const paths = {
