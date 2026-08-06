@@ -3,6 +3,10 @@ import Fastify from "fastify";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { PalworldRestError } from "./clients/palworld-rest-client.js";
+import {
+  PalDefenderClient,
+  PalDefenderError,
+} from "./clients/paldefender-client.js";
 import { NotificationDeliveryError } from "./providers/notification-provider.js";
 import { JsonConnectionRepository } from "./repositories/json-connection-repository.js";
 import { JsonNotificationRepository } from "./repositories/json-notification-repository.js";
@@ -98,6 +102,10 @@ import {
 } from "./services/world-event-service.js";
 import { PlayerActivityEventService } from "./services/player-activity-event-service.js";
 import { CompanionDiscoveryService } from "./services/companion-discovery-service.js";
+import {
+  PalDefenderNotConfiguredError,
+  PalDefenderService,
+} from "./services/paldefender-service.js";
 
 const booleanEnvironmentValue = z
   .enum(["true", "false"])
@@ -111,51 +119,68 @@ const packageVersion = z
     ),
   ).version;
 
-const environmentSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
-  PORT: z.coerce.number().int().positive().default(3001),
-  CONFIG_DIR: z.string().min(1).default("./data"),
-  HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
-  TELEMETRY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
-  TELEMETRY_RETENTION_DAYS: telemetryRetentionDaysSchema,
-  AUTOMATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(15),
-  PALCENTER_VERSION: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().trim().min(1).max(50).default(packageVersion),
-  ),
-  PALCENTER_CHANNEL: z
-    .enum(["production", "development"])
-    .default("development"),
-  PALCENTER_COMMIT: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().trim().min(1).max(64).default("unknown"),
-  ),
-  PALCENTER_DEPLOYMENT: z.string().trim().min(1).max(50).default("Local"),
-  PALCENTER_SESSION_SECRET: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().min(32).max(1_024).optional(),
-  ),
-  PALCENTER_SESSION_DURATION_SECONDS: z.coerce
-    .number()
-    .int()
-    .min(300)
-    .max(604_800)
-    .default(43_200),
-  PALCENTER_SESSION_COOKIE_SECURE: booleanEnvironmentValue.default("false"),
-  PALCENTER_CORS_ORIGINS: z.string().default(""),
-  PALCENTER_TRUST_PROXY: booleanEnvironmentValue.default("false"),
-  LOG_LEVEL: z
-    .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
-    .default("info"),
-  PALCENTER_BACKUP_MAX_BYTES: z.coerce
-    .number()
-    .int()
-    .min(1_048_576)
-    .max(1_073_741_824)
-    .default(536_870_912),
-});
+const environmentSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(["development", "production", "test"])
+      .default("development"),
+    PORT: z.coerce.number().int().positive().default(3001),
+    CONFIG_DIR: z.string().min(1).default("./data"),
+    HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+    TELEMETRY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+    TELEMETRY_RETENTION_DAYS: telemetryRetentionDaysSchema,
+    AUTOMATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(15),
+    PALCENTER_VERSION: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().trim().min(1).max(50).default(packageVersion),
+    ),
+    PALCENTER_CHANNEL: z
+      .enum(["production", "development"])
+      .default("development"),
+    PALCENTER_COMMIT: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().trim().min(1).max(64).default("unknown"),
+    ),
+    PALCENTER_DEPLOYMENT: z.string().trim().min(1).max(50).default("Local"),
+    PALCENTER_SESSION_SECRET: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().min(32).max(1_024).optional(),
+    ),
+    PALCENTER_SESSION_DURATION_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(300)
+      .max(604_800)
+      .default(43_200),
+    PALCENTER_SESSION_COOKIE_SECURE: booleanEnvironmentValue.default("false"),
+    PALCENTER_CORS_ORIGINS: z.string().default(""),
+    PALCENTER_TRUST_PROXY: booleanEnvironmentValue.default("false"),
+    LOG_LEVEL: z
+      .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
+      .default("info"),
+    PALCENTER_BACKUP_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1_048_576)
+      .max(1_073_741_824)
+      .default(536_870_912),
+    PALDEFENDER_URL: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().url().optional(),
+    ),
+    PALDEFENDER_TOKEN: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().trim().min(1).optional(),
+    ),
+  })
+  .refine(
+    (value) =>
+      Boolean(value.PALDEFENDER_URL) === Boolean(value.PALDEFENDER_TOKEN),
+    {
+      message: "PALDEFENDER_URL and PALDEFENDER_TOKEN must be set together.",
+      path: ["PALDEFENDER_URL"],
+    },
+  );
 
 const parsedEnvironment = environmentSchema.safeParse(process.env);
 
@@ -303,6 +328,14 @@ const authenticationService = new AuthenticationService(
 );
 const authorizationService = new AuthorizationService();
 const connectionManager = new ConnectionManager(repository);
+const palDefenderService = new PalDefenderService(
+  environment.PALDEFENDER_URL && environment.PALDEFENDER_TOKEN
+    ? new PalDefenderClient(
+        environment.PALDEFENDER_URL,
+        environment.PALDEFENDER_TOKEN,
+      )
+    : null,
+);
 const notificationService = new NotificationService(
   notificationRepository,
   repository,
@@ -712,6 +745,12 @@ app.get("/api/health", async (_request, reply) => {
     });
   }
 });
+
+app.get("/api/paldefender/status", async () => palDefenderService.status());
+
+app.get("/api/paldefender/players", async () => ({
+  players: await palDefenderService.players(),
+}));
 
 const currentUser = (cookie: string | undefined) => {
   const session = authenticationService.sessionFromCookie(cookie);
@@ -1452,6 +1491,20 @@ app.setErrorHandler((error, request, reply) => {
         error.statusCode === 401
           ? "authentication_failed"
           : "server_unreachable",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof PalDefenderNotConfiguredError) {
+    return reply.code(503).send({
+      error: "paldefender_not_configured",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof PalDefenderError) {
+    return reply.code(502).send({
+      error: "paldefender_unavailable",
       message: error.message,
     });
   }
