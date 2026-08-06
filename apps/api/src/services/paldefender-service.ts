@@ -1,6 +1,9 @@
 import {
   PalDefenderClient,
   type PalDefenderPlayer,
+  type PalDefenderPlayerDetails,
+  type PalDefenderInventoryItem,
+  type PalDefenderPal,
 } from "../clients/paldefender-client.js";
 
 export interface PalDefenderStatus {
@@ -40,6 +43,27 @@ export class PalDefenderService {
       throw new PalDefenderNotConfiguredError();
     }
     return this.client.getPlayers();
+  }
+
+  async player(id: string): Promise<PalDefenderPlayerDetails> {
+    return this.configuredClient().getPlayer(id);
+  }
+
+  async inventory(id: string): Promise<PalDefenderInventoryItem[]> {
+    return this.configuredClient().getInventory(id);
+  }
+
+  async pals(id: string): Promise<PalDefenderPal[]> {
+    return this.configuredClient().getPals(id);
+  }
+
+  async technology(id: string): Promise<string[]> {
+    return this.configuredClient().getTechnology(id);
+  }
+
+  private configuredClient(): PalDefenderClient {
+    if (!this.client) throw new PalDefenderNotConfiguredError();
+    return this.client;
   }
 }
 

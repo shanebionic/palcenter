@@ -57,6 +57,48 @@ export interface PalDefenderPlayer {
   level: number | null;
 }
 
+export interface PalDefenderPlayerDetails extends PalDefenderPlayer {
+  worldLocation: { x?: number; y?: number; z?: number } | null;
+  mapLocation: { x?: number; y?: number; z?: number } | null;
+}
+
+export interface PalDefenderInventoryItem {
+  container: string;
+  slot: number;
+  itemId: string;
+  quantity: number;
+}
+
+export interface PalDefenderPal {
+  instanceId: string;
+  location: "Team" | "Palbox" | "Base Camp";
+  baseCampId: string | null;
+  palId: string;
+  nickname: string | null;
+  gender: string | null;
+  level: number | null;
+  experience: number | null;
+  shiny: boolean | null;
+  rank: number | null;
+  condensedPals: number | null;
+  physicalHealth: string | null;
+  workerSick: string | null;
+  imported: boolean | null;
+  hp: number | null;
+  hunger: number | null;
+  maxHunger: number | null;
+  sanity: number | null;
+  support: number | null;
+  craftSpeed: number | null;
+  palSouls: Record<string, number>;
+  ivs: Record<string, number>;
+  extraWorkSuitabilities: Record<string, number>;
+  disabledWorkPreferences: string[];
+  passiveSkills: string[];
+  activeSkills: string[];
+  learnedSkills: string[];
+}
+
 interface HistoryResponse {
   metrics: ServerMetric[];
 }
@@ -459,6 +501,48 @@ export async function getPalDefenderPlayers(): Promise<PalDefenderPlayer[]> {
     { cache: "no-store" },
   );
   return result.players;
+}
+
+function palDefenderPlayerPath(playerId: string): string {
+  return `/api/paldefender/players/${encodeURIComponent(playerId)}`;
+}
+
+export function getPalDefenderPlayer(
+  playerId: string,
+): Promise<PalDefenderPlayerDetails> {
+  return request<PalDefenderPlayerDetails>(palDefenderPlayerPath(playerId), {
+    cache: "no-store",
+  });
+}
+
+export async function getPalDefenderInventory(
+  playerId: string,
+): Promise<PalDefenderInventoryItem[]> {
+  const result = await request<{ items: PalDefenderInventoryItem[] }>(
+    `${palDefenderPlayerPath(playerId)}/inventory`,
+    { cache: "no-store" },
+  );
+  return result.items;
+}
+
+export async function getPalDefenderPals(
+  playerId: string,
+): Promise<PalDefenderPal[]> {
+  const result = await request<{ pals: PalDefenderPal[] }>(
+    `${palDefenderPlayerPath(playerId)}/pals`,
+    { cache: "no-store" },
+  );
+  return result.pals;
+}
+
+export async function getPalDefenderTechnology(
+  playerId: string,
+): Promise<string[]> {
+  const result = await request<{ technologies: string[] }>(
+    `${palDefenderPlayerPath(playerId)}/technology`,
+    { cache: "no-store" },
+  );
+  return result.technologies;
 }
 
 export async function getLatestPlayerTelemetry(
