@@ -752,6 +752,35 @@ app.get("/api/paldefender/players", async () => ({
   players: await palDefenderService.players(),
 }));
 
+const palDefenderPlayerParametersSchema = z.object({
+  playerId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9_-]+$/),
+});
+
+app.get("/api/paldefender/players/:playerId", async (request) => {
+  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
+  return palDefenderService.player(playerId);
+});
+
+app.get("/api/paldefender/players/:playerId/inventory", async (request) => {
+  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
+  return { items: await palDefenderService.inventory(playerId) };
+});
+
+app.get("/api/paldefender/players/:playerId/pals", async (request) => {
+  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
+  return { pals: await palDefenderService.pals(playerId) };
+});
+
+app.get("/api/paldefender/players/:playerId/technology", async (request) => {
+  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
+  return { technologies: await palDefenderService.technology(playerId) };
+});
+
 const currentUser = (cookie: string | undefined) => {
   const session = authenticationService.sessionFromCookie(cookie);
   if (!session) throw new Error("Authenticated session is unavailable.");
@@ -1503,8 +1532,30 @@ app.setErrorHandler((error, request, reply) => {
   }
 
   if (error instanceof PalDefenderError) {
-    return reply.code(502).send({
-      error: "paldefender_unavailable",
+    const playerNotFound =
+      error.statusCode === 404 && error.code?.startsWith("PLAYER_");
+    const statusCode = playerNotFound
+      ? 404
+      : error.statusCode === 400 && error.code === "INVALID_PLAYER_ID"
+        ? 400
+        : error.timedOut
+          ? 504
+          : 502;
+    const errorCode = playerNotFound
+      ? "paldefender_player_not_found"
+      : statusCode === 400
+        ? "invalid_player_id"
+        : error.timedOut
+          ? "paldefender_timeout"
+          : error.statusCode === 401 || error.statusCode === 403
+            ? "paldefender_authentication_failed"
+            : error.code === "MALFORMED_RESPONSE"
+              ? "paldefender_malformed_response"
+              : error.statusCode === 404
+                ? "paldefender_endpoint_unavailable"
+                : "paldefender_unavailable";
+    return reply.code(statusCode).send({
+      error: errorCode,
       message: error.message,
     });
   }

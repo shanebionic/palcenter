@@ -2,6 +2,7 @@
 
 import { Alert, Badge, ScrollArea, Stack, Table, Text } from "@mantine/core";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ApplicationShell } from "../../../components/ApplicationShell";
 import { BrandedLoader } from "../../../components/BrandedLoader";
 import { PageHeader } from "../../../components/PageHeader";
@@ -10,8 +11,10 @@ import {
   getPalDefenderPlayers,
   type PalDefenderPlayer,
 } from "../../../lib/api";
+import { palDefenderPlayerHref } from "../../../lib/paldefender";
 
 export default function PalDefenderPlayersPage() {
+  const router = useRouter();
   const [players, setPlayers] = useState<PalDefenderPlayer[] | null>(null);
   const [error, setError] = useState("");
 
@@ -50,7 +53,21 @@ export default function PalDefenderPlayersPage() {
                 </Table.Thead>
                 <Table.Tbody>
                   {players.map((player) => (
-                    <Table.Tr key={player.playerId}>
+                    <Table.Tr
+                      key={player.playerId}
+                      tabIndex={0}
+                      role="link"
+                      style={{ cursor: "pointer" }}
+                      onClick={() =>
+                        router.push(palDefenderPlayerHref(player.playerId))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          router.push(palDefenderPlayerHref(player.playerId));
+                        }
+                      }}
+                    >
                       <Table.Td fw={600}>{player.name}</Table.Td>
                       <Table.Td>
                         <Text ff="monospace" size="sm">
