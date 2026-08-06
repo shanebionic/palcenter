@@ -14,7 +14,6 @@ import {
   IconAutomation,
   IconAdjustments,
   IconLayoutDashboard,
-  IconShieldCheck,
   IconServer,
   IconTools,
   IconUsers,
@@ -37,15 +36,6 @@ const primaryLinks = [
   { href: "/players", label: "Players", icon: IconUsers },
   { href: "/automation", label: "Automation", icon: IconAutomation },
   { href: "/tools", label: "Tools", icon: IconTools },
-  {
-    href: "/paldefender",
-    label: "PalDefender",
-    icon: IconShieldCheck,
-    children: [
-      { href: "/paldefender/status", label: "Status" },
-      { href: "/paldefender/players", label: "Players" },
-    ],
-  },
   { href: "/settings", label: "Settings", icon: IconAdjustments },
 ];
 
@@ -102,7 +92,7 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
             >
               Command Center
             </Text>
-            {links.map(({ href, label, icon: Icon, children }) => (
+            {links.map(({ href, label, icon: Icon }) => (
               <NavLink
                 key={href}
                 component={Link}
@@ -113,19 +103,7 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
                   href === "/" ? pathname === href : pathname.startsWith(href)
                 }
                 onClick={navigation.close}
-                defaultOpened={Boolean(children && pathname.startsWith(href))}
-              >
-                {children?.map((child) => (
-                  <NavLink
-                    key={child.href}
-                    component={Link}
-                    href={child.href}
-                    label={child.label}
-                    active={pathname === child.href}
-                    onClick={navigation.close}
-                  />
-                ))}
-              </NavLink>
+              />
             ))}
           </Stack>
         </AppShell.Section>

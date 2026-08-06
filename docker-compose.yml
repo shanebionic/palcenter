@@ -22,8 +22,6 @@ services:
       PALCENTER_TRUST_PROXY: ${PALCENTER_TRUST_PROXY:-false}
       LOG_LEVEL: ${PALCENTER_LOG_LEVEL:-info}
       PALCENTER_BACKUP_MAX_BYTES: ${PALCENTER_BACKUP_MAX_BYTES:-536870912}
-      PALDEFENDER_URL: ${PALDEFENDER_URL:-}
-      PALDEFENDER_TOKEN: ${PALDEFENDER_TOKEN:-}
     volumes:
       - palcenter-data:/app/data
     cap_drop:

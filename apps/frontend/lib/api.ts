@@ -39,20 +39,6 @@ interface PlayersResponse {
   players: ConnectedPlayer[];
 }
 
-export interface PalDefenderStatus {
-  connected: boolean;
-  version: string;
-  responseTime: number;
-}
-
-export interface PalDefenderPlayer {
-  name: string;
-  playerId: string;
-  online: boolean;
-  guild: string | null;
-  level: number | null;
-}
-
 interface HistoryResponse {
   metrics: ServerMetric[];
 }
@@ -374,20 +360,6 @@ export async function getPlayers(serverId: string): Promise<ConnectedPlayer[]> {
     { cache: "no-store" },
   );
 
-  return result.players;
-}
-
-export function getPalDefenderStatus(): Promise<PalDefenderStatus> {
-  return request<PalDefenderStatus>("/api/paldefender/status", {
-    cache: "no-store",
-  });
-}
-
-export async function getPalDefenderPlayers(): Promise<PalDefenderPlayer[]> {
-  const result = await request<{ players: PalDefenderPlayer[] }>(
-    "/api/paldefender/players",
-    { cache: "no-store" },
-  );
   return result.players;
 }
 
