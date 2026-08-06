@@ -23,26 +23,29 @@ test("gets the PalDefender version with bearer authentication", async () => {
 });
 
 test("normalizes PalDefender players without leaking raw DTO fields", async () => {
-  const client = new PalDefenderClient("http://paldefender", "token", async () =>
-    Response.json({
-      Meta: { PlayerCount: 2, OnlineCount: 1 },
-      Players: [
-        {
-          Name: "LamballFan",
-          IP: "192.0.2.10",
-          PlayerUID: "player-1",
-          UserId: "steam_1",
-          GuildName: "Pal Tamers",
-          GuildUUID: "guild-1",
-          Status: "Online",
-        },
-        {
-          Name: "CattivaFan",
-          PlayerUID: "player-2",
-          Status: "Offline",
-        },
-      ],
-    }),
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Meta: { PlayerCount: 2, OnlineCount: 1 },
+        Players: [
+          {
+            Name: "LamballFan",
+            IP: "192.0.2.10",
+            PlayerUID: "player-1",
+            UserId: "steam_1",
+            GuildName: "Pal Tamers",
+            GuildUUID: "guild-1",
+            Status: "Online",
+          },
+          {
+            Name: "CattivaFan",
+            PlayerUID: "player-2",
+            Status: "Offline",
+          },
+        ],
+      }),
   );
 
   assert.deepEqual(await client.getPlayers(), [

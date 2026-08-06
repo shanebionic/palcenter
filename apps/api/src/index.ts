@@ -119,65 +119,68 @@ const packageVersion = z
     ),
   ).version;
 
-const environmentSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
-  PORT: z.coerce.number().int().positive().default(3001),
-  CONFIG_DIR: z.string().min(1).default("./data"),
-  HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
-  TELEMETRY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
-  TELEMETRY_RETENTION_DAYS: telemetryRetentionDaysSchema,
-  AUTOMATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(15),
-  PALCENTER_VERSION: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().trim().min(1).max(50).default(packageVersion),
-  ),
-  PALCENTER_CHANNEL: z
-    .enum(["production", "development"])
-    .default("development"),
-  PALCENTER_COMMIT: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().trim().min(1).max(64).default("unknown"),
-  ),
-  PALCENTER_DEPLOYMENT: z.string().trim().min(1).max(50).default("Local"),
-  PALCENTER_SESSION_SECRET: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().min(32).max(1_024).optional(),
-  ),
-  PALCENTER_SESSION_DURATION_SECONDS: z.coerce
-    .number()
-    .int()
-    .min(300)
-    .max(604_800)
-    .default(43_200),
-  PALCENTER_SESSION_COOKIE_SECURE: booleanEnvironmentValue.default("false"),
-  PALCENTER_CORS_ORIGINS: z.string().default(""),
-  PALCENTER_TRUST_PROXY: booleanEnvironmentValue.default("false"),
-  LOG_LEVEL: z
-    .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
-    .default("info"),
-  PALCENTER_BACKUP_MAX_BYTES: z.coerce
-    .number()
-    .int()
-    .min(1_048_576)
-    .max(1_073_741_824)
-    .default(536_870_912),
-  PALDEFENDER_URL: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().url().optional(),
-  ),
-  PALDEFENDER_TOKEN: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().trim().min(1).optional(),
-  ),
-}).refine(
-  (value) => Boolean(value.PALDEFENDER_URL) === Boolean(value.PALDEFENDER_TOKEN),
-  {
-    message: "PALDEFENDER_URL and PALDEFENDER_TOKEN must be set together.",
-    path: ["PALDEFENDER_URL"],
-  },
-);
+const environmentSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(["development", "production", "test"])
+      .default("development"),
+    PORT: z.coerce.number().int().positive().default(3001),
+    CONFIG_DIR: z.string().min(1).default("./data"),
+    HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+    TELEMETRY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+    TELEMETRY_RETENTION_DAYS: telemetryRetentionDaysSchema,
+    AUTOMATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(15),
+    PALCENTER_VERSION: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().trim().min(1).max(50).default(packageVersion),
+    ),
+    PALCENTER_CHANNEL: z
+      .enum(["production", "development"])
+      .default("development"),
+    PALCENTER_COMMIT: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().trim().min(1).max(64).default("unknown"),
+    ),
+    PALCENTER_DEPLOYMENT: z.string().trim().min(1).max(50).default("Local"),
+    PALCENTER_SESSION_SECRET: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().min(32).max(1_024).optional(),
+    ),
+    PALCENTER_SESSION_DURATION_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(300)
+      .max(604_800)
+      .default(43_200),
+    PALCENTER_SESSION_COOKIE_SECURE: booleanEnvironmentValue.default("false"),
+    PALCENTER_CORS_ORIGINS: z.string().default(""),
+    PALCENTER_TRUST_PROXY: booleanEnvironmentValue.default("false"),
+    LOG_LEVEL: z
+      .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
+      .default("info"),
+    PALCENTER_BACKUP_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1_048_576)
+      .max(1_073_741_824)
+      .default(536_870_912),
+    PALDEFENDER_URL: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().url().optional(),
+    ),
+    PALDEFENDER_TOKEN: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().trim().min(1).optional(),
+    ),
+  })
+  .refine(
+    (value) =>
+      Boolean(value.PALDEFENDER_URL) === Boolean(value.PALDEFENDER_TOKEN),
+    {
+      message: "PALDEFENDER_URL and PALDEFENDER_TOKEN must be set together.",
+      path: ["PALDEFENDER_URL"],
+    },
+  );
 
 const parsedEnvironment = environmentSchema.safeParse(process.env);
 

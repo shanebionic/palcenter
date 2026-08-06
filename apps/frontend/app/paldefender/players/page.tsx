@@ -16,9 +16,13 @@ export default function PalDefenderPlayersPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void getPalDefenderPlayers().then(setPlayers).catch((value: unknown) => {
-      setError(value instanceof Error ? value.message : "Unable to load players.");
-    });
+    void getPalDefenderPlayers()
+      .then(setPlayers)
+      .catch((value: unknown) => {
+        setError(
+          value instanceof Error ? value.message : "Unable to load players.",
+        );
+      });
   }, []);
 
   return (

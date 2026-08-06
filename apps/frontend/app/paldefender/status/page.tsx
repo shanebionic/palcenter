@@ -11,19 +11,20 @@ import { ApplicationShell } from "../../../components/ApplicationShell";
 import { BrandedLoader } from "../../../components/BrandedLoader";
 import { PageHeader } from "../../../components/PageHeader";
 import { StatCard } from "../../../components/ui/StatCard";
-import {
-  getPalDefenderStatus,
-  type PalDefenderStatus,
-} from "../../../lib/api";
+import { getPalDefenderStatus, type PalDefenderStatus } from "../../../lib/api";
 
 export default function PalDefenderStatusPage() {
   const [status, setStatus] = useState<PalDefenderStatus | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void getPalDefenderStatus().then(setStatus).catch((value: unknown) => {
-      setError(value instanceof Error ? value.message : "Unable to load status.");
-    });
+    void getPalDefenderStatus()
+      .then(setStatus)
+      .catch((value: unknown) => {
+        setError(
+          value instanceof Error ? value.message : "Unable to load status.",
+        );
+      });
   }, []);
 
   return (

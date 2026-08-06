@@ -92,8 +92,7 @@ export class PalDefenderClient {
         Error?: { Message?: string };
       } | null;
       throw new PalDefenderError(
-        body?.Error?.Message ??
-          `PalDefender returned HTTP ${response.status}.`,
+        body?.Error?.Message ?? `PalDefender returned HTTP ${response.status}.`,
         response.status,
       );
     }
