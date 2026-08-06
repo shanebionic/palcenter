@@ -187,6 +187,46 @@ test("normalizes unlocked technology identifiers", async () => {
   ]);
 });
 
+test("kicks a player with the documented reason body and normalizes the response", async () => {
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestBody = "";
+  let contentType = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = init?.method ?? "GET";
+      requestBody = String(init?.body ?? "");
+      contentType = new Headers(init?.headers).get("Content-Type") ?? "";
+      return Response.json({ Success: true, UserId: "steam_private" });
+    },
+  );
+  assert.deepEqual(await client.kickPlayer("player-1", "  Maintenance  "), {
+    success: true,
+    playerId: "player-1",
+  });
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/kick/player-1");
+  assert.equal(requestMethod, "POST");
+  assert.equal(requestBody, JSON.stringify({ Reason: "Maintenance" }));
+  assert.equal(contentType, "application/json");
+});
+
+test("uses an empty object when no optional kick message is supplied", async () => {
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (_input, init) => {
+      requestBody = String(init?.body ?? "");
+      return Response.json({ Success: true, UserId: "steam_private" });
+    },
+  );
+  await client.kickPlayer("player-1", "   ");
+  assert.equal(requestBody, "{}");
+});
+
 test("encodes supported player identifiers and rejects path injection", async () => {
   let requested = "";
   const client = new PalDefenderClient(

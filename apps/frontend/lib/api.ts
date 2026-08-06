@@ -99,6 +99,11 @@ export interface PalDefenderPal {
   learnedSkills: string[];
 }
 
+export interface PalDefenderKickResult {
+  success: boolean;
+  playerId: string;
+}
+
 interface HistoryResponse {
   metrics: ServerMetric[];
 }
@@ -543,6 +548,16 @@ export async function getPalDefenderTechnology(
     { cache: "no-store" },
   );
   return result.technologies;
+}
+
+export function kickPalDefenderPlayer(
+  playerId: string,
+  message?: string,
+): Promise<PalDefenderKickResult> {
+  return jsonRequest<PalDefenderKickResult>(
+    `${palDefenderPlayerPath(playerId)}/kick`,
+    { ...(message?.trim() ? { message: message.trim() } : {}) },
+  );
 }
 
 export async function getLatestPlayerTelemetry(

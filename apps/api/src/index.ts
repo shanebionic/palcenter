@@ -781,6 +781,38 @@ app.get("/api/paldefender/players/:playerId/technology", async (request) => {
   return { technologies: await palDefenderService.technology(playerId) };
 });
 
+const palDefenderKickBodySchema = z
+  .object({ message: z.string().max(2_000).optional() })
+  .strict();
+
+app.post("/api/paldefender/players/:playerId/kick", async (request) => {
+  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
+  const { message } = palDefenderKickBodySchema.parse(request.body ?? {});
+  const actor = currentUser(request.headers.cookie);
+  app.log.info(
+    {
+      actorUserId: actor.id,
+      playerId,
+      messageProvided: Boolean(message?.trim()),
+    },
+    "PalDefender player kick requested.",
+  );
+  try {
+    const result = await palDefenderService.kick(playerId, message);
+    app.log.info(
+      { actorUserId: actor.id, playerId, success: result.success },
+      "PalDefender player kick completed.",
+    );
+    return result;
+  } catch (error) {
+    app.log.warn(
+      { err: error, actorUserId: actor.id, playerId },
+      "PalDefender player kick failed.",
+    );
+    throw error;
+  }
+});
+
 const currentUser = (cookie: string | undefined) => {
   const session = authenticationService.sessionFromCookie(cookie);
   if (!session) throw new Error("Authenticated session is unavailable.");
@@ -1532,6 +1564,11 @@ app.setErrorHandler((error, request, reply) => {
   }
 
   if (error instanceof PalDefenderError) {
+    const playerOffline =
+      request.method === "POST" &&
+      /\/api\/paldefender\/players\/[^/]+\/kick$/.test(request.url) &&
+      error.statusCode === 404 &&
+      error.code === "PLAYER_NOT_FOUND";
     const playerNotFound =
       error.statusCode === 404 && error.code?.startsWith("PLAYER_");
     const statusCode = playerNotFound
@@ -1541,22 +1578,26 @@ app.setErrorHandler((error, request, reply) => {
         : error.timedOut
           ? 504
           : 502;
-    const errorCode = playerNotFound
-      ? "paldefender_player_not_found"
-      : statusCode === 400
-        ? "invalid_player_id"
-        : error.timedOut
-          ? "paldefender_timeout"
-          : error.statusCode === 401 || error.statusCode === 403
-            ? "paldefender_authentication_failed"
-            : error.code === "MALFORMED_RESPONSE"
-              ? "paldefender_malformed_response"
-              : error.statusCode === 404
-                ? "paldefender_endpoint_unavailable"
-                : "paldefender_unavailable";
+    const errorCode = playerOffline
+      ? "paldefender_player_offline"
+      : playerNotFound
+        ? "paldefender_player_not_found"
+        : statusCode === 400
+          ? "invalid_player_id"
+          : error.timedOut
+            ? "paldefender_timeout"
+            : error.statusCode === 401 || error.statusCode === 403
+              ? "paldefender_authentication_failed"
+              : error.code === "MALFORMED_RESPONSE"
+                ? "paldefender_malformed_response"
+                : error.statusCode === 404
+                  ? "paldefender_endpoint_unavailable"
+                  : "paldefender_unavailable";
     return reply.code(statusCode).send({
       error: errorCode,
-      message: error.message,
+      message: playerOffline
+        ? "This player is no longer online and cannot be kicked."
+        : error.message,
     });
   }
 
