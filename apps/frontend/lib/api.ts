@@ -132,6 +132,61 @@ export interface PalDefenderGuild {
   memberCount: number;
   memberIds: string[];
 }
+export interface PalDefenderGuildDetails {
+  guildId: string;
+  name: string | null;
+  level: number;
+  administrator: { playerId: string; name: string | null };
+  memberCount: number;
+  members: Array<{
+    playerId: string;
+    name: string | null;
+    status: string | null;
+  }>;
+  baseCount: number;
+  camps: Array<{
+    id: string;
+    level: number;
+    state: string | null;
+    worldPosition: { x: number; y: number; z: number };
+    mapPosition: { x: number; y: number; z: number };
+    buildings: string | null;
+    pals: Array<{
+      instanceId: string;
+      palId: string;
+      nickname: string | null;
+      npcId: string | null;
+      skinId: string | null;
+      gender: string | null;
+      level: number;
+      shiny: boolean;
+      physicalHealth: string | null;
+      workerSick: string | null;
+      sanity: number;
+      imported: boolean;
+      friendship: number;
+      activeSkills: string[];
+      learnedSkills: string[];
+      passiveSkills: string[];
+    }>;
+  }>;
+  storage: {
+    containerId: string | null;
+    occupiedSlots: number;
+    maximumSlots: number;
+    items: Array<{ slot: number; itemId: string; quantity: number }>;
+  };
+  expeditions: { finishedCount: number; missions: Record<string, boolean> };
+  laboratory: {
+    currentResearch: string | null;
+    researches: Array<{
+      researchId: string;
+      workAmount: number;
+      requiredWorkAmount: number;
+      percentage: number;
+    }>;
+  };
+}
 
 interface HistoryResponse {
   metrics: ServerMetric[];
@@ -543,6 +598,15 @@ export async function getPalDefenderGuilds(): Promise<PalDefenderGuild[]> {
     { cache: "no-store" },
   );
   return result.guilds;
+}
+
+export function getPalDefenderGuild(
+  guildId: string,
+): Promise<PalDefenderGuildDetails> {
+  return request<PalDefenderGuildDetails>(
+    `/api/paldefender/guilds/${encodeURIComponent(guildId)}`,
+    { cache: "no-store" },
+  );
 }
 
 function palDefenderPlayerPath(playerId: string): string {
