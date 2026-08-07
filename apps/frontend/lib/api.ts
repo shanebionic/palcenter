@@ -117,6 +117,21 @@ export interface PalDefenderBanResult {
 export interface PalDefenderBroadcastResult {
   success: boolean;
 }
+export interface PalDefenderGuildCamp {
+  id: string;
+  worldPosition: { x: number; y: number; z: number };
+  mapPosition: { x: number; y: number; z: number };
+}
+export interface PalDefenderGuild {
+  guildId: string;
+  name: string | null;
+  level: number;
+  administrator: { playerId: string; name: string | null };
+  baseCount: number;
+  camps: PalDefenderGuildCamp[];
+  memberCount: number;
+  memberIds: string[];
+}
 
 interface HistoryResponse {
   metrics: ServerMetric[];
@@ -520,6 +535,14 @@ export async function getPalDefenderPlayers(): Promise<PalDefenderPlayer[]> {
     { cache: "no-store" },
   );
   return result.players;
+}
+
+export async function getPalDefenderGuilds(): Promise<PalDefenderGuild[]> {
+  const result = await request<{ guilds: PalDefenderGuild[] }>(
+    "/api/paldefender/guilds",
+    { cache: "no-store" },
+  );
+  return result.guilds;
 }
 
 function palDefenderPlayerPath(playerId: string): string {

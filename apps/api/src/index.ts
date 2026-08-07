@@ -752,6 +752,10 @@ app.get("/api/paldefender/players", async () => ({
   players: await palDefenderService.players(),
 }));
 
+app.get("/api/paldefender/guilds", async () => ({
+  guilds: await palDefenderService.guilds(),
+}));
+
 const palDefenderPlayerParametersSchema = z.object({
   playerId: z
     .string()

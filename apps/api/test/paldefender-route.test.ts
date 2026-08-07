@@ -88,6 +88,22 @@ before(async () => {
       assert.equal(body.Message, "Hello, Palpagos! ⚡");
       return Response.json({ Success: true });
     }
+    if (url.endsWith("/guilds")) {
+      return Response.json({
+        Meta: { GuildCount: 1 },
+        Guilds: {
+          "guild-1": {
+            name: "Pal Tamers",
+            Level: 2,
+            admin: { id: "player-1", name: "Explorer" },
+            camp_count: 0,
+            camps: [],
+            member_count: 1,
+            members: ["player-1"],
+          },
+        },
+      });
+    }
     if (url.endsWith("/player/missing")) {
       return Response.json(
         { Error: { Code: "PLAYER_NOT_FOUND", Message: "Missing" } },
@@ -159,6 +175,34 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     payload: { message: "Hello" },
   });
   assert.equal(broadcast.statusCode, 401);
+  const guilds = await app.inject({
+    method: "GET",
+    url: "/api/paldefender/guilds",
+  });
+  assert.equal(guilds.statusCode, 401);
+});
+
+test("PalDefender guild route returns PalCenter-owned models", async () => {
+  const response = await app.inject({
+    method: "GET",
+    url: "/api/paldefender/guilds",
+    headers: { cookie: administratorCookie },
+  });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), {
+    guilds: [
+      {
+        guildId: "guild-1",
+        name: "Pal Tamers",
+        level: 2,
+        administrator: { playerId: "player-1", name: "Explorer" },
+        baseCount: 0,
+        camps: [],
+        memberCount: 1,
+        memberIds: ["player-1"],
+      },
+    ],
+  });
 });
 
 test("PalDefender kick route normalizes success and offline errors", async () => {
