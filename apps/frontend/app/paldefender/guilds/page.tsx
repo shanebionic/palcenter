@@ -11,14 +11,17 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconRefresh, IconSearch } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApplicationShell } from "../../../components/ApplicationShell";
 import { BrandedLoader } from "../../../components/BrandedLoader";
 import { PageHeader } from "../../../components/PageHeader";
 import { SectionCard } from "../../../components/ui/SectionCard";
 import { getPalDefenderGuilds, type PalDefenderGuild } from "../../../lib/api";
+import { palDefenderGuildHref } from "../../../lib/paldefender";
 
 export default function PalDefenderGuildsPage() {
+  const router = useRouter();
   const [guilds, setGuilds] = useState<PalDefenderGuild[] | null>(null);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -104,7 +107,21 @@ export default function PalDefenderGuildsPage() {
                   </Table.Thead>
                   <Table.Tbody>
                     {visibleGuilds.map((guild) => (
-                      <Table.Tr key={guild.guildId}>
+                      <Table.Tr
+                        key={guild.guildId}
+                        tabIndex={0}
+                        role="link"
+                        style={{ cursor: "pointer" }}
+                        onClick={() =>
+                          router.push(palDefenderGuildHref(guild.guildId))
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            router.push(palDefenderGuildHref(guild.guildId));
+                          }
+                        }}
+                      >
                         <Table.Td fw={600}>{guild.name ?? "—"}</Table.Td>
                         <Table.Td>
                           <Text ff="monospace" size="sm">

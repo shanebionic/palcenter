@@ -99,6 +99,74 @@ const rawGuildSchema = z.object({
 const guildListResponseSchema = z.object({
   Guilds: z.record(rawGuildSchema),
 });
+const guildMemberSchema = z.object({
+  player_uid: z.string(),
+  player_name: z.string(),
+  status: z.string(),
+});
+const guildCampPalSchema = z.object({
+  nickname: z.string(),
+  pal_id: z.string(),
+  npc_id: z.string(),
+  skin_id: z.string(),
+  gender: z.string(),
+  level: z.number().int(),
+  shiny: z.boolean(),
+  phisical_health: z.string(),
+  worker_sick: z.string(),
+  san: z.number(),
+  imported: z.boolean(),
+  friendship: z.number().int(),
+  active_skills: z.array(z.string()),
+  learnt_skills: z.array(z.string()),
+  passives: z.array(z.string()),
+});
+const guildCampSchema = z.object({
+  id: z.string(),
+  level: z.number().int(),
+  world_pos: coordinateSchema,
+  map_pos: coordinateSchema,
+  state: z.string(),
+  pals: z.record(guildCampPalSchema),
+  buildings: z.string(),
+});
+const guildItemSlotSchema = z.object({
+  item_id: z.string(),
+  count: z.number().int(),
+});
+const guildItemsSchema = z
+  .object({
+    container_id: z.string().optional().default(""),
+    current: z.number().int().nonnegative(),
+    max: z.number().int().nonnegative(),
+  })
+  .passthrough();
+const guildDetailsResponseSchema = z.object({
+  Guild: z.object({
+    name: z.string(),
+    Level: z.number().int(),
+    admin: z.object({ id: z.string(), name: z.string() }),
+    member_count: z.number().int().nonnegative(),
+    members: z.array(guildMemberSchema),
+    camp_count: z.number().int().nonnegative(),
+    camps: z.array(guildCampSchema),
+    items: guildItemsSchema,
+    expeditions: z.object({
+      finished: z.number().int().nonnegative(),
+      missions: z.record(z.boolean()),
+    }),
+    laboratory: z.object({
+      current_research: z.string(),
+      researches: z.record(
+        z.object({
+          work_amount: z.number(),
+          required_work_amount: z.number(),
+          percentage: z.number(),
+        }),
+      ),
+    }),
+  }),
+});
 const kickResponseSchema = z.object({
   Success: z.boolean(),
   UserId: z.string(),
@@ -190,6 +258,61 @@ export interface PalDefenderGuild {
   camps: PalDefenderGuildCamp[];
   memberCount: number;
   memberIds: string[];
+}
+export interface PalDefenderGuildDetails {
+  guildId: string;
+  name: string | null;
+  level: number;
+  administrator: { playerId: string; name: string | null };
+  memberCount: number;
+  members: Array<{
+    playerId: string;
+    name: string | null;
+    status: string | null;
+  }>;
+  baseCount: number;
+  camps: Array<{
+    id: string;
+    level: number;
+    state: string | null;
+    worldPosition: { x: number; y: number; z: number };
+    mapPosition: { x: number; y: number; z: number };
+    buildings: string | null;
+    pals: Array<{
+      instanceId: string;
+      palId: string;
+      nickname: string | null;
+      npcId: string | null;
+      skinId: string | null;
+      gender: string | null;
+      level: number;
+      shiny: boolean;
+      physicalHealth: string | null;
+      workerSick: string | null;
+      sanity: number;
+      imported: boolean;
+      friendship: number;
+      activeSkills: string[];
+      learnedSkills: string[];
+      passiveSkills: string[];
+    }>;
+  }>;
+  storage: {
+    containerId: string | null;
+    occupiedSlots: number;
+    maximumSlots: number;
+    items: Array<{ slot: number; itemId: string; quantity: number }>;
+  };
+  expeditions: { finishedCount: number; missions: Record<string, boolean> };
+  laboratory: {
+    currentResearch: string | null;
+    researches: Array<{
+      researchId: string;
+      workAmount: number;
+      requiredWorkAmount: number;
+      percentage: number;
+    }>;
+  };
 }
 
 export class PalDefenderError extends Error {
@@ -303,6 +426,93 @@ export class PalDefenderClient {
       memberCount: guild.member_count,
       memberIds: guild.members,
     }));
+  }
+
+  async getGuild(guildId: string): Promise<PalDefenderGuildDetails> {
+    const response = await this.parse(
+      guildDetailsResponseSchema,
+      `/guild/${encodeGuildId(guildId)}`,
+    );
+    const guild = response.Guild;
+    const items = Object.entries(guild.items).flatMap(([slot, value]) => {
+      if (!/^\d+$/.test(slot)) return [];
+      const parsed = guildItemSlotSchema.safeParse(value);
+      return parsed.success
+        ? [
+            {
+              slot: Number(slot),
+              itemId: parsed.data.item_id,
+              quantity: parsed.data.count,
+            },
+          ]
+        : [];
+    });
+    return {
+      guildId,
+      name: guild.name.trim() || null,
+      level: guild.Level,
+      administrator: {
+        playerId: guild.admin.id,
+        name: guild.admin.name.trim() || null,
+      },
+      memberCount: guild.member_count,
+      members: guild.members.map((member) => ({
+        playerId: member.player_uid,
+        name: member.player_name.trim() || null,
+        status: member.status.trim() || null,
+      })),
+      baseCount: guild.camp_count,
+      camps: guild.camps.map((camp) => ({
+        id: camp.id,
+        level: camp.level,
+        state: camp.state.trim() || null,
+        worldPosition: camp.world_pos,
+        mapPosition: camp.map_pos,
+        buildings: camp.buildings.trim() || null,
+        pals: Object.entries(camp.pals).map(([instanceId, pal]) => ({
+          instanceId,
+          palId: pal.pal_id,
+          nickname: pal.nickname.trim() || null,
+          npcId: pal.npc_id.trim() || null,
+          skinId: pal.skin_id.trim() || null,
+          gender: pal.gender.trim() || null,
+          level: pal.level,
+          shiny: pal.shiny,
+          physicalHealth: pal.phisical_health.trim() || null,
+          workerSick: pal.worker_sick.trim() || null,
+          sanity: pal.san,
+          imported: pal.imported,
+          friendship: pal.friendship,
+          activeSkills: pal.active_skills,
+          learnedSkills: pal.learnt_skills,
+          passiveSkills: pal.passives,
+        })),
+      })),
+      storage: {
+        containerId: guild.items.container_id.trim() || null,
+        occupiedSlots: guild.items.current,
+        maximumSlots: guild.items.max,
+        items,
+      },
+      expeditions: {
+        finishedCount: guild.expeditions.finished,
+        missions: guild.expeditions.missions,
+      },
+      laboratory: {
+        currentResearch:
+          guild.laboratory.current_research.trim() === "None"
+            ? null
+            : guild.laboratory.current_research.trim() || null,
+        researches: Object.entries(guild.laboratory.researches).map(
+          ([researchId, research]) => ({
+            researchId,
+            workAmount: research.work_amount,
+            requiredWorkAmount: research.required_work_amount,
+            percentage: research.percentage,
+          }),
+        ),
+      },
+    };
   }
 
   async kickPlayer(
@@ -436,6 +646,18 @@ function encodePlayerId(playerId: string): string {
       "The player identifier is invalid.",
       400,
       "INVALID_PLAYER_ID",
+    );
+  }
+  return encodeURIComponent(value);
+}
+
+function encodeGuildId(guildId: string): string {
+  const value = guildId.trim();
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(value)) {
+    throw new PalDefenderError(
+      "The guild identifier is invalid.",
+      400,
+      "INVALID_GUILD_ID",
     );
   }
   return encodeURIComponent(value);

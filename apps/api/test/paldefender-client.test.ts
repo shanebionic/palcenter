@@ -113,6 +113,62 @@ test("normalizes documented PalDefender guild summaries", async () => {
   ]);
 });
 
+test("normalizes documented PalDefender guild details", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Guild: {
+          name: "Pal Tamers",
+          Level: 3,
+          admin: { id: "player-1", name: "Explorer" },
+          member_count: 1,
+          members: [
+            {
+              player_uid: "player-1",
+              player_name: "Explorer",
+              status: "Online",
+            },
+          ],
+          camp_count: 0,
+          camps: [],
+          items: {
+            container_id: "container-1",
+            current: 1,
+            max: 54,
+            "0": { item_id: "Wood", count: 10 },
+            "1": {},
+          },
+          expeditions: { finished: 2, missions: { DUNGEON_GRASS: true } },
+          laboratory: {
+            current_research: "None",
+            researches: {},
+          },
+        },
+      }),
+  );
+
+  assert.deepEqual(await client.getGuild("guild-1"), {
+    guildId: "guild-1",
+    name: "Pal Tamers",
+    level: 3,
+    administrator: { playerId: "player-1", name: "Explorer" },
+    memberCount: 1,
+    members: [{ playerId: "player-1", name: "Explorer", status: "Online" }],
+    baseCount: 0,
+    camps: [],
+    storage: {
+      containerId: "container-1",
+      occupiedSlots: 1,
+      maximumSlots: 54,
+      items: [{ slot: 0, itemId: "Wood", quantity: 10 }],
+    },
+    expeditions: { finishedCount: 2, missions: { DUNGEON_GRASS: true } },
+    laboratory: { currentResearch: null, researches: [] },
+  });
+});
+
 test("normalizes player details and omits raw platform and network identifiers", async () => {
   const client = new PalDefenderClient(
     "http://paldefender",
