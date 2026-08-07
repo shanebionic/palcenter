@@ -66,6 +66,53 @@ test("normalizes PalDefender players without leaking raw DTO fields", async () =
   ]);
 });
 
+test("normalizes documented PalDefender guild summaries", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Meta: { GuildCount: 1 },
+        Guilds: {
+          "guild-1": {
+            name: "Pal Tamers",
+            Level: 3,
+            admin: { id: "player-1", name: "Explorer" },
+            camp_count: 1,
+            camps: [
+              {
+                id: "camp-1",
+                world_pos: { x: 1, y: 2, z: 3 },
+                map_pos: { x: 4, y: 5, z: 6 },
+              },
+            ],
+            member_count: 2,
+            members: ["player-1", "player-2"],
+          },
+        },
+      }),
+  );
+
+  assert.deepEqual(await client.getGuilds(), [
+    {
+      guildId: "guild-1",
+      name: "Pal Tamers",
+      level: 3,
+      administrator: { playerId: "player-1", name: "Explorer" },
+      baseCount: 1,
+      camps: [
+        {
+          id: "camp-1",
+          worldPosition: { x: 1, y: 2, z: 3 },
+          mapPosition: { x: 4, y: 5, z: 6 },
+        },
+      ],
+      memberCount: 2,
+      memberIds: ["player-1", "player-2"],
+    },
+  ]);
+});
+
 test("normalizes player details and omits raw platform and network identifiers", async () => {
   const client = new PalDefenderClient(
     "http://paldefender",

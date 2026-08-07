@@ -8,8 +8,38 @@ import {
 import {
   banPalDefenderPlayer,
   broadcastPalDefenderMessage,
+  getPalDefenderGuilds,
   kickPalDefenderPlayer,
 } from "../lib/api";
+
+test("loads normalized PalDefender guilds through the PalCenter API", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  globalThis.fetch = async (input) => {
+    requestedUrl = String(input);
+    return Response.json({
+      guilds: [
+        {
+          guildId: "guild-1",
+          name: "Pal Tamers",
+          level: 2,
+          administrator: { playerId: "player-1", name: "Explorer" },
+          baseCount: 0,
+          camps: [],
+          memberCount: 1,
+          memberIds: ["player-1"],
+        },
+      ],
+    });
+  };
+  try {
+    const guilds = await getPalDefenderGuilds();
+    assert.equal(requestedUrl, "/api/paldefender/guilds");
+    assert.equal(guilds[0]?.guildId, "guild-1");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test("builds an encoded PalDefender player workspace route", () => {
   assert.equal(

@@ -76,6 +76,29 @@ const palsResponseSchema = z.object({
 const technologyResponseSchema = z.object({
   Techs: z.object({ Unlocked: z.array(z.string()).optional().default([]) }),
 });
+const coordinateSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  z: z.number(),
+});
+const rawGuildSchema = z.object({
+  name: z.string(),
+  Level: z.number().int(),
+  admin: z.object({ id: z.string(), name: z.string() }),
+  camp_count: z.number().int().nonnegative(),
+  camps: z.array(
+    z.object({
+      id: z.string(),
+      world_pos: coordinateSchema,
+      map_pos: coordinateSchema,
+    }),
+  ),
+  member_count: z.number().int().nonnegative(),
+  members: z.array(z.string()),
+});
+const guildListResponseSchema = z.object({
+  Guilds: z.record(rawGuildSchema),
+});
 const kickResponseSchema = z.object({
   Success: z.boolean(),
   UserId: z.string(),
@@ -152,6 +175,21 @@ export interface PalDefenderBanResult {
 }
 export interface PalDefenderBroadcastResult {
   success: boolean;
+}
+export interface PalDefenderGuildCamp {
+  id: string;
+  worldPosition: { x: number; y: number; z: number };
+  mapPosition: { x: number; y: number; z: number };
+}
+export interface PalDefenderGuild {
+  guildId: string;
+  name: string | null;
+  level: number;
+  administrator: { playerId: string; name: string | null };
+  baseCount: number;
+  camps: PalDefenderGuildCamp[];
+  memberCount: number;
+  memberIds: string[];
 }
 
 export class PalDefenderError extends Error {
@@ -244,6 +282,27 @@ export class PalDefenderClient {
       `/techs/${encodePlayerId(playerId)}`,
     );
     return response.Techs.Unlocked ?? [];
+  }
+
+  async getGuilds(): Promise<PalDefenderGuild[]> {
+    const response = await this.parse(guildListResponseSchema, "/guilds");
+    return Object.entries(response.Guilds).map(([guildId, guild]) => ({
+      guildId,
+      name: guild.name.trim() || null,
+      level: guild.Level,
+      administrator: {
+        playerId: guild.admin.id,
+        name: guild.admin.name.trim() || null,
+      },
+      baseCount: guild.camp_count,
+      camps: guild.camps.map((camp) => ({
+        id: camp.id,
+        worldPosition: camp.world_pos,
+        mapPosition: camp.map_pos,
+      })),
+      memberCount: guild.member_count,
+      memberIds: guild.members,
+    }));
   }
 
   async kickPlayer(
