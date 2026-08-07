@@ -18,8 +18,14 @@ import { PageHeader } from "../../../components/PageHeader";
 import { SectionCard } from "../../../components/ui/SectionCard";
 import { getPalDefenderBases, type PalDefenderBase } from "../../../lib/api";
 
+const coordinateFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 2,
+});
+
 function position(value: { x: number; y: number; z: number }) {
-  return `${value.x}, ${value.y}, ${value.z}`;
+  return [value.x, value.y, value.z]
+    .map((part) => coordinateFormatter.format(part))
+    .join(", ");
 }
 
 export default function PalDefenderBasesPage() {
