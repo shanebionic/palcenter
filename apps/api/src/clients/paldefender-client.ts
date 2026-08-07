@@ -259,6 +259,14 @@ export interface PalDefenderGuild {
   memberCount: number;
   memberIds: string[];
 }
+export interface PalDefenderBase {
+  baseId: string;
+  guildId: string;
+  guildName: string | null;
+  guildAdministrator: { playerId: string; name: string | null };
+  worldPosition: { x: number; y: number; z: number };
+  mapPosition: { x: number; y: number; z: number };
+}
 export interface PalDefenderGuildDetails {
   guildId: string;
   name: string | null;
@@ -426,6 +434,20 @@ export class PalDefenderClient {
       memberCount: guild.member_count,
       memberIds: guild.members,
     }));
+  }
+
+  async getBases(): Promise<PalDefenderBase[]> {
+    const guilds = await this.getGuilds();
+    return guilds.flatMap((guild) =>
+      guild.camps.map((camp) => ({
+        baseId: camp.id,
+        guildId: guild.guildId,
+        guildName: guild.name,
+        guildAdministrator: guild.administrator,
+        worldPosition: camp.worldPosition,
+        mapPosition: camp.mapPosition,
+      })),
+    );
   }
 
   async getGuild(guildId: string): Promise<PalDefenderGuildDetails> {

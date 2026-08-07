@@ -45,6 +45,7 @@ const primaryLinks = [
       { href: "/paldefender/status", label: "Status" },
       { href: "/paldefender/players", label: "Players" },
       { href: "/paldefender/guilds", label: "Guilds" },
+      { href: "/paldefender/bases", label: "Bases" },
       { href: "/paldefender/broadcast", label: "Broadcast" },
     ],
   },

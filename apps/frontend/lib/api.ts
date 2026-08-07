@@ -132,6 +132,14 @@ export interface PalDefenderGuild {
   memberCount: number;
   memberIds: string[];
 }
+export interface PalDefenderBase {
+  baseId: string;
+  guildId: string;
+  guildName: string | null;
+  guildAdministrator: { playerId: string; name: string | null };
+  worldPosition: { x: number; y: number; z: number };
+  mapPosition: { x: number; y: number; z: number };
+}
 export interface PalDefenderGuildDetails {
   guildId: string;
   name: string | null;
@@ -598,6 +606,14 @@ export async function getPalDefenderGuilds(): Promise<PalDefenderGuild[]> {
     { cache: "no-store" },
   );
   return result.guilds;
+}
+
+export async function getPalDefenderBases(): Promise<PalDefenderBase[]> {
+  const result = await request<{ bases: PalDefenderBase[] }>(
+    "/api/paldefender/bases",
+    { cache: "no-store" },
+  );
+  return result.bases;
 }
 
 export function getPalDefenderGuild(
