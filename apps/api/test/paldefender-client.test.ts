@@ -113,6 +113,43 @@ test("normalizes documented PalDefender guild summaries", async () => {
   ]);
 });
 
+test("derives normalized bases from documented guild summaries", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Guilds: {
+          "guild-1": {
+            name: "Pal Tamers",
+            Level: 3,
+            admin: { id: "player-1", name: "Explorer" },
+            camp_count: 1,
+            camps: [
+              {
+                id: "base-1",
+                world_pos: { x: 1, y: 2, z: 3 },
+                map_pos: { x: 4, y: 5, z: 6 },
+              },
+            ],
+            member_count: 1,
+            members: ["player-1"],
+          },
+        },
+      }),
+  );
+  assert.deepEqual(await client.getBases(), [
+    {
+      baseId: "base-1",
+      guildId: "guild-1",
+      guildName: "Pal Tamers",
+      guildAdministrator: { playerId: "player-1", name: "Explorer" },
+      worldPosition: { x: 1, y: 2, z: 3 },
+      mapPosition: { x: 4, y: 5, z: 6 },
+    },
+  ]);
+});
+
 test("normalizes player details and omits raw platform and network identifiers", async () => {
   const client = new PalDefenderClient(
     "http://paldefender",

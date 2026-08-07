@@ -9,8 +9,36 @@ import {
   banPalDefenderPlayer,
   broadcastPalDefenderMessage,
   getPalDefenderGuilds,
+  getPalDefenderBases,
   kickPalDefenderPlayer,
 } from "../lib/api";
+
+test("loads normalized PalDefender bases through the PalCenter API", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  globalThis.fetch = async (input) => {
+    requestedUrl = String(input);
+    return Response.json({
+      bases: [
+        {
+          baseId: "base-1",
+          guildId: "guild-1",
+          guildName: "Pal Tamers",
+          guildAdministrator: { playerId: "player-1", name: "Explorer" },
+          worldPosition: { x: 1, y: 2, z: 3 },
+          mapPosition: { x: 4, y: 5, z: 6 },
+        },
+      ],
+    });
+  };
+  try {
+    const bases = await getPalDefenderBases();
+    assert.equal(requestedUrl, "/api/paldefender/bases");
+    assert.equal(bases[0]?.baseId, "base-1");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test("loads normalized PalDefender guilds through the PalCenter API", async () => {
   const originalFetch = globalThis.fetch;

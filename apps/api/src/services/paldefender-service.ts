@@ -9,6 +9,7 @@ import {
   type PalDefenderBanResult,
   type PalDefenderBroadcastResult,
   type PalDefenderGuild,
+  type PalDefenderBase,
 } from "../clients/paldefender-client.js";
 
 export interface PalDefenderStatus {
@@ -68,6 +69,10 @@ export class PalDefenderService {
 
   async guilds(): Promise<PalDefenderGuild[]> {
     return this.configuredClient().getGuilds();
+  }
+
+  async bases(): Promise<PalDefenderBase[]> {
+    return this.configuredClient().getBases();
   }
 
   async kick(id: string, message?: string): Promise<PalDefenderKickResult> {

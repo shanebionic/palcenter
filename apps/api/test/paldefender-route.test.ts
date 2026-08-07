@@ -96,8 +96,14 @@ before(async () => {
             name: "Pal Tamers",
             Level: 2,
             admin: { id: "player-1", name: "Explorer" },
-            camp_count: 0,
-            camps: [],
+            camp_count: 1,
+            camps: [
+              {
+                id: "base-1",
+                world_pos: { x: 1, y: 2, z: 3 },
+                map_pos: { x: 4, y: 5, z: 6 },
+              },
+            ],
             member_count: 1,
             members: ["player-1"],
           },
@@ -180,6 +186,11 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     url: "/api/paldefender/guilds",
   });
   assert.equal(guilds.statusCode, 401);
+  const bases = await app.inject({
+    method: "GET",
+    url: "/api/paldefender/bases",
+  });
+  assert.equal(bases.statusCode, 401);
 });
 
 test("PalDefender guild route returns PalCenter-owned models", async () => {
@@ -196,10 +207,37 @@ test("PalDefender guild route returns PalCenter-owned models", async () => {
         name: "Pal Tamers",
         level: 2,
         administrator: { playerId: "player-1", name: "Explorer" },
-        baseCount: 0,
-        camps: [],
+        baseCount: 1,
+        camps: [
+          {
+            id: "base-1",
+            worldPosition: { x: 1, y: 2, z: 3 },
+            mapPosition: { x: 4, y: 5, z: 6 },
+          },
+        ],
         memberCount: 1,
         memberIds: ["player-1"],
+      },
+    ],
+  });
+});
+
+test("PalDefender base route aggregates documented guild camps", async () => {
+  const response = await app.inject({
+    method: "GET",
+    url: "/api/paldefender/bases",
+    headers: { cookie: administratorCookie },
+  });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), {
+    bases: [
+      {
+        baseId: "base-1",
+        guildId: "guild-1",
+        guildName: "Pal Tamers",
+        guildAdministrator: { playerId: "player-1", name: "Explorer" },
+        worldPosition: { x: 1, y: 2, z: 3 },
+        mapPosition: { x: 4, y: 5, z: 6 },
       },
     ],
   });
