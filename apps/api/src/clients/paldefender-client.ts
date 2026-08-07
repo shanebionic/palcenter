@@ -267,6 +267,12 @@ export interface PalDefenderBase {
   worldPosition: { x: number; y: number; z: number };
   mapPosition: { x: number; y: number; z: number };
 }
+export interface PalDefenderBaseDetails extends PalDefenderBase {
+  level: number;
+  state: string | null;
+  buildings: string | null;
+  pals: PalDefenderGuildDetails["camps"][number]["pals"];
+}
 export interface PalDefenderGuildDetails {
   guildId: string;
   name: string | null;
@@ -448,6 +454,34 @@ export class PalDefenderClient {
         mapPosition: camp.mapPosition,
       })),
     );
+  }
+
+  async getBase(baseId: string): Promise<PalDefenderBaseDetails> {
+    const guild = (await this.getGuilds()).find((candidate) =>
+      candidate.camps.some((camp) => camp.id === baseId),
+    );
+    if (!guild) {
+      throw new PalDefenderError("Base not found", 404, "BASE_NOT_FOUND");
+    }
+
+    const details = await this.getGuild(guild.guildId);
+    const camp = details.camps.find((candidate) => candidate.id === baseId);
+    if (!camp) {
+      throw new PalDefenderError("Base not found", 404, "BASE_NOT_FOUND");
+    }
+
+    return {
+      baseId: camp.id,
+      guildId: details.guildId,
+      guildName: details.name,
+      guildAdministrator: details.administrator,
+      worldPosition: camp.worldPosition,
+      mapPosition: camp.mapPosition,
+      level: camp.level,
+      state: camp.state,
+      buildings: camp.buildings === "WIP" ? null : camp.buildings,
+      pals: camp.pals,
+    };
   }
 
   async getGuild(guildId: string): Promise<PalDefenderGuildDetails> {

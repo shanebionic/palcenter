@@ -11,12 +11,14 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconRefresh, IconSearch } from "@tabler/icons-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApplicationShell } from "../../../components/ApplicationShell";
 import { BrandedLoader } from "../../../components/BrandedLoader";
 import { PageHeader } from "../../../components/PageHeader";
 import { SectionCard } from "../../../components/ui/SectionCard";
 import { getPalDefenderBases, type PalDefenderBase } from "../../../lib/api";
+import { palDefenderBaseHref } from "../../../lib/paldefender";
 
 const coordinateFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 2,
@@ -111,7 +113,13 @@ export default function PalDefenderBasesPage() {
                     {visibleBases.map((base) => (
                       <Table.Tr key={base.baseId}>
                         <Table.Td>
-                          <Text ff="monospace" size="sm">
+                          <Text
+                            component={Link}
+                            href={palDefenderBaseHref(base.baseId)}
+                            ff="monospace"
+                            size="sm"
+                            c="cyan.4"
+                          >
                             {base.baseId}
                           </Text>
                         </Table.Td>

@@ -140,6 +140,12 @@ export interface PalDefenderBase {
   worldPosition: { x: number; y: number; z: number };
   mapPosition: { x: number; y: number; z: number };
 }
+export interface PalDefenderBaseDetails extends PalDefenderBase {
+  level: number;
+  state: string | null;
+  buildings: string | null;
+  pals: PalDefenderGuildDetails["camps"][number]["pals"];
+}
 export interface PalDefenderGuildDetails {
   guildId: string;
   name: string | null;
@@ -614,6 +620,15 @@ export async function getPalDefenderBases(): Promise<PalDefenderBase[]> {
     { cache: "no-store" },
   );
   return result.bases;
+}
+
+export function getPalDefenderBase(
+  baseId: string,
+): Promise<PalDefenderBaseDetails> {
+  return request<PalDefenderBaseDetails>(
+    `/api/paldefender/bases/${encodeURIComponent(baseId)}`,
+    { cache: "no-store" },
+  );
 }
 
 export function getPalDefenderGuild(

@@ -10,6 +10,7 @@ import {
   type PalDefenderBroadcastResult,
   type PalDefenderGuild,
   type PalDefenderBase,
+  type PalDefenderBaseDetails,
   type PalDefenderGuildDetails,
 } from "../clients/paldefender-client.js";
 
@@ -74,6 +75,10 @@ export class PalDefenderService {
 
   async bases(): Promise<PalDefenderBase[]> {
     return this.configuredClient().getBases();
+  }
+
+  async base(id: string): Promise<PalDefenderBaseDetails> {
+    return this.configuredClient().getBase(id);
   }
 
   async guild(id: string): Promise<PalDefenderGuildDetails> {
