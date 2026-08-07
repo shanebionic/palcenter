@@ -7,6 +7,7 @@ import {
   type PalDefenderKickResult,
   type PalDefenderBanOptions,
   type PalDefenderBanResult,
+  type PalDefenderBroadcastResult,
 } from "../clients/paldefender-client.js";
 
 export interface PalDefenderStatus {
@@ -73,6 +74,10 @@ export class PalDefenderService {
     options?: PalDefenderBanOptions,
   ): Promise<PalDefenderBanResult> {
     return this.configuredClient().banPlayer(id, options);
+  }
+
+  async broadcast(message: string): Promise<PalDefenderBroadcastResult> {
+    return this.configuredClient().broadcast(message);
   }
 
   private configuredClient(): PalDefenderClient {

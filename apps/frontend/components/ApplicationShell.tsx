@@ -44,6 +44,7 @@ const primaryLinks = [
     children: [
       { href: "/paldefender/status", label: "Status" },
       { href: "/paldefender/players", label: "Players" },
+      { href: "/paldefender/broadcast", label: "Broadcast" },
     ],
   },
   { href: "/settings", label: "Settings", icon: IconAdjustments },

@@ -87,6 +87,7 @@ const banResponseSchema = z.object({
   BannedIP: z.string(),
   Kicked: z.number().int().nonnegative(),
 });
+const broadcastResponseSchema = z.object({ Success: z.boolean() });
 
 export interface PalDefenderPlayer {
   name: string;
@@ -148,6 +149,9 @@ export interface PalDefenderBanResult {
   ipBanned: boolean;
   bannedIp: string | null;
   kickedPlayers: number;
+}
+export interface PalDefenderBroadcastResult {
+  success: boolean;
 }
 
 export class PalDefenderError extends Error {
@@ -275,6 +279,14 @@ export class PalDefenderClient {
       bannedIp: response.BannedIP.trim() || null,
       kickedPlayers: response.Kicked,
     };
+  }
+
+  async broadcast(message: string): Promise<PalDefenderBroadcastResult> {
+    const response = await this.parse(broadcastResponseSchema, "/Broadcast", {
+      method: "POST",
+      body: JSON.stringify({ Message: message }),
+    });
+    return { success: response.Success };
   }
 
   private moderatePlayer<TSchema extends z.ZodTypeAny>(

@@ -71,6 +71,23 @@ before(async () => {
         { status: 400 },
       );
     }
+    if (url.endsWith("/Broadcast")) {
+      assert.equal(init?.method, "POST");
+      const body = JSON.parse(String(init?.body)) as { Message: string };
+      if (body.Message === "fail") {
+        return Response.json(
+          {
+            Error: {
+              Code: "BROADCAST_FAILED",
+              Message: "Broadcast failed",
+            },
+          },
+          { status: 400 },
+        );
+      }
+      assert.equal(body.Message, "Hello, Palpagos! ⚡");
+      return Response.json({ Success: true });
+    }
     if (url.endsWith("/player/missing")) {
       return Response.json(
         { Error: { Code: "PLAYER_NOT_FOUND", Message: "Missing" } },
@@ -136,6 +153,12 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     payload: {},
   });
   assert.equal(ban.statusCode, 401);
+  const broadcast = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/broadcast",
+    payload: { message: "Hello" },
+  });
+  assert.equal(broadcast.statusCode, 401);
 });
 
 test("PalDefender kick route normalizes success and offline errors", async () => {
@@ -159,6 +182,40 @@ test("PalDefender kick route normalizes success and offline errors", async () =>
   assert.deepEqual(offline.json(), {
     error: "paldefender_player_offline",
     message: "This player is no longer online and cannot be kicked.",
+  });
+});
+
+test("PalDefender broadcast validates and normalizes messages and failures", async () => {
+  const headers = { cookie: administratorCookie };
+  const sent = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/broadcast",
+    headers,
+    payload: { message: "Hello, Palpagos! ⚡" },
+  });
+  assert.equal(sent.statusCode, 200);
+  assert.deepEqual(sent.json(), { success: true });
+
+  for (const message of ["", "   \n\t"]) {
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/api/paldefender/broadcast",
+      headers,
+      payload: { message },
+    });
+    assert.equal(invalid.statusCode, 400);
+  }
+
+  const failed = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/broadcast",
+    headers,
+    payload: { message: "fail" },
+  });
+  assert.equal(failed.statusCode, 400);
+  assert.deepEqual(failed.json(), {
+    error: "paldefender_request_failed",
+    message: "Broadcast failed",
   });
 });
 

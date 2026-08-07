@@ -182,6 +182,10 @@ test("central role permissions enforce administrator, moderator, and visitor sco
     "operate",
   );
   assert.equal(
+    authorization.permissionFor("POST", "/api/paldefender/broadcast"),
+    "operate",
+  );
+  assert.equal(
     authorization.permissionFor("POST", "/api/backup"),
     "manage_backups",
   );
