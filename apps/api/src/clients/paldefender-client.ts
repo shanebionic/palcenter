@@ -76,6 +76,10 @@ const palsResponseSchema = z.object({
 const technologyResponseSchema = z.object({
   Techs: z.object({ Unlocked: z.array(z.string()).optional().default([]) }),
 });
+const kickResponseSchema = z.object({
+  Success: z.boolean(),
+  UserId: z.string(),
+});
 
 export interface PalDefenderPlayer {
   name: string;
@@ -122,6 +126,10 @@ export interface PalDefenderPal {
   passiveSkills: string[];
   activeSkills: string[];
   learnedSkills: string[];
+}
+export interface PalDefenderKickResult {
+  success: boolean;
+  playerId: string;
 }
 
 export class PalDefenderError extends Error {
@@ -216,11 +224,27 @@ export class PalDefenderClient {
     return response.Techs.Unlocked ?? [];
   }
 
+  async kickPlayer(
+    playerId: string,
+    message?: string,
+  ): Promise<PalDefenderKickResult> {
+    const response = await this.parse(
+      kickResponseSchema,
+      `/kick/${encodePlayerId(playerId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify(message?.trim() ? { Reason: message.trim() } : {}),
+      },
+    );
+    return { success: response.Success, playerId };
+  }
+
   private async parse<TSchema extends z.ZodTypeAny>(
     schema: TSchema,
     path: string,
+    init?: RequestInit,
   ): Promise<z.infer<TSchema>> {
-    const payload = await this.get(path);
+    const payload = await this.request(path, init);
     const result = schema.safeParse(payload);
     if (!result.success) {
       throw new PalDefenderError(
@@ -234,15 +258,18 @@ export class PalDefenderClient {
     return result.data;
   }
 
-  private async get(path: string): Promise<unknown> {
+  private async request(path: string, init?: RequestInit): Promise<unknown> {
     let response: Response;
     try {
       response = await this.fetchImplementation(
         `${this.baseUrl}/v1/pdapi${path}`,
         {
+          ...init,
           headers: {
             Accept: "application/json",
             Authorization: `Bearer ${this.token}`,
+            ...(init?.body ? { "Content-Type": "application/json" } : {}),
+            ...init?.headers,
           },
           signal: AbortSignal.timeout(10_000),
         },

@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Group,
+  Modal,
   Select,
   SimpleGrid,
   Stack,
@@ -13,8 +14,10 @@ import {
   Tabs,
   Text,
   TextInput,
+  Textarea,
   Title,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IconArrowLeft,
   IconBackpack,
@@ -22,6 +25,7 @@ import {
   IconSearch,
   IconShieldCheck,
   IconSparkles,
+  IconUserMinus,
   IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -33,13 +37,15 @@ import {
   getPalDefenderInventory,
   getPalDefenderPals,
   getPalDefenderPlayer,
+  getPalDefenderPlayers,
   getPalDefenderTechnology,
+  kickPalDefenderPlayer,
   type PalDefenderInventoryItem,
   type PalDefenderPal,
   type PalDefenderPlayerDetails,
 } from "../lib/api";
 
-type TabName = "overview" | "inventory" | "pals" | "technology";
+type TabName = "overview" | "inventory" | "pals" | "technology" | "actions";
 type Loadable<T> = { data: T | null; loading: boolean; error: string };
 const initial = <T,>(): Loadable<T> => ({
   data: null,
@@ -57,6 +63,9 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
     useState<Loadable<PalDefenderInventoryItem[]>>(initial);
   const [pals, setPals] = useState<Loadable<PalDefenderPal[]>>(initial);
   const [technology, setTechnology] = useState<Loadable<string[]>>(initial);
+  const [kickOpened, setKickOpened] = useState(false);
+  const [kickMessage, setKickMessage] = useState("");
+  const [kicking, setKicking] = useState(false);
 
   const loadPlayer = useCallback(async () => {
     setPlayer((value) => ({ ...value, loading: true, error: "" }));
@@ -67,6 +76,23 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
         error: "",
       });
     } catch (error) {
+      const listedPlayer = await getPalDefenderPlayers()
+        .then((players) =>
+          players.find((candidate) => candidate.playerId === playerId),
+        )
+        .catch(() => undefined);
+      if (listedPlayer) {
+        setPlayer({
+          data: {
+            ...listedPlayer,
+            worldLocation: null,
+            mapLocation: null,
+          },
+          loading: false,
+          error: "",
+        });
+        return;
+      }
       setPlayer((value) => ({
         ...value,
         loading: false,
@@ -122,6 +148,34 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
     if (activeTab === "inventory") void loadInventory();
     if (activeTab === "pals") void loadPals();
     if (activeTab === "technology") void loadTechnology();
+  };
+
+  const kickPlayer = async () => {
+    if (kicking) return;
+    setKicking(true);
+    try {
+      const result = await kickPalDefenderPlayer(playerId, kickMessage);
+      setKickOpened(false);
+      setKickMessage("");
+      notifications.show({
+        color: "green",
+        title: "Player kicked",
+        message: `${player.data?.name ?? "The player"} was disconnected from the server.`,
+      });
+      await Promise.all([loadPlayer(), getPalDefenderPlayers()]);
+      return result;
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Unable to kick player",
+        message:
+          error instanceof Error
+            ? error.message
+            : "PalDefender could not kick this player.",
+      });
+    } finally {
+      setKicking(false);
+    }
   };
 
   return (
@@ -192,6 +246,12 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
               >
                 Technology
               </Tabs.Tab>
+              <Tabs.Tab
+                value="actions"
+                leftSection={<IconUserMinus size={16} />}
+              >
+                Actions
+              </Tabs.Tab>
             </Tabs.List>
             <Tabs.Panel value="overview" pt="xl">
               <Overview state={player} />
@@ -205,9 +265,74 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
             <Tabs.Panel value="technology" pt="xl">
               <Technology state={technology} refresh={loadTechnology} />
             </Tabs.Panel>
+            <Tabs.Panel value="actions" pt="xl">
+              <Stack gap="md">
+                <div>
+                  <Title order={3}>Kick Player</Title>
+                  <Text c="dimmed" size="sm">
+                    Immediately disconnect this player without banning them.
+                  </Text>
+                </div>
+                <Button
+                  color="red"
+                  leftSection={<IconUserMinus size={18} />}
+                  onClick={() => setKickOpened(true)}
+                  w="fit-content"
+                >
+                  Kick Player
+                </Button>
+              </Stack>
+            </Tabs.Panel>
           </Tabs>
         </SectionCard>
       </Stack>
+      <Modal
+        opened={kickOpened}
+        onClose={() => {
+          if (!kicking) setKickOpened(false);
+        }}
+        title="Kick Player"
+        centered
+        closeOnClickOutside={!kicking}
+        closeOnEscape={!kicking}
+      >
+        <Stack>
+          <Text>
+            <Text span fw={700}>
+              {player.data?.name ?? "This player"}
+            </Text>{" "}
+            will be immediately disconnected from the server.
+          </Text>
+          <Textarea
+            label="Optional message"
+            description="PalDefender will use this as the kick reason."
+            placeholder="Explain why the player is being disconnected"
+            minRows={4}
+            maxLength={2_000}
+            value={kickMessage}
+            onChange={(event) => setKickMessage(event.currentTarget.value)}
+            disabled={kicking}
+          />
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setKickOpened(false)}
+              disabled={kicking}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              leftSection={<IconUserMinus size={18} />}
+              loading={kicking}
+              disabled={kicking}
+              onClick={() => void kickPlayer()}
+            >
+              Kick Player
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </ApplicationShell>
   );
 }

@@ -34,6 +34,17 @@ before(async () => {
       "Bearer route-test-token",
     );
     const url = String(input);
+    if (url.endsWith("/kick/offline")) {
+      return Response.json(
+        { Error: { Code: "PLAYER_NOT_FOUND", Message: "Not online" } },
+        { status: 404 },
+      );
+    }
+    if (url.endsWith("/kick/player-1")) {
+      assert.equal(init?.method, "POST");
+      assert.equal(init?.body, JSON.stringify({ Reason: "Please reconnect" }));
+      return Response.json({ Success: true, UserId: "steam_private" });
+    }
     if (url.endsWith("/player/missing")) {
       return Response.json(
         { Error: { Code: "PLAYER_NOT_FOUND", Message: "Missing" } },
@@ -87,6 +98,36 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     url: "/api/paldefender/players/player-1",
   });
   assert.equal(response.statusCode, 401);
+  const kick = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/player-1/kick",
+    payload: {},
+  });
+  assert.equal(kick.statusCode, 401);
+});
+
+test("PalDefender kick route normalizes success and offline errors", async () => {
+  const headers = { cookie: administratorCookie };
+  const kicked = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/player-1/kick",
+    headers,
+    payload: { message: "Please reconnect" },
+  });
+  assert.equal(kicked.statusCode, 200);
+  assert.deepEqual(kicked.json(), { success: true, playerId: "player-1" });
+
+  const offline = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/offline/kick",
+    headers,
+    payload: {},
+  });
+  assert.equal(offline.statusCode, 404);
+  assert.deepEqual(offline.json(), {
+    error: "paldefender_player_offline",
+    message: "This player is no longer online and cannot be kicked.",
+  });
 });
 
 test("PalDefender player workspace routes return normalized models", async () => {

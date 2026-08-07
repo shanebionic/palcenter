@@ -4,6 +4,7 @@ import {
   type PalDefenderPlayerDetails,
   type PalDefenderInventoryItem,
   type PalDefenderPal,
+  type PalDefenderKickResult,
 } from "../clients/paldefender-client.js";
 
 export interface PalDefenderStatus {
@@ -59,6 +60,10 @@ export class PalDefenderService {
 
   async technology(id: string): Promise<string[]> {
     return this.configuredClient().getTechnology(id);
+  }
+
+  async kick(id: string, message?: string): Promise<PalDefenderKickResult> {
+    return this.configuredClient().kickPlayer(id, message);
   }
 
   private configuredClient(): PalDefenderClient {
