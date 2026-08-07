@@ -150,6 +150,78 @@ test("derives normalized bases from documented guild summaries", async () => {
   ]);
 });
 
+test("loads one normalized base through documented guild endpoints", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input) => {
+      if (String(input).endsWith("/guilds")) {
+        return Response.json({
+          Guilds: {
+            "guild-1": {
+              name: "Pal Tamers",
+              Level: 3,
+              admin: { id: "player-1", name: "Explorer" },
+              camp_count: 1,
+              camps: [
+                {
+                  id: "base-1",
+                  world_pos: { x: 1, y: 2, z: 3 },
+                  map_pos: { x: 4, y: 5, z: 6 },
+                },
+              ],
+              member_count: 1,
+              members: ["player-1"],
+            },
+          },
+        });
+      }
+      return Response.json({
+        Guild: {
+          name: "Pal Tamers",
+          Level: 3,
+          admin: { id: "player-1", name: "Explorer" },
+          member_count: 1,
+          members: [],
+          camp_count: 1,
+          camps: [
+            {
+              id: "base-1",
+              level: 2,
+              world_pos: { x: 1, y: 2, z: 3 },
+              map_pos: { x: 4, y: 5, z: 6 },
+              state: "Normal",
+              pals: {},
+              buildings: "WIP",
+            },
+          ],
+          items: { current: 0, max: 0 },
+          expeditions: { finished: 0, missions: {} },
+          laboratory: { current_research: "None", researches: {} },
+        },
+      });
+    },
+  );
+
+  assert.deepEqual(await client.getBase("base-1"), {
+    baseId: "base-1",
+    guildId: "guild-1",
+    guildName: "Pal Tamers",
+    guildAdministrator: { playerId: "player-1", name: "Explorer" },
+    worldPosition: { x: 1, y: 2, z: 3 },
+    mapPosition: { x: 4, y: 5, z: 6 },
+    level: 2,
+    state: "Normal",
+    buildings: null,
+    pals: [],
+  });
+  await assert.rejects(
+    () => client.getBase("missing"),
+    (error: unknown) =>
+      error instanceof Error && error.message === "Base not found",
+  );
+});
+
 test("normalizes documented PalDefender guild details", async () => {
   const client = new PalDefenderClient(
     "http://paldefender",

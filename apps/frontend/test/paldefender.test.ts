@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  palDefenderBaseHref,
   palDefenderGuildHref,
   palDefenderPlayerHref,
 } from "../lib/paldefender";
@@ -11,11 +12,32 @@ import {
 import {
   banPalDefenderPlayer,
   broadcastPalDefenderMessage,
+  getPalDefenderBase,
   getPalDefenderBases,
   getPalDefenderGuilds,
   getPalDefenderGuild,
   kickPalDefenderPlayer,
 } from "../lib/api";
+
+test("builds and loads an encoded PalDefender base details route", async () => {
+  assert.equal(
+    palDefenderBaseHref("base id/unsafe"),
+    "/paldefender/bases/base%20id%2Funsafe",
+  );
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  globalThis.fetch = async (input) => {
+    requestedUrl = String(input);
+    return Response.json({ baseId: "base-1", level: 2, pals: [] });
+  };
+  try {
+    const base = await getPalDefenderBase("base-1");
+    assert.equal(requestedUrl, "/api/paldefender/bases/base-1");
+    assert.equal(base.baseId, "base-1");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test("loads normalized PalDefender bases through the PalCenter API", async () => {
   const originalFetch = globalThis.fetch;

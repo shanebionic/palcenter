@@ -760,6 +760,20 @@ app.get("/api/paldefender/bases", async () => ({
   bases: await palDefenderService.bases(),
 }));
 
+const palDefenderBaseParametersSchema = z.object({
+  baseId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9_-]+$/),
+});
+
+app.get("/api/paldefender/bases/:baseId", async (request) => {
+  const { baseId } = palDefenderBaseParametersSchema.parse(request.params);
+  return palDefenderService.base(baseId);
+});
+
 const palDefenderGuildParametersSchema = z.object({
   guildId: z
     .string()
@@ -1685,8 +1699,10 @@ app.setErrorHandler((error, request, reply) => {
       error.statusCode === 404 && error.code?.startsWith("PLAYER_");
     const guildNotFound =
       error.statusCode === 404 && error.code === "GUILD_NOT_FOUND";
+    const baseNotFound =
+      error.statusCode === 404 && error.code === "BASE_NOT_FOUND";
     const statusCode =
-      playerNotFound || guildNotFound
+      playerNotFound || guildNotFound || baseNotFound
         ? 404
         : error.statusCode === 400 &&
             (error.code === "INVALID_PLAYER_ID" ||
@@ -1705,21 +1721,23 @@ app.setErrorHandler((error, request, reply) => {
           ? "paldefender_player_not_found"
           : guildNotFound
             ? "paldefender_guild_not_found"
-            : error.code === "INVALID_PLAYER_ID"
-              ? "invalid_player_id"
-              : error.code === "INVALID_GUILD_ID"
-                ? "invalid_guild_id"
-                : isPalDefenderWriteRequest && statusCode === 400
-                  ? "paldefender_request_failed"
-                  : error.timedOut
-                    ? "paldefender_timeout"
-                    : error.statusCode === 401 || error.statusCode === 403
-                      ? "paldefender_authentication_failed"
-                      : error.code === "MALFORMED_RESPONSE"
-                        ? "paldefender_malformed_response"
-                        : error.statusCode === 404
-                          ? "paldefender_endpoint_unavailable"
-                          : "paldefender_unavailable";
+            : baseNotFound
+              ? "paldefender_base_not_found"
+              : error.code === "INVALID_PLAYER_ID"
+                ? "invalid_player_id"
+                : error.code === "INVALID_GUILD_ID"
+                  ? "invalid_guild_id"
+                  : isPalDefenderWriteRequest && statusCode === 400
+                    ? "paldefender_request_failed"
+                    : error.timedOut
+                      ? "paldefender_timeout"
+                      : error.statusCode === 401 || error.statusCode === 403
+                        ? "paldefender_authentication_failed"
+                        : error.code === "MALFORMED_RESPONSE"
+                          ? "paldefender_malformed_response"
+                          : error.statusCode === 404
+                            ? "paldefender_endpoint_unavailable"
+                            : "paldefender_unavailable";
     return reply.code(statusCode).send({
       error: errorCode,
       message: playerOffline

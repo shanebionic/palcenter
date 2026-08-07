@@ -102,8 +102,18 @@ before(async () => {
               status: "Online",
             },
           ],
-          camp_count: 0,
-          camps: [],
+          camp_count: 1,
+          camps: [
+            {
+              id: "base-1",
+              level: 2,
+              world_pos: { x: 1, y: 2, z: 3 },
+              map_pos: { x: 4, y: 5, z: 6 },
+              state: "Normal",
+              pals: {},
+              buildings: "WIP",
+            },
+          ],
           items: { container_id: "container-1", current: 0, max: 54 },
           expeditions: { finished: 0, missions: {} },
           laboratory: { current_research: "None", researches: {} },
@@ -219,6 +229,11 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     url: "/api/paldefender/bases",
   });
   assert.equal(bases.statusCode, 401);
+  const base = await app.inject({
+    method: "GET",
+    url: "/api/paldefender/bases/base-1",
+  });
+  assert.equal(base.statusCode, 401);
 });
 
 test("PalDefender guild route returns PalCenter-owned models", async () => {
@@ -271,6 +286,36 @@ test("PalDefender base route aggregates documented guild camps", async () => {
   });
 });
 
+test("PalDefender base details select and normalize a documented guild camp", async () => {
+  const headers = { cookie: administratorCookie };
+  const response = await app.inject({
+    method: "GET",
+    url: "/api/paldefender/bases/base-1",
+    headers,
+  });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), {
+    baseId: "base-1",
+    guildId: "guild-1",
+    guildName: "Pal Tamers",
+    guildAdministrator: { playerId: "player-1", name: "Explorer" },
+    worldPosition: { x: 1, y: 2, z: 3 },
+    mapPosition: { x: 4, y: 5, z: 6 },
+    level: 2,
+    state: "Normal",
+    buildings: null,
+    pals: [],
+  });
+
+  const missing = await app.inject({
+    method: "GET",
+    url: "/api/paldefender/bases/missing",
+    headers,
+  });
+  assert.equal(missing.statusCode, 404);
+  assert.equal(missing.json().error, "paldefender_base_not_found");
+});
+
 test("PalDefender guild details normalize live data and missing guilds", async () => {
   const headers = { cookie: administratorCookie };
   const response = await app.inject({
@@ -286,8 +331,18 @@ test("PalDefender guild details normalize live data and missing guilds", async (
     administrator: { playerId: "player-1", name: "Explorer" },
     memberCount: 1,
     members: [{ playerId: "player-1", name: "Explorer", status: "Online" }],
-    baseCount: 0,
-    camps: [],
+    baseCount: 1,
+    camps: [
+      {
+        id: "base-1",
+        level: 2,
+        state: "Normal",
+        worldPosition: { x: 1, y: 2, z: 3 },
+        mapPosition: { x: 4, y: 5, z: 6 },
+        buildings: "WIP",
+        pals: [],
+      },
+    ],
     storage: {
       containerId: "container-1",
       occupiedSlots: 0,
