@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { palDefenderPlayerHref } from "../lib/paldefender";
+import {
+  palDefenderGuildHref,
+  palDefenderPlayerHref,
+} from "../lib/paldefender";
 import {
   broadcastCharacterCount,
   broadcastValidationError,
@@ -8,8 +11,9 @@ import {
 import {
   banPalDefenderPlayer,
   broadcastPalDefenderMessage,
-  getPalDefenderGuilds,
   getPalDefenderBases,
+  getPalDefenderGuilds,
+  getPalDefenderGuild,
   kickPalDefenderPlayer,
 } from "../lib/api";
 
@@ -35,6 +39,29 @@ test("loads normalized PalDefender bases through the PalCenter API", async () =>
     const bases = await getPalDefenderBases();
     assert.equal(requestedUrl, "/api/paldefender/bases");
     assert.equal(bases[0]?.baseId, "base-1");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("builds an encoded PalDefender guild details route", () => {
+  assert.equal(
+    palDefenderGuildHref("guild id/unsafe"),
+    "/paldefender/guilds/guild%20id%2Funsafe",
+  );
+});
+
+test("loads PalDefender guild details through the PalCenter API", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  globalThis.fetch = async (input) => {
+    requestedUrl = String(input);
+    return Response.json({ guildId: "guild-1", name: "Pal Tamers" });
+  };
+  try {
+    const guild = await getPalDefenderGuild("guild-1");
+    assert.equal(requestedUrl, "/api/paldefender/guilds/guild-1");
+    assert.equal(guild.guildId, "guild-1");
   } finally {
     globalThis.fetch = originalFetch;
   }

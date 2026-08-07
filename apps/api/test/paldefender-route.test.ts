@@ -88,6 +88,34 @@ before(async () => {
       assert.equal(body.Message, "Hello, Palpagos! ⚡");
       return Response.json({ Success: true });
     }
+    if (url.endsWith("/guild/guild-1")) {
+      return Response.json({
+        Guild: {
+          name: "Pal Tamers",
+          Level: 2,
+          admin: { id: "player-1", name: "Explorer" },
+          member_count: 1,
+          members: [
+            {
+              player_uid: "player-1",
+              player_name: "Explorer",
+              status: "Online",
+            },
+          ],
+          camp_count: 0,
+          camps: [],
+          items: { container_id: "container-1", current: 0, max: 54 },
+          expeditions: { finished: 0, missions: {} },
+          laboratory: { current_research: "None", researches: {} },
+        },
+      });
+    }
+    if (url.endsWith("/guild/missing")) {
+      return Response.json(
+        { Error: { Code: "GUILD_NOT_FOUND", Message: "Missing guild" } },
+        { status: 404 },
+      );
+    }
     if (url.endsWith("/guilds")) {
       return Response.json({
         Meta: { GuildCount: 1 },
@@ -241,6 +269,42 @@ test("PalDefender base route aggregates documented guild camps", async () => {
       },
     ],
   });
+});
+
+test("PalDefender guild details normalize live data and missing guilds", async () => {
+  const headers = { cookie: administratorCookie };
+  const response = await app.inject({
+    method: "GET",
+    url: "/api/paldefender/guilds/guild-1",
+    headers,
+  });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), {
+    guildId: "guild-1",
+    name: "Pal Tamers",
+    level: 2,
+    administrator: { playerId: "player-1", name: "Explorer" },
+    memberCount: 1,
+    members: [{ playerId: "player-1", name: "Explorer", status: "Online" }],
+    baseCount: 0,
+    camps: [],
+    storage: {
+      containerId: "container-1",
+      occupiedSlots: 0,
+      maximumSlots: 54,
+      items: [],
+    },
+    expeditions: { finishedCount: 0, missions: {} },
+    laboratory: { currentResearch: null, researches: [] },
+  });
+
+  const missing = await app.inject({
+    method: "GET",
+    url: "/api/paldefender/guilds/missing",
+    headers,
+  });
+  assert.equal(missing.statusCode, 404);
+  assert.equal(missing.json().error, "paldefender_guild_not_found");
 });
 
 test("PalDefender kick route normalizes success and offline errors", async () => {
