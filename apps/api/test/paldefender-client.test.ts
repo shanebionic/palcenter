@@ -227,6 +227,68 @@ test("uses an empty object when no optional kick message is supplied", async () 
   assert.equal(requestBody, "{}");
 });
 
+test("bans a player with every documented option and normalizes the response", async () => {
+  let requestUrl = "";
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body ?? "");
+      return Response.json({
+        Success: true,
+        UserId: "steam_private",
+        IP: true,
+        BannedIP: "192.0.2.1",
+        Kicked: 1,
+      });
+    },
+  );
+  assert.deepEqual(
+    await client.banPlayer("player-1", {
+      reason: "  Repeated abuse  ",
+      ipBan: true,
+    }),
+    {
+      success: true,
+      playerId: "player-1",
+      ipBanned: true,
+      bannedIp: "192.0.2.1",
+      kickedPlayers: 1,
+    },
+  );
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/ban/player-1");
+  assert.equal(
+    requestBody,
+    JSON.stringify({ Reason: "Repeated abuse", IP: true }),
+  );
+});
+
+test("omits undocumented and disabled ban options", async () => {
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (_input, init) => {
+      requestBody = String(init?.body ?? "");
+      return Response.json({
+        Success: true,
+        UserId: "steam_private",
+        IP: false,
+        BannedIP: "",
+        Kicked: 0,
+      });
+    },
+  );
+  const result = await client.banPlayer("player-1", {
+    reason: "   ",
+    ipBan: false,
+  });
+  assert.equal(requestBody, "{}");
+  assert.equal(result.bannedIp, null);
+});
+
 test("encodes supported player identifiers and rejects path injection", async () => {
   let requested = "";
   const client = new PalDefenderClient(
