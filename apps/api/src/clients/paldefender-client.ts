@@ -80,6 +80,13 @@ const kickResponseSchema = z.object({
   Success: z.boolean(),
   UserId: z.string(),
 });
+const banResponseSchema = z.object({
+  Success: z.boolean(),
+  UserId: z.string(),
+  IP: z.boolean(),
+  BannedIP: z.string(),
+  Kicked: z.number().int().nonnegative(),
+});
 
 export interface PalDefenderPlayer {
   name: string;
@@ -130,6 +137,17 @@ export interface PalDefenderPal {
 export interface PalDefenderKickResult {
   success: boolean;
   playerId: string;
+}
+export interface PalDefenderBanOptions {
+  reason?: string;
+  ipBan?: boolean;
+}
+export interface PalDefenderBanResult {
+  success: boolean;
+  playerId: string;
+  ipBanned: boolean;
+  bannedIp: string | null;
+  kickedPlayers: number;
 }
 
 export class PalDefenderError extends Error {
@@ -228,15 +246,47 @@ export class PalDefenderClient {
     playerId: string,
     message?: string,
   ): Promise<PalDefenderKickResult> {
-    const response = await this.parse(
+    const response = await this.moderatePlayer(
       kickResponseSchema,
-      `/kick/${encodePlayerId(playerId)}`,
-      {
-        method: "POST",
-        body: JSON.stringify(message?.trim() ? { Reason: message.trim() } : {}),
-      },
+      "kick",
+      playerId,
+      message?.trim() ? { Reason: message.trim() } : {},
     );
     return { success: response.Success, playerId };
+  }
+
+  async banPlayer(
+    playerId: string,
+    options: PalDefenderBanOptions = {},
+  ): Promise<PalDefenderBanResult> {
+    const response = await this.moderatePlayer(
+      banResponseSchema,
+      "ban",
+      playerId,
+      {
+        ...(options.reason?.trim() ? { Reason: options.reason.trim() } : {}),
+        ...(options.ipBan ? { IP: true } : {}),
+      },
+    );
+    return {
+      success: response.Success,
+      playerId,
+      ipBanned: response.IP,
+      bannedIp: response.BannedIP.trim() || null,
+      kickedPlayers: response.Kicked,
+    };
+  }
+
+  private moderatePlayer<TSchema extends z.ZodTypeAny>(
+    schema: TSchema,
+    action: "kick" | "ban",
+    playerId: string,
+    body: Record<string, string | boolean>,
+  ): Promise<z.infer<TSchema>> {
+    return this.parse(schema, `/${action}/${encodePlayerId(playerId)}`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   }
 
   private async parse<TSchema extends z.ZodTypeAny>(

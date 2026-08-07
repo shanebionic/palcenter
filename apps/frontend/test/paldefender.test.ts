@@ -1,13 +1,52 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { palDefenderPlayerHref } from "../lib/paldefender";
-import { kickPalDefenderPlayer } from "../lib/api";
+import { banPalDefenderPlayer, kickPalDefenderPlayer } from "../lib/api";
 
 test("builds an encoded PalDefender player workspace route", () => {
   assert.equal(
     palDefenderPlayerHref("player id/unsafe"),
     "/paldefender/players/player%20id%2Funsafe",
   );
+});
+
+test("submits every documented PalDefender ban option", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestBody = "";
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input);
+    requestBody = String(init?.body ?? "");
+    return Response.json({
+      success: true,
+      playerId: "player-1",
+      ipBanned: true,
+      bannedIp: "192.0.2.1",
+      kickedPlayers: 1,
+    });
+  };
+  try {
+    assert.deepEqual(
+      await banPalDefenderPlayer("player-1", {
+        reason: "  Repeated abuse  ",
+        ipBan: true,
+      }),
+      {
+        success: true,
+        playerId: "player-1",
+        ipBanned: true,
+        bannedIp: "192.0.2.1",
+        kickedPlayers: 1,
+      },
+    );
+    assert.equal(requestedUrl, "/api/paldefender/players/player-1/ban");
+    assert.equal(
+      requestBody,
+      JSON.stringify({ reason: "Repeated abuse", ipBan: true }),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("submits a normalized PalDefender kick request", async () => {

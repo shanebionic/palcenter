@@ -784,33 +784,88 @@ app.get("/api/paldefender/players/:playerId/technology", async (request) => {
 const palDefenderKickBodySchema = z
   .object({ message: z.string().max(2_000).optional() })
   .strict();
+const palDefenderBanBodySchema = z
+  .object({
+    reason: z.string().max(2_000).optional(),
+    ipBan: z.boolean().optional(),
+  })
+  .strict();
+
+async function executePalDefenderModeration<TResult>(options: {
+  action: "kick" | "ban";
+  actorUserId: string;
+  playerId: string;
+  metadata: Record<string, boolean>;
+  execute: () => Promise<TResult>;
+  resultMetadata: (result: TResult) => Record<string, boolean | number>;
+}): Promise<TResult> {
+  app.log.info(
+    {
+      actorUserId: options.actorUserId,
+      playerId: options.playerId,
+      action: options.action,
+      ...options.metadata,
+    },
+    `PalDefender player ${options.action} requested.`,
+  );
+  try {
+    const result = await options.execute();
+    app.log.info(
+      {
+        actorUserId: options.actorUserId,
+        playerId: options.playerId,
+        action: options.action,
+        ...options.resultMetadata(result),
+      },
+      `PalDefender player ${options.action} completed.`,
+    );
+    return result;
+  } catch (error) {
+    app.log.warn(
+      {
+        err: error,
+        actorUserId: options.actorUserId,
+        playerId: options.playerId,
+        action: options.action,
+      },
+      `PalDefender player ${options.action} failed.`,
+    );
+    throw error;
+  }
+}
 
 app.post("/api/paldefender/players/:playerId/kick", async (request) => {
   const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
   const { message } = palDefenderKickBodySchema.parse(request.body ?? {});
   const actor = currentUser(request.headers.cookie);
-  app.log.info(
-    {
-      actorUserId: actor.id,
-      playerId,
-      messageProvided: Boolean(message?.trim()),
-    },
-    "PalDefender player kick requested.",
+  return executePalDefenderModeration({
+    action: "kick",
+    actorUserId: actor.id,
+    playerId,
+    metadata: { messageProvided: Boolean(message?.trim()) },
+    execute: () => palDefenderService.kick(playerId, message),
+    resultMetadata: (result) => ({ success: result.success }),
+  });
+});
+
+app.post("/api/paldefender/players/:playerId/ban", async (request) => {
+  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
+  const { reason, ipBan = false } = palDefenderBanBodySchema.parse(
+    request.body ?? {},
   );
-  try {
-    const result = await palDefenderService.kick(playerId, message);
-    app.log.info(
-      { actorUserId: actor.id, playerId, success: result.success },
-      "PalDefender player kick completed.",
-    );
-    return result;
-  } catch (error) {
-    app.log.warn(
-      { err: error, actorUserId: actor.id, playerId },
-      "PalDefender player kick failed.",
-    );
-    throw error;
-  }
+  const actor = currentUser(request.headers.cookie);
+  return executePalDefenderModeration({
+    action: "ban",
+    actorUserId: actor.id,
+    playerId,
+    metadata: { reasonProvided: Boolean(reason?.trim()), ipBan },
+    execute: () => palDefenderService.ban(playerId, { reason, ipBan }),
+    resultMetadata: (result) => ({
+      success: result.success,
+      ipBanned: result.ipBanned,
+      kickedPlayers: result.kickedPlayers,
+    }),
+  });
 });
 
 const currentUser = (cookie: string | undefined) => {
@@ -1564,6 +1619,9 @@ app.setErrorHandler((error, request, reply) => {
   }
 
   if (error instanceof PalDefenderError) {
+    const isModerationRequest =
+      request.method === "POST" &&
+      /\/api\/paldefender\/players\/[^/]+\/(kick|ban)$/.test(request.url);
     const playerOffline =
       request.method === "POST" &&
       /\/api\/paldefender\/players\/[^/]+\/kick$/.test(request.url) &&
@@ -1575,29 +1633,37 @@ app.setErrorHandler((error, request, reply) => {
       ? 404
       : error.statusCode === 400 && error.code === "INVALID_PLAYER_ID"
         ? 400
-        : error.timedOut
-          ? 504
-          : 502;
+        : isModerationRequest && error.statusCode === 400
+          ? 400
+          : error.timedOut
+            ? 504
+            : 502;
     const errorCode = playerOffline
       ? "paldefender_player_offline"
-      : playerNotFound
-        ? "paldefender_player_not_found"
-        : statusCode === 400
-          ? "invalid_player_id"
-          : error.timedOut
-            ? "paldefender_timeout"
-            : error.statusCode === 401 || error.statusCode === 403
-              ? "paldefender_authentication_failed"
-              : error.code === "MALFORMED_RESPONSE"
-                ? "paldefender_malformed_response"
-                : error.statusCode === 404
-                  ? "paldefender_endpoint_unavailable"
-                  : "paldefender_unavailable";
+      : error.code === "IP_UNAVAILABLE"
+        ? "paldefender_ip_unavailable"
+        : playerNotFound
+          ? "paldefender_player_not_found"
+          : error.code === "INVALID_PLAYER_ID"
+            ? "invalid_player_id"
+            : isModerationRequest && statusCode === 400
+              ? "paldefender_request_failed"
+              : error.timedOut
+                ? "paldefender_timeout"
+                : error.statusCode === 401 || error.statusCode === 403
+                  ? "paldefender_authentication_failed"
+                  : error.code === "MALFORMED_RESPONSE"
+                    ? "paldefender_malformed_response"
+                    : error.statusCode === 404
+                      ? "paldefender_endpoint_unavailable"
+                      : "paldefender_unavailable";
     return reply.code(statusCode).send({
       error: errorCode,
       message: playerOffline
         ? "This player is no longer online and cannot be kicked."
-        : error.message,
+        : error.code === "IP_UNAVAILABLE"
+          ? "PalDefender could not resolve an IP address for this player. Disable IP Ban and try again."
+          : error.message,
     });
   }
 

@@ -5,6 +5,8 @@ import {
   type PalDefenderInventoryItem,
   type PalDefenderPal,
   type PalDefenderKickResult,
+  type PalDefenderBanOptions,
+  type PalDefenderBanResult,
 } from "../clients/paldefender-client.js";
 
 export interface PalDefenderStatus {
@@ -64,6 +66,13 @@ export class PalDefenderService {
 
   async kick(id: string, message?: string): Promise<PalDefenderKickResult> {
     return this.configuredClient().kickPlayer(id, message);
+  }
+
+  async ban(
+    id: string,
+    options?: PalDefenderBanOptions,
+  ): Promise<PalDefenderBanResult> {
+    return this.configuredClient().banPlayer(id, options);
   }
 
   private configuredClient(): PalDefenderClient {

@@ -103,6 +103,17 @@ export interface PalDefenderKickResult {
   success: boolean;
   playerId: string;
 }
+export interface PalDefenderBanOptions {
+  reason?: string;
+  ipBan?: boolean;
+}
+export interface PalDefenderBanResult {
+  success: boolean;
+  playerId: string;
+  ipBanned: boolean;
+  bannedIp: string | null;
+  kickedPlayers: number;
+}
 
 interface HistoryResponse {
   metrics: ServerMetric[];
@@ -557,6 +568,19 @@ export function kickPalDefenderPlayer(
   return jsonRequest<PalDefenderKickResult>(
     `${palDefenderPlayerPath(playerId)}/kick`,
     { ...(message?.trim() ? { message: message.trim() } : {}) },
+  );
+}
+
+export function banPalDefenderPlayer(
+  playerId: string,
+  options: PalDefenderBanOptions = {},
+): Promise<PalDefenderBanResult> {
+  return jsonRequest<PalDefenderBanResult>(
+    `${palDefenderPlayerPath(playerId)}/ban`,
+    {
+      ...(options.reason?.trim() ? { reason: options.reason.trim() } : {}),
+      ...(options.ipBan ? { ipBan: true } : {}),
+    },
   );
 }
 

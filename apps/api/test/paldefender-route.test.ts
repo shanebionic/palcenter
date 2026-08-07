@@ -45,6 +45,32 @@ before(async () => {
       assert.equal(init?.body, JSON.stringify({ Reason: "Please reconnect" }));
       return Response.json({ Success: true, UserId: "steam_private" });
     }
+    if (url.endsWith("/ban/player-1")) {
+      assert.equal(init?.method, "POST");
+      assert.equal(
+        init?.body,
+        JSON.stringify({ Reason: "Repeated abuse", IP: true }),
+      );
+      return Response.json({
+        Success: true,
+        UserId: "steam_private",
+        IP: true,
+        BannedIP: "192.0.2.1",
+        Kicked: 1,
+      });
+    }
+    if (url.endsWith("/ban/no-ip")) {
+      return Response.json(
+        { Error: { Code: "IP_UNAVAILABLE", Message: "IP unavailable" } },
+        { status: 400 },
+      );
+    }
+    if (url.endsWith("/ban/rejected")) {
+      return Response.json(
+        { Error: { Code: "REQUEST_FAILED", Message: "Ban was rejected" } },
+        { status: 400 },
+      );
+    }
     if (url.endsWith("/player/missing")) {
       return Response.json(
         { Error: { Code: "PLAYER_NOT_FOUND", Message: "Missing" } },
@@ -104,6 +130,12 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     payload: {},
   });
   assert.equal(kick.statusCode, 401);
+  const ban = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/player-1/ban",
+    payload: {},
+  });
+  assert.equal(ban.statusCode, 401);
 });
 
 test("PalDefender kick route normalizes success and offline errors", async () => {
@@ -127,6 +159,49 @@ test("PalDefender kick route normalizes success and offline errors", async () =>
   assert.deepEqual(offline.json(), {
     error: "paldefender_player_offline",
     message: "This player is no longer online and cannot be kicked.",
+  });
+});
+
+test("PalDefender ban route normalizes success and unavailable IP errors", async () => {
+  const headers = { cookie: administratorCookie };
+  const banned = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/player-1/ban",
+    headers,
+    payload: { reason: "Repeated abuse", ipBan: true },
+  });
+  assert.equal(banned.statusCode, 200);
+  assert.deepEqual(banned.json(), {
+    success: true,
+    playerId: "player-1",
+    ipBanned: true,
+    bannedIp: "192.0.2.1",
+    kickedPlayers: 1,
+  });
+
+  const unavailableIp = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/no-ip/ban",
+    headers,
+    payload: { ipBan: true },
+  });
+  assert.equal(unavailableIp.statusCode, 400);
+  assert.deepEqual(unavailableIp.json(), {
+    error: "paldefender_ip_unavailable",
+    message:
+      "PalDefender could not resolve an IP address for this player. Disable IP Ban and try again.",
+  });
+
+  const rejected = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/rejected/ban",
+    headers,
+    payload: {},
+  });
+  assert.equal(rejected.statusCode, 400);
+  assert.deepEqual(rejected.json(), {
+    error: "paldefender_request_failed",
+    message: "Ban was rejected",
   });
 });
 

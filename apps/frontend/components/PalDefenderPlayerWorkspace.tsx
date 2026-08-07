@@ -10,6 +10,7 @@ import {
   Select,
   SimpleGrid,
   Stack,
+  Switch,
   Table,
   Tabs,
   Text,
@@ -21,6 +22,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconArrowLeft,
   IconBackpack,
+  IconBan,
   IconRefresh,
   IconSearch,
   IconShieldCheck,
@@ -34,6 +36,7 @@ import { ApplicationShell } from "./ApplicationShell";
 import { BrandedLoader } from "./BrandedLoader";
 import { SectionCard } from "./ui/SectionCard";
 import {
+  banPalDefenderPlayer,
   getPalDefenderInventory,
   getPalDefenderPals,
   getPalDefenderPlayer,
@@ -65,7 +68,12 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
   const [technology, setTechnology] = useState<Loadable<string[]>>(initial);
   const [kickOpened, setKickOpened] = useState(false);
   const [kickMessage, setKickMessage] = useState("");
-  const [kicking, setKicking] = useState(false);
+  const [banOpened, setBanOpened] = useState(false);
+  const [banReason, setBanReason] = useState("");
+  const [ipBan, setIpBan] = useState(false);
+  const [submittingAction, setSubmittingAction] = useState<
+    "kick" | "ban" | null
+  >(null);
 
   const loadPlayer = useCallback(async () => {
     setPlayer((value) => ({ ...value, loading: true, error: "" }));
@@ -150,33 +158,63 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
     if (activeTab === "technology") void loadTechnology();
   };
 
-  const kickPlayer = async () => {
-    if (kicking) return;
-    setKicking(true);
+  const executeModeration = async (options: {
+    action: "kick" | "ban";
+    execute: () => Promise<unknown>;
+    close: () => void;
+    reset: () => void;
+    successTitle: string;
+    successMessage: string;
+  }) => {
+    if (submittingAction) return;
+    setSubmittingAction(options.action);
     try {
-      const result = await kickPalDefenderPlayer(playerId, kickMessage);
-      setKickOpened(false);
-      setKickMessage("");
+      await options.execute();
+      options.close();
+      options.reset();
       notifications.show({
         color: "green",
-        title: "Player kicked",
-        message: `${player.data?.name ?? "The player"} was disconnected from the server.`,
+        title: options.successTitle,
+        message: options.successMessage,
       });
       await Promise.all([loadPlayer(), getPalDefenderPlayers()]);
-      return result;
     } catch (error) {
       notifications.show({
         color: "red",
-        title: "Unable to kick player",
+        title: `Unable to ${options.action} player`,
         message:
           error instanceof Error
             ? error.message
-            : "PalDefender could not kick this player.",
+            : `PalDefender could not ${options.action} this player.`,
       });
     } finally {
-      setKicking(false);
+      setSubmittingAction(null);
     }
   };
+
+  const kickPlayer = () =>
+    executeModeration({
+      action: "kick",
+      execute: () => kickPalDefenderPlayer(playerId, kickMessage),
+      close: () => setKickOpened(false),
+      reset: () => setKickMessage(""),
+      successTitle: "Player kicked",
+      successMessage: `${player.data?.name ?? "The player"} was disconnected from the server.`,
+    });
+
+  const banPlayer = () =>
+    executeModeration({
+      action: "ban",
+      execute: () =>
+        banPalDefenderPlayer(playerId, { reason: banReason, ipBan }),
+      close: () => setBanOpened(false),
+      reset: () => {
+        setBanReason("");
+        setIpBan(false);
+      },
+      successTitle: "Player banned",
+      successMessage: `${player.data?.name ?? "The player"} was banned from the server.`,
+    });
 
   return (
     <ApplicationShell>
@@ -281,59 +319,148 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
                 >
                   Kick Player
                 </Button>
+                <div>
+                  <Title order={3}>Ban Player</Title>
+                  <Text c="dimmed" size="sm">
+                    Prevent this player from reconnecting to the server.
+                  </Text>
+                </div>
+                <Button
+                  color="red"
+                  variant="outline"
+                  leftSection={<IconBan size={18} />}
+                  onClick={() => setBanOpened(true)}
+                  w="fit-content"
+                >
+                  Ban Player
+                </Button>
               </Stack>
             </Tabs.Panel>
           </Tabs>
         </SectionCard>
       </Stack>
-      <Modal
+      <ModerationModal
         opened={kickOpened}
-        onClose={() => {
-          if (!kicking) setKickOpened(false);
-        }}
+        onClose={() => setKickOpened(false)}
         title="Kick Player"
-        centered
-        closeOnClickOutside={!kicking}
-        closeOnEscape={!kicking}
+        playerName={player.data?.name}
+        description="will be immediately disconnected from the server."
+        reasonLabel="Optional message"
+        reasonDescription="PalDefender will use this as the kick reason."
+        reasonPlaceholder="Explain why the player is being disconnected"
+        reason={kickMessage}
+        setReason={setKickMessage}
+        submitting={submittingAction === "kick"}
+        submitLabel="Kick Player"
+        submitIcon={<IconUserMinus size={18} />}
+        onSubmit={() => void kickPlayer()}
+      />
+      <ModerationModal
+        opened={banOpened}
+        onClose={() => setBanOpened(false)}
+        title="Ban Player"
+        playerName={player.data?.name}
+        description="will be banned and prevented from reconnecting to the server."
+        reasonLabel="Reason"
+        reasonDescription="Optional. Recorded by PalDefender with the ban."
+        reasonPlaceholder="Explain why the player is being banned"
+        reason={banReason}
+        setReason={setBanReason}
+        submitting={submittingAction === "ban"}
+        submitLabel="Ban Player"
+        submitIcon={<IconBan size={18} />}
+        onSubmit={() => void banPlayer()}
       >
-        <Stack>
-          <Text>
-            <Text span fw={700}>
-              {player.data?.name ?? "This player"}
-            </Text>{" "}
-            will be immediately disconnected from the server.
-          </Text>
-          <Textarea
-            label="Optional message"
-            description="PalDefender will use this as the kick reason."
-            placeholder="Explain why the player is being disconnected"
-            minRows={4}
-            maxLength={2_000}
-            value={kickMessage}
-            onChange={(event) => setKickMessage(event.currentTarget.value)}
-            disabled={kicking}
-          />
-          <Group justify="flex-end">
-            <Button
-              variant="default"
-              onClick={() => setKickOpened(false)}
-              disabled={kicking}
-            >
-              Cancel
-            </Button>
-            <Button
-              color="red"
-              leftSection={<IconUserMinus size={18} />}
-              loading={kicking}
-              disabled={kicking}
-              onClick={() => void kickPlayer()}
-            >
-              Kick Player
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+        <Switch
+          label="IP Ban"
+          description="Also ban the player's resolved IP address."
+          checked={ipBan}
+          onChange={(event) => setIpBan(event.currentTarget.checked)}
+          disabled={submittingAction === "ban"}
+        />
+      </ModerationModal>
     </ApplicationShell>
+  );
+}
+
+function ModerationModal({
+  opened,
+  onClose,
+  title,
+  playerName,
+  description,
+  reasonLabel,
+  reasonDescription,
+  reasonPlaceholder,
+  reason,
+  setReason,
+  submitting,
+  submitLabel,
+  submitIcon,
+  onSubmit,
+  children,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  title: string;
+  playerName?: string;
+  description: string;
+  reasonLabel: string;
+  reasonDescription: string;
+  reasonPlaceholder: string;
+  reason: string;
+  setReason: (value: string) => void;
+  submitting: boolean;
+  submitLabel: string;
+  submitIcon: React.ReactNode;
+  onSubmit: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Modal
+      opened={opened}
+      onClose={() => {
+        if (!submitting) onClose();
+      }}
+      title={title}
+      centered
+      closeOnClickOutside={!submitting}
+      closeOnEscape={!submitting}
+    >
+      <Stack>
+        <Text>
+          <Text span fw={700}>
+            {playerName ?? "This player"}
+          </Text>{" "}
+          {description}
+        </Text>
+        <Textarea
+          label={reasonLabel}
+          description={reasonDescription}
+          placeholder={reasonPlaceholder}
+          minRows={4}
+          maxLength={2_000}
+          value={reason}
+          onChange={(event) => setReason(event.currentTarget.value)}
+          disabled={submitting}
+        />
+        {children}
+        <Group justify="flex-end">
+          <Button variant="default" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button
+            color="red"
+            leftSection={submitIcon}
+            loading={submitting}
+            disabled={submitting}
+            onClick={onSubmit}
+          >
+            {submitLabel}
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
   );
 }
 
