@@ -1,13 +1,55 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { palDefenderPlayerHref } from "../lib/paldefender";
-import { banPalDefenderPlayer, kickPalDefenderPlayer } from "../lib/api";
+import {
+  broadcastCharacterCount,
+  broadcastValidationError,
+} from "../lib/paldefender-broadcast";
+import {
+  banPalDefenderPlayer,
+  broadcastPalDefenderMessage,
+  kickPalDefenderPlayer,
+} from "../lib/api";
 
 test("builds an encoded PalDefender player workspace route", () => {
   assert.equal(
     palDefenderPlayerHref("player id/unsafe"),
     "/paldefender/players/player%20id%2Funsafe",
   );
+});
+
+test("validates broadcast content and counts Unicode characters", () => {
+  assert.equal(
+    broadcastValidationError(""),
+    "Enter a message before sending the broadcast.",
+  );
+  assert.equal(
+    broadcastValidationError(" \n\t "),
+    "Enter a message before sending the broadcast.",
+  );
+  assert.equal(broadcastValidationError("  Hello  "), "");
+  assert.equal(broadcastCharacterCount("Pal ⚡"), 5);
+});
+
+test("submits a normalized Unicode PalDefender broadcast request", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestBody = "";
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input);
+    requestBody = String(init?.body ?? "");
+    return Response.json({ success: true });
+  };
+  try {
+    const message = "Hello, Palpagos! ⚡";
+    assert.deepEqual(await broadcastPalDefenderMessage(message), {
+      success: true,
+    });
+    assert.equal(requestedUrl, "/api/paldefender/broadcast");
+    assert.equal(requestBody, JSON.stringify({ message }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("submits every documented PalDefender ban option", async () => {

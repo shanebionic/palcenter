@@ -114,6 +114,9 @@ export interface PalDefenderBanResult {
   bannedIp: string | null;
   kickedPlayers: number;
 }
+export interface PalDefenderBroadcastResult {
+  success: boolean;
+}
 
 interface HistoryResponse {
   metrics: ServerMetric[];
@@ -582,6 +585,14 @@ export function banPalDefenderPlayer(
       ...(options.ipBan ? { ipBan: true } : {}),
     },
   );
+}
+
+export function broadcastPalDefenderMessage(
+  message: string,
+): Promise<PalDefenderBroadcastResult> {
+  return jsonRequest<PalDefenderBroadcastResult>("/api/paldefender/broadcast", {
+    message,
+  });
 }
 
 export async function getLatestPlayerTelemetry(

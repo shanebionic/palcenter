@@ -289,6 +289,24 @@ test("omits undocumented and disabled ban options", async () => {
   assert.equal(result.bannedIp, null);
 });
 
+test("broadcasts documented messages without changing Unicode or formatting", async () => {
+  let requestUrl = "";
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body ?? "");
+      return Response.json({ Success: true });
+    },
+  );
+  const message = "Server restart soon.\n戻ってください — ⚡";
+  assert.deepEqual(await client.broadcast(message), { success: true });
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/Broadcast");
+  assert.equal(requestBody, JSON.stringify({ Message: message }));
+});
+
 test("encodes supported player identifiers and rejects path injection", async () => {
   let requested = "";
   const client = new PalDefenderClient(

@@ -54,7 +54,8 @@ export class AuthorizationService {
       (/^\/api\/servers\/[^/]+\/admin\//.test(path) ||
         /^\/api\/servers\/[^/]+\/players\/[^/]+\//.test(path) ||
         /^\/api\/servers\/[^/]+\/teleport\//.test(path) ||
-        /^\/api\/paldefender\/players\/[^/]+\/(kick|ban)$/.test(path))
+        /^\/api\/paldefender\/players\/[^/]+\/(kick|ban)$/.test(path) ||
+        path === "/api/paldefender/broadcast")
     ) {
       return "operate";
     }

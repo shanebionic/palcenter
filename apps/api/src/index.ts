@@ -868,6 +868,37 @@ app.post("/api/paldefender/players/:playerId/ban", async (request) => {
   });
 });
 
+const palDefenderBroadcastBodySchema = z
+  .object({
+    message: z
+      .string()
+      .refine((value) => value.trim().length > 0, "Message is required."),
+  })
+  .strict();
+
+app.post("/api/paldefender/broadcast", async (request) => {
+  const { message } = palDefenderBroadcastBodySchema.parse(request.body ?? {});
+  const actor = currentUser(request.headers.cookie);
+  app.log.info(
+    { actorUserId: actor.id, messageLength: [...message].length },
+    "PalDefender broadcast requested.",
+  );
+  try {
+    const result = await palDefenderService.broadcast(message);
+    app.log.info(
+      { actorUserId: actor.id, success: result.success },
+      "PalDefender broadcast completed.",
+    );
+    return result;
+  } catch (error) {
+    app.log.warn(
+      { err: error, actorUserId: actor.id },
+      "PalDefender broadcast failed.",
+    );
+    throw error;
+  }
+});
+
 const currentUser = (cookie: string | undefined) => {
   const session = authenticationService.sessionFromCookie(cookie);
   if (!session) throw new Error("Authenticated session is unavailable.");
@@ -1619,9 +1650,10 @@ app.setErrorHandler((error, request, reply) => {
   }
 
   if (error instanceof PalDefenderError) {
-    const isModerationRequest =
+    const isPalDefenderWriteRequest =
       request.method === "POST" &&
-      /\/api\/paldefender\/players\/[^/]+\/(kick|ban)$/.test(request.url);
+      (/\/api\/paldefender\/players\/[^/]+\/(kick|ban)$/.test(request.url) ||
+        request.url === "/api/paldefender/broadcast");
     const playerOffline =
       request.method === "POST" &&
       /\/api\/paldefender\/players\/[^/]+\/kick$/.test(request.url) &&
@@ -1633,7 +1665,7 @@ app.setErrorHandler((error, request, reply) => {
       ? 404
       : error.statusCode === 400 && error.code === "INVALID_PLAYER_ID"
         ? 400
-        : isModerationRequest && error.statusCode === 400
+        : isPalDefenderWriteRequest && error.statusCode === 400
           ? 400
           : error.timedOut
             ? 504
@@ -1646,7 +1678,7 @@ app.setErrorHandler((error, request, reply) => {
           ? "paldefender_player_not_found"
           : error.code === "INVALID_PLAYER_ID"
             ? "invalid_player_id"
-            : isModerationRequest && statusCode === 400
+            : isPalDefenderWriteRequest && statusCode === 400
               ? "paldefender_request_failed"
               : error.timedOut
                 ? "paldefender_timeout"
