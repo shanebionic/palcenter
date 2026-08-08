@@ -254,6 +254,59 @@ const banResponseSchema = z.object({
   Kicked: z.number().int().nonnegative(),
 });
 const broadcastResponseSchema = z.object({ Success: z.boolean() });
+const moderationTimestampSchema = z.object({
+  UTC: z.number().int(),
+  Year: z.number().int(),
+  Month: z.number().int(),
+  Day: z.number().int(),
+  Hour: z.number().int(),
+  Min: z.number().int(),
+  Sec: z.number().int(),
+  Msec: z.number().int(),
+});
+const moderationIssuerSchema = z.object({
+  Type: z.string(),
+  NameValue: z.string(),
+  IP: z.string(),
+  Reason: z.string(),
+  Timestamp: moderationTimestampSchema,
+});
+const banlistResponseSchema = z.object({
+  Banlist: z.object({
+    Version: z.number().int(),
+    BannedMessage: z.string(),
+    UserEntries: z.array(
+      z.object({
+        UserId: z.string(),
+        Active: z.boolean(),
+        BannedBy: moderationIssuerSchema,
+        UnbannedBy: moderationIssuerSchema.nullish(),
+      }),
+    ),
+    IPEntries: z.array(
+      z.object({
+        IP: z.string(),
+        Active: z.boolean(),
+        BannedBy: moderationIssuerSchema,
+        UnbannedBy: moderationIssuerSchema.nullish(),
+      }),
+    ),
+  }),
+});
+const unbanResponseSchema = z.object({
+  Success: z.boolean(),
+  UserId: z.string(),
+});
+const banIpResponseSchema = z.object({
+  Success: z.boolean(),
+  IP: z.string(),
+  UserId: z.string().optional(),
+  Kicked: z.number().int().nonnegative(),
+});
+const unbanIpResponseSchema = z.object({
+  Success: z.boolean(),
+  IP: z.string(),
+});
 const giveItemsResponseSchema = z.object({
   Granted: z.object({ Items: z.number().int().nonnegative() }),
 });
@@ -372,6 +425,36 @@ export interface PalDefenderBanResult {
   ipBanned: boolean;
   bannedIp: string | null;
   kickedPlayers: number;
+}
+export interface PalDefenderModerationActor {
+  type: string;
+  name: string;
+  ip: string;
+  reason: string;
+  timestamp: string;
+}
+export interface PalDefenderUserBan {
+  userId: string;
+  active: boolean;
+  bannedBy: PalDefenderModerationActor;
+  unbannedBy: PalDefenderModerationActor | null;
+}
+export interface PalDefenderIpBan {
+  ip: string;
+  active: boolean;
+  bannedBy: PalDefenderModerationActor;
+  unbannedBy: PalDefenderModerationActor | null;
+}
+export interface PalDefenderModerationState {
+  version: number;
+  bannedMessage: string;
+  userBans: PalDefenderUserBan[];
+  ipBans: PalDefenderIpBan[];
+}
+export interface PalDefenderModerationResult {
+  success: boolean;
+  target: string;
+  kickedPlayers?: number;
 }
 export interface PalDefenderBroadcastResult {
   success: boolean;
@@ -831,6 +914,87 @@ export class PalDefenderClient {
     };
   }
 
+  async getBanlist(): Promise<PalDefenderModerationState> {
+    const response = await this.parse(
+      banlistResponseSchema,
+      "/banlist?active=true",
+    );
+    const normalizeActor = (
+      actor: z.infer<typeof moderationIssuerSchema>,
+    ): PalDefenderModerationActor => ({
+      type: actor.Type,
+      name: actor.NameValue,
+      ip: actor.IP,
+      reason: actor.Reason,
+      timestamp: new Date(actor.Timestamp.UTC * 1000).toISOString(),
+    });
+    return {
+      version: response.Banlist.Version,
+      bannedMessage: response.Banlist.BannedMessage,
+      userBans: response.Banlist.UserEntries.map((entry) => ({
+        userId: entry.UserId,
+        active: entry.Active,
+        bannedBy: normalizeActor(entry.BannedBy),
+        unbannedBy: entry.UnbannedBy ? normalizeActor(entry.UnbannedBy) : null,
+      })),
+      ipBans: response.Banlist.IPEntries.map((entry) => ({
+        ip: entry.IP,
+        active: entry.Active,
+        bannedBy: normalizeActor(entry.BannedBy),
+        unbannedBy: entry.UnbannedBy ? normalizeActor(entry.UnbannedBy) : null,
+      })),
+    };
+  }
+
+  async unbanUser(
+    userId: string,
+    reason?: string,
+  ): Promise<PalDefenderModerationResult> {
+    const response = await this.parse(
+      unbanResponseSchema,
+      `/unban/${encodeModerationTarget(userId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify(reason?.trim() ? { Reason: reason.trim() } : {}),
+      },
+    );
+    return { success: response.Success, target: response.UserId };
+  }
+
+  async banIp(
+    ip: string,
+    reason?: string,
+  ): Promise<PalDefenderModerationResult> {
+    const response = await this.parse(
+      banIpResponseSchema,
+      `/banip/${encodeModerationTarget(ip)}`,
+      {
+        method: "POST",
+        body: JSON.stringify(reason?.trim() ? { Reason: reason.trim() } : {}),
+      },
+    );
+    return {
+      success: response.Success,
+      target: response.IP,
+      kickedPlayers: response.Kicked,
+    };
+  }
+
+  async unbanIp(
+    ip: string,
+    reason?: string,
+  ): Promise<PalDefenderModerationResult> {
+    const response = await this.parse(
+      unbanIpResponseSchema,
+      `/unbanip/${encodeModerationTarget(ip)}`,
+      {
+        method: "POST",
+        body: JSON.stringify(reason?.trim() ? { Reason: reason.trim() } : {}),
+      },
+    );
+    return { success: response.Success, target: response.IP };
+  }
+
   async broadcast(message: string): Promise<PalDefenderBroadcastResult> {
     const response = await this.parse(broadcastResponseSchema, "/Broadcast", {
       method: "POST",
@@ -964,6 +1128,18 @@ function encodePlayerId(playerId: string): string {
       "The player identifier is invalid.",
       400,
       "INVALID_PLAYER_ID",
+    );
+  }
+  return encodeURIComponent(value);
+}
+
+function encodeModerationTarget(target: string): string {
+  const value = target.trim();
+  if (!value || value.length > 256 || /[\/\\?#]/.test(value)) {
+    throw new PalDefenderError(
+      "The moderation target is invalid.",
+      400,
+      "INVALID_TARGET",
     );
   }
   return encodeURIComponent(value);

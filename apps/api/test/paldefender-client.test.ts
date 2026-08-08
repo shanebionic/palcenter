@@ -768,3 +768,91 @@ test("normalizes upstream request timeouts", async () => {
     },
   );
 });
+
+test("normalizes the banlist and executes documented moderation endpoints", async () => {
+  const requests: Array<{
+    url: string;
+    method: string;
+    body: string;
+    auth: string;
+  }> = [];
+  const timestamp = {
+    UTC: 1720000000,
+    Year: 2024,
+    Month: 7,
+    Day: 3,
+    Hour: 9,
+    Min: 46,
+    Sec: 40,
+    Msec: 0,
+  };
+  const actor = {
+    Type: "rest",
+    NameValue: "PalCenter",
+    IP: "192.0.2.1",
+    Reason: "UAT",
+    Timestamp: timestamp,
+  };
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "moderation-token",
+    async (input, init) => {
+      const url = String(input);
+      requests.push({
+        url,
+        method: init?.method ?? "GET",
+        body: String(init?.body ?? ""),
+        auth: new Headers(init?.headers).get("Authorization") ?? "",
+      });
+      if (url.includes("/banlist"))
+        return Response.json({
+          Banlist: {
+            Version: 1,
+            BannedMessage: "You are banned.",
+            UserEntries: [{ UserId: "steam_1", Active: true, BannedBy: actor }],
+            IPEntries: [{ IP: "192.0.2.10", Active: true, BannedBy: actor }],
+          },
+        });
+      if (url.includes("/unban/"))
+        return Response.json({ Success: true, UserId: "steam_1" });
+      if (url.includes("/unbanip/"))
+        return Response.json({ Success: true, IP: "192.0.2.10" });
+      return Response.json({ Success: true, IP: "192.0.2.10", Kicked: 0 });
+    },
+  );
+  const state = await client.getBanlist();
+  assert.equal(state.userBans[0]?.userId, "steam_1");
+  assert.equal(state.ipBans[0]?.ip, "192.0.2.10");
+  assert.equal(state.userBans[0]?.bannedBy.reason, "UAT");
+  await client.unbanUser("steam_1", "Appeal accepted");
+  await client.banIp("192.0.2.10", "Bot traffic");
+  await client.unbanIp("192.0.2.10", "Test complete");
+  assert.deepEqual(
+    requests.map(({ url, method, body }) => ({ url, method, body })),
+    [
+      {
+        url: "http://paldefender/v1/pdapi/banlist?active=true",
+        method: "GET",
+        body: "",
+      },
+      {
+        url: "http://paldefender/v1/pdapi/unban/steam_1",
+        method: "POST",
+        body: JSON.stringify({ Reason: "Appeal accepted" }),
+      },
+      {
+        url: "http://paldefender/v1/pdapi/banip/192.0.2.10",
+        method: "POST",
+        body: JSON.stringify({ Reason: "Bot traffic" }),
+      },
+      {
+        url: "http://paldefender/v1/pdapi/unbanip/192.0.2.10",
+        method: "POST",
+        body: JSON.stringify({ Reason: "Test complete" }),
+      },
+    ],
+  );
+  assert.ok(
+    requests.every((request) => request.auth === "Bearer moderation-token"),
+  );
+});

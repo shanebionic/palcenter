@@ -16,6 +16,7 @@ import { useState } from "react";
 import { announce, saveWorld, shutdown, stop } from "../lib/api";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
+import { ServerModeration } from "./ServerModeration";
 
 const messageLimit = 500;
 
@@ -235,6 +236,8 @@ export function ServerAdministration({
             </Alert>
           </Stack>
         </SectionCard>
+
+        <ServerModeration serverId={serverId} />
       </Stack>
 
       <Modal

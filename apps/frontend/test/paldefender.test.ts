@@ -21,6 +21,10 @@ import {
   givePalDefenderPals,
   givePalDefenderProgression,
   kickPalDefenderPlayer,
+  getModerationState,
+  banModerationIp,
+  unbanModerationIp,
+  unbanModerationUser,
 } from "../lib/api";
 import {
   normalizeItemGrants,
@@ -394,6 +398,49 @@ test("submits Pal grants to the selected PalDefender player", async () => {
       requestBody,
       JSON.stringify({ pals: [{ palId: "Anubis", level: 35 }] }),
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("uses server-scoped moderation read and mutation routes", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ url: string; method: string; body: string }> = [];
+  globalThis.fetch = async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method ?? "GET",
+      body: String(init?.body ?? ""),
+    });
+    return Response.json(
+      String(input).endsWith("/moderation")
+        ? { version: 1, bannedMessage: "", userBans: [], ipBans: [] }
+        : { success: true, target: "ok" },
+    );
+  };
+  try {
+    await getModerationState("server-a");
+    await unbanModerationUser("server-a", "steam_1", "Appeal accepted");
+    await banModerationIp("server-a", "192.0.2.10", "Controlled test");
+    await unbanModerationIp("server-a", "192.0.2.10");
+    assert.deepEqual(requests, [
+      { url: "/api/servers/server-a/moderation", method: "GET", body: "" },
+      {
+        url: "/api/servers/server-a/moderation/users/steam_1/unban",
+        method: "POST",
+        body: JSON.stringify({ reason: "Appeal accepted" }),
+      },
+      {
+        url: "/api/servers/server-a/moderation/ip/ban",
+        method: "POST",
+        body: JSON.stringify({ ip: "192.0.2.10", reason: "Controlled test" }),
+      },
+      {
+        url: "/api/servers/server-a/moderation/ip/unban",
+        method: "POST",
+        body: JSON.stringify({ ip: "192.0.2.10" }),
+      },
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
   }
