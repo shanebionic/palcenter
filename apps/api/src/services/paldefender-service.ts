@@ -1,5 +1,6 @@
 import {
   PalDefenderClient,
+  PalDefenderError,
   type PalDefenderBanOptions,
   type PalDefenderBanResult,
   type PalDefenderBase,
@@ -21,6 +22,13 @@ import type { ConnectionRepository } from "../repositories/connection-repository
 import type { StoredConnection } from "../types/connections.js";
 
 export interface PalDefenderStatus {
+  state:
+    | "disabled"
+    | "configuration_required"
+    | "connected"
+    | "authentication_failed"
+    | "unreachable"
+    | "invalid_response";
   enabled: boolean;
   configured: boolean;
   connected: boolean;
@@ -51,6 +59,7 @@ export class PalDefenderService {
     );
     if (!enabled) {
       return {
+        state: "disabled",
         enabled: false,
         configured,
         connected: false,
@@ -60,6 +69,7 @@ export class PalDefenderService {
     }
     if (!configured) {
       return {
+        state: "configuration_required",
         enabled: true,
         configured: false,
         connected: false,
@@ -72,9 +82,18 @@ export class PalDefenderService {
         connection.palDefenderEndpoint!,
         connection.palDefenderToken!,
       );
-      return { enabled: true, configured: true, ...result };
-    } catch {
+      return { state: "connected", enabled: true, configured: true, ...result };
+    } catch (error) {
+      const state =
+        error instanceof PalDefenderError &&
+        (error.statusCode === 401 || error.statusCode === 403)
+          ? "authentication_failed"
+          : error instanceof PalDefenderError &&
+              (error.code === "MALFORMED_RESPONSE" || error.statusCode === 502)
+            ? "invalid_response"
+            : "unreachable";
       return {
+        state,
         enabled: true,
         configured: true,
         connected: false,

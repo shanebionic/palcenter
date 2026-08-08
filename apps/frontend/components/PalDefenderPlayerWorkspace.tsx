@@ -39,10 +39,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApplicationShell } from "./ApplicationShell";
 import { BrandedLoader } from "./BrandedLoader";
-import {
-  PalDefenderServerSelector,
-  usePalDefenderServerSelection,
-} from "./PalDefenderServerSelector";
 import { SectionCard } from "./ui/SectionCard";
 import {
   banPalDefenderPlayer,
@@ -77,11 +73,19 @@ const initial = <T,>(): Loadable<T> => ({
   error: "",
 });
 const message = (error: unknown) =>
-  error instanceof Error ? error.message : "Unable to load PalDefender data.";
+  error instanceof Error
+    ? error.message
+    : "Unable to load enhanced player data.";
 
-export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
-  const selection = usePalDefenderServerSelection();
-  const serverId = selection.selectedServerId;
+export function PalDefenderPlayerWorkspace({
+  serverId,
+  playerId,
+  backHref,
+}: {
+  serverId: string;
+  playerId: string;
+  backHref: string;
+}) {
   const [activeTab, setActiveTab] = useState<TabName>("overview");
   const [player, setPlayer] =
     useState<Loadable<PalDefenderPlayerDetails>>(initial);
@@ -232,7 +236,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
         message:
           error instanceof Error
             ? error.message
-            : `PalDefender could not ${options.action} this player.`,
+            : `PalCenter could not ${options.action} this player.`,
       });
     } finally {
       setSubmittingAction(null);
@@ -282,7 +286,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
       notifications.show({
         color: "green",
         title: grants.length === 1 ? "Item granted" : "Items granted",
-        message: `PalDefender granted ${result.grantedItems} item units to ${player.data?.name ?? "the player"}.`,
+        message: `Granted ${result.grantedItems} item units to ${player.data?.name ?? "the player"}.`,
       });
       await Promise.all([
         loadInventory(),
@@ -297,7 +301,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
         message:
           error instanceof Error
             ? error.message
-            : "PalDefender could not grant these items.",
+            : "PalCenter could not grant these items.",
       });
     } finally {
       setSubmittingAction(null);
@@ -323,7 +327,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
       notifications.show({
         color: "green",
         title: "Pal granted",
-        message: `PalDefender granted ${result.grantedPals} Pal to ${player.data?.name ?? "the player"}.`,
+        message: `Granted ${result.grantedPals} Pal to ${player.data?.name ?? "the player"}.`,
       });
       await Promise.all([
         loadPals(),
@@ -338,7 +342,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
         message:
           error instanceof Error
             ? error.message
-            : "PalDefender could not grant this Pal.",
+            : "PalCenter could not grant this Pal.",
       });
     } finally {
       setSubmittingAction(null);
@@ -352,7 +356,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
           <Stack gap="sm">
             <Button
               component={Link}
-              href={`/paldefender/players?serverId=${encodeURIComponent(serverId ?? "")}`}
+              href={backHref}
               variant="subtle"
               leftSection={<IconArrowLeft size={17} />}
               w="fit-content"
@@ -361,7 +365,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
               Back to Players
             </Button>
             <Text size="xs" tt="uppercase" fw={700} c="cyan.4" lts={1.4}>
-              PalDefender · Player Details
+              Player Workspace
             </Text>
             <Title order={1}>{player.data?.name ?? "Player"}</Title>
             <Group gap="sm">
@@ -384,7 +388,6 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
             Refresh
           </Button>
         </Group>
-        <PalDefenderServerSelector selection={selection} />
         {player.error && (
           <Alert color="red" title="Player details unavailable">
             {player.error}
@@ -897,7 +900,7 @@ function State<T>({
   children: (data: T[]) => React.ReactNode;
 }) {
   if (state.loading && state.data === null)
-    return <BrandedLoader message="Loading live PalDefender data" />;
+    return <BrandedLoader message="Loading enhanced player data" />;
   if (state.error) return <Alert color="red">{state.error}</Alert>;
   if (!state.data?.length)
     return (

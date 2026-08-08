@@ -44,6 +44,13 @@ interface PlayersResponse {
 }
 
 export interface PalDefenderStatus {
+  state:
+    | "disabled"
+    | "configuration_required"
+    | "connected"
+    | "authentication_failed"
+    | "unreachable"
+    | "invalid_response";
   enabled: boolean;
   configured: boolean;
   connected: boolean;
