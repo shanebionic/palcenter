@@ -53,7 +53,6 @@ export class AuthorizationService {
       method === "POST" &&
       (/^\/api\/servers\/[^/]+\/admin\//.test(path) ||
         /^\/api\/servers\/[^/]+\/players\/[^/]+\//.test(path) ||
-        /^\/api\/servers\/[^/]+\/teleport\//.test(path) ||
         /^\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals)$/.test(
           path,
         ) ||

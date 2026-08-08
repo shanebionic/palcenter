@@ -14,19 +14,7 @@ import {
 } from "./map-definitions";
 
 export type TelemetryFreshness = "live" | "delayed" | "stale";
-export type PlayerLocationAuthority = "standard" | "companion";
-
-export function playerLocationAuthority(input: {
-  companionConnected: boolean;
-  coordinateSpaceCapabilitySupported: boolean;
-  telemetryAuthoritative: boolean;
-}): PlayerLocationAuthority {
-  return input.companionConnected &&
-    input.coordinateSpaceCapabilitySupported &&
-    input.telemetryAuthoritative
-    ? "companion"
-    : "standard";
-}
+export type PlayerLocationAuthority = "standard";
 export type UnmappedPlayerReason =
   | "missing_telemetry"
   | "invalid_coordinates"
@@ -247,9 +235,7 @@ export function buildLivePlayerMapModel(
     const isInstance =
       coordinateSpaceId === "special_area" ||
       coordinateSpaceId.startsWith("instance:");
-    const hasAuthoritativeSpace = snapshot.locationAuthority
-      ? snapshot.locationAuthority === "companion"
-      : locationAuthority === "companion";
+    const hasAuthoritativeSpace = false;
     const spatialState: PlayerSpatialState =
       freshness === "stale"
         ? "stale_position"

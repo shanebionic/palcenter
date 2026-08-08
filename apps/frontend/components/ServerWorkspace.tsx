@@ -29,9 +29,6 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
   const [canManage, setCanManage] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [mapEvent, setMapEvent] = useState<WorldEvent | null>(null);
-  const [mapTeleportPlayerId, setMapTeleportPlayerId] = useState<string | null>(
-    null,
-  );
 
   const loadServer = useCallback(
     async (background = false) => {
@@ -139,13 +136,7 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
             </Tabs.Panel>
             {canOperate && (
               <Tabs.Panel value="players">
-                <ServerPlayers
-                  serverId={server.connection.id}
-                  onSendToMapLocation={(playerId) => {
-                    setMapTeleportPlayerId(playerId);
-                    setActiveTab("map");
-                  }}
-                />
+                <ServerPlayers serverId={server.connection.id} />
               </Tabs.Panel>
             )}
             {canOperate && (
@@ -155,7 +146,6 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
                   serverOnline={server.status.status === "online"}
                   canCalibrate={canManage}
                   focusEvent={mapEvent}
-                  selectedTeleportPlayerId={mapTeleportPlayerId}
                 />
               </Tabs.Panel>
             )}

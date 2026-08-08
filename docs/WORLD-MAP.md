@@ -12,11 +12,9 @@ is online, selected-player details, and recent joins or departures.
 - Players in a confirmed special area receive a clear off-map view instead of
   misleading Palpagos coordinates.
 
-PalCenter still works with the official REST API alone. When PalCenter
-Companion supplies server-owned location information, PalCenter uses it
-automatically. The first Companion location release distinguishes the main
-world from an active special-stage instance; it does not guess the type of
-special area.
+PalCenter obtains player positions from the official Palworld REST API. That
+API does not identify special-stage instances, so positions in those areas are
+shown as approximate rather than presented as authoritative map locations.
 
 PalCenter v1.4 includes an interactive Palpagos reference map for current
 connected players. The position pipeline, controls, freshness indicators,
@@ -92,17 +90,10 @@ Tree, or other secondary areas. Players in those areas may therefore appear in
 the wrong place on Palpagos. PalCenter keeps them visible rather than making the
 normal map unusable.
 
-A future PalCenter Companion location capability can provide exact map-area
-information. Capability negotiation—not a Companion version number—will enable
-that mode. Once both the capability and authoritative position data are
-available, known unsupported areas remain off-map, known map boundaries split
-movement trails, and Companion information takes precedence over the standard
-fallback.
-
-The existing coordinate-space fields, map definitions, last trusted Palpagos
-positions, and trail segmentation remain in place for that future support. No
-historical rows are destructively rewritten. Current schema-v9 `unknown`
-samples remain usable at display time.
+Existing coordinate-space fields, map definitions, last trusted Palpagos
+positions, and trail segmentation remain in place for stored-data
+compatibility. No historical rows are destructively rewritten. Current
+schema-v9 `unknown` samples remain usable at display time.
 
 ## Projection
 

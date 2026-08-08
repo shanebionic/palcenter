@@ -20,7 +20,7 @@ import {
   IconTimeline,
 } from "@tabler/icons-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { getCompanionStatus, getWorldEvents } from "../lib/api";
+import { getWorldEvents } from "../lib/api";
 import {
   exactWorldEventTime,
   mergeWorldEventPages,
@@ -42,7 +42,6 @@ import {
   type WorldEvent,
   type WorldEventType,
 } from "../types/servers";
-import type { CompanionStatus } from "../types/companion";
 import { BrandedLoader } from "./BrandedLoader";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
@@ -79,8 +78,6 @@ export function ServerWorldEvents({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState(false);
   const [hasOlder, setHasOlder] = useState(false);
-  const [companionStatus, setCompanionStatus] =
-    useState<CompanionStatus | null>(null);
 
   const load = useCallback(
     async (older = false) => {
@@ -121,16 +118,6 @@ export function ServerWorldEvents({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applied, serverId]);
 
-  useEffect(() => {
-    void getCompanionStatus(serverId)
-      .then(setCompanionStatus)
-      .catch(() => setCompanionStatus(null));
-  }, [serverId]);
-
-  const exactActivityAvailable =
-    companionStatus?.state === "connected" &&
-    companionStatus.capabilities.playerActivity?.supported === true;
-
   const filtersActive = Boolean(
     applied.playerId || applied.eventType || applied.timeRange !== "24h",
   );
@@ -169,23 +156,6 @@ export function ServerWorldEvents({
         <Alert color="yellow" title="Server offline">
           Existing activity remains available. New activity will resume when
           PalCenter can observe the server again.
-        </Alert>
-      )}
-
-      {companionStatus && !exactActivityAvailable && (
-        <Alert
-          color={
-            companionStatus.state === "authentication_failed" ? "red" : "blue"
-          }
-          title={
-            companionStatus.state === "authentication_failed"
-              ? "Companion authentication failed"
-              : "Using standard server information"
-          }
-        >
-          {companionStatus.state === "authentication_failed"
-            ? "Check the Companion API token in Connection Settings."
-            : "PalCenter will show inferred player activity until a compatible Companion reconnects."}
         </Alert>
       )}
 

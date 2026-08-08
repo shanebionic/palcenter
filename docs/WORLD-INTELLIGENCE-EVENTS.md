@@ -26,17 +26,12 @@ The initial model supports:
 - Activity resumed
 - Rapid relocation detected
 
-When a connected Companion advertises `playerActivity`, join, leave, and
-session records come directly from its Palworld server hooks. PalCenter stores
-their stable event and session IDs, displays completed online duration, and
-suppresses a matching inferred roster transition within 60 seconds. These
-records have confidence `1` and evidence identifying the Companion server hook.
-
-Without that capability, PalCenter continues generating join/disconnect and
-session records from explicit changes in the official `/players` online roster.
-These fallback observations also retain evidence identifying the roster
-transition, but the Activity page does not claim exact Companion timing.
-Collection remains incremental and does not rescan telemetry history.
+PalCenter generates join/disconnect and session records from explicit changes
+in the official `/players` online roster. These observations retain evidence
+identifying the roster transition, but the Activity page does not claim exact
+server-hook timing. Collection remains incremental and does not rescan
+telemetry history. Historical events from discontinued integrations remain
+readable and are labeled as legacy exact server events.
 
 The official `/players` response does not expose a death/alive state. Death and
 respawn therefore exist in the event model but are not inferred from movement,

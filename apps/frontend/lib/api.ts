@@ -26,7 +26,6 @@ import type {
   AutomationTask,
   AutomationTaskInput,
 } from "../types/automation";
-import type { CompanionStatus } from "../types/companion";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ?? "";
 
@@ -245,11 +244,6 @@ export interface ServerConnectionInput {
   name: string;
   baseUrl: string;
   adminPassword: string;
-  companionEnabled?: boolean;
-  companionHost?: string | null;
-  companionPort?: number;
-  companionApiToken?: string;
-  administratorPlayerId?: string | null;
   palDefenderEnabled?: boolean;
   palDefenderEndpoint?: string | null;
   palDefenderToken?: string;
@@ -259,11 +253,6 @@ export interface ServerConnectionUpdate {
   name: string;
   baseUrl: string;
   adminPassword?: string;
-  companionEnabled?: boolean;
-  companionHost?: string | null;
-  companionPort?: number;
-  companionApiToken?: string;
-  administratorPlayerId?: string | null;
   palDefenderEnabled?: boolean;
   palDefenderEndpoint?: string | null;
   palDefenderToken?: string;
@@ -455,46 +444,6 @@ export function getServerSettings(id: string): Promise<ServerSettings> {
   return request<ServerSettings>(
     `/api/servers/${encodeURIComponent(id)}/settings`,
     { cache: "no-store" },
-  );
-}
-
-export function getCompanionStatus(id: string): Promise<CompanionStatus> {
-  return request<CompanionStatus>(
-    `/api/servers/${encodeURIComponent(id)}/companion`,
-    { cache: "no-store" },
-  );
-}
-
-export function refreshCompanionStatus(id: string): Promise<CompanionStatus> {
-  return request<CompanionStatus>(
-    `/api/servers/${encodeURIComponent(id)}/companion/refresh`,
-    { method: "POST" },
-  );
-}
-
-export interface TeleportActionResult {
-  requestId: string;
-  action: string;
-  status: "succeeded" | "rejected";
-  error: string | null;
-  message: string;
-  resolvedDestination: { x: number; y: number; z: number } | null;
-}
-export function teleportPlayer(
-  serverId: string,
-  action: "admin-to-player" | "player-to-admin" | "player-to-location",
-  body: {
-    requestId: string;
-    targetPlayerId: string;
-    coordinateSpace?: "palpagos";
-    verification?: "palpagos_map";
-    x?: number;
-    y?: number;
-  },
-): Promise<TeleportActionResult> {
-  return jsonRequest<TeleportActionResult>(
-    `/api/servers/${encodeURIComponent(serverId)}/teleport/${action}`,
-    body,
   );
 }
 

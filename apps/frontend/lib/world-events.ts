@@ -91,7 +91,7 @@ export function worldEventEvidenceText(
   evidence: WorldEvent["evidence"][number],
 ): string {
   if (evidence.fact === "server_hook") {
-    return "Reported directly by Palworld through PalCenter Companion.";
+    return "Reported by a legacy exact server event source.";
   }
   if (evidence.fact === "appeared") {
     return "Player appeared in the online roster.";
@@ -195,7 +195,7 @@ export function worldEventMetadataText(
   }
   if (key === "sessionId") return `Session ID: ${String(value)}`;
   if (key === "activitySource") {
-    return `Activity source: ${value === "companion" ? "PalCenter Companion" : "Standard server information"}`;
+    return `Activity source: ${value === "companion" ? "Legacy exact server event" : "Standard server information"}`;
   }
   if (key === "departureKind") return `Departure: ${String(value)}`;
   if (key === "durationSeconds" && typeof value === "number") {

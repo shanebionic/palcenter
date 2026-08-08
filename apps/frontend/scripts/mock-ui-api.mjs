@@ -39,12 +39,6 @@ const connection = {
     endpoint: null,
     tokenConfigured: false,
   },
-  companion: {
-    enabled: true,
-    host: "companion.internal",
-    port: 18213,
-    tokenConfigured: true,
-  },
 };
 
 const connectedPlayers = [
@@ -79,7 +73,6 @@ const telemetryPlayer = {
 
 let playerMode = "populated";
 let eventMode = "populated";
-let companionMode = "connected";
 let palDefenderMode = "disabled";
 let sessionRole = "administrator";
 let broadcasts = [];
@@ -230,10 +223,6 @@ export function startMockUiApi(port = 3198) {
       sessionRole = url.searchParams.get("role") ?? "administrator";
       return json(response, { sessionRole });
     }
-    if (url.pathname === "/__test/companion") {
-      companionMode = url.searchParams.get("mode") ?? "connected";
-      return json(response, { companionMode });
-    }
     if (url.pathname === "/__test/paldefender") {
       palDefenderMode = url.searchParams.get("mode") ?? "disabled";
       return json(response, { mode: palDefenderMode });
@@ -311,51 +300,6 @@ export function startMockUiApi(port = 3198) {
       return json(response, {
         success: true,
         message: "Server shutdown scheduled.",
-      });
-    }
-    if (url.pathname.startsWith(`/api/servers/${connection.id}/companion`)) {
-      if (!["connected", "exact-location"].includes(companionMode)) {
-        return json(response, {
-          state:
-            companionMode === "disconnected" ? "unreachable" : companionMode,
-          checkedAt: now,
-          health: null,
-          version: null,
-          capabilities: {},
-        });
-      }
-      return json(response, {
-        state: "connected",
-        checkedAt: now,
-        reason: null,
-        health: "healthy",
-        version: {
-          applicationVersion: "0.3.0",
-          apiVersion: "v1",
-          buildCommit: "abc1234",
-          buildBranch: "main",
-          buildDate: now,
-          compiler: "C++20",
-          palworldVersion: "v1.0.2.101103",
-          ue4ssVersion: null,
-          compatibility: {},
-          runtime: {
-            startedAt: now,
-            uptimeSeconds: 7200,
-            instanceId: "fixture",
-            checks: { configuration: "healthy", httpListener: "healthy" },
-          },
-        },
-        capabilities: {
-          health: { supported: true, capabilityVersion: "1" },
-          version: { supported: true, capabilityVersion: "1" },
-          playerActivity: { supported: true, capabilityVersion: "1" },
-          coordinateSpaces: {
-            supported: companionMode === "exact-location",
-            capabilityVersion: "1",
-          },
-          futureCapability: { supported: false, capabilityVersion: "1" },
-        },
       });
     }
     if (url.pathname === `/api/servers/${connection.id}/players`) {
@@ -460,7 +404,7 @@ export function startMockUiApi(port = 3198) {
       return json(response, {
         players: playerMode === "empty" ? [] : [currentTelemetry],
         trustedPositions: playerMode === "empty" ? [] : [telemetryPlayer],
-        coordinateSpacesAuthoritative: companionMode === "exact-location",
+        coordinateSpacesAuthoritative: false,
         pollingIntervalSeconds: 30,
         lastCollectedAt: currentTelemetry.capturedAt,
       });

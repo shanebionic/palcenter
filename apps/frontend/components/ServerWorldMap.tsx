@@ -11,7 +11,6 @@ import {
   Code,
   Group,
   Loader,
-  Modal,
   Paper,
   SegmentedControl,
   Select,
@@ -33,18 +32,16 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties } from "react";
 import { BrandedLoader } from "./BrandedLoader";
 import { PlayerActivitySummary } from "./PlayerActivitySummary";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
 import {
-  getCompanionStatus,
   getPlayers,
   getPlayerTelemetry,
   getPlayerTrailHistory,
   getWorldEvents,
-  teleportPlayer,
 } from "../lib/api";
 import {
   buildLivePlayerMapModel,
@@ -52,7 +49,6 @@ import {
   formatTelemetryAge,
   mapContentState,
   playerMapDetailValues,
-  playerLocationAuthority,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
   type LivePlayerMapMarker,
@@ -78,7 +74,6 @@ import {
 } from "../lib/world-map/layers";
 import {
   palpagosProjection,
-  normalizedMapPositionToWorld,
   worldToNormalizedMapPosition,
 } from "../lib/world-map/projection";
 import { playerColor } from "../lib/world-map/player-color";
@@ -93,8 +88,6 @@ import {
   type TrailHistoryPoint,
 } from "../lib/world-map/trail";
 import { palpagosMapDefinition } from "../lib/world-map/map-definitions";
-import { supportsMapTeleport } from "../lib/teleport";
-import type { CompanionStatus } from "../types/companion";
 import type {
   ConnectedPlayer,
   LatestPlayerTelemetry,
@@ -106,7 +99,6 @@ interface ServerWorldMapProps {
   serverOnline: boolean;
   canCalibrate: boolean;
   focusEvent?: WorldEvent | null;
-  selectedTeleportPlayerId?: string | null;
 }
 
 const defaultTelemetry: LatestPlayerTelemetry = {
@@ -130,7 +122,6 @@ export function ServerWorldMap({
   serverOnline,
   canCalibrate,
   focusEvent,
-  selectedTeleportPlayerId,
 }: ServerWorldMapProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [recentActivity, setRecentActivity] = useState<WorldEvent[]>([]);
@@ -140,8 +131,6 @@ export function ServerWorldMap({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playerRequestFailed, setPlayerRequestFailed] = useState(false);
-  const [companionStatus, setCompanionStatus] =
-    useState<CompanionStatus | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [calibrating, setCalibrating] = useState(false);
   const [mapLayer, setMapLayer] = useState<WorldMapLayer>(defaultWorldMapLayer);
@@ -162,12 +151,6 @@ export function ServerWorldMap({
   const [trailLoading, setTrailLoading] = useState(false);
   const [trailError, setTrailError] = useState<string | null>(null);
   const [trailTruncated, setTrailTruncated] = useState(false);
-  const [teleportSelecting, setTeleportSelecting] = useState(false);
-  const [teleportDestination, setTeleportDestination] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-  const [teleportSubmitting, setTeleportSubmitting] = useState(false);
   const trailRequest = useRef<AbortController | null>(null);
   const [diagnostics, setDiagnostics] = useState<{
     viewport: MapRect;
@@ -202,11 +185,10 @@ export function ServerWorldMap({
       setError(null);
       setPlayerRequestFailed(false);
 
-      const [playersResult, telemetryResult, companionResult, activityResult] =
+      const [playersResult, telemetryResult, activityResult] =
         await Promise.allSettled([
           getPlayers(serverId),
           getPlayerTelemetry(serverId),
-          getCompanionStatus(serverId),
           getWorldEvents(serverId, {
             from: new Date(Date.now() - 60 * 60 * 1_000).toISOString(),
             limit: 12,
@@ -236,9 +218,6 @@ export function ServerWorldMap({
         );
       }
 
-      setCompanionStatus(
-        companionResult.status === "fulfilled" ? companionResult.value : null,
-      );
       if (activityResult.status === "fulfilled") {
         setRecentActivity(
           activityResult.value
@@ -319,19 +298,6 @@ export function ServerWorldMap({
   }, [loading, serverOnline]);
 
   useEffect(() => {
-    if (!selectedTeleportPlayerId) return;
-    const player = players.find(
-      (candidate) =>
-        candidate.playerId === selectedTeleportPlayerId ||
-        candidate.userId === selectedTeleportPlayerId,
-    );
-    if (!player) return;
-    setSelectedId(player.userId);
-    setMapView("palpagos");
-    setFollowPlayer(false);
-  }, [players, selectedTeleportPlayerId]);
-
-  useEffect(() => {
     if (!expanded) return;
     const close = (event: KeyboardEvent) => {
       if (event.key === "Escape") setExpanded(false);
@@ -351,22 +317,9 @@ export function ServerWorldMap({
         undefined,
         telemetry.trustedPositions,
         palpagosMapDefinition,
-        playerLocationAuthority({
-          companionConnected: companionStatus?.state === "connected",
-          coordinateSpaceCapabilitySupported:
-            companionStatus?.capabilities.coordinateSpaces?.supported === true,
-          telemetryAuthoritative: telemetry.coordinateSpacesAuthoritative,
-        }),
       ),
-    [companionStatus, players, telemetry],
+    [players, telemetry],
   );
-  const exactCompanionLocations =
-    playerLocationAuthority({
-      companionConnected: companionStatus?.state === "connected",
-      coordinateSpaceCapabilitySupported:
-        companionStatus?.capabilities.coordinateSpaces?.supported === true,
-      telemetryAuthoritative: telemetry.coordinateSpacesAuthoritative,
-    }) === "companion";
   const selected =
     model.markers.find((marker) => marker.userId === selectedId) ?? null;
   const selectedUnavailable =
@@ -391,12 +344,7 @@ export function ServerWorldMap({
     () =>
       trail && trail.pointCount > 0
         ? buildPlayerActivitySummary({
-            points: trailHistoryPoints.map((point) =>
-              exactCompanionLocations &&
-              (point.coordinateSpaceId ?? "palpagos") !== "palpagos"
-                ? { ...point, x: null, y: null }
-                : point,
-            ),
+            points: trailHistoryPoints,
             selectedRangeMs: trailRangeMilliseconds[trailRange],
             renderedTrailSegments: renderedTrailSegments.length,
             currentlyOnline: selected !== null,
@@ -413,7 +361,6 @@ export function ServerWorldMap({
       trail,
       trailHistoryPoints,
       trailRange,
-      exactCompanionLocations,
     ],
   );
   const contentState = mapContentState({
@@ -454,7 +401,7 @@ export function ServerWorldMap({
           processMovementTrail(history.points, palpagosProjection, {
             pollingIntervalSeconds: telemetry.pollingIntervalSeconds,
             coordinateSpaceId: palpagosMapDefinition.coordinateSpaceId,
-            coordinateSpacesAuthoritative: exactCompanionLocations,
+            coordinateSpacesAuthoritative: false,
           }),
         );
         setTrailTruncated(history.truncated);
@@ -471,7 +418,7 @@ export function ServerWorldMap({
         if (!controller.signal.aborted) setTrailLoading(false);
       }
     },
-    [exactCompanionLocations, serverId, telemetry.pollingIntervalSeconds],
+    [serverId, telemetry.pollingIntervalSeconds],
   );
 
   useEffect(() => {
@@ -688,74 +635,6 @@ export function ServerWorldMap({
       });
     }
   };
-  const selectedTeleportPlayer =
-    players.find((player) => player.userId === selectedId) ?? null;
-  const administratorOnline = players.some(
-    (player) => player.playerId === companionStatus?.administratorPlayerId,
-  );
-  const mapTeleportSupported = supportsMapTeleport(companionStatus);
-  const canTeleportToLocation =
-    activeView === "palpagos" &&
-    mapTeleportSupported &&
-    administratorOnline &&
-    selectedTeleportPlayer !== null;
-  const chooseTeleportDestination = (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
-    if (!teleportSelecting || !surface.current) return;
-    const rect = surface.current.getBoundingClientRect();
-    const position = {
-      x: (event.clientX - rect.left) / rect.width,
-      y: (event.clientY - rect.top) / rect.height,
-    };
-    const world = normalizedMapPositionToWorld(position, palpagosProjection);
-    if (!world) return;
-    setTeleportDestination(world);
-    setTeleportSelecting(false);
-  };
-  const confirmLocationTeleport = async () => {
-    if (!selectedTeleportPlayer || !teleportDestination || teleportSubmitting)
-      return;
-    setTeleportSubmitting(true);
-    try {
-      const result = await teleportPlayer(serverId, "player-to-location", {
-        requestId: `pc-${crypto.randomUUID()}`,
-        targetPlayerId: selectedTeleportPlayer.playerId,
-        coordinateSpace: "palpagos",
-        verification: "palpagos_map",
-        x: teleportDestination.x,
-        y: teleportDestination.y,
-      });
-      const resolved = result.resolvedDestination;
-      notifications.show({
-        color: result.status === "succeeded" ? "green" : "red",
-        title:
-          result.status === "succeeded"
-            ? "Teleport completed"
-            : "Teleport rejected",
-        message:
-          result.status === "succeeded" && resolved
-            ? `${result.message} Resolved destination: X ${resolved.x.toFixed(1)} · Y ${resolved.y.toFixed(1)} · Z ${resolved.z.toFixed(1)}.`
-            : result.message,
-      });
-      if (result.status === "succeeded") {
-        setTeleportDestination(null);
-        void loadMap(true);
-      }
-    } catch (error) {
-      notifications.show({
-        color: "orange",
-        title: "Teleport result uncertain",
-        message:
-          error instanceof Error
-            ? `${error.message} Verify the player's location before trying again.`
-            : "Verify the player's location before trying again.",
-      });
-    } finally {
-      setTeleportSubmitting(false);
-    }
-  };
-
   return (
     <Stack gap="lg" pt="lg">
       <SectionHeader
@@ -773,17 +652,10 @@ export function ServerWorldMap({
         }
       />
 
-      {exactCompanionLocations ? (
-        <Alert color="cyan" title="Exact location from Companion">
-          PalCenter is using exact map information supplied by PalCenter
-          Companion.
-        </Alert>
-      ) : (
-        <Alert color="blue" title="Special areas may not appear correctly">
-          Without PalCenter Companion location support, players inside dungeons,
-          towers, or the World Tree may appear in the wrong place on the map.
-        </Alert>
-      )}
+      <Alert color="blue" title="Special-area positions are approximate">
+        Native Palworld REST coordinates do not identify dungeons, towers, or
+        other instanced areas, so those positions may appear on the main map.
+      </Alert>
 
       {focusedEventId && (
         <Alert color="cyan" title="Event location centered">
@@ -958,29 +830,6 @@ export function ServerWorldMap({
                 >
                   Center Player
                 </Button>
-                {activeView === "palpagos" && mapTeleportSupported && (
-                  <Button
-                    size="compact-xs"
-                    color="violet"
-                    variant={teleportSelecting ? "filled" : "light"}
-                    disabled={!canTeleportToLocation}
-                    title={
-                      selectedTeleportPlayer === null
-                        ? "Select an online player before choosing a map destination."
-                        : !administratorOnline
-                          ? "The configured administrator character is offline or unavailable."
-                          : undefined
-                    }
-                    onClick={() => {
-                      setTeleportDestination(null);
-                      setTeleportSelecting((value) => !value);
-                    }}
-                  >
-                    {teleportSelecting
-                      ? "Cancel destination"
-                      : "Send player to map location"}
-                  </Button>
-                )}
                 <Button
                   size="compact-xs"
                   variant={followPlayer ? "filled" : "subtle"}
@@ -1030,10 +879,6 @@ export function ServerWorldMap({
               role="region"
               aria-label="Palpagos live player map"
               onPointerDown={(event) => {
-                if (teleportSelecting && event.button === 0) {
-                  chooseTeleportDestination(event);
-                  return;
-                }
                 if (
                   zoom <= 1 ||
                   event.button !== 0 ||
@@ -1087,7 +932,7 @@ export function ServerWorldMap({
                     <Text c="dimmed" ta="center">
                       {activeView === "world_tree"
                         ? "PalCenter can identify the World Tree view when authoritative location information is available, but does not have a verified map image yet."
-                        : "PalCenter Companion knows this player left the main world. Their coordinates are intentionally not plotted on Palpagos."}
+                        : "This position belongs to a different coordinate space and is intentionally not plotted on Palpagos."}
                     </Text>
                     <Button
                       variant="light"
@@ -1356,37 +1201,6 @@ export function ServerWorldMap({
           </Stack>
         </div>
       ) : null}
-      <Modal
-        opened={teleportDestination !== null}
-        onClose={() => !teleportSubmitting && setTeleportDestination(null)}
-        title="Confirm map teleport"
-        centered
-      >
-        <Stack>
-          <Alert color="violet">
-            Move {selectedTeleportPlayer?.name ?? "the selected player"} to
-            Palpagos: X {teleportDestination?.x.toFixed(1)} · Y{" "}
-            {teleportDestination?.y.toFixed(1)}. Companion will resolve a safe
-            destination height.
-          </Alert>
-          <Group justify="flex-end">
-            <Button
-              variant="default"
-              onClick={() => setTeleportDestination(null)}
-              disabled={teleportSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              color="violet"
-              onClick={confirmLocationTeleport}
-              loading={teleportSubmitting}
-            >
-              Confirm teleport
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
     </Stack>
   );
 }
