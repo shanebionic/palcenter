@@ -126,6 +126,56 @@ test("gets and normalizes documented player progression with bearer authenticati
   assert.deepEqual(result.activities.craftedItems, { Wood: 3 });
 });
 
+test("grants each documented progression category with exact authenticated bodies", async () => {
+  const requests: Array<{ url: string; body: string; authorization: string }> =
+    [];
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "grant-token",
+    async (input, init) => {
+      requests.push({
+        url: String(input),
+        body: String(init?.body),
+        authorization: new Headers(init?.headers).get("Authorization") ?? "",
+      });
+      return Response.json({
+        Granted: JSON.parse(String(init?.body)),
+        Totals: {},
+      });
+    },
+  );
+  await client.giveProgression("player-1", { type: "experience", amount: 10 });
+  await client.giveProgression("player-1", {
+    type: "technologyPoints",
+    amount: 2,
+  });
+  await client.giveProgression("player-1", {
+    type: "ancientTechnologyPoints",
+    amount: 1,
+  });
+  await client.giveProgression("player-1", {
+    type: "relic",
+    relicType: "CapturePower",
+    amount: 1,
+  });
+  assert.deepEqual(
+    requests.map(({ body }) => JSON.parse(body)),
+    [
+      { EXP: 10 },
+      { TechnologyPoints: 2 },
+      { AncientTechnologyPoints: 1 },
+      { Relics: { CapturePower: 1 } },
+    ],
+  );
+  assert.ok(
+    requests.every(
+      ({ url, authorization }) =>
+        url === "http://paldefender/v1/pdapi/give/progression/player-1" &&
+        authorization === "Bearer grant-token",
+    ),
+  );
+});
+
 test("normalizes documented PalDefender guild summaries", async () => {
   const client = new PalDefenderClient(
     "http://paldefender",

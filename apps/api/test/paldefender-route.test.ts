@@ -137,6 +137,21 @@ before(async () => {
         { status: 400 },
       );
     }
+    if (url.endsWith("/give/progression/player-1")) {
+      const body = JSON.parse(String(init?.body));
+      return Response.json({ Granted: body, Totals: body });
+    }
+    if (url.endsWith("/give/progression/stale")) {
+      return Response.json(
+        {
+          Error: {
+            Code: "REQUEST_FAILED",
+            Message: "Player controller unavailable",
+          },
+        },
+        { status: 400 },
+      );
+    }
     if (url.endsWith("/Broadcast")) {
       assert.equal(init?.method, "POST");
       const body = JSON.parse(String(init?.body)) as { Message: string };
@@ -237,7 +252,7 @@ before(async () => {
       return Response.json({ Pals: { Team: {}, Palbox: {}, BaseCamps: [] } });
     if (url.includes("/techs/"))
       return Response.json({ Techs: { Unlocked: ["Technology_Wood"] } });
-    if (url.includes("/progression/"))
+    if (url.includes("/progression/") && (init?.method ?? "GET") === "GET")
       return Response.json({
         Meta: { PlayerUID: "player-1", Player: "player-1" },
         Progression: {
@@ -716,6 +731,54 @@ test("PalDefender player workspace routes return normalized models", async () =>
   assert.equal(progression.json().character.level, 6);
   assert.deepEqual(progression.json().captures.byPal, { Anubis: 1 });
   assert.deepEqual(progression.json().activities.craftedItems, { Wood: 3 });
+});
+
+test("Give Progression validates every documented grant and normalizes failures", async () => {
+  const headers = { cookie: administratorCookie };
+  const grants = [
+    { type: "experience", amount: 10 },
+    { type: "technologyPoints", amount: 2 },
+    { type: "ancientTechnologyPoints", amount: 1 },
+    { type: "relic", relicType: "CapturePower", amount: 1 },
+  ];
+  for (const grant of grants) {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/servers/server-a/paldefender/players/player-1/progression",
+      headers,
+      payload: grant,
+    });
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json().grant, grant);
+  }
+  for (const payload of [
+    {},
+    { type: "unsupported", amount: 1 },
+    { type: "experience" },
+    { type: "experience", amount: 0 },
+    { type: "experience", amount: -1 },
+    { type: "experience", amount: 1.5 },
+    { type: "relic", relicType: "Unknown", amount: 1 },
+  ]) {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/servers/server-a/paldefender/players/player-1/progression",
+      headers,
+      payload,
+    });
+    assert.equal(response.statusCode, 400);
+  }
+  const stale = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/stale/progression",
+    headers,
+    payload: { type: "experience", amount: 1 },
+  });
+  assert.equal(stale.statusCode, 400);
+  assert.deepEqual(stale.json(), {
+    error: "paldefender_request_failed",
+    message: "Player controller unavailable",
+  });
 });
 
 test("PalDefender not-found and invalid player identifiers are normalized", async () => {

@@ -19,6 +19,7 @@ import {
   getPalDefenderProgression,
   givePalDefenderItems,
   givePalDefenderPals,
+  givePalDefenderProgression,
   kickPalDefenderPlayer,
 } from "../lib/api";
 import {
@@ -159,6 +160,39 @@ test("loads server-scoped PalDefender progression without caching", async () => 
     );
     assert.equal(cache, "no-store");
     assert.equal(progression.character.experience, 1371);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("submits a normalized server-scoped progression grant", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestBody = "";
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input);
+    requestBody = String(init?.body);
+    return Response.json({
+      playerId: "player-1",
+      grant: { type: "relic", relicType: "MoveSpeed", amount: 1 },
+      totals: { relics: { MoveSpeed: 2 } },
+    });
+  };
+  try {
+    await givePalDefenderProgression("server-a", "player-1", {
+      type: "relic",
+      relicType: "MoveSpeed",
+      amount: 1,
+    });
+    assert.equal(
+      requestedUrl,
+      "/api/servers/server-a/paldefender/players/player-1/progression",
+    );
+    assert.deepEqual(JSON.parse(requestBody), {
+      type: "relic",
+      relicType: "MoveSpeed",
+      amount: 1,
+    });
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -113,6 +113,36 @@ export interface PalDefenderProgression {
     firstFishingCompleted: boolean;
   };
 }
+export const palDefenderRelicTypes = [
+  "CapturePower",
+  "HungerReduction",
+  "SwimSpeed",
+  "FoodDecayReduction",
+  "JumpPower",
+  "GliderSpeed",
+  "ClimbSpeed",
+  "StatusAilmentResist",
+  "StaminaReduction",
+  "SphereHoming",
+  "ExpBonus",
+  "RainbowPassiveRate",
+  "MoveSpeed",
+] as const;
+export type PalDefenderRelicType = (typeof palDefenderRelicTypes)[number];
+export type PalDefenderProgressionGrant =
+  | { type: "experience"; amount: number }
+  | { type: "technologyPoints"; amount: number }
+  | { type: "ancientTechnologyPoints"; amount: number }
+  | { type: "relic"; relicType: PalDefenderRelicType; amount: number };
+export interface PalDefenderGiveProgressionResult {
+  playerId: string;
+  grant: PalDefenderProgressionGrant;
+  totals: {
+    technologyPoints: number | null;
+    ancientTechnologyPoints: number | null;
+    relics: Partial<Record<PalDefenderRelicType, number>>;
+  };
+}
 
 export interface PalDefenderPal {
   instanceId: string;
@@ -727,6 +757,17 @@ export function getPalDefenderProgression(
   return request<PalDefenderProgression>(
     `${palDefenderPlayerPath(serverId, playerId)}/progression`,
     { cache: "no-store" },
+  );
+}
+
+export function givePalDefenderProgression(
+  serverId: string,
+  playerId: string,
+  grant: PalDefenderProgressionGrant,
+): Promise<PalDefenderGiveProgressionResult> {
+  return jsonRequest<PalDefenderGiveProgressionResult>(
+    `${palDefenderPlayerPath(serverId, playerId)}/progression`,
+    grant,
   );
 }
 

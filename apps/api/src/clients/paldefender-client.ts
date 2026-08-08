@@ -118,6 +118,39 @@ const progressionResponseSchema = z.object({
     }),
   }),
 });
+const relicTypeSchema = z.enum([
+  "CapturePower",
+  "HungerReduction",
+  "SwimSpeed",
+  "FoodDecayReduction",
+  "JumpPower",
+  "GliderSpeed",
+  "ClimbSpeed",
+  "StatusAilmentResist",
+  "StaminaReduction",
+  "SphereHoming",
+  "ExpBonus",
+  "RainbowPassiveRate",
+  "MoveSpeed",
+]);
+const giveProgressionResponseSchema = z.object({
+  Granted: z.object({
+    EXP: z.number().int().positive().optional(),
+    TechnologyPoints: z.number().int().positive().optional(),
+    AncientTechnologyPoints: z.number().int().positive().optional(),
+    Relics: z.record(relicTypeSchema, z.number().int().positive()).optional(),
+  }),
+  Totals: z
+    .object({
+      TechnologyPoints: z.number().int().nonnegative().optional(),
+      AncientTechnologyPoints: z.number().int().nonnegative().optional(),
+      Relics: z
+        .record(relicTypeSchema, z.number().int().nonnegative())
+        .optional(),
+    })
+    .optional()
+    .default({}),
+});
 const coordinateSchema = z.object({
   x: z.number(),
   y: z.number(),
@@ -279,6 +312,21 @@ export interface PalDefenderProgression {
     treasuresFound: number;
     campsConquered: number;
     firstFishingCompleted: boolean;
+  };
+}
+export type PalDefenderRelicType = z.infer<typeof relicTypeSchema>;
+export type PalDefenderProgressionGrant =
+  | { type: "experience"; amount: number }
+  | { type: "technologyPoints"; amount: number }
+  | { type: "ancientTechnologyPoints"; amount: number }
+  | { type: "relic"; relicType: PalDefenderRelicType; amount: number };
+export interface PalDefenderGiveProgressionResult {
+  playerId: string;
+  grant: PalDefenderProgressionGrant;
+  totals: {
+    technologyPoints: number | null;
+    ancientTechnologyPoints: number | null;
+    relics: Partial<Record<PalDefenderRelicType, number>>;
   };
 }
 export interface PalDefenderPal {
@@ -565,6 +613,35 @@ export class PalDefenderClient {
         treasuresFound: value.Activities.foundTreasureCount,
         campsConquered: value.Activities.campConqueredCount,
         firstFishingCompleted: value.Activities.firstFishingComplete,
+      },
+    };
+  }
+
+  async giveProgression(
+    playerId: string,
+    grant: PalDefenderProgressionGrant,
+  ): Promise<PalDefenderGiveProgressionResult> {
+    const body =
+      grant.type === "experience"
+        ? { EXP: grant.amount }
+        : grant.type === "technologyPoints"
+          ? { TechnologyPoints: grant.amount }
+          : grant.type === "ancientTechnologyPoints"
+            ? { AncientTechnologyPoints: grant.amount }
+            : { Relics: { [grant.relicType]: grant.amount } };
+    const response = await this.parse(
+      giveProgressionResponseSchema,
+      `/give/progression/${encodePlayerId(playerId)}`,
+      { method: "POST", body: JSON.stringify(body) },
+    );
+    return {
+      playerId,
+      grant,
+      totals: {
+        technologyPoints: response.Totals.TechnologyPoints ?? null,
+        ancientTechnologyPoints:
+          response.Totals.AncientTechnologyPoints ?? null,
+        relics: response.Totals.Relics ?? {},
       },
     };
   }

@@ -92,6 +92,23 @@ test("normal Players progressively exposes enhanced player management", async ({
     path: "../../docs/screenshots/player-progression.png",
     fullPage: true,
   });
+  await page.getByRole("button", { name: "Grant Progression" }).click();
+  await page.getByLabel("Amount").fill("10");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByText("Grant 10 Experience to Denalb?")).toBeVisible();
+  await page.getByRole("button", { name: "Grant", exact: true }).click();
+  await expect(page.getByText("Progression granted")).toBeVisible();
+  await expect(page.getByText("1381")).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "Confirm Progression Grant" }),
+  ).toBeHidden();
+  await expect(
+    page.getByRole("dialog", { name: "Grant Progression" }),
+  ).toBeHidden();
+  await page.screenshot({
+    path: "../../docs/screenshots/give-progression-success.png",
+    fullPage: true,
+  });
   await page.getByRole("tab", { name: "Actions" }).click();
   for (const action of ["Kick Player", "Ban Player", "Give Item", "Give Pal"]) {
     await expect(page.getByRole("button", { name: action })).toBeVisible();
