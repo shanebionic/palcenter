@@ -4,13 +4,6 @@ export interface PublicConnection {
   baseUrl: string;
   createdAt: string;
   updatedAt: string;
-  companion: {
-    enabled: boolean;
-    host: string | null;
-    port: number;
-    tokenConfigured: boolean;
-    administratorPlayerId: string | null;
-  };
   palDefender: {
     enabled: boolean;
     endpoint: string | null;
@@ -75,7 +68,7 @@ export interface PlayerPositionSnapshot {
   guildId: string | null;
   guildName: string | null;
   coordinateSpaceId: string | null;
-  locationAuthority?: "standard" | "companion";
+  locationAuthority?: "standard";
   createdAt: string;
 }
 
@@ -126,6 +119,7 @@ export interface WorldEvent {
   metadata: Record<string, string | number | boolean | null>;
   confidence: number;
   evidence: Array<{
+    // `companion` is retained only for previously stored event compatibility.
     source: "players" | "telemetry" | "transition_registry" | "companion";
     fact:
       | "appeared"

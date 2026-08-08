@@ -7,21 +7,6 @@ export function serverConnectionPayload(
     name: values.name,
     baseUrl: values.baseUrl,
     ...(values.adminPassword ? { adminPassword: values.adminPassword } : {}),
-    ...(values.companionEnabled !== undefined
-      ? { companionEnabled: values.companionEnabled }
-      : {}),
-    ...(values.companionHost !== undefined
-      ? { companionHost: values.companionHost?.trim() || null }
-      : {}),
-    ...(values.companionPort !== undefined
-      ? { companionPort: values.companionPort }
-      : {}),
-    ...(values.companionApiToken
-      ? { companionApiToken: values.companionApiToken }
-      : {}),
-    ...(values.administratorPlayerId !== undefined
-      ? { administratorPlayerId: values.administratorPlayerId }
-      : {}),
     ...(values.palDefenderEnabled !== undefined
       ? { palDefenderEnabled: values.palDefenderEnabled }
       : {}),

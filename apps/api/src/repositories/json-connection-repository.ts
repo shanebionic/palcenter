@@ -13,15 +13,6 @@ const storedConnectionSchema = z.object({
   name: z.string().min(1),
   baseUrl: z.string().url(),
   adminPassword: z.string().min(1),
-  companionEnabled: z.boolean().default(true),
-  companionHost: z.string().trim().min(1).nullable().default(null),
-  companionPort: z.number().int().min(1).max(65535).default(8213),
-  companionApiToken: z.string().max(512).default(""),
-  administratorPlayerId: z
-    .string()
-    .regex(/^[0-9A-Fa-f]{32}$/)
-    .nullable()
-    .default(null),
   palDefenderEnabled: z.boolean().default(false),
   palDefenderEndpoint: z.string().url().nullable().default(null),
   palDefenderToken: z.string().max(2_048).default(""),
@@ -52,6 +43,23 @@ export class JsonConnectionRepository implements ConnectionRepository {
     try {
       await fs.access(this.filePath);
       await tightenFilePermissions(this.filePath, this.onPermissionWarning);
+      const raw = JSON.parse(await fs.readFile(this.filePath, "utf8")) as {
+        servers?: Array<Record<string, unknown>>;
+      };
+      const legacyKeys = [
+        "companionEnabled",
+        "companionHost",
+        "companionPort",
+        "companionApiToken",
+        "administratorPlayerId",
+      ];
+      if (
+        raw.servers?.some((server) =>
+          legacyKeys.some((key) => Object.hasOwn(server, key)),
+        )
+      ) {
+        await this.write(connectionFileSchema.parse(raw));
+      }
     } catch (error) {
       if (!this.isMissing(error)) throw error;
       await this.write({

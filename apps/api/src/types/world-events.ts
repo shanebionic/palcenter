@@ -15,6 +15,7 @@ export const worldEventTypes = [
 export type WorldEventType = (typeof worldEventTypes)[number];
 
 export interface WorldEventEvidence {
+  // `companion` is retained only so previously stored events remain readable.
   source: "players" | "telemetry" | "transition_registry" | "companion";
   fact:
     | "appeared"

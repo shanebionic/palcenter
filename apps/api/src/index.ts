@@ -98,7 +98,6 @@ import {
   WorldEventService,
 } from "./services/world-event-service.js";
 import { PlayerActivityEventService } from "./services/player-activity-event-service.js";
-import { CompanionDiscoveryService } from "./services/companion-discovery-service.js";
 import {
   PalDefenderConfigurationRequiredError,
   PalDefenderDisabledError,
@@ -199,7 +198,6 @@ const app = Fastify({
         "req.headers.cookie",
         "res.headers.set-cookie",
         "req.body.adminPassword",
-        "req.body.companionApiToken",
         "req.body.palDefenderToken",
         "req.body.password",
         "req.body.currentPassword",
@@ -365,12 +363,10 @@ const schedulerService = new SchedulerService(
   },
 );
 const serverSettingsService = new ServerSettingsService(repository);
-const companionDiscoveryService = new CompanionDiscoveryService(repository);
 const serverStatusService = new ServerStatusService(repository);
 const worldEventService = new WorldEventService(
   repository,
   worldEventRepository,
-  companionDiscoveryService,
 );
 const playerActivityEventService = new PlayerActivityEventService(
   worldEventRepository,
@@ -385,7 +381,6 @@ const serverHistoryService = new ServerHistoryService(
     worldEventService.recordServerEvents(events);
     await notificationService.handle(events);
   },
-  (serverId) => worldEventService.syncCompanion(serverId),
 );
 const telemetryService = new TelemetryService(
   repository,
@@ -1203,18 +1198,9 @@ const connectionInputSchema = z
     name: z.string().trim().min(1).max(80),
     baseUrl: baseHttpUrlSchema,
     adminPassword: z.string().min(1).max(1_024),
-    companionEnabled: z.boolean().optional(),
-    companionHost: z.string().trim().min(1).max(253).nullable().optional(),
-    companionPort: z.number().int().min(1).max(65535).optional(),
-    companionApiToken: z.string().max(512).optional(),
     palDefenderEnabled: z.boolean().optional(),
     palDefenderEndpoint: baseHttpUrlSchema.nullable().optional(),
     palDefenderToken: z.string().max(2_048).optional(),
-    administratorPlayerId: z
-      .string()
-      .regex(/^[0-9A-Fa-f]{32}$/)
-      .nullable()
-      .optional(),
   })
   .strict();
 const connectionUpdateSchema = connectionInputSchema.extend({
@@ -1401,93 +1387,6 @@ app.get("/api/servers/:id/settings", async (request) => {
   return serverSettingsService.get(parameters.id);
 });
 
-app.get("/api/servers/:id/companion", async (request) => {
-  const parameters = serverIdSchema.parse(request.params);
-  const [status, connection] = await Promise.all([
-    companionDiscoveryService.discover(parameters.id),
-    repository.get(parameters.id),
-  ]);
-  return {
-    ...status,
-    administratorPlayerId: connection?.administratorPlayerId ?? null,
-  };
-});
-
-app.post("/api/servers/:id/companion/refresh", async (request) => {
-  const parameters = serverIdSchema.parse(request.params);
-  const [status, connection] = await Promise.all([
-    companionDiscoveryService.discover(parameters.id, true),
-    repository.get(parameters.id),
-  ]);
-  return {
-    ...status,
-    administratorPlayerId: connection?.administratorPlayerId ?? null,
-  };
-});
-
-const stablePlayerIdSchema = z.string().regex(/^[0-9A-Fa-f]{32}$/);
-const teleportRequestSchema = z
-  .object({
-    requestId: z
-      .string()
-      .min(8)
-      .max(128)
-      .regex(/^[A-Za-z0-9._:-]+$/),
-    targetPlayerId: stablePlayerIdSchema,
-  })
-  .strict();
-const locationTeleportRequestSchema = teleportRequestSchema
-  .extend({
-    coordinateSpace: z.literal("palpagos"),
-    x: z.number().min(-999_940).max(447_900),
-    y: z.number().min(-738_920).max(708_920),
-    verification: z.literal("palpagos_map"),
-  })
-  .strict();
-async function companionTeleport(
-  serverId: string,
-  action:
-    | "teleportAdminToPlayer"
-    | "teleportPlayerToAdmin"
-    | "teleportPlayerToLocation",
-  input: Record<string, unknown>,
-) {
-  const connection = await repository.get(serverId);
-  if (!connection) throw new Error("The requested server does not exist.");
-  if (!connection.administratorPlayerId)
-    throw new Error(
-      "Choose the administrator character in Connection Settings before teleporting.",
-    );
-  return companionDiscoveryService.adminAction(serverId, action, {
-    ...input,
-    administratorPlayerId: connection.administratorPlayerId,
-  });
-}
-app.post("/api/servers/:id/teleport/admin-to-player", async (request) => {
-  const { id } = serverIdSchema.parse(request.params);
-  return companionTeleport(
-    id,
-    "teleportAdminToPlayer",
-    teleportRequestSchema.parse(request.body),
-  );
-});
-app.post("/api/servers/:id/teleport/player-to-admin", async (request) => {
-  const { id } = serverIdSchema.parse(request.params);
-  return companionTeleport(
-    id,
-    "teleportPlayerToAdmin",
-    teleportRequestSchema.parse(request.body),
-  );
-});
-app.post("/api/servers/:id/teleport/player-to-location", async (request) => {
-  const { id } = serverIdSchema.parse(request.params);
-  return companionTeleport(
-    id,
-    "teleportPlayerToLocation",
-    locationTeleportRequestSchema.parse(request.body),
-  );
-});
-
 const historyQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(100),
 });
@@ -1564,45 +1463,16 @@ const telemetryHistoryQuerySchema = z
 
 app.get("/api/servers/:id/telemetry/players/latest", async (request) => {
   const parameters = serverIdSchema.parse(request.params);
-  const [restPlayers, companionLocations] = await Promise.all([
-    telemetryService.latest(parameters.id),
-    companionDiscoveryService.locations(parameters.id),
-  ]);
-  const locationsByIdentity = new Map(
-    (companionLocations ?? []).flatMap((location) => {
-      const identities = [
-        location.player.userId,
-        location.player.playerId,
-      ].filter((value): value is string => Boolean(value));
-      return identities.map((identity) => [identity, location] as const);
-    }),
-  );
-  const players = restPlayers.map((player) => {
-    const location =
-      locationsByIdentity.get(player.userId) ??
-      (player.playerId ? locationsByIdentity.get(player.playerId) : undefined);
-    return location
-      ? {
-          ...player,
-          x: location.position.x,
-          y: location.position.y,
-          z: location.position.z,
-          coordinateSpaceId: location.coordinateSpaceId,
-          capturedAt: location.capturedAt,
-          locationAuthority: "companion" as const,
-        }
-      : { ...player, locationAuthority: "standard" as const };
-  });
   return {
-    players,
+    players: (await telemetryService.latest(parameters.id)).map((player) => ({
+      ...player,
+      locationAuthority: "standard" as const,
+    })),
     trustedPositions: await telemetryService.latestTrustedPositions(
       parameters.id,
       "palpagos",
     ),
-    // REST telemetry does not prove which Palworld map owns a coordinate.
-    // A future Companion location collector will set this only when its
-    // coordinate-space capability supplied the returned positions.
-    coordinateSpacesAuthoritative: companionLocations !== null,
+    coordinateSpacesAuthoritative: false,
     pollingIntervalSeconds: environment.TELEMETRY_INTERVAL_SECONDS,
     lastCollectedAt: telemetryService.lastCollectedAt(parameters.id),
   };

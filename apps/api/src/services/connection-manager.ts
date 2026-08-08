@@ -11,11 +11,6 @@ export interface AddConnectionInput {
   name: string;
   baseUrl: string;
   adminPassword: string;
-  companionEnabled?: boolean;
-  companionHost?: string | null;
-  companionPort?: number;
-  companionApiToken?: string;
-  administratorPlayerId?: string | null;
   palDefenderEnabled?: boolean;
   palDefenderEndpoint?: string | null;
   palDefenderToken?: string;
@@ -25,11 +20,6 @@ export interface UpdateConnectionInput {
   name: string;
   baseUrl: string;
   adminPassword?: string;
-  companionEnabled?: boolean;
-  companionHost?: string | null;
-  companionPort?: number;
-  companionApiToken?: string;
-  administratorPlayerId?: string | null;
   palDefenderEnabled?: boolean;
   palDefenderEndpoint?: string | null;
   palDefenderToken?: string;
@@ -87,11 +77,6 @@ export class ConnectionManager {
       name: input.name.trim(),
       baseUrl: input.baseUrl.replace(/\/+$/, ""),
       adminPassword: input.adminPassword,
-      companionEnabled: input.companionEnabled ?? true,
-      companionHost: input.companionHost?.trim() || null,
-      companionPort: input.companionPort ?? 8213,
-      companionApiToken: input.companionApiToken ?? "",
-      administratorPlayerId: input.administratorPlayerId ?? null,
       palDefenderEnabled: input.palDefenderEnabled ?? false,
       palDefenderEndpoint: normalizeOptionalUrl(input.palDefenderEndpoint),
       palDefenderToken: input.palDefenderToken ?? "",
@@ -117,21 +102,6 @@ export class ConnectionManager {
         input.adminPassword === undefined || input.adminPassword === ""
           ? existing.adminPassword
           : input.adminPassword,
-      companionEnabled:
-        input.companionEnabled ?? existing.companionEnabled ?? true,
-      companionHost:
-        input.companionHost === undefined
-          ? existing.companionHost
-          : input.companionHost?.trim() || null,
-      companionPort: input.companionPort ?? existing.companionPort ?? 8213,
-      companionApiToken:
-        input.companionApiToken === undefined || input.companionApiToken === ""
-          ? (existing.companionApiToken ?? "")
-          : input.companionApiToken,
-      administratorPlayerId:
-        input.administratorPlayerId === undefined
-          ? (existing.administratorPlayerId ?? null)
-          : input.administratorPlayerId,
       palDefenderEnabled:
         input.palDefenderEnabled ?? existing.palDefenderEnabled ?? false,
       palDefenderEndpoint:
@@ -168,13 +138,6 @@ export class ConnectionManager {
       baseUrl: baseUrl.toString().replace(/\/$/, ""),
       createdAt: connection.createdAt,
       updatedAt: connection.updatedAt,
-      companion: {
-        enabled: connection.companionEnabled ?? true,
-        host: connection.companionHost ?? null,
-        port: connection.companionPort ?? 8213,
-        tokenConfigured: (connection.companionApiToken?.length ?? 0) > 0,
-        administratorPlayerId: connection.administratorPlayerId ?? null,
-      },
       palDefender: {
         enabled: connection.palDefenderEnabled ?? false,
         endpoint: sanitizeOptionalUrl(connection.palDefenderEndpoint),

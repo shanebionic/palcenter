@@ -34,10 +34,7 @@ export function ServerPlayersPage({ serverId }: { serverId: string }) {
               title={server.connection.name}
               description="One player-management workspace, enhanced by the capabilities configured for this server."
             />
-            <ServerPlayers
-              serverId={serverId}
-              onSendToMapLocation={() => undefined}
-            />
+            <ServerPlayers serverId={serverId} />
           </>
         )}
       </Stack>

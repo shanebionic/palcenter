@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
+import { JsonConnectionRepository } from "../src/repositories/json-connection-repository.js";
 import { SqliteWorldEventRepository } from "../src/repositories/sqlite-world-event-repository.js";
 import { SqliteAutomationRepository } from "../src/repositories/sqlite-automation-repository.js";
 import { SqliteUserRepository } from "../src/repositories/sqlite-user-repository.js";
@@ -311,9 +312,10 @@ test("creates and restores all PalCenter data", async () => {
 
     await context.service.restore(backup.contents);
 
+    await new JsonConnectionRepository(context.directory).initialize();
     const servers = JSON.parse(
       await fs.readFile(path.join(context.directory, "servers.json"), "utf8"),
-    ) as { servers: Array<{ companionApiToken?: string }> };
+    ) as { servers: Array<Record<string, unknown>> };
     const notifications = JSON.parse(
       await fs.readFile(
         path.join(context.directory, "notifications.json"),
@@ -322,7 +324,7 @@ test("creates and restores all PalCenter data", async () => {
     ) as { providers: unknown[] };
 
     assert.equal(servers.servers.length, 1);
-    assert.equal(servers.servers[0]?.companionApiToken, "companion-secret");
+    assert.equal("companionApiToken" in servers.servers[0]!, false);
     assert.equal(notifications.providers.length, 1);
     assert.equal(context.history.listMetrics("srv_test", 10).length, 1);
     assert.equal(context.history.listEvents("srv_test", 10).length, 1);

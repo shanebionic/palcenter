@@ -2,27 +2,22 @@
 
 import {
   Alert,
-  Accordion,
   Button,
   Group,
   PasswordInput,
-  NumberInput,
   Switch,
   SimpleGrid,
-  Select,
   Stack,
   Text,
   TextInput,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   testServerUpdate,
   testPalDefenderConnection,
   updateServer,
-  refreshCompanionStatus,
-  getPlayers,
   type ConnectionTestResult,
   type PalDefenderConnectionTestResult,
   type ServerConnectionUpdate,
@@ -34,7 +29,6 @@ import {
 import type { PublicConnection } from "../types/servers";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
-import { CompanionStatusCard } from "./CompanionStatusCard";
 
 interface ServerConnectionSettingsProps {
   connection: PublicConnection;
@@ -50,11 +44,6 @@ export function ServerConnectionSettings({
       name: connection.name,
       baseUrl: connection.baseUrl,
       adminPassword: "",
-      companionEnabled: connection.companion.enabled,
-      companionHost: connection.companion.host,
-      companionPort: connection.companion.port,
-      companionApiToken: "",
-      administratorPlayerId: connection.companion.administratorPlayerId,
       palDefenderEnabled: connection.palDefender.enabled,
       palDefenderEndpoint: connection.palDefender.endpoint,
       palDefenderToken: "",
@@ -104,21 +93,6 @@ export function ServerConnectionSettings({
     string | null
   >(null);
   const [testingPalDefender, setTestingPalDefender] = useState(false);
-  const [onlineCharacters, setOnlineCharacters] = useState<
-    { value: string; label: string }[]
-  >([]);
-  useEffect(() => {
-    void getPlayers(connection.id)
-      .then((players) =>
-        setOnlineCharacters(
-          players.map((player) => ({
-            value: player.playerId,
-            label: `${player.name} (${player.playerId})`,
-          })),
-        ),
-      )
-      .catch(() => setOnlineCharacters([]));
-  }, [connection.id]);
 
   const connectionKey = (values: ServerConnectionUpdate) =>
     `${values.baseUrl}\u0000${values.adminPassword ?? ""}`;
@@ -135,7 +109,6 @@ export function ServerConnectionSettings({
         baseUrl: form.values.baseUrl,
         adminPassword: form.values.adminPassword ?? "",
       });
-      await refreshCompanionStatus(connection.id);
       setTestResult(result);
       setTestedKey(connectionKey(form.values));
     } catch (error) {
@@ -181,7 +154,6 @@ export function ServerConnectionSettings({
     setSaving(true);
     try {
       await updateServer(connection.id, serverConnectionPayload(values));
-      await refreshCompanionStatus(connection.id);
       notifications.show({
         color: "teal",
         title: "Connection updated",
@@ -317,69 +289,6 @@ export function ServerConnectionSettings({
                 Test PalDefender Connection
               </Button>
             </Stack>
-            <Accordion variant="separated">
-              <Accordion.Item value="companion">
-                <Accordion.Control>
-                  Advanced Companion Connection
-                </Accordion.Control>
-                <Accordion.Panel>
-                  <Stack>
-                    <Switch
-                      label="Enable Companion discovery"
-                      {...form.getInputProps("companionEnabled", {
-                        type: "checkbox",
-                      })}
-                    />
-                    <TextInput
-                      label="Companion host"
-                      description="Leave blank to inherit the Palworld REST host."
-                      placeholder="palworld-server"
-                      {...form.getInputProps("companionHost")}
-                    />
-                    <NumberInput
-                      label="Companion port"
-                      min={1}
-                      max={65535}
-                      {...form.getInputProps("companionPort")}
-                    />
-                    <PasswordInput
-                      label="Companion API token"
-                      description={
-                        connection.companion.tokenConfigured
-                          ? "A token is configured. Leave blank to keep it."
-                          : "Paste the token from PalCenterCompanion.token."
-                      }
-                      placeholder={
-                        connection.companion.tokenConfigured
-                          ? "Configured"
-                          : "Not configured"
-                      }
-                      {...form.getInputProps("companionApiToken")}
-                    />
-                    <Select
-                      label="Administrator character"
-                      description="Choose your online character by its stable in-game player ID. This is never inferred from your PalCenter account."
-                      placeholder="Choose when the character is online"
-                      searchable
-                      clearable
-                      data={onlineCharacters}
-                      {...form.getInputProps("administratorPlayerId")}
-                    />
-                    {form.values.administratorPlayerId &&
-                      !onlineCharacters.some(
-                        (player) =>
-                          player.value === form.values.administratorPlayerId,
-                      ) && (
-                        <Alert color="orange">
-                          The configured administrator character is offline or
-                          unavailable. Teleport actions will stay disabled.
-                        </Alert>
-                      )}
-                  </Stack>
-                </Accordion.Panel>
-              </Accordion.Item>
-            </Accordion>
-
             {testError && (
               <Alert color="orange" title="Connection test failed">
                 {testError} You may still save after confirming the warning.
@@ -423,7 +332,6 @@ export function ServerConnectionSettings({
           </Stack>
         </form>
       </SectionCard>
-      <CompanionStatusCard serverId={connection.id} />
     </Stack>
   );
 }

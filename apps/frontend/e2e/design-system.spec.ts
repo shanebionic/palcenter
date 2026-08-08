@@ -37,21 +37,6 @@ async function setSessionRole(
   expect(response.ok()).toBe(true);
 }
 
-async function setCompanionMode(
-  page: Page,
-  mode:
-    | "connected"
-    | "exact-location"
-    | "disconnected"
-    | "authentication_required"
-    | "authentication_failed",
-) {
-  const response = await page.request.get(
-    `http://127.0.0.1:3198/__test/companion?mode=${mode}`,
-  );
-  expect(response.ok()).toBe(true);
-}
-
 async function setPalDefenderMode(
   page: Page,
   mode: "connected" | "disabled" | "unreachable" | "authentication_failed",
@@ -196,67 +181,6 @@ test("Administration selects a safe Broadcast provider without provider-oriented
       { serverId: "srv-test", provider: "native" },
       { serverId: "srv-test", provider: "native" },
     ]);
-});
-
-test("Companion discovery presents connected, disconnected, refresh, and responsive states", async ({
-  page,
-}) => {
-  await setCompanionMode(page, "connected");
-  await openWorkspace(page);
-  await page.getByRole("tab", { name: "Connection Settings" }).click();
-  const companion = panelWithHeading(page, "PalCenter Companion");
-  await expect(companion).toContainText("Healthy");
-  await expect(companion).toContainText("Version: 0.3.0");
-  await expect(companion).toContainText("Supported capabilities: 3");
-  await companion.getByRole("button", { name: "Advanced details" }).click();
-  await expect(companion).toContainText(
-    "Capabilities: health, version, playerActivity",
-  );
-  const settings = page.getByRole("button", {
-    name: "Advanced Companion Connection",
-  });
-  await settings.click();
-  await expect(page.getByLabel("Companion host")).toHaveValue(
-    "companion.internal",
-  );
-  await expect(page.getByLabel("Companion port")).toHaveValue("18213");
-  await expect(page.getByLabel("Companion API token")).toHaveValue("");
-  await expect(page.getByText(/A token is configured/)).toBeVisible();
-  await page.screenshot({
-    path: "../../docs/screenshots/companion-connected.png",
-    fullPage: true,
-  });
-
-  await setCompanionMode(page, "disconnected");
-  await companion.getByRole("button", { name: "Refresh" }).click();
-  await expect(companion).toContainText("Unreachable");
-
-  await setCompanionMode(page, "authentication_required");
-  await companion.getByRole("button", { name: "Refresh" }).click();
-  await expect(companion).toContainText("Authentication required");
-  await setCompanionMode(page, "authentication_failed");
-  await companion.getByRole("button", { name: "Refresh" }).click();
-  await expect(companion).toContainText("Authentication failed");
-  await page.screenshot({
-    path: "../../docs/screenshots/companion-disconnected.png",
-    fullPage: true,
-  });
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(
-    companion.getByRole("button", { name: "Refresh" }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(
-      () =>
-        document.documentElement.scrollWidth >
-        document.documentElement.clientWidth,
-    ),
-  ).toBe(false);
-  await page.screenshot({
-    path: "../../docs/screenshots/companion-responsive.png",
-    fullPage: true,
-  });
 });
 
 test("players empty and populated states remain branded and scroll safely", async ({
@@ -498,13 +422,12 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
   page,
 }) => {
   await setSessionRole(page, "administrator");
-  await setCompanionMode(page, "connected");
   await setPlayerMode(page, "unknown");
   await openWorkspace(page);
   await page.getByRole("tab", { name: "Map" }).click();
   await expect(
     page.getByRole("alert").filter({
-      hasText: "Special areas may not appear correctly",
+      hasText: "Special-area positions are approximate",
     }),
   ).toBeVisible();
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
@@ -545,18 +468,17 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
   await expect(page.getByText("Off-map players")).toHaveCount(0);
 
-  await setCompanionMode(page, "exact-location");
   await setPlayerMode(page, "world-tree");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(page.getByText("Exact location from Companion")).toBeVisible();
-  await expect(page.getByText(/In World Tree/).first()).toBeVisible();
-  await expect(page.getByLabel("View Denalb on map")).toHaveCount(0);
+  await expect(
+    page.getByText("Special-area positions are approximate"),
+  ).toBeVisible();
+  await expect(page.getByLabel("View Denalb on map")).toBeVisible();
   await page.screenshot({
     path: "../../docs/screenshots/rest-map-authoritative-off-map.png",
     fullPage: true,
   });
 
-  await setCompanionMode(page, "connected");
   await setPlayerMode(page, "stale");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
@@ -635,7 +557,6 @@ test("Player Activity renders, filters, expands evidence, loads history, and lin
 }) => {
   await setSessionRole(page, "administrator");
   await setEventMode(page, "populated");
-  await setCompanionMode(page, "connected");
   await openWorkspace(page);
   await page.getByRole("tab", { name: "Activity" }).click();
 
@@ -717,17 +638,12 @@ test("Player Activity provides useful empty and unavailable states", async ({
 }) => {
   await setSessionRole(page, "administrator");
   await setEventMode(page, "empty");
-  await setCompanionMode(page, "disconnected");
   await openWorkspace(page);
   await page.getByRole("tab", { name: "Activity" }).click();
   await expect(page.getByText("No activity yet")).toBeVisible();
   await expect(
     page.getByText(/Player activity will appear here/),
   ).toBeVisible();
-  await expect(
-    page.getByText("Using standard server information"),
-  ).toBeVisible();
-
   await setEventMode(page, "error");
   await page.getByRole("button", { name: "Refresh" }).click();
   await expect(
@@ -740,7 +656,6 @@ test("Player Activity remains responsive and is not offered to Visitors", async 
 }) => {
   await setSessionRole(page, "administrator");
   await setEventMode(page, "populated");
-  await setCompanionMode(page, "connected");
   await page.setViewportSize({ width: 390, height: 844 });
   await openWorkspace(page);
   await page.getByRole("tab", { name: "Activity" }).click();

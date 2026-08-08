@@ -156,13 +156,6 @@ export class ServerStatusService {
         endpoint: connection.palDefenderEndpoint ?? null,
         tokenConfigured: (connection.palDefenderToken?.length ?? 0) > 0,
       },
-      companion: {
-        enabled: connection.companionEnabled ?? true,
-        host: connection.companionHost ?? null,
-        port: connection.companionPort ?? 8213,
-        tokenConfigured: (connection.companionApiToken?.length ?? 0) > 0,
-        administratorPlayerId: connection.administratorPlayerId ?? null,
-      },
     };
   }
 }

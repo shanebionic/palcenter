@@ -15,7 +15,6 @@ import {
   mapContentState,
   mapAccessForRole,
   playerMapDetailValues,
-  playerLocationAuthority,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
 } from "../lib/world-map/model";
@@ -626,65 +625,6 @@ test("represents online marker details without exposing the player IP", () => {
   assert.equal(JSON.stringify(details).includes("192.0.2.10"), false);
 });
 
-test("keeps unsupported coordinate spaces off Palpagos and preserves a trusted instance entrance", () => {
-  const player = connectedPlayer("uid-space", "pid-space", "Explorer");
-  const trusted = snapshot({
-    userId: player.userId,
-    playerId: player.playerId,
-    x: 100_000,
-    y: -80_000,
-    coordinateSpaceId: "palpagos",
-  });
-  const instance = {
-    ...trusted,
-    x: 12_345,
-    y: 67_890,
-    coordinateSpaceId: "special_area",
-  };
-  const model = buildLivePlayerMapModel(
-    [player],
-    [instance],
-    palpagosProjection,
-    30,
-    instance.capturedAt,
-    new Date(instance.capturedAt),
-    [trusted],
-    palpagosMapDefinition,
-    "companion",
-  );
-  assert.equal(model.markers.length, 1);
-  assert.equal(model.markers[0]?.displayKind, "last_trusted_instance");
-  assert.equal(model.markers[0]?.worldX, trusted.x);
-  assert.equal(model.markers[0]?.reportedWorldX, instance.x);
-  assert.equal(model.unmappedPlayers[0]?.reason, "instanced_area");
-});
-
-test("authoritative World Tree and unknown positions are excluded from Palpagos", () => {
-  for (const coordinateSpaceId of ["world_tree", "unknown", "tower:future"]) {
-    const player = connectedPlayer("uid-space", "pid-space", "Explorer");
-    const current = snapshot({
-      userId: player.userId,
-      playerId: player.playerId,
-      x: 10,
-      y: 20,
-      coordinateSpaceId,
-    });
-    const model = buildLivePlayerMapModel(
-      [player],
-      [current],
-      palpagosProjection,
-      30,
-      current.capturedAt,
-      new Date(current.capturedAt),
-      [],
-      palpagosMapDefinition,
-      "companion",
-    );
-    assert.equal(model.markers.length, 0);
-    assert.equal(model.unmappedPlayers.length, 1);
-  }
-});
-
 test("standard REST positions remain visible when their coordinate space is unknown, null, or unverified", () => {
   for (const coordinateSpaceId of ["unknown", null, "world_tree"]) {
     const player = connectedPlayer("uid-rest", "pid-rest", "Explorer");
@@ -709,68 +649,6 @@ test("standard REST positions remain visible when their coordinate space is unkn
     assert.equal(model.markers[0]?.locationAuthority, "standard");
     assert.equal(model.unmappedPlayers.length, 0);
   }
-});
-
-test("exact map behavior requires connection, capability support, and authoritative telemetry", () => {
-  assert.equal(
-    playerLocationAuthority({
-      companionConnected: false,
-      coordinateSpaceCapabilitySupported: false,
-      telemetryAuthoritative: false,
-    }),
-    "standard",
-  );
-  assert.equal(
-    playerLocationAuthority({
-      companionConnected: true,
-      coordinateSpaceCapabilitySupported: false,
-      telemetryAuthoritative: true,
-    }),
-    "standard",
-  );
-  assert.equal(
-    playerLocationAuthority({
-      companionConnected: true,
-      coordinateSpaceCapabilitySupported: true,
-      telemetryAuthoritative: false,
-    }),
-    "standard",
-  );
-  assert.equal(
-    playerLocationAuthority({
-      companionConnected: true,
-      coordinateSpaceCapabilitySupported: true,
-      telemetryAuthoritative: true,
-    }),
-    "companion",
-  );
-});
-
-test("REST fallback remains mapped when another player has Companion location data", () => {
-  const player = connectedPlayer("uid-rest", "pid-rest", "REST player");
-  const current = {
-    ...snapshot({
-      userId: player.userId,
-      playerId: player.playerId,
-      x: 10,
-      y: 20,
-      coordinateSpaceId: "unknown",
-    }),
-    locationAuthority: "standard" as const,
-  };
-  const model = buildLivePlayerMapModel(
-    [player],
-    [current],
-    palpagosProjection,
-    30,
-    current.capturedAt,
-    new Date(current.capturedAt),
-    [],
-    palpagosMapDefinition,
-    "companion",
-  );
-  assert.equal(model.markers.length, 1);
-  assert.equal(model.unmappedPlayers.length, 0);
 });
 
 test("stale standard positions stay mapped without an off-map duplicate", () => {
