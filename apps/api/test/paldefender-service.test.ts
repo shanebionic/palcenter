@@ -120,19 +120,51 @@ test("progression stays isolated per server and disabled servers make no request
           );
         return { playerId: "player-a", character: { level: 6 } };
       },
+      giveProgression: async (_playerId, grant) => {
+        if (endpoint.endsWith("-c"))
+          throw new PalDefenderError(
+            "Unable to reach PalDefender.",
+            undefined,
+            "CONNECTION_FAILED",
+          );
+        return { playerId: "player-a", grant, totals: {} };
+      },
     } as unknown as PalDefenderClient;
   });
 
   const progression = await service.progression("server-a", "player-a");
   assert.equal(progression.playerId, "player-a");
+  const granted = await service.giveProgression("server-a", "player-a", {
+    type: "experience",
+    amount: 1,
+  });
+  assert.equal(granted.playerId, "player-a");
   await assert.rejects(() => service.progression("server-b", "player-b"), {
     name: "PalDefenderDisabledError",
   });
   await assert.rejects(() => service.progression("server-c", "player-c"), {
     name: "PalDefenderError",
   });
+  await assert.rejects(
+    () =>
+      service.giveProgression("server-b", "player-b", {
+        type: "technologyPoints",
+        amount: 1,
+      }),
+    { name: "PalDefenderDisabledError" },
+  );
+  await assert.rejects(
+    () =>
+      service.giveProgression("server-c", "player-c", {
+        type: "experience",
+        amount: 1,
+      }),
+    { name: "PalDefenderError" },
+  );
   assert.deepEqual(created, [
     { endpoint: "http://progression-a", token: "token-a" },
+    { endpoint: "http://progression-a", token: "token-a" },
+    { endpoint: "http://progression-c", token: "token-c" },
     { endpoint: "http://progression-c", token: "token-c" },
   ]);
 });

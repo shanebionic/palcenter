@@ -840,6 +840,54 @@ app.get(
   },
 );
 
+const palDefenderProgressionGrantSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("experience"),
+    amount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  }),
+  z.object({
+    type: z.literal("technologyPoints"),
+    amount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  }),
+  z.object({
+    type: z.literal("ancientTechnologyPoints"),
+    amount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  }),
+  z.object({
+    type: z.literal("relic"),
+    relicType: z.enum([
+      "CapturePower",
+      "HungerReduction",
+      "SwimSpeed",
+      "FoodDecayReduction",
+      "JumpPower",
+      "GliderSpeed",
+      "ClimbSpeed",
+      "StatusAilmentResist",
+      "StaminaReduction",
+      "SphereHoming",
+      "ExpBonus",
+      "RainbowPassiveRate",
+      "MoveSpeed",
+    ]),
+    amount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  }),
+]);
+
+app.post(
+  "/api/servers/:serverId/paldefender/players/:playerId/progression",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    return palDefenderService.giveProgression(
+      serverId,
+      playerId,
+      palDefenderProgressionGrantSchema.parse(request.body),
+    );
+  },
+);
+
 const palDefenderKickBodySchema = z
   .object({ message: z.string().max(2_000).optional() })
   .strict();
@@ -1745,7 +1793,7 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof PalDefenderError) {
     const isPalDefenderWriteRequest =
       request.method === "POST" &&
-      (/\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals)$/.test(
+      (/\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals|progression)$/.test(
         request.url,
       ) ||
         /\/api\/servers\/[^/]+\/paldefender\/broadcast$/.test(request.url));

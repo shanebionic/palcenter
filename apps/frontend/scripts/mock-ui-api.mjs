@@ -76,6 +76,7 @@ let eventMode = "populated";
 let palDefenderMode = "disabled";
 let sessionRole = "administrator";
 let broadcasts = [];
+let progressionExperience = 1371;
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
   const joined = index % 2 === 0;
@@ -365,10 +366,26 @@ export function startMockUiApi(port = 3198) {
       return json(response, { technologies: ["Technology_Wood"] });
     }
     if (url.pathname === `${enhancedPlayerPath}/progression`) {
+      if (request.method === "POST") {
+        progressionExperience += 10;
+        return json(response, {
+          playerId: "0094A2FA-00000000-00000000-00000000",
+          grant: { type: "experience", amount: 10 },
+          totals: {
+            technologyPoints: null,
+            ancientTechnologyPoints: null,
+            relics: {},
+          },
+        });
+      }
       return json(response, {
         playerId: "0094A2FA-00000000-00000000-00000000",
         requestedPlayerId: "0094A2FA-00000000-00000000-00000000",
-        character: { level: 6, experience: 1371, unusedStatusPoints: 5 },
+        character: {
+          level: 6,
+          experience: progressionExperience,
+          unusedStatusPoints: 5,
+        },
         currencies: {
           relics: {},
           technologyPoints: 5,

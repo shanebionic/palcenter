@@ -48,6 +48,8 @@ import {
   getPalDefenderPlayer,
   getPalDefenderPlayers,
   getPalDefenderProgression,
+  givePalDefenderProgression,
+  palDefenderRelicTypes,
   getPalDefenderTechnology,
   givePalDefenderItems,
   givePalDefenderPals,
@@ -56,6 +58,8 @@ import {
   type PalDefenderPal,
   type PalDefenderPlayerDetails,
   type PalDefenderProgression,
+  type PalDefenderProgressionGrant,
+  type PalDefenderRelicType,
 } from "../lib/api";
 import {
   normalizeItemGrants,
@@ -471,7 +475,13 @@ export function PalDefenderPlayerWorkspace({
               <Technology state={technology} refresh={loadTechnology} />
             </Tabs.Panel>
             <Tabs.Panel value="progression" pt="xl">
-              <Progression state={progression} refresh={loadProgression} />
+              <Progression
+                state={progression}
+                refresh={loadProgression}
+                serverId={serverId}
+                playerId={playerId}
+                playerName={player.data?.name ?? "The player"}
+              />
             </Tabs.Panel>
             <Tabs.Panel value="actions" pt="xl">
               <Stack gap="md">
@@ -1177,11 +1187,69 @@ function Technology({
 function Progression({
   state,
   refresh,
+  serverId,
+  playerId,
+  playerName,
 }: {
   state: Loadable<PalDefenderProgression>;
   refresh: () => Promise<void>;
+  serverId: string;
+  playerId: string;
+  playerName: string;
 }) {
   const [search, setSearch] = useState("");
+  const [grantOpened, setGrantOpened] = useState(false);
+  const [confirmationOpened, setConfirmationOpened] = useState(false);
+  const [grantType, setGrantType] =
+    useState<PalDefenderProgressionGrant["type"]>("experience");
+  const [relicType, setRelicType] =
+    useState<PalDefenderRelicType>("CapturePower");
+  const [amount, setAmount] = useState<number | string>(1);
+  const [grantError, setGrantError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const amountValue = typeof amount === "number" ? amount : Number(amount);
+  const grant: PalDefenderProgressionGrant =
+    grantType === "relic"
+      ? { type: "relic", relicType, amount: amountValue }
+      : { type: grantType, amount: amountValue };
+  const label = progressionGrantLabel(grant);
+  const reviewGrant = () => {
+    if (!Number.isSafeInteger(amountValue) || amountValue <= 0) {
+      setGrantError("Enter a positive whole number.");
+      return;
+    }
+    setGrantError("");
+    setConfirmationOpened(true);
+  };
+  const submitGrant = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await givePalDefenderProgression(serverId, playerId, grant);
+      await refresh();
+      setConfirmationOpened(false);
+      setGrantOpened(false);
+      setAmount(1);
+      setGrantError("");
+      notifications.show({
+        color: "green",
+        title: "Progression granted",
+        message: `Granted ${label} to ${playerName}.`,
+      });
+    } catch (error) {
+      setConfirmationOpened(false);
+      notifications.show({
+        color: "red",
+        title: "Unable to grant progression",
+        message:
+          error instanceof Error
+            ? error.message
+            : "PalCenter could not grant progression.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
   if (state.loading && !state.data)
     return <BrandedLoader message="Loading player progression" />;
   if (state.error)
@@ -1228,14 +1296,22 @@ function Progression({
           placeholder="Search progression IDs"
           leftSection={<IconSearch size={16} />}
         />
-        <Button
-          variant="light"
-          leftSection={<IconRefresh size={16} />}
-          onClick={() => void refresh()}
-          loading={state.loading}
-        >
-          Refresh
-        </Button>
+        <Group>
+          <Button
+            variant="light"
+            leftSection={<IconRefresh size={16} />}
+            onClick={() => void refresh()}
+            loading={state.loading}
+          >
+            Refresh
+          </Button>
+          <Button
+            leftSection={<IconGift size={16} />}
+            onClick={() => setGrantOpened(true)}
+          >
+            Grant Progression
+          </Button>
+        </Group>
       </Group>
       <div>
         <Title order={3} mb="sm">
@@ -1357,8 +1433,114 @@ function Progression({
           </div>
         );
       })}
+      <Modal
+        opened={grantOpened}
+        onClose={() => !submitting && setGrantOpened(false)}
+        title="Grant Progression"
+      >
+        <Stack>
+          <Text size="sm" c="dimmed">
+            Recipient
+          </Text>
+          <Text fw={700}>{playerName}</Text>
+          <Select
+            label="Type"
+            value={grantType}
+            onChange={(value) =>
+              setGrantType(
+                (value ?? "experience") as PalDefenderProgressionGrant["type"],
+              )
+            }
+            data={[
+              { value: "experience", label: "Experience" },
+              { value: "technologyPoints", label: "Technology Points" },
+              {
+                value: "ancientTechnologyPoints",
+                label: "Ancient Technology Points",
+              },
+              { value: "relic", label: "Relic Upgrade" },
+            ]}
+          />
+          {grantType === "relic" && (
+            <Select
+              label="Relic type"
+              searchable
+              value={relicType}
+              onChange={(value) =>
+                setRelicType((value ?? "CapturePower") as PalDefenderRelicType)
+              }
+              data={palDefenderRelicTypes.map((value) => ({
+                value,
+                label: relicLabel(value),
+              }))}
+            />
+          )}
+          <NumberInput
+            label="Amount"
+            value={amount}
+            onChange={setAmount}
+            min={1}
+            step={1}
+            allowDecimal={false}
+            error={grantError || undefined}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setGrantOpened(false)}>
+              Cancel
+            </Button>
+            <Button onClick={reviewGrant}>Continue</Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={confirmationOpened}
+        onClose={() => !submitting && setConfirmationOpened(false)}
+        title="Confirm Progression Grant"
+      >
+        <Stack>
+          <Text>
+            Grant{" "}
+            <Text span fw={700}>
+              {label}
+            </Text>{" "}
+            to {playerName}?
+          </Text>
+          <Alert color="orange">
+            This will permanently modify the player&apos;s progression.
+          </Alert>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              disabled={submitting}
+              onClick={() => setConfirmationOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={submitting}
+              disabled={submitting}
+              onClick={() => void submitGrant()}
+            >
+              Grant
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
+}
+
+function relicLabel(value: PalDefenderRelicType): string {
+  return value.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+function progressionGrantLabel(grant: PalDefenderProgressionGrant): string {
+  const amount = grant.amount.toLocaleString();
+  if (grant.type === "experience") return `${amount} Experience`;
+  if (grant.type === "technologyPoints") return `${amount} Technology Points`;
+  if (grant.type === "ancientTechnologyPoints")
+    return `${amount} Ancient Technology Points`;
+  return `${amount} ${relicLabel(grant.relicType)} Relic ${grant.amount === 1 ? "Point" : "Points"}`;
 }
 
 function ProgressionFact({

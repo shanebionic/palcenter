@@ -18,6 +18,8 @@ import {
   type PalDefenderPlayer,
   type PalDefenderPlayerDetails,
   type PalDefenderProgression,
+  type PalDefenderProgressionGrant,
+  type PalDefenderGiveProgressionResult,
 } from "../clients/paldefender-client.js";
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
 import type { StoredConnection } from "../types/connections.js";
@@ -146,6 +148,14 @@ export class PalDefenderService {
     id: string,
   ): Promise<PalDefenderProgression> {
     return (await this.clientForServer(serverId)).getProgression(id);
+  }
+
+  async giveProgression(
+    serverId: string,
+    id: string,
+    grant: PalDefenderProgressionGrant,
+  ): Promise<PalDefenderGiveProgressionResult> {
+    return (await this.clientForServer(serverId)).giveProgression(id, grant);
   }
 
   async guilds(serverId: string): Promise<PalDefenderGuild[]> {
