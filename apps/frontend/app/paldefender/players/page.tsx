@@ -12,21 +12,33 @@ import {
   type PalDefenderPlayer,
 } from "../../../lib/api";
 import { palDefenderPlayerHref } from "../../../lib/paldefender";
+import {
+  PalDefenderServerSelector,
+  usePalDefenderServerSelection,
+} from "../../../components/PalDefenderServerSelector";
 
 export default function PalDefenderPlayersPage() {
   const router = useRouter();
+  const selection = usePalDefenderServerSelection();
   const [players, setPlayers] = useState<PalDefenderPlayer[] | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void getPalDefenderPlayers()
+    if (!selection.selectedServerId) {
+      setPlayers(null);
+      setError("");
+      return;
+    }
+    setPlayers(null);
+    setError("");
+    void getPalDefenderPlayers(selection.selectedServerId)
       .then(setPlayers)
       .catch((value: unknown) => {
         setError(
           value instanceof Error ? value.message : "Unable to load players.",
         );
       });
-  }, []);
+  }, [selection.selectedServerId]);
 
   return (
     <ApplicationShell>
@@ -36,8 +48,11 @@ export default function PalDefenderPlayersPage() {
           title="Players"
           description="Known players reported live by the configured PalDefender server."
         />
+        <PalDefenderServerSelector selection={selection} />
         {error && <Alert color="red">{error}</Alert>}
-        {!players && !error && <BrandedLoader message="Loading players" />}
+        {selection.selectedServerId && !players && !error && (
+          <BrandedLoader message="Loading players" />
+        )}
         {players && (
           <SectionCard p={0}>
             <ScrollArea>
@@ -59,12 +74,22 @@ export default function PalDefenderPlayersPage() {
                       role="link"
                       style={{ cursor: "pointer" }}
                       onClick={() =>
-                        router.push(palDefenderPlayerHref(player.playerId))
+                        router.push(
+                          palDefenderPlayerHref(
+                            selection.selectedServerId,
+                            player.playerId,
+                          ),
+                        )
                       }
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          router.push(palDefenderPlayerHref(player.playerId));
+                          router.push(
+                            palDefenderPlayerHref(
+                              selection.selectedServerId,
+                              player.playerId,
+                            ),
+                          );
                         }
                       }}
                     >

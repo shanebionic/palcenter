@@ -170,19 +170,22 @@ test("central role permissions enforce administrator, moderator, and visitor sco
   assert.equal(
     authorization.permissionFor(
       "POST",
-      "/api/paldefender/players/player-1/kick",
+      "/api/servers/server-a/paldefender/players/player-1/kick",
     ),
     "operate",
   );
   assert.equal(
     authorization.permissionFor(
       "POST",
-      "/api/paldefender/players/player-1/ban",
+      "/api/servers/server-a/paldefender/players/player-1/ban",
     ),
     "operate",
   );
   assert.equal(
-    authorization.permissionFor("POST", "/api/paldefender/broadcast"),
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/paldefender/broadcast",
+    ),
     "operate",
   );
   assert.equal(

@@ -16,6 +16,9 @@ export interface AddConnectionInput {
   companionPort?: number;
   companionApiToken?: string;
   administratorPlayerId?: string | null;
+  palDefenderEnabled?: boolean;
+  palDefenderEndpoint?: string | null;
+  palDefenderToken?: string;
 }
 
 export interface UpdateConnectionInput {
@@ -27,6 +30,10 @@ export interface UpdateConnectionInput {
   companionPort?: number;
   companionApiToken?: string;
   administratorPlayerId?: string | null;
+  palDefenderEnabled?: boolean;
+  palDefenderEndpoint?: string | null;
+  palDefenderToken?: string;
+  clearPalDefenderToken?: boolean;
 }
 
 export class ConnectionNotFoundError extends Error {
@@ -85,6 +92,9 @@ export class ConnectionManager {
       companionPort: input.companionPort ?? 8213,
       companionApiToken: input.companionApiToken ?? "",
       administratorPlayerId: input.administratorPlayerId ?? null,
+      palDefenderEnabled: input.palDefenderEnabled ?? false,
+      palDefenderEndpoint: normalizeOptionalUrl(input.palDefenderEndpoint),
+      palDefenderToken: input.palDefenderToken ?? "",
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -122,6 +132,17 @@ export class ConnectionManager {
         input.administratorPlayerId === undefined
           ? (existing.administratorPlayerId ?? null)
           : input.administratorPlayerId,
+      palDefenderEnabled:
+        input.palDefenderEnabled ?? existing.palDefenderEnabled ?? false,
+      palDefenderEndpoint:
+        input.palDefenderEndpoint === undefined
+          ? (existing.palDefenderEndpoint ?? null)
+          : normalizeOptionalUrl(input.palDefenderEndpoint),
+      palDefenderToken: input.clearPalDefenderToken
+        ? ""
+        : input.palDefenderToken === undefined || input.palDefenderToken === ""
+          ? (existing.palDefenderToken ?? "")
+          : input.palDefenderToken,
       updatedAt: new Date().toISOString(),
     };
     await this.repository.update(connection);
@@ -154,6 +175,25 @@ export class ConnectionManager {
         tokenConfigured: (connection.companionApiToken?.length ?? 0) > 0,
         administratorPlayerId: connection.administratorPlayerId ?? null,
       },
+      palDefender: {
+        enabled: connection.palDefenderEnabled ?? false,
+        endpoint: sanitizeOptionalUrl(connection.palDefenderEndpoint),
+        tokenConfigured: (connection.palDefenderToken?.length ?? 0) > 0,
+      },
     };
   }
+}
+
+function normalizeOptionalUrl(value: string | null | undefined): string | null {
+  return value?.trim().replace(/\/+$/, "") || null;
+}
+
+function sanitizeOptionalUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const url = new URL(value);
+  url.username = "";
+  url.password = "";
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
 }

@@ -28,8 +28,8 @@ import { normalizePalGrant, validatePalGrant } from "../lib/paldefender-pals";
 
 test("builds and loads an encoded PalDefender base details route", async () => {
   assert.equal(
-    palDefenderBaseHref("base id/unsafe"),
-    "/paldefender/bases/base%20id%2Funsafe",
+    palDefenderBaseHref("server-1", "base id/unsafe"),
+    "/paldefender/bases/base%20id%2Funsafe?serverId=server-1",
   );
   const originalFetch = globalThis.fetch;
   let requestedUrl = "";
@@ -38,8 +38,11 @@ test("builds and loads an encoded PalDefender base details route", async () => {
     return Response.json({ baseId: "base-1", level: 2, pals: [] });
   };
   try {
-    const base = await getPalDefenderBase("base-1");
-    assert.equal(requestedUrl, "/api/paldefender/bases/base-1");
+    const base = await getPalDefenderBase("server-1", "base-1");
+    assert.equal(
+      requestedUrl,
+      "/api/servers/server-1/paldefender/bases/base-1",
+    );
     assert.equal(base.baseId, "base-1");
   } finally {
     globalThis.fetch = originalFetch;
@@ -65,8 +68,8 @@ test("loads normalized PalDefender bases through the PalCenter API", async () =>
     });
   };
   try {
-    const bases = await getPalDefenderBases();
-    assert.equal(requestedUrl, "/api/paldefender/bases");
+    const bases = await getPalDefenderBases("server-1");
+    assert.equal(requestedUrl, "/api/servers/server-1/paldefender/bases");
     assert.equal(bases[0]?.baseId, "base-1");
   } finally {
     globalThis.fetch = originalFetch;
@@ -75,8 +78,8 @@ test("loads normalized PalDefender bases through the PalCenter API", async () =>
 
 test("builds an encoded PalDefender guild details route", () => {
   assert.equal(
-    palDefenderGuildHref("guild id/unsafe"),
-    "/paldefender/guilds/guild%20id%2Funsafe",
+    palDefenderGuildHref("server-1", "guild id/unsafe"),
+    "/paldefender/guilds/guild%20id%2Funsafe?serverId=server-1",
   );
 });
 
@@ -88,8 +91,11 @@ test("loads PalDefender guild details through the PalCenter API", async () => {
     return Response.json({ guildId: "guild-1", name: "Pal Tamers" });
   };
   try {
-    const guild = await getPalDefenderGuild("guild-1");
-    assert.equal(requestedUrl, "/api/paldefender/guilds/guild-1");
+    const guild = await getPalDefenderGuild("server-1", "guild-1");
+    assert.equal(
+      requestedUrl,
+      "/api/servers/server-1/paldefender/guilds/guild-1",
+    );
     assert.equal(guild.guildId, "guild-1");
   } finally {
     globalThis.fetch = originalFetch;
@@ -117,8 +123,8 @@ test("loads normalized PalDefender guilds through the PalCenter API", async () =
     });
   };
   try {
-    const guilds = await getPalDefenderGuilds();
-    assert.equal(requestedUrl, "/api/paldefender/guilds");
+    const guilds = await getPalDefenderGuilds("server-1");
+    assert.equal(requestedUrl, "/api/servers/server-1/paldefender/guilds");
     assert.equal(guilds[0]?.guildId, "guild-1");
   } finally {
     globalThis.fetch = originalFetch;
@@ -127,8 +133,8 @@ test("loads normalized PalDefender guilds through the PalCenter API", async () =
 
 test("builds an encoded PalDefender player workspace route", () => {
   assert.equal(
-    palDefenderPlayerHref("player id/unsafe"),
-    "/paldefender/players/player%20id%2Funsafe",
+    palDefenderPlayerHref("server-1", "player id/unsafe"),
+    "/paldefender/players/player%20id%2Funsafe?serverId=server-1",
   );
 });
 
@@ -156,10 +162,10 @@ test("submits a normalized Unicode PalDefender broadcast request", async () => {
   };
   try {
     const message = "Hello, Palpagos! ⚡";
-    assert.deepEqual(await broadcastPalDefenderMessage(message), {
+    assert.deepEqual(await broadcastPalDefenderMessage("server-1", message), {
       success: true,
     });
-    assert.equal(requestedUrl, "/api/paldefender/broadcast");
+    assert.equal(requestedUrl, "/api/servers/server-1/paldefender/broadcast");
     assert.equal(requestBody, JSON.stringify({ message }));
   } finally {
     globalThis.fetch = originalFetch;
@@ -183,7 +189,7 @@ test("submits every documented PalDefender ban option", async () => {
   };
   try {
     assert.deepEqual(
-      await banPalDefenderPlayer("player-1", {
+      await banPalDefenderPlayer("server-1", "player-1", {
         reason: "  Repeated abuse  ",
         ipBan: true,
       }),
@@ -195,7 +201,10 @@ test("submits every documented PalDefender ban option", async () => {
         kickedPlayers: 1,
       },
     );
-    assert.equal(requestedUrl, "/api/paldefender/players/player-1/ban");
+    assert.equal(
+      requestedUrl,
+      "/api/servers/server-1/paldefender/players/player-1/ban",
+    );
     assert.equal(
       requestBody,
       JSON.stringify({ reason: "Repeated abuse", ipBan: true }),
@@ -216,10 +225,17 @@ test("submits a normalized PalDefender kick request", async () => {
   };
   try {
     assert.deepEqual(
-      await kickPalDefenderPlayer("player-1", "  Please reconnect  "),
+      await kickPalDefenderPlayer(
+        "server-1",
+        "player-1",
+        "  Please reconnect  ",
+      ),
       { success: true, playerId: "player-1" },
     );
-    assert.equal(requestedUrl, "/api/paldefender/players/player-1/kick");
+    assert.equal(
+      requestedUrl,
+      "/api/servers/server-1/paldefender/players/player-1/kick",
+    );
     assert.equal(requestBody, JSON.stringify({ message: "Please reconnect" }));
   } finally {
     globalThis.fetch = originalFetch;
@@ -253,13 +269,16 @@ test("submits multiple item grants to the selected PalDefender player", async ()
   };
   try {
     assert.deepEqual(
-      await givePalDefenderItems("player-1", [
+      await givePalDefenderItems("server-1", "player-1", [
         { itemId: "CopperIngot", count: 5 },
         { itemId: "Polymer", count: 2 },
       ]),
       { playerId: "player-1", grantedItems: 7 },
     );
-    assert.equal(requestedUrl, "/api/paldefender/players/player-1/items");
+    assert.equal(
+      requestedUrl,
+      "/api/servers/server-1/paldefender/players/player-1/items",
+    );
     assert.equal(
       requestBody,
       JSON.stringify({
@@ -302,10 +321,15 @@ test("submits Pal grants to the selected PalDefender player", async () => {
   };
   try {
     assert.deepEqual(
-      await givePalDefenderPals("player-1", [{ palId: "Anubis", level: 35 }]),
+      await givePalDefenderPals("server-1", "player-1", [
+        { palId: "Anubis", level: 35 },
+      ]),
       { playerId: "player-1", grantedPals: 1 },
     );
-    assert.equal(requestedUrl, "/api/paldefender/players/player-1/pals");
+    assert.equal(
+      requestedUrl,
+      "/api/servers/server-1/paldefender/players/player-1/pals",
+    );
     assert.equal(
       requestBody,
       JSON.stringify({ pals: [{ palId: "Anubis", level: 35 }] }),

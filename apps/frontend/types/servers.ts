@@ -11,6 +11,11 @@ export interface PublicConnection {
     tokenConfigured: boolean;
     administratorPlayerId: string | null;
   };
+  palDefender: {
+    enabled: boolean;
+    endpoint: string | null;
+    tokenConfigured: boolean;
+  };
 }
 
 export interface ServerStatus {

@@ -19,6 +19,10 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ApplicationShell } from "../../../../components/ApplicationShell";
 import { BrandedLoader } from "../../../../components/BrandedLoader";
 import { PageHeader } from "../../../../components/PageHeader";
+import {
+  PalDefenderServerSelector,
+  usePalDefenderServerSelection,
+} from "../../../../components/PalDefenderServerSelector";
 import { SectionCard } from "../../../../components/ui/SectionCard";
 import {
   getPalDefenderBase,
@@ -48,6 +52,7 @@ function Value({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export default function PalDefenderBaseDetailsPage() {
+  const selection = usePalDefenderServerSelection();
   const { baseId: encodedBaseId } = useParams<{ baseId: string }>();
   const baseId = decodeURIComponent(encodedBaseId);
   const [base, setBase] = useState<PalDefenderBaseDetails | null>(null);
@@ -56,10 +61,11 @@ export default function PalDefenderBaseDetailsPage() {
 
   const loadBase = useCallback(
     async (refresh = false) => {
+      if (!selection.selectedServerId) return;
       if (refresh) setRefreshing(true);
       setError("");
       try {
-        setBase(await getPalDefenderBase(baseId));
+        setBase(await getPalDefenderBase(selection.selectedServerId, baseId));
       } catch (value) {
         setError(
           value instanceof Error
@@ -70,7 +76,7 @@ export default function PalDefenderBaseDetailsPage() {
         setRefreshing(false);
       }
     },
-    [baseId],
+    [baseId, selection.selectedServerId],
   );
 
   useEffect(() => {
@@ -82,7 +88,7 @@ export default function PalDefenderBaseDetailsPage() {
       <Stack gap="xl">
         <Button
           component={Link}
-          href="/paldefender/bases"
+          href={`/paldefender/bases?serverId=${encodeURIComponent(selection.selectedServerId ?? "")}`}
           variant="subtle"
           leftSection={<IconArrowLeft size={18} />}
           w="fit-content"
@@ -104,6 +110,7 @@ export default function PalDefenderBaseDetailsPage() {
             </Button>
           }
         />
+        <PalDefenderServerSelector selection={selection} />
         {error && <Alert color="red">{error}</Alert>}
         {!base && !error && <BrandedLoader message="Loading base details" />}
         {base && (
@@ -127,7 +134,10 @@ export default function PalDefenderBaseDetailsPage() {
                   <Value label="Guild">
                     <Text
                       component={Link}
-                      href={palDefenderGuildHref(base.guildId)}
+                      href={palDefenderGuildHref(
+                        selection.selectedServerId!,
+                        base.guildId,
+                      )}
                       c="cyan.4"
                     >
                       {base.guildName ?? "—"}

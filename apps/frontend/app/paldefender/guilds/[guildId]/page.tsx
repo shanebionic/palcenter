@@ -20,6 +20,10 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ApplicationShell } from "../../../../components/ApplicationShell";
 import { BrandedLoader } from "../../../../components/BrandedLoader";
 import { PageHeader } from "../../../../components/PageHeader";
+import {
+  PalDefenderServerSelector,
+  usePalDefenderServerSelection,
+} from "../../../../components/PalDefenderServerSelector";
 import { SectionCard } from "../../../../components/ui/SectionCard";
 import {
   getPalDefenderGuild,
@@ -39,6 +43,7 @@ function Value({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export default function PalDefenderGuildDetailsPage() {
+  const selection = usePalDefenderServerSelection();
   const { guildId: encodedGuildId } = useParams<{ guildId: string }>();
   const guildId = decodeURIComponent(encodedGuildId);
   const [guild, setGuild] = useState<PalDefenderGuildDetails | null>(null);
@@ -47,10 +52,13 @@ export default function PalDefenderGuildDetailsPage() {
 
   const loadGuild = useCallback(
     async (refresh = false) => {
+      if (!selection.selectedServerId) return;
       if (refresh) setRefreshing(true);
       setError("");
       try {
-        setGuild(await getPalDefenderGuild(guildId));
+        setGuild(
+          await getPalDefenderGuild(selection.selectedServerId, guildId),
+        );
       } catch (value) {
         setError(
           value instanceof Error
@@ -61,7 +69,7 @@ export default function PalDefenderGuildDetailsPage() {
         setRefreshing(false);
       }
     },
-    [guildId],
+    [guildId, selection.selectedServerId],
   );
 
   useEffect(() => {
@@ -73,7 +81,7 @@ export default function PalDefenderGuildDetailsPage() {
       <Stack gap="xl">
         <Button
           component={Link}
-          href="/paldefender/guilds"
+          href={`/paldefender/guilds?serverId=${encodeURIComponent(selection.selectedServerId ?? "")}`}
           variant="subtle"
           leftSection={<IconArrowLeft size={18} />}
           w="fit-content"
@@ -95,6 +103,7 @@ export default function PalDefenderGuildDetailsPage() {
             </Button>
           }
         />
+        <PalDefenderServerSelector selection={selection} />
         {error && <Alert color="red">{error}</Alert>}
         {!guild && !error && <BrandedLoader message="Loading guild details" />}
         {guild && (
@@ -150,7 +159,10 @@ export default function PalDefenderGuildDetailsPage() {
                           <Table.Td fw={600}>
                             <Text
                               component={Link}
-                              href={palDefenderPlayerHref(member.playerId)}
+                              href={palDefenderPlayerHref(
+                                selection.selectedServerId!,
+                                member.playerId,
+                              )}
                               c="cyan.4"
                             >
                               {member.name ?? "—"}

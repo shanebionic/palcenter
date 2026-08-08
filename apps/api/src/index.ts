@@ -3,10 +3,7 @@ import Fastify from "fastify";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { PalworldRestError } from "./clients/palworld-rest-client.js";
-import {
-  PalDefenderClient,
-  PalDefenderError,
-} from "./clients/paldefender-client.js";
+import { PalDefenderError } from "./clients/paldefender-client.js";
 import { NotificationDeliveryError } from "./providers/notification-provider.js";
 import { JsonConnectionRepository } from "./repositories/json-connection-repository.js";
 import { JsonNotificationRepository } from "./repositories/json-notification-repository.js";
@@ -103,7 +100,9 @@ import {
 import { PlayerActivityEventService } from "./services/player-activity-event-service.js";
 import { CompanionDiscoveryService } from "./services/companion-discovery-service.js";
 import {
-  PalDefenderNotConfiguredError,
+  PalDefenderConfigurationRequiredError,
+  PalDefenderDisabledError,
+  PalDefenderServerNotFoundError,
   PalDefenderService,
 } from "./services/paldefender-service.js";
 
@@ -119,68 +118,51 @@ const packageVersion = z
     ),
   ).version;
 
-const environmentSchema = z
-  .object({
-    NODE_ENV: z
-      .enum(["development", "production", "test"])
-      .default("development"),
-    PORT: z.coerce.number().int().positive().default(3001),
-    CONFIG_DIR: z.string().min(1).default("./data"),
-    HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
-    TELEMETRY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
-    TELEMETRY_RETENTION_DAYS: telemetryRetentionDaysSchema,
-    AUTOMATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(15),
-    PALCENTER_VERSION: z.preprocess(
-      (value) => (value === "" ? undefined : value),
-      z.string().trim().min(1).max(50).default(packageVersion),
-    ),
-    PALCENTER_CHANNEL: z
-      .enum(["production", "development"])
-      .default("development"),
-    PALCENTER_COMMIT: z.preprocess(
-      (value) => (value === "" ? undefined : value),
-      z.string().trim().min(1).max(64).default("unknown"),
-    ),
-    PALCENTER_DEPLOYMENT: z.string().trim().min(1).max(50).default("Local"),
-    PALCENTER_SESSION_SECRET: z.preprocess(
-      (value) => (value === "" ? undefined : value),
-      z.string().min(32).max(1_024).optional(),
-    ),
-    PALCENTER_SESSION_DURATION_SECONDS: z.coerce
-      .number()
-      .int()
-      .min(300)
-      .max(604_800)
-      .default(43_200),
-    PALCENTER_SESSION_COOKIE_SECURE: booleanEnvironmentValue.default("false"),
-    PALCENTER_CORS_ORIGINS: z.string().default(""),
-    PALCENTER_TRUST_PROXY: booleanEnvironmentValue.default("false"),
-    LOG_LEVEL: z
-      .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
-      .default("info"),
-    PALCENTER_BACKUP_MAX_BYTES: z.coerce
-      .number()
-      .int()
-      .min(1_048_576)
-      .max(1_073_741_824)
-      .default(536_870_912),
-    PALDEFENDER_URL: z.preprocess(
-      (value) => (value === "" ? undefined : value),
-      z.string().url().optional(),
-    ),
-    PALDEFENDER_TOKEN: z.preprocess(
-      (value) => (value === "" ? undefined : value),
-      z.string().trim().min(1).optional(),
-    ),
-  })
-  .refine(
-    (value) =>
-      Boolean(value.PALDEFENDER_URL) === Boolean(value.PALDEFENDER_TOKEN),
-    {
-      message: "PALDEFENDER_URL and PALDEFENDER_TOKEN must be set together.",
-      path: ["PALDEFENDER_URL"],
-    },
-  );
+const environmentSchema = z.object({
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
+  PORT: z.coerce.number().int().positive().default(3001),
+  CONFIG_DIR: z.string().min(1).default("./data"),
+  HISTORY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+  TELEMETRY_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(30),
+  TELEMETRY_RETENTION_DAYS: telemetryRetentionDaysSchema,
+  AUTOMATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).default(15),
+  PALCENTER_VERSION: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().trim().min(1).max(50).default(packageVersion),
+  ),
+  PALCENTER_CHANNEL: z
+    .enum(["production", "development"])
+    .default("development"),
+  PALCENTER_COMMIT: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().trim().min(1).max(64).default("unknown"),
+  ),
+  PALCENTER_DEPLOYMENT: z.string().trim().min(1).max(50).default("Local"),
+  PALCENTER_SESSION_SECRET: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(32).max(1_024).optional(),
+  ),
+  PALCENTER_SESSION_DURATION_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(300)
+    .max(604_800)
+    .default(43_200),
+  PALCENTER_SESSION_COOKIE_SECURE: booleanEnvironmentValue.default("false"),
+  PALCENTER_CORS_ORIGINS: z.string().default(""),
+  PALCENTER_TRUST_PROXY: booleanEnvironmentValue.default("false"),
+  LOG_LEVEL: z
+    .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
+    .default("info"),
+  PALCENTER_BACKUP_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_048_576)
+    .max(1_073_741_824)
+    .default(536_870_912),
+});
 
 const parsedEnvironment = environmentSchema.safeParse(process.env);
 
@@ -218,6 +200,7 @@ const app = Fastify({
         "res.headers.set-cookie",
         "req.body.adminPassword",
         "req.body.companionApiToken",
+        "req.body.palDefenderToken",
         "req.body.password",
         "req.body.currentPassword",
         "req.body.newPassword",
@@ -328,14 +311,7 @@ const authenticationService = new AuthenticationService(
 );
 const authorizationService = new AuthorizationService();
 const connectionManager = new ConnectionManager(repository);
-const palDefenderService = new PalDefenderService(
-  environment.PALDEFENDER_URL && environment.PALDEFENDER_TOKEN
-    ? new PalDefenderClient(
-        environment.PALDEFENDER_URL,
-        environment.PALDEFENDER_TOKEN,
-      )
-    : null,
-);
+const palDefenderService = new PalDefenderService(repository);
 const notificationService = new NotificationService(
   notificationRepository,
   repository,
@@ -746,19 +722,29 @@ app.get("/api/health", async (_request, reply) => {
   }
 });
 
-app.get("/api/paldefender/status", async () => palDefenderService.status());
+const palDefenderServerParametersSchema = z.object({
+  serverId: z.string().trim().min(1).max(128),
+});
 
-app.get("/api/paldefender/players", async () => ({
-  players: await palDefenderService.players(),
-}));
+app.get("/api/servers/:serverId/paldefender/status", async (request) => {
+  const { serverId } = palDefenderServerParametersSchema.parse(request.params);
+  return palDefenderService.status(serverId);
+});
 
-app.get("/api/paldefender/guilds", async () => ({
-  guilds: await palDefenderService.guilds(),
-}));
+app.get("/api/servers/:serverId/paldefender/players", async (request) => {
+  const { serverId } = palDefenderServerParametersSchema.parse(request.params);
+  return { players: await palDefenderService.players(serverId) };
+});
 
-app.get("/api/paldefender/bases", async () => ({
-  bases: await palDefenderService.bases(),
-}));
+app.get("/api/servers/:serverId/paldefender/guilds", async (request) => {
+  const { serverId } = palDefenderServerParametersSchema.parse(request.params);
+  return { guilds: await palDefenderService.guilds(serverId) };
+});
+
+app.get("/api/servers/:serverId/paldefender/bases", async (request) => {
+  const { serverId } = palDefenderServerParametersSchema.parse(request.params);
+  return { bases: await palDefenderService.bases(serverId) };
+});
 
 const palDefenderBaseParametersSchema = z.object({
   baseId: z
@@ -769,9 +755,11 @@ const palDefenderBaseParametersSchema = z.object({
     .regex(/^[A-Za-z0-9_-]+$/),
 });
 
-app.get("/api/paldefender/bases/:baseId", async (request) => {
-  const { baseId } = palDefenderBaseParametersSchema.parse(request.params);
-  return palDefenderService.base(baseId);
+app.get("/api/servers/:serverId/paldefender/bases/:baseId", async (request) => {
+  const { serverId, baseId } = palDefenderServerParametersSchema
+    .extend(palDefenderBaseParametersSchema.shape)
+    .parse(request.params);
+  return palDefenderService.base(serverId, baseId);
 });
 
 const palDefenderGuildParametersSchema = z.object({
@@ -783,10 +771,15 @@ const palDefenderGuildParametersSchema = z.object({
     .regex(/^[A-Za-z0-9_-]+$/),
 });
 
-app.get("/api/paldefender/guilds/:guildId", async (request) => {
-  const { guildId } = palDefenderGuildParametersSchema.parse(request.params);
-  return palDefenderService.guild(guildId);
-});
+app.get(
+  "/api/servers/:serverId/paldefender/guilds/:guildId",
+  async (request) => {
+    const { serverId, guildId } = palDefenderServerParametersSchema
+      .extend(palDefenderGuildParametersSchema.shape)
+      .parse(request.params);
+    return palDefenderService.guild(serverId, guildId);
+  },
+);
 
 const palDefenderPlayerParametersSchema = z.object({
   playerId: z
@@ -797,25 +790,47 @@ const palDefenderPlayerParametersSchema = z.object({
     .regex(/^[A-Za-z0-9_-]+$/),
 });
 
-app.get("/api/paldefender/players/:playerId", async (request) => {
-  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
-  return palDefenderService.player(playerId);
-});
+app.get(
+  "/api/servers/:serverId/paldefender/players/:playerId",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    return palDefenderService.player(serverId, playerId);
+  },
+);
 
-app.get("/api/paldefender/players/:playerId/inventory", async (request) => {
-  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
-  return { items: await palDefenderService.inventory(playerId) };
-});
+app.get(
+  "/api/servers/:serverId/paldefender/players/:playerId/inventory",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    return { items: await palDefenderService.inventory(serverId, playerId) };
+  },
+);
 
-app.get("/api/paldefender/players/:playerId/pals", async (request) => {
-  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
-  return { pals: await palDefenderService.pals(playerId) };
-});
+app.get(
+  "/api/servers/:serverId/paldefender/players/:playerId/pals",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    return { pals: await palDefenderService.pals(serverId, playerId) };
+  },
+);
 
-app.get("/api/paldefender/players/:playerId/technology", async (request) => {
-  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
-  return { technologies: await palDefenderService.technology(playerId) };
-});
+app.get(
+  "/api/servers/:serverId/paldefender/players/:playerId/technology",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    return {
+      technologies: await palDefenderService.technology(serverId, playerId),
+    };
+  },
+);
 
 const palDefenderKickBodySchema = z
   .object({ message: z.string().max(2_000).optional() })
@@ -865,53 +880,71 @@ const palDefenderGivePalsBodySchema = z
   })
   .strict();
 
-app.post("/api/paldefender/players/:playerId/items", async (request) => {
-  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
-  const { items } = palDefenderGiveItemsBodySchema.parse(request.body ?? {});
-  const actor = currentUser(request.headers.cookie);
-  app.log.info(
-    { actorUserId: actor.id, playerId, grantCount: items.length },
-    "PalDefender give items requested.",
-  );
-  try {
-    const result = await palDefenderService.giveItems(playerId, items);
+app.post(
+  "/api/servers/:serverId/paldefender/players/:playerId/items",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    const { items } = palDefenderGiveItemsBodySchema.parse(request.body ?? {});
+    const actor = currentUser(request.headers.cookie);
     app.log.info(
-      { actorUserId: actor.id, playerId, grantedItems: result.grantedItems },
-      "PalDefender give items completed.",
+      { actorUserId: actor.id, playerId, grantCount: items.length },
+      "PalDefender give items requested.",
     );
-    return result;
-  } catch (error) {
-    app.log.warn(
-      { err: error, actorUserId: actor.id, playerId },
-      "PalDefender give items failed.",
-    );
-    throw error;
-  }
-});
+    try {
+      const result = await palDefenderService.giveItems(
+        serverId,
+        playerId,
+        items,
+      );
+      app.log.info(
+        { actorUserId: actor.id, playerId, grantedItems: result.grantedItems },
+        "PalDefender give items completed.",
+      );
+      return result;
+    } catch (error) {
+      app.log.warn(
+        { err: error, actorUserId: actor.id, playerId },
+        "PalDefender give items failed.",
+      );
+      throw error;
+    }
+  },
+);
 
-app.post("/api/paldefender/players/:playerId/pals", async (request) => {
-  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
-  const { pals } = palDefenderGivePalsBodySchema.parse(request.body ?? {});
-  const actor = currentUser(request.headers.cookie);
-  app.log.info(
-    { actorUserId: actor.id, playerId, grantCount: pals.length },
-    "PalDefender give Pals requested.",
-  );
-  try {
-    const result = await palDefenderService.givePals(playerId, pals);
+app.post(
+  "/api/servers/:serverId/paldefender/players/:playerId/pals",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    const { pals } = palDefenderGivePalsBodySchema.parse(request.body ?? {});
+    const actor = currentUser(request.headers.cookie);
     app.log.info(
-      { actorUserId: actor.id, playerId, grantedPals: result.grantedPals },
-      "PalDefender give Pals completed.",
+      { actorUserId: actor.id, playerId, grantCount: pals.length },
+      "PalDefender give Pals requested.",
     );
-    return result;
-  } catch (error) {
-    app.log.warn(
-      { err: error, actorUserId: actor.id, playerId },
-      "PalDefender give Pals failed.",
-    );
-    throw error;
-  }
-});
+    try {
+      const result = await palDefenderService.givePals(
+        serverId,
+        playerId,
+        pals,
+      );
+      app.log.info(
+        { actorUserId: actor.id, playerId, grantedPals: result.grantedPals },
+        "PalDefender give Pals completed.",
+      );
+      return result;
+    } catch (error) {
+      app.log.warn(
+        { err: error, actorUserId: actor.id, playerId },
+        "PalDefender give Pals failed.",
+      );
+      throw error;
+    }
+  },
+);
 
 async function executePalDefenderModeration<TResult>(options: {
   action: "kick" | "ban";
@@ -956,39 +989,50 @@ async function executePalDefenderModeration<TResult>(options: {
   }
 }
 
-app.post("/api/paldefender/players/:playerId/kick", async (request) => {
-  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
-  const { message } = palDefenderKickBodySchema.parse(request.body ?? {});
-  const actor = currentUser(request.headers.cookie);
-  return executePalDefenderModeration({
-    action: "kick",
-    actorUserId: actor.id,
-    playerId,
-    metadata: { messageProvided: Boolean(message?.trim()) },
-    execute: () => palDefenderService.kick(playerId, message),
-    resultMetadata: (result) => ({ success: result.success }),
-  });
-});
+app.post(
+  "/api/servers/:serverId/paldefender/players/:playerId/kick",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    const { message } = palDefenderKickBodySchema.parse(request.body ?? {});
+    const actor = currentUser(request.headers.cookie);
+    return executePalDefenderModeration({
+      action: "kick",
+      actorUserId: actor.id,
+      playerId,
+      metadata: { messageProvided: Boolean(message?.trim()) },
+      execute: () => palDefenderService.kick(serverId, playerId, message),
+      resultMetadata: (result) => ({ success: result.success }),
+    });
+  },
+);
 
-app.post("/api/paldefender/players/:playerId/ban", async (request) => {
-  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
-  const { reason, ipBan = false } = palDefenderBanBodySchema.parse(
-    request.body ?? {},
-  );
-  const actor = currentUser(request.headers.cookie);
-  return executePalDefenderModeration({
-    action: "ban",
-    actorUserId: actor.id,
-    playerId,
-    metadata: { reasonProvided: Boolean(reason?.trim()), ipBan },
-    execute: () => palDefenderService.ban(playerId, { reason, ipBan }),
-    resultMetadata: (result) => ({
-      success: result.success,
-      ipBanned: result.ipBanned,
-      kickedPlayers: result.kickedPlayers,
-    }),
-  });
-});
+app.post(
+  "/api/servers/:serverId/paldefender/players/:playerId/ban",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    const { reason, ipBan = false } = palDefenderBanBodySchema.parse(
+      request.body ?? {},
+    );
+    const actor = currentUser(request.headers.cookie);
+    return executePalDefenderModeration({
+      action: "ban",
+      actorUserId: actor.id,
+      playerId,
+      metadata: { reasonProvided: Boolean(reason?.trim()), ipBan },
+      execute: () =>
+        palDefenderService.ban(serverId, playerId, { reason, ipBan }),
+      resultMetadata: (result) => ({
+        success: result.success,
+        ipBanned: result.ipBanned,
+        kickedPlayers: result.kickedPlayers,
+      }),
+    });
+  },
+);
 
 const palDefenderBroadcastBodySchema = z
   .object({
@@ -998,7 +1042,8 @@ const palDefenderBroadcastBodySchema = z
   })
   .strict();
 
-app.post("/api/paldefender/broadcast", async (request) => {
+app.post("/api/servers/:serverId/paldefender/broadcast", async (request) => {
+  const { serverId } = palDefenderServerParametersSchema.parse(request.params);
   const { message } = palDefenderBroadcastBodySchema.parse(request.body ?? {});
   const actor = currentUser(request.headers.cookie);
   app.log.info(
@@ -1006,7 +1051,7 @@ app.post("/api/paldefender/broadcast", async (request) => {
     "PalDefender broadcast requested.",
   );
   try {
-    const result = await palDefenderService.broadcast(message);
+    const result = await palDefenderService.broadcast(serverId, message);
     app.log.info(
       { actorUserId: actor.id, success: result.success },
       "PalDefender broadcast completed.",
@@ -1159,6 +1204,9 @@ const connectionInputSchema = z
     companionHost: z.string().trim().min(1).max(253).nullable().optional(),
     companionPort: z.number().int().min(1).max(65535).optional(),
     companionApiToken: z.string().max(512).optional(),
+    palDefenderEnabled: z.boolean().optional(),
+    palDefenderEndpoint: baseHttpUrlSchema.nullable().optional(),
+    palDefenderToken: z.string().max(2_048).optional(),
     administratorPlayerId: z
       .string()
       .regex(/^[0-9A-Fa-f]{32}$/)
@@ -1168,6 +1216,7 @@ const connectionInputSchema = z
   .strict();
 const connectionUpdateSchema = connectionInputSchema.extend({
   adminPassword: z.string().max(1_024).optional(),
+  clearPalDefenderToken: z.boolean().optional(),
 });
 const serverIdSchema = z.object({
   id: z.string().min(1),
@@ -1193,6 +1242,22 @@ app.post("/api/servers/:id/test", async (request) => {
     parameters.id,
     input.baseUrl,
     input.adminPassword,
+  );
+});
+
+app.post("/api/servers/:id/paldefender/test", async (request) => {
+  const parameters = serverIdSchema.parse(request.params);
+  const input = z
+    .object({
+      endpoint: baseHttpUrlSchema,
+      token: z.string().max(2_048).optional(),
+    })
+    .strict()
+    .parse(request.body);
+  return palDefenderService.testForServer(
+    parameters.id,
+    input.endpoint.replace(/\/+$/, ""),
+    input.token,
   );
 });
 
@@ -1764,9 +1829,23 @@ app.setErrorHandler((error, request, reply) => {
     });
   }
 
-  if (error instanceof PalDefenderNotConfiguredError) {
-    return reply.code(503).send({
-      error: "paldefender_not_configured",
+  if (error instanceof PalDefenderDisabledError) {
+    return reply.code(409).send({
+      error: "paldefender_disabled",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof PalDefenderConfigurationRequiredError) {
+    return reply.code(409).send({
+      error: "paldefender_configuration_required",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof PalDefenderServerNotFoundError) {
+    return reply.code(404).send({
+      error: "server_not_found",
       message: error.message,
     });
   }
@@ -1774,13 +1853,15 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof PalDefenderError) {
     const isPalDefenderWriteRequest =
       request.method === "POST" &&
-      (/\/api\/paldefender\/players\/[^/]+\/(kick|ban|items|pals)$/.test(
+      (/\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals)$/.test(
         request.url,
       ) ||
-        request.url === "/api/paldefender/broadcast");
+        /\/api\/servers\/[^/]+\/paldefender\/broadcast$/.test(request.url));
     const playerOffline =
       request.method === "POST" &&
-      /\/api\/paldefender\/players\/[^/]+\/kick$/.test(request.url) &&
+      /\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/kick$/.test(
+        request.url,
+      ) &&
       error.statusCode === 404 &&
       error.code === "PLAYER_NOT_FOUND";
     const playerNotFound =

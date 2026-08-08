@@ -8,6 +8,9 @@ export interface StoredConnection {
   companionPort?: number;
   companionApiToken?: string;
   administratorPlayerId?: string | null;
+  palDefenderEnabled?: boolean;
+  palDefenderEndpoint?: string | null;
+  palDefenderToken?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -24,6 +27,11 @@ export interface PublicConnection {
     port: number;
     tokenConfigured: boolean;
     administratorPlayerId: string | null;
+  };
+  palDefender: {
+    enabled: boolean;
+    endpoint: string | null;
+    tokenConfigured: boolean;
   };
 }
 

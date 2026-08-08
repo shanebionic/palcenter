@@ -16,6 +16,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApplicationShell } from "../../../components/ApplicationShell";
 import { BrandedLoader } from "../../../components/BrandedLoader";
 import { PageHeader } from "../../../components/PageHeader";
+import {
+  PalDefenderServerSelector,
+  usePalDefenderServerSelection,
+} from "../../../components/PalDefenderServerSelector";
 import { SectionCard } from "../../../components/ui/SectionCard";
 import { getPalDefenderBases, type PalDefenderBase } from "../../../lib/api";
 import { palDefenderBaseHref } from "../../../lib/paldefender";
@@ -31,24 +35,29 @@ function position(value: { x: number; y: number; z: number }) {
 }
 
 export default function PalDefenderBasesPage() {
+  const selection = usePalDefenderServerSelection();
   const [bases, setBases] = useState<PalDefenderBase[] | null>(null);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadBases = useCallback(async (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    setError("");
-    try {
-      setBases(await getPalDefenderBases());
-    } catch (value) {
-      setError(
-        value instanceof Error ? value.message : "Unable to load bases.",
-      );
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
+  const loadBases = useCallback(
+    async (refresh = false) => {
+      if (!selection.selectedServerId) return;
+      if (refresh) setRefreshing(true);
+      setError("");
+      try {
+        setBases(await getPalDefenderBases(selection.selectedServerId));
+      } catch (value) {
+        setError(
+          value instanceof Error ? value.message : "Unable to load bases.",
+        );
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    [selection.selectedServerId],
+  );
 
   useEffect(() => {
     void loadBases();
@@ -82,6 +91,7 @@ export default function PalDefenderBasesPage() {
             </Button>
           }
         />
+        <PalDefenderServerSelector selection={selection} />
         {error && <Alert color="red">{error}</Alert>}
         {!bases && !error && <BrandedLoader message="Loading bases" />}
         {bases && (
@@ -115,7 +125,10 @@ export default function PalDefenderBasesPage() {
                         <Table.Td>
                           <Text
                             component={Link}
-                            href={palDefenderBaseHref(base.baseId)}
+                            href={palDefenderBaseHref(
+                              selection.selectedServerId!,
+                              base.baseId,
+                            )}
                             ff="monospace"
                             size="sm"
                             c="cyan.4"

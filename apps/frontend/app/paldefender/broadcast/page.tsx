@@ -6,6 +6,10 @@ import { IconBroadcast, IconSend } from "@tabler/icons-react";
 import { useState } from "react";
 import { ApplicationShell } from "../../../components/ApplicationShell";
 import { PageHeader } from "../../../components/PageHeader";
+import {
+  PalDefenderServerSelector,
+  usePalDefenderServerSelection,
+} from "../../../components/PalDefenderServerSelector";
 import { SectionCard } from "../../../components/ui/SectionCard";
 import { broadcastPalDefenderMessage } from "../../../lib/api";
 import {
@@ -14,6 +18,7 @@ import {
 } from "../../../lib/paldefender-broadcast";
 
 export default function PalDefenderBroadcastPage() {
+  const selection = usePalDefenderServerSelection();
   const [message, setMessage] = useState("");
   const [validationError, setValidationError] = useState("");
   const [confirmationOpened, setConfirmationOpened] = useState(false);
@@ -34,7 +39,8 @@ export default function PalDefenderBroadcastPage() {
     if (sending) return;
     setSending(true);
     try {
-      await broadcastPalDefenderMessage(message);
+      if (!selection.selectedServerId) return;
+      await broadcastPalDefenderMessage(selection.selectedServerId, message);
       setConfirmationOpened(false);
       setMessage("");
       notifications.show({
@@ -64,6 +70,7 @@ export default function PalDefenderBroadcastPage() {
           title="Broadcast"
           description="Send a chat-style message to every player currently connected to the server."
         />
+        <PalDefenderServerSelector selection={selection} />
         <SectionCard>
           <Stack gap="md">
             <Textarea
@@ -87,7 +94,7 @@ export default function PalDefenderBroadcastPage() {
               <Button
                 leftSection={<IconBroadcast size={18} />}
                 onClick={confirm}
-                disabled={sending}
+                disabled={sending || !selection.selectedServerId}
               >
                 Send Broadcast
               </Button>

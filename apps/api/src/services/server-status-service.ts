@@ -151,6 +151,11 @@ export class ServerStatusService {
       baseUrl: connection.baseUrl,
       createdAt: connection.createdAt,
       updatedAt: connection.updatedAt,
+      palDefender: {
+        enabled: connection.palDefenderEnabled ?? false,
+        endpoint: connection.palDefenderEndpoint ?? null,
+        tokenConfigured: (connection.palDefenderToken?.length ?? 0) > 0,
+      },
       companion: {
         enabled: connection.companionEnabled ?? true,
         host: connection.companionHost ?? null,

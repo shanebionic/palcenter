@@ -44,6 +44,8 @@ interface PlayersResponse {
 }
 
 export interface PalDefenderStatus {
+  enabled: boolean;
+  configured: boolean;
   connected: boolean;
   version: string;
   responseTime: number;
@@ -241,6 +243,9 @@ export interface ServerConnectionInput {
   companionPort?: number;
   companionApiToken?: string;
   administratorPlayerId?: string | null;
+  palDefenderEnabled?: boolean;
+  palDefenderEndpoint?: string | null;
+  palDefenderToken?: string;
 }
 
 export interface ServerConnectionUpdate {
@@ -252,6 +257,10 @@ export interface ServerConnectionUpdate {
   companionPort?: number;
   companionApiToken?: string;
   administratorPlayerId?: string | null;
+  palDefenderEnabled?: boolean;
+  palDefenderEndpoint?: string | null;
+  palDefenderToken?: string;
+  clearPalDefenderToken?: boolean;
 }
 
 export interface ServerTestInput {
@@ -270,6 +279,12 @@ export interface ConnectionTestResult {
     serverfps: number;
   };
   latencyMs: number;
+}
+
+export interface PalDefenderConnectionTestResult {
+  connected: true;
+  version: string;
+  responseTime: number;
 }
 
 function errorMessage(value: unknown): string | undefined {
@@ -528,6 +543,16 @@ export function testServerUpdate(
   );
 }
 
+export function testPalDefenderConnection(
+  serverId: string,
+  input: { endpoint: string; token?: string },
+): Promise<PalDefenderConnectionTestResult> {
+  return jsonRequest<PalDefenderConnectionTestResult>(
+    `/api/servers/${encodeURIComponent(serverId)}/paldefender/test`,
+    input,
+  );
+}
+
 export function updateServer(
   id: string,
   input: ServerConnectionUpdate,
@@ -592,112 +617,135 @@ export async function getPlayers(serverId: string): Promise<ConnectedPlayer[]> {
   return result.players;
 }
 
-export function getPalDefenderStatus(): Promise<PalDefenderStatus> {
-  return request<PalDefenderStatus>("/api/paldefender/status", {
+function palDefenderPath(serverId: string): string {
+  return `/api/servers/${encodeURIComponent(serverId)}/paldefender`;
+}
+
+export function getPalDefenderStatus(
+  serverId: string,
+): Promise<PalDefenderStatus> {
+  return request<PalDefenderStatus>(`${palDefenderPath(serverId)}/status`, {
     cache: "no-store",
   });
 }
 
-export async function getPalDefenderPlayers(): Promise<PalDefenderPlayer[]> {
+export async function getPalDefenderPlayers(
+  serverId: string,
+): Promise<PalDefenderPlayer[]> {
   const result = await request<{ players: PalDefenderPlayer[] }>(
-    "/api/paldefender/players",
+    `${palDefenderPath(serverId)}/players`,
     { cache: "no-store" },
   );
   return result.players;
 }
 
-export async function getPalDefenderGuilds(): Promise<PalDefenderGuild[]> {
+export async function getPalDefenderGuilds(
+  serverId: string,
+): Promise<PalDefenderGuild[]> {
   const result = await request<{ guilds: PalDefenderGuild[] }>(
-    "/api/paldefender/guilds",
+    `${palDefenderPath(serverId)}/guilds`,
     { cache: "no-store" },
   );
   return result.guilds;
 }
 
-export async function getPalDefenderBases(): Promise<PalDefenderBase[]> {
+export async function getPalDefenderBases(
+  serverId: string,
+): Promise<PalDefenderBase[]> {
   const result = await request<{ bases: PalDefenderBase[] }>(
-    "/api/paldefender/bases",
+    `${palDefenderPath(serverId)}/bases`,
     { cache: "no-store" },
   );
   return result.bases;
 }
 
 export function getPalDefenderBase(
+  serverId: string,
   baseId: string,
 ): Promise<PalDefenderBaseDetails> {
   return request<PalDefenderBaseDetails>(
-    `/api/paldefender/bases/${encodeURIComponent(baseId)}`,
+    `${palDefenderPath(serverId)}/bases/${encodeURIComponent(baseId)}`,
     { cache: "no-store" },
   );
 }
 
 export function getPalDefenderGuild(
+  serverId: string,
   guildId: string,
 ): Promise<PalDefenderGuildDetails> {
   return request<PalDefenderGuildDetails>(
-    `/api/paldefender/guilds/${encodeURIComponent(guildId)}`,
+    `${palDefenderPath(serverId)}/guilds/${encodeURIComponent(guildId)}`,
     { cache: "no-store" },
   );
 }
 
-function palDefenderPlayerPath(playerId: string): string {
-  return `/api/paldefender/players/${encodeURIComponent(playerId)}`;
+function palDefenderPlayerPath(serverId: string, playerId: string): string {
+  return `${palDefenderPath(serverId)}/players/${encodeURIComponent(playerId)}`;
 }
 
 export function getPalDefenderPlayer(
+  serverId: string,
   playerId: string,
 ): Promise<PalDefenderPlayerDetails> {
-  return request<PalDefenderPlayerDetails>(palDefenderPlayerPath(playerId), {
-    cache: "no-store",
-  });
+  return request<PalDefenderPlayerDetails>(
+    palDefenderPlayerPath(serverId, playerId),
+    {
+      cache: "no-store",
+    },
+  );
 }
 
 export async function getPalDefenderInventory(
+  serverId: string,
   playerId: string,
 ): Promise<PalDefenderInventoryItem[]> {
   const result = await request<{ items: PalDefenderInventoryItem[] }>(
-    `${palDefenderPlayerPath(playerId)}/inventory`,
+    `${palDefenderPlayerPath(serverId, playerId)}/inventory`,
     { cache: "no-store" },
   );
   return result.items;
 }
 
 export async function getPalDefenderPals(
+  serverId: string,
   playerId: string,
 ): Promise<PalDefenderPal[]> {
   const result = await request<{ pals: PalDefenderPal[] }>(
-    `${palDefenderPlayerPath(playerId)}/pals`,
+    `${palDefenderPlayerPath(serverId, playerId)}/pals`,
     { cache: "no-store" },
   );
   return result.pals;
 }
 
 export async function getPalDefenderTechnology(
+  serverId: string,
   playerId: string,
 ): Promise<string[]> {
   const result = await request<{ technologies: string[] }>(
-    `${palDefenderPlayerPath(playerId)}/technology`,
+    `${palDefenderPlayerPath(serverId, playerId)}/technology`,
     { cache: "no-store" },
   );
   return result.technologies;
 }
 
 export function kickPalDefenderPlayer(
+  serverId: string,
   playerId: string,
   message?: string,
 ): Promise<PalDefenderKickResult> {
   return jsonRequest<PalDefenderKickResult>(
-    `${palDefenderPlayerPath(playerId)}/kick`,
+    `${palDefenderPlayerPath(serverId, playerId)}/kick`,
     { ...(message?.trim() ? { message: message.trim() } : {}) },
   );
 }
 
 export function banPalDefenderPlayer(
+  serverId: string,
   playerId: string,
   options: PalDefenderBanOptions = {},
 ): Promise<PalDefenderBanResult> {
   return jsonRequest<PalDefenderBanResult>(
-    `${palDefenderPlayerPath(playerId)}/ban`,
+    `${palDefenderPlayerPath(serverId, playerId)}/ban`,
     {
       ...(options.reason?.trim() ? { reason: options.reason.trim() } : {}),
       ...(options.ipBan ? { ipBan: true } : {}),
@@ -716,11 +764,12 @@ export interface PalDefenderGiveItemsResult {
 }
 
 export function givePalDefenderItems(
+  serverId: string,
   playerId: string,
   items: PalDefenderItemGrant[],
 ): Promise<PalDefenderGiveItemsResult> {
   return jsonRequest<PalDefenderGiveItemsResult>(
-    `${palDefenderPlayerPath(playerId)}/items`,
+    `${palDefenderPlayerPath(serverId, playerId)}/items`,
     { items },
   );
 }
@@ -736,21 +785,24 @@ export interface PalDefenderGivePalsResult {
 }
 
 export function givePalDefenderPals(
+  serverId: string,
   playerId: string,
   pals: PalDefenderPalGrant[],
 ): Promise<PalDefenderGivePalsResult> {
   return jsonRequest<PalDefenderGivePalsResult>(
-    `${palDefenderPlayerPath(playerId)}/pals`,
+    `${palDefenderPlayerPath(serverId, playerId)}/pals`,
     { pals },
   );
 }
 
 export function broadcastPalDefenderMessage(
+  serverId: string,
   message: string,
 ): Promise<PalDefenderBroadcastResult> {
-  return jsonRequest<PalDefenderBroadcastResult>("/api/paldefender/broadcast", {
-    message,
-  });
+  return jsonRequest<PalDefenderBroadcastResult>(
+    `${palDefenderPath(serverId)}/broadcast`,
+    { message },
+  );
 }
 
 export async function getLatestPlayerTelemetry(

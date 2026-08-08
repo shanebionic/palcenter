@@ -54,8 +54,10 @@ export class AuthorizationService {
       (/^\/api\/servers\/[^/]+\/admin\//.test(path) ||
         /^\/api\/servers\/[^/]+\/players\/[^/]+\//.test(path) ||
         /^\/api\/servers\/[^/]+\/teleport\//.test(path) ||
-        /^\/api\/paldefender\/players\/[^/]+\/(kick|ban)$/.test(path) ||
-        path === "/api/paldefender/broadcast")
+        /^\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals)$/.test(
+          path,
+        ) ||
+        /^\/api\/servers\/[^/]+\/paldefender\/broadcast$/.test(path))
     ) {
       return "operate";
     }
@@ -63,6 +65,8 @@ export class AuthorizationService {
       (method === "POST" &&
         (path === "/api/servers" || path === "/api/servers/test")) ||
       (method === "POST" && /^\/api\/servers\/[^/]+\/test$/.test(path)) ||
+      (method === "POST" &&
+        /^\/api\/servers\/[^/]+\/paldefender\/test$/.test(path)) ||
       (method === "PUT" && /^\/api\/servers\/[^/]+$/.test(path)) ||
       (method === "DELETE" && /^\/api\/servers\/[^/]+$/.test(path))
     ) {
