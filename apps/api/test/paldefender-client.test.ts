@@ -328,6 +328,43 @@ test("flattens available inventory containers into PalCenter items", async () =>
   ]);
 });
 
+test("gives multiple items using the documented endpoint and normalizes the result", async () => {
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestBody = "";
+  let authorization = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = init?.method ?? "GET";
+      requestBody = String(init?.body ?? "");
+      authorization = new Headers(init?.headers).get("Authorization") ?? "";
+      return Response.json({ Granted: { Items: 7 } });
+    },
+  );
+  assert.deepEqual(
+    await client.giveItems("player-1", [
+      { itemId: "CopperIngot", count: 5 },
+      { itemId: "Polymer", count: 2 },
+    ]),
+    { playerId: "player-1", grantedItems: 7 },
+  );
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/give/items/player-1");
+  assert.equal(requestMethod, "POST");
+  assert.equal(authorization, "Bearer token");
+  assert.equal(
+    requestBody,
+    JSON.stringify({
+      Items: [
+        { ItemID: "CopperIngot", Count: 5 },
+        { ItemID: "Polymer", Count: 2 },
+      ],
+    }),
+  );
+});
+
 test("normalizes team, Palbox, and base-camp Pals", async () => {
   const client = new PalDefenderClient(
     "http://paldefender",

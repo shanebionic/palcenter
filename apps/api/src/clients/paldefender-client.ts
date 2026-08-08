@@ -179,6 +179,9 @@ const banResponseSchema = z.object({
   Kicked: z.number().int().nonnegative(),
 });
 const broadcastResponseSchema = z.object({ Success: z.boolean() });
+const giveItemsResponseSchema = z.object({
+  Granted: z.object({ Items: z.number().int().nonnegative() }),
+});
 
 export interface PalDefenderPlayer {
   name: string;
@@ -243,6 +246,14 @@ export interface PalDefenderBanResult {
 }
 export interface PalDefenderBroadcastResult {
   success: boolean;
+}
+export interface PalDefenderItemGrant {
+  itemId: string;
+  count: number;
+}
+export interface PalDefenderGiveItemsResult {
+  playerId: string;
+  grantedItems: number;
 }
 export interface PalDefenderGuildCamp {
   id: string;
@@ -612,6 +623,26 @@ export class PalDefenderClient {
       body: JSON.stringify({ Message: message }),
     });
     return { success: response.Success };
+  }
+
+  async giveItems(
+    playerId: string,
+    items: PalDefenderItemGrant[],
+  ): Promise<PalDefenderGiveItemsResult> {
+    const response = await this.parse(
+      giveItemsResponseSchema,
+      `/give/items/${encodePlayerId(playerId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          Items: items.map((item) => ({
+            ItemID: item.itemId,
+            Count: item.count,
+          })),
+        }),
+      },
+    );
+    return { playerId, grantedItems: response.Granted.Items };
   }
 
   private moderatePlayer<TSchema extends z.ZodTypeAny>(

@@ -12,6 +12,8 @@ import {
   type PalDefenderBase,
   type PalDefenderBaseDetails,
   type PalDefenderGuildDetails,
+  type PalDefenderItemGrant,
+  type PalDefenderGiveItemsResult,
 } from "../clients/paldefender-client.js";
 
 export interface PalDefenderStatus {
@@ -98,6 +100,13 @@ export class PalDefenderService {
 
   async broadcast(message: string): Promise<PalDefenderBroadcastResult> {
     return this.configuredClient().broadcast(message);
+  }
+
+  async giveItems(
+    id: string,
+    items: PalDefenderItemGrant[],
+  ): Promise<PalDefenderGiveItemsResult> {
+    return this.configuredClient().giveItems(id, items);
   }
 
   private configuredClient(): PalDefenderClient {

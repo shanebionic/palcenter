@@ -826,6 +826,49 @@ const palDefenderBanBodySchema = z
     ipBan: z.boolean().optional(),
   })
   .strict();
+const palDefenderGiveItemsBodySchema = z
+  .object({
+    items: z
+      .array(
+        z
+          .object({
+            itemId: z
+              .string()
+              .trim()
+              .min(1)
+              .max(256)
+              .regex(/^[A-Za-z0-9_]+$/),
+            count: z.number().int().positive(),
+          })
+          .strict(),
+      )
+      .min(1),
+  })
+  .strict();
+
+app.post("/api/paldefender/players/:playerId/items", async (request) => {
+  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
+  const { items } = palDefenderGiveItemsBodySchema.parse(request.body ?? {});
+  const actor = currentUser(request.headers.cookie);
+  app.log.info(
+    { actorUserId: actor.id, playerId, grantCount: items.length },
+    "PalDefender give items requested.",
+  );
+  try {
+    const result = await palDefenderService.giveItems(playerId, items);
+    app.log.info(
+      { actorUserId: actor.id, playerId, grantedItems: result.grantedItems },
+      "PalDefender give items completed.",
+    );
+    return result;
+  } catch (error) {
+    app.log.warn(
+      { err: error, actorUserId: actor.id, playerId },
+      "PalDefender give items failed.",
+    );
+    throw error;
+  }
+});
 
 async function executePalDefenderModeration<TResult>(options: {
   action: "kick" | "ban";
@@ -1688,7 +1731,9 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof PalDefenderError) {
     const isPalDefenderWriteRequest =
       request.method === "POST" &&
-      (/\/api\/paldefender\/players\/[^/]+\/(kick|ban)$/.test(request.url) ||
+      (/\/api\/paldefender\/players\/[^/]+\/(kick|ban|items)$/.test(
+        request.url,
+      ) ||
         request.url === "/api/paldefender/broadcast");
     const playerOffline =
       request.method === "POST" &&

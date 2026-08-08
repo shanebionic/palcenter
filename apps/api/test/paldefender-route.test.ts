@@ -71,6 +71,30 @@ before(async () => {
         { status: 400 },
       );
     }
+    if (url.endsWith("/give/items/player-1")) {
+      assert.equal(init?.method, "POST");
+      assert.equal(
+        init?.body,
+        JSON.stringify({
+          Items: [
+            { ItemID: "CopperIngot", Count: 5 },
+            { ItemID: "Polymer", Count: 2 },
+          ],
+        }),
+      );
+      return Response.json({ Granted: { Items: 7 } });
+    }
+    if (url.endsWith("/give/items/invalid-item")) {
+      return Response.json(
+        {
+          Error: {
+            Code: "VALIDATION_FAILED",
+            Message: "The requested ItemID is unsupported.",
+          },
+        },
+        { status: 400 },
+      );
+    }
     if (url.endsWith("/Broadcast")) {
       assert.equal(init?.method, "POST");
       const body = JSON.parse(String(init?.body)) as { Message: string };
@@ -213,6 +237,12 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     payload: {},
   });
   assert.equal(ban.statusCode, 401);
+  const giveItems = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/player-1/items",
+    payload: { items: [{ itemId: "Wood", count: 1 }] },
+  });
+  assert.equal(giveItems.statusCode, 401);
   const broadcast = await app.inject({
     method: "POST",
     url: "/api/paldefender/broadcast",
@@ -383,6 +413,51 @@ test("PalDefender kick route normalizes success and offline errors", async () =>
   assert.deepEqual(offline.json(), {
     error: "paldefender_player_offline",
     message: "This player is no longer online and cannot be kicked.",
+  });
+});
+
+test("PalDefender give items route validates input and normalizes responses", async () => {
+  const headers = { cookie: administratorCookie };
+  const granted = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/player-1/items",
+    headers,
+    payload: {
+      items: [
+        { itemId: "CopperIngot", count: 5 },
+        { itemId: "Polymer", count: 2 },
+      ],
+    },
+  });
+  assert.equal(granted.statusCode, 200);
+  assert.deepEqual(granted.json(), { playerId: "player-1", grantedItems: 7 });
+
+  for (const payload of [
+    { items: [] },
+    { items: [{ itemId: "", count: 1 }] },
+    { items: [{ itemId: "Bad ID", count: 1 }] },
+    { items: [{ itemId: "Wood", count: 0 }] },
+    { items: [{ itemId: "Wood", count: 1.5 }] },
+  ]) {
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/api/paldefender/players/player-1/items",
+      headers,
+      payload,
+    });
+    assert.equal(invalid.statusCode, 400);
+  }
+
+  const rejected = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/invalid-item/items",
+    headers,
+    payload: { items: [{ itemId: "DefinitelyNotAnItem", count: 1 }] },
+  });
+  assert.equal(rejected.statusCode, 400);
+  assert.deepEqual(rejected.json(), {
+    error: "paldefender_request_failed",
+    message: "The requested ItemID is unsupported.",
   });
 });
 

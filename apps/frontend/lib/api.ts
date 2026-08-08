@@ -705,6 +705,26 @@ export function banPalDefenderPlayer(
   );
 }
 
+export interface PalDefenderItemGrant {
+  itemId: string;
+  count: number;
+}
+
+export interface PalDefenderGiveItemsResult {
+  playerId: string;
+  grantedItems: number;
+}
+
+export function givePalDefenderItems(
+  playerId: string,
+  items: PalDefenderItemGrant[],
+): Promise<PalDefenderGiveItemsResult> {
+  return jsonRequest<PalDefenderGiveItemsResult>(
+    `${palDefenderPlayerPath(playerId)}/items`,
+    { items },
+  );
+}
+
 export function broadcastPalDefenderMessage(
   message: string,
 ): Promise<PalDefenderBroadcastResult> {
