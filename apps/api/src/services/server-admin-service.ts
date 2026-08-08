@@ -1,5 +1,22 @@
 import { PalworldRestClient } from "../clients/palworld-rest-client.js";
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
+import type { PalDefenderStatus } from "./paldefender-service.js";
+
+export type BroadcastProvider = "paldefender" | "native";
+
+interface BroadcastCapability {
+  status(serverId: string): Promise<PalDefenderStatus>;
+  broadcast(serverId: string, message: string): Promise<unknown>;
+}
+
+type NativeClient = Pick<
+  PalworldRestClient,
+  "announce" | "saveWorld" | "shutdown" | "stop"
+>;
+type NativeClientFactory = (
+  baseUrl: string,
+  adminPassword: string,
+) => NativeClient;
 
 export class ServerNotFoundError extends Error {
   constructor() {
@@ -9,11 +26,27 @@ export class ServerNotFoundError extends Error {
 }
 
 export class ServerAdminService {
-  constructor(private readonly repository: ConnectionRepository) {}
+  constructor(
+    private readonly repository: ConnectionRepository,
+    private readonly palDefender?: BroadcastCapability,
+    private readonly createNativeClient: NativeClientFactory = (
+      baseUrl,
+      adminPassword,
+    ) => new PalworldRestClient(baseUrl, adminPassword),
+  ) {}
 
-  async announce(serverId: string, message: string): Promise<void> {
+  async announce(
+    serverId: string,
+    message: string,
+  ): Promise<{ provider: BroadcastProvider }> {
+    if (await this.palDefenderAvailable(serverId)) {
+      await this.palDefender!.broadcast(serverId, message);
+      return { provider: "paldefender" };
+    }
+
     const client = await this.clientFor(serverId);
     await client.announce(message);
+    return { provider: "native" };
   }
 
   async saveWorld(serverId: string): Promise<void> {
@@ -35,13 +68,21 @@ export class ServerAdminService {
     await client.stop();
   }
 
-  private async clientFor(serverId: string): Promise<PalworldRestClient> {
+  private async palDefenderAvailable(serverId: string): Promise<boolean> {
+    if (!this.palDefender) return false;
+    return (await this.palDefender.status(serverId)).connected;
+  }
+
+  private async clientFor(serverId: string): Promise<NativeClient> {
     const connection = await this.repository.get(serverId);
 
     if (!connection) {
       throw new ServerNotFoundError();
     }
 
-    return new PalworldRestClient(connection.baseUrl, connection.adminPassword);
+    return this.createNativeClient(
+      connection.baseUrl,
+      connection.adminPassword,
+    );
   }
 }

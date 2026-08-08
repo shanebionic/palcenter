@@ -14,7 +14,6 @@ import {
   IconAutomation,
   IconAdjustments,
   IconLayoutDashboard,
-  IconShieldCheck,
   IconServer,
   IconTools,
   IconUsers,
@@ -31,23 +30,17 @@ interface ApplicationShellProps {
   children: ReactNode;
 }
 
-const primaryLinks = [
+const primaryLinks: Array<{
+  href: string;
+  label: string;
+  icon: typeof IconLayoutDashboard;
+  children?: Array<{ href: string; label: string }>;
+}> = [
   { href: "/", label: "Dashboard", icon: IconLayoutDashboard },
   { href: "/servers", label: "Servers", icon: IconServer },
   { href: "/players", label: "Players", icon: IconUsers },
   { href: "/automation", label: "Automation", icon: IconAutomation },
   { href: "/tools", label: "Tools", icon: IconTools },
-  {
-    href: "/paldefender",
-    label: "PalDefender",
-    icon: IconShieldCheck,
-    children: [
-      { href: "/paldefender/status", label: "Status" },
-      { href: "/paldefender/guilds", label: "Guilds" },
-      { href: "/paldefender/bases", label: "Bases" },
-      { href: "/paldefender/broadcast", label: "Broadcast" },
-    ],
-  },
   { href: "/settings", label: "Settings", icon: IconAdjustments },
 ];
 
