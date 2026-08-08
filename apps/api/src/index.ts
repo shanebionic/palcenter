@@ -845,6 +845,25 @@ const palDefenderGiveItemsBodySchema = z
       .min(1),
   })
   .strict();
+const palDefenderGivePalsBodySchema = z
+  .object({
+    pals: z
+      .array(
+        z
+          .object({
+            palId: z
+              .string()
+              .trim()
+              .min(1)
+              .max(256)
+              .regex(/^[A-Za-z0-9_]+$/),
+            level: z.number().int().positive(),
+          })
+          .strict(),
+      )
+      .min(1),
+  })
+  .strict();
 
 app.post("/api/paldefender/players/:playerId/items", async (request) => {
   const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
@@ -865,6 +884,30 @@ app.post("/api/paldefender/players/:playerId/items", async (request) => {
     app.log.warn(
       { err: error, actorUserId: actor.id, playerId },
       "PalDefender give items failed.",
+    );
+    throw error;
+  }
+});
+
+app.post("/api/paldefender/players/:playerId/pals", async (request) => {
+  const { playerId } = palDefenderPlayerParametersSchema.parse(request.params);
+  const { pals } = palDefenderGivePalsBodySchema.parse(request.body ?? {});
+  const actor = currentUser(request.headers.cookie);
+  app.log.info(
+    { actorUserId: actor.id, playerId, grantCount: pals.length },
+    "PalDefender give Pals requested.",
+  );
+  try {
+    const result = await palDefenderService.givePals(playerId, pals);
+    app.log.info(
+      { actorUserId: actor.id, playerId, grantedPals: result.grantedPals },
+      "PalDefender give Pals completed.",
+    );
+    return result;
+  } catch (error) {
+    app.log.warn(
+      { err: error, actorUserId: actor.id, playerId },
+      "PalDefender give Pals failed.",
     );
     throw error;
   }
@@ -1731,7 +1774,7 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof PalDefenderError) {
     const isPalDefenderWriteRequest =
       request.method === "POST" &&
-      (/\/api\/paldefender\/players\/[^/]+\/(kick|ban|items)$/.test(
+      (/\/api\/paldefender\/players\/[^/]+\/(kick|ban|items|pals)$/.test(
         request.url,
       ) ||
         request.url === "/api/paldefender/broadcast");

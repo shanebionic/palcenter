@@ -365,6 +365,43 @@ test("gives multiple items using the documented endpoint and normalizes the resu
   );
 });
 
+test("gives multiple Pals using the documented endpoint and normalizes the result", async () => {
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestBody = "";
+  let authorization = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = init?.method ?? "GET";
+      requestBody = String(init?.body ?? "");
+      authorization = new Headers(init?.headers).get("Authorization") ?? "";
+      return Response.json({ Granted: { Pals: 2 } });
+    },
+  );
+  assert.deepEqual(
+    await client.givePals("player-1", [
+      { palId: "Anubis", level: 35 },
+      { palId: "Kitsun", level: 25 },
+    ]),
+    { playerId: "player-1", grantedPals: 2 },
+  );
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/give/pals/player-1");
+  assert.equal(requestMethod, "POST");
+  assert.equal(authorization, "Bearer token");
+  assert.equal(
+    requestBody,
+    JSON.stringify({
+      Pals: [
+        { PalID: "Anubis", Level: 35 },
+        { PalID: "Kitsun", Level: 25 },
+      ],
+    }),
+  );
+});
+
 test("normalizes team, Palbox, and base-camp Pals", async () => {
   const client = new PalDefenderClient(
     "http://paldefender",

@@ -725,6 +725,26 @@ export function givePalDefenderItems(
   );
 }
 
+export interface PalDefenderPalGrant {
+  palId: string;
+  level: number;
+}
+
+export interface PalDefenderGivePalsResult {
+  playerId: string;
+  grantedPals: number;
+}
+
+export function givePalDefenderPals(
+  playerId: string,
+  pals: PalDefenderPalGrant[],
+): Promise<PalDefenderGivePalsResult> {
+  return jsonRequest<PalDefenderGivePalsResult>(
+    `${palDefenderPlayerPath(playerId)}/pals`,
+    { pals },
+  );
+}
+
 export function broadcastPalDefenderMessage(
   message: string,
 ): Promise<PalDefenderBroadcastResult> {

@@ -48,6 +48,7 @@ import {
   getPalDefenderPlayers,
   getPalDefenderTechnology,
   givePalDefenderItems,
+  givePalDefenderPals,
   kickPalDefenderPlayer,
   type PalDefenderInventoryItem,
   type PalDefenderPal,
@@ -58,6 +59,11 @@ import {
   validateItemGrants,
   type ItemGrantInput,
 } from "../lib/paldefender-items";
+import {
+  normalizePalGrant,
+  validatePalGrant,
+  type PalGrantInput,
+} from "../lib/paldefender-pals";
 
 type TabName = "overview" | "inventory" | "pals" | "technology" | "actions";
 type Loadable<T> = { data: T | null; loading: boolean; error: string };
@@ -89,8 +95,16 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
     { itemId: "", count: 1 },
   ]);
   const [itemGrantError, setItemGrantError] = useState("");
+  const [givePalOpened, setGivePalOpened] = useState(false);
+  const [givePalConfirmationOpened, setGivePalConfirmationOpened] =
+    useState(false);
+  const [palGrant, setPalGrant] = useState<PalGrantInput>({
+    palId: "",
+    level: 1,
+  });
+  const [palGrantError, setPalGrantError] = useState("");
   const [submittingAction, setSubmittingAction] = useState<
-    "kick" | "ban" | "give-items" | null
+    "kick" | "ban" | "give-items" | "give-pal" | null
   >(null);
 
   const loadPlayer = useCallback(async () => {
@@ -275,6 +289,43 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
     }
   };
 
+  const reviewPalGrant = () => {
+    const error = validatePalGrant(palGrant);
+    setPalGrantError(error ?? "");
+    if (!error) setGivePalConfirmationOpened(true);
+  };
+
+  const givePal = async () => {
+    if (submittingAction) return;
+    const grant = normalizePalGrant(palGrant);
+    setSubmittingAction("give-pal");
+    try {
+      const result = await givePalDefenderPals(playerId, [grant]);
+      setGivePalConfirmationOpened(false);
+      setGivePalOpened(false);
+      setPalGrant({ palId: "", level: 1 });
+      setPalGrantError("");
+      notifications.show({
+        color: "green",
+        title: "Pal granted",
+        message: `PalDefender granted ${result.grantedPals} Pal to ${player.data?.name ?? "the player"}.`,
+      });
+      await Promise.all([loadPals(), loadPlayer(), getPalDefenderPlayers()]);
+    } catch (error) {
+      setGivePalConfirmationOpened(false);
+      notifications.show({
+        color: "red",
+        title: "Unable to give Pal",
+        message:
+          error instanceof Error
+            ? error.message
+            : "PalDefender could not grant this Pal.",
+      });
+    } finally {
+      setSubmittingAction(null);
+    }
+  };
+
   return (
     <ApplicationShell>
       <Stack gap="xl">
@@ -376,6 +427,19 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
                   w="fit-content"
                 >
                   Give Item
+                </Button>
+                <div>
+                  <Title order={3}>Give Pal</Title>
+                  <Text c="dimmed" size="sm">
+                    Grant a Pal by its internal PalID and level.
+                  </Text>
+                </div>
+                <Button
+                  leftSection={<IconSparkles size={18} />}
+                  onClick={() => setGivePalOpened(true)}
+                  w="fit-content"
+                >
+                  Give Pal
                 </Button>
                 <div>
                   <Title order={3}>Kick Player</Title>
@@ -595,6 +659,113 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
               onClick={() => void giveItems()}
             >
               {itemGrants.length === 1 ? "Give Item" : "Give Items"}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={givePalOpened}
+        onClose={() => {
+          if (!submittingAction) setGivePalOpened(false);
+        }}
+        title="Give Pal"
+        centered
+        closeOnClickOutside={!submittingAction}
+        closeOnEscape={!submittingAction}
+      >
+        <Stack>
+          <Text>
+            Recipient:{" "}
+            <Text span fw={700}>
+              {player.data?.name ?? playerId}
+            </Text>
+          </Text>
+          <Text size="sm" c="dimmed">
+            PalDefender requires the internal PalID. Use Paldeck to find the
+            Pal’s Asset Name, then paste it below.
+          </Text>
+          <TextInput
+            label="Pal ID"
+            placeholder="For example: Anubis"
+            value={palGrant.palId}
+            disabled={Boolean(submittingAction)}
+            onChange={(event) =>
+              setPalGrant((current) => ({
+                ...current,
+                palId: event.currentTarget.value,
+              }))
+            }
+          />
+          <NumberInput
+            label="Level"
+            min={1}
+            step={1}
+            allowDecimal={false}
+            value={palGrant.level}
+            disabled={Boolean(submittingAction)}
+            onChange={(value) =>
+              setPalGrant((current) => ({ ...current, level: value }))
+            }
+          />
+          <Anchor
+            href="https://paldeck.cc/pals"
+            target="_blank"
+            rel="noreferrer"
+            w="fit-content"
+          >
+            Find Pal ID on Paldeck
+          </Anchor>
+          {palGrantError && <Alert color="red">{palGrantError}</Alert>}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setGivePalOpened(false)}>
+              Cancel
+            </Button>
+            <Button
+              leftSection={<IconSparkles size={18} />}
+              onClick={reviewPalGrant}
+            >
+              Review Grant
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={givePalConfirmationOpened}
+        onClose={() => {
+          if (!submittingAction) setGivePalConfirmationOpened(false);
+        }}
+        title="Confirm Pal Grant"
+        centered
+        closeOnClickOutside={!submittingAction}
+        closeOnEscape={!submittingAction}
+      >
+        <Stack>
+          <Text>
+            Give this Pal to{" "}
+            <Text span fw={700}>
+              {player.data?.name ?? playerId}
+            </Text>
+            ?
+          </Text>
+          <Text ff="monospace">
+            Pal ID: {normalizePalGrant(palGrant).palId}
+          </Text>
+          <Text ff="monospace">Level: {normalizePalGrant(palGrant).level}</Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              disabled={submittingAction === "give-pal"}
+              onClick={() => setGivePalConfirmationOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              leftSection={<IconSparkles size={18} />}
+              loading={submittingAction === "give-pal"}
+              disabled={submittingAction === "give-pal"}
+              onClick={() => void givePal()}
+            >
+              Give Pal
             </Button>
           </Group>
         </Stack>

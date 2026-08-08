@@ -17,12 +17,14 @@ import {
   getPalDefenderGuilds,
   getPalDefenderGuild,
   givePalDefenderItems,
+  givePalDefenderPals,
   kickPalDefenderPlayer,
 } from "../lib/api";
 import {
   normalizeItemGrants,
   validateItemGrants,
 } from "../lib/paldefender-items";
+import { normalizePalGrant, validatePalGrant } from "../lib/paldefender-pals";
 
 test("builds and loads an encoded PalDefender base details route", async () => {
   assert.equal(
@@ -266,6 +268,47 @@ test("submits multiple item grants to the selected PalDefender player", async ()
           { itemId: "Polymer", count: 2 },
         ],
       }),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("validates and normalizes a PalDefender Pal grant", () => {
+  assert.equal(validatePalGrant({ palId: "", level: 1 }), "Enter a Pal ID.");
+  assert.equal(
+    validatePalGrant({ palId: "Bad ID", level: 1 }),
+    "Pal IDs may contain only letters, numbers, and underscores.",
+  );
+  assert.equal(
+    validatePalGrant({ palId: "Anubis", level: 0 }),
+    "Level must be a positive whole number.",
+  );
+  assert.equal(validatePalGrant({ palId: " Anubis ", level: "35" }), null);
+  assert.deepEqual(normalizePalGrant({ palId: " Anubis ", level: "35" }), {
+    palId: "Anubis",
+    level: 35,
+  });
+});
+
+test("submits Pal grants to the selected PalDefender player", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestBody = "";
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input);
+    requestBody = String(init?.body ?? "");
+    return Response.json({ playerId: "player-1", grantedPals: 1 });
+  };
+  try {
+    assert.deepEqual(
+      await givePalDefenderPals("player-1", [{ palId: "Anubis", level: 35 }]),
+      { playerId: "player-1", grantedPals: 1 },
+    );
+    assert.equal(requestedUrl, "/api/paldefender/players/player-1/pals");
+    assert.equal(
+      requestBody,
+      JSON.stringify({ pals: [{ palId: "Anubis", level: 35 }] }),
     );
   } finally {
     globalThis.fetch = originalFetch;

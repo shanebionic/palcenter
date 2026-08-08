@@ -95,6 +95,30 @@ before(async () => {
         { status: 400 },
       );
     }
+    if (url.endsWith("/give/pals/player-1")) {
+      assert.equal(init?.method, "POST");
+      assert.equal(
+        init?.body,
+        JSON.stringify({
+          Pals: [
+            { PalID: "Anubis", Level: 35 },
+            { PalID: "Kitsun", Level: 25 },
+          ],
+        }),
+      );
+      return Response.json({ Granted: { Pals: 2 } });
+    }
+    if (url.endsWith("/give/pals/invalid-pal")) {
+      return Response.json(
+        {
+          Error: {
+            Code: "VALIDATION_FAILED",
+            Message: "The requested PalID is invalid.",
+          },
+        },
+        { status: 400 },
+      );
+    }
     if (url.endsWith("/Broadcast")) {
       assert.equal(init?.method, "POST");
       const body = JSON.parse(String(init?.body)) as { Message: string };
@@ -191,7 +215,7 @@ before(async () => {
           },
         },
       });
-    if (url.includes("/pals/"))
+    if (url.includes("/pals/") && (init?.method ?? "GET") === "GET")
       return Response.json({ Pals: { Team: {}, Palbox: {}, BaseCamps: [] } });
     if (url.includes("/techs/"))
       return Response.json({ Techs: { Unlocked: ["Technology_Wood"] } });
@@ -243,6 +267,12 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     payload: { items: [{ itemId: "Wood", count: 1 }] },
   });
   assert.equal(giveItems.statusCode, 401);
+  const givePals = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/player-1/pals",
+    payload: { pals: [{ palId: "Anubis", level: 35 }] },
+  });
+  assert.equal(givePals.statusCode, 401);
   const broadcast = await app.inject({
     method: "POST",
     url: "/api/paldefender/broadcast",
@@ -458,6 +488,52 @@ test("PalDefender give items route validates input and normalizes responses", as
   assert.deepEqual(rejected.json(), {
     error: "paldefender_request_failed",
     message: "The requested ItemID is unsupported.",
+  });
+});
+
+test("PalDefender give Pals route validates input and normalizes responses", async () => {
+  const headers = { cookie: administratorCookie };
+  const granted = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/player-1/pals",
+    headers,
+    payload: {
+      pals: [
+        { palId: "Anubis", level: 35 },
+        { palId: "Kitsun", level: 25 },
+      ],
+    },
+  });
+  assert.equal(granted.statusCode, 200);
+  assert.deepEqual(granted.json(), { playerId: "player-1", grantedPals: 2 });
+
+  for (const payload of [
+    {},
+    { pals: [] },
+    { pals: [{ palId: "", level: 1 }] },
+    { pals: [{ palId: "Bad ID", level: 1 }] },
+    { pals: [{ palId: "Anubis", level: 0 }] },
+    { pals: [{ palId: "Anubis", level: 1.5 }] },
+  ]) {
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/api/paldefender/players/player-1/pals",
+      headers,
+      payload,
+    });
+    assert.equal(invalid.statusCode, 400);
+  }
+
+  const rejected = await app.inject({
+    method: "POST",
+    url: "/api/paldefender/players/invalid-pal/pals",
+    headers,
+    payload: { pals: [{ palId: "DefinitelyNotAPal", level: 1 }] },
+  });
+  assert.equal(rejected.statusCode, 400);
+  assert.deepEqual(rejected.json(), {
+    error: "paldefender_request_failed",
+    message: "The requested PalID is invalid.",
   });
 });
 
