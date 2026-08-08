@@ -583,6 +583,70 @@ test("normalizes unlocked technology identifiers", async () => {
   ]);
 });
 
+test("learns and forgets single, multiple, and all technologies with documented bodies", async () => {
+  const requests: Array<{ url: string; body: string; authorization: string }> =
+    [];
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requests.push({
+        url: String(input),
+        body: String(init?.body),
+        authorization: new Headers(init?.headers).get("Authorization") ?? "",
+      });
+      return String(input).includes("/learntech/")
+        ? Response.json({
+            UnlockedCount: 1,
+            Unlocked: ["Technology_Wood"],
+            Skipped: [],
+          })
+        : Response.json({
+            ForgottenCount: 2,
+            Forgotten: "All",
+            Skipped: ["Technology_Missing"],
+          });
+    },
+  );
+
+  assert.deepEqual(
+    await client.learnTechnology("player-1", "Technology_Wood"),
+    {
+      changedCount: 1,
+      changed: ["Technology_Wood"],
+      skipped: [],
+    },
+  );
+  await client.learnTechnology("player-1", [
+    "Technology_Wood",
+    "Technology_Camp",
+  ]);
+  assert.deepEqual(await client.forgetTechnology("player-1", "All"), {
+    changedCount: 2,
+    changed: "All",
+    skipped: ["Technology_Missing"],
+  });
+  assert.deepEqual(requests, [
+    {
+      url: "http://paldefender/v1/pdapi/learntech/player-1",
+      body: JSON.stringify({ Technology: "Technology_Wood" }),
+      authorization: "Bearer token",
+    },
+    {
+      url: "http://paldefender/v1/pdapi/learntech/player-1",
+      body: JSON.stringify({
+        Technology: ["Technology_Wood", "Technology_Camp"],
+      }),
+      authorization: "Bearer token",
+    },
+    {
+      url: "http://paldefender/v1/pdapi/forgettech/player-1",
+      body: JSON.stringify({ Technology: "All" }),
+      authorization: "Bearer token",
+    },
+  ]);
+});
+
 test("kicks a player with the documented reason body and normalizes the response", async () => {
   let requestUrl = "";
   let requestMethod = "";

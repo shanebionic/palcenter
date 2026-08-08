@@ -1,4 +1,11 @@
 import { createServer } from "node:http";
+import { Buffer } from "node:buffer";
+
+async function readJson(request) {
+  const chunks = [];
+  for await (const chunk of request) chunks.push(chunk);
+  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+}
 
 const now = "2026-07-29T22:30:00.000Z";
 
@@ -78,6 +85,7 @@ let sessionRole = "administrator";
 let broadcasts = [];
 let moderationIpBanned = true;
 let progressionExperience = 1371;
+let unlockedTechnologies = ["Technology_Wood"];
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
   const joined = index % 2 === 0;
@@ -210,7 +218,7 @@ function json(response, value, status = 200) {
 }
 
 export function startMockUiApi(port = 3198) {
-  const server = createServer((request, response) => {
+  const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", `http://127.0.0.1:${port}`);
 
     if (url.pathname === "/__test/players") {
@@ -437,7 +445,49 @@ export function startMockUiApi(port = 3198) {
       return json(response, { pals: [] });
     }
     if (url.pathname === `${enhancedPlayerPath}/technology`) {
-      return json(response, { technologies: ["Technology_Wood"] });
+      return json(response, { technologies: unlockedTechnologies });
+    }
+    if (
+      url.pathname === `${enhancedPlayerPath}/technology/learn` &&
+      request.method === "POST"
+    ) {
+      const input = await readJson(request);
+      const requested =
+        input.scope === "all"
+          ? ["Technology_Wood", "Technology_Camp", "Technology_ElecBaton"]
+          : input.technologyIds;
+      const changed = requested.filter(
+        (id) => !unlockedTechnologies.includes(id),
+      );
+      const skipped = requested.filter((id) =>
+        unlockedTechnologies.includes(id),
+      );
+      unlockedTechnologies = [
+        ...new Set([...unlockedTechnologies, ...requested]),
+      ];
+      return json(response, { changedCount: changed.length, changed, skipped });
+    }
+    if (
+      url.pathname === `${enhancedPlayerPath}/technology/forget` &&
+      request.method === "POST"
+    ) {
+      const input = await readJson(request);
+      const requested =
+        input.scope === "all" ? [...unlockedTechnologies] : input.technologyIds;
+      const changed = requested.filter((id) =>
+        unlockedTechnologies.includes(id),
+      );
+      const skipped = requested.filter(
+        (id) => !unlockedTechnologies.includes(id),
+      );
+      unlockedTechnologies = unlockedTechnologies.filter(
+        (id) => !requested.includes(id),
+      );
+      return json(response, {
+        changedCount: changed.length,
+        changed: input.scope === "all" ? "All" : changed,
+        skipped,
+      });
     }
     if (url.pathname === `${enhancedPlayerPath}/progression`) {
       if (request.method === "POST") {

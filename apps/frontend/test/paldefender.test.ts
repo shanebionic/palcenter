@@ -25,6 +25,8 @@ import {
   banModerationIp,
   unbanModerationIp,
   unbanModerationUser,
+  learnPalDefenderTechnology,
+  forgetPalDefenderTechnology,
 } from "../lib/api";
 import {
   normalizeItemGrants,
@@ -439,6 +441,47 @@ test("uses server-scoped moderation read and mutation routes", async () => {
         url: "/api/servers/server-a/moderation/ip/unban",
         method: "POST",
         body: JSON.stringify({ ip: "192.0.2.10" }),
+      },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("uses server-scoped technology mutation routes and normalized bodies", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ url: string; method: string; body: string }> = [];
+  globalThis.fetch = async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method ?? "GET",
+      body: String(init?.body ?? ""),
+    });
+    return Response.json({
+      changedCount: 1,
+      changed: ["Technology_Wood"],
+      skipped: [],
+    });
+  };
+  try {
+    await learnPalDefenderTechnology("server-a", "player-1", {
+      scope: "selected",
+      technologyIds: ["Technology_Wood", "Technology_Camp"],
+    });
+    await forgetPalDefenderTechnology("server-b", "player-2", { scope: "all" });
+    assert.deepEqual(requests, [
+      {
+        url: "/api/servers/server-a/paldefender/players/player-1/technology/learn",
+        method: "POST",
+        body: JSON.stringify({
+          scope: "selected",
+          technologyIds: ["Technology_Wood", "Technology_Camp"],
+        }),
+      },
+      {
+        url: "/api/servers/server-b/paldefender/players/player-2/technology/forget",
+        method: "POST",
+        body: JSON.stringify({ scope: "all" }),
       },
     ]);
   } finally {

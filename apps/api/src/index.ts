@@ -831,6 +831,78 @@ app.get(
   },
 );
 
+const technologyIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(256)
+  .regex(
+    /^[A-Za-z0-9_]+$/,
+    "Technology IDs may contain letters, numbers, and underscores.",
+  )
+  .refine(
+    (value) => value !== "All",
+    'Use scope "all" instead of including "All" as a technology ID.',
+  );
+const technologyMutationSchema = z
+  .discriminatedUnion("scope", [
+    z.object({ scope: z.literal("all") }).strict(),
+    z
+      .object({
+        scope: z.literal("selected"),
+        technologyIds: z.array(technologyIdSchema).min(1).max(500),
+      })
+      .strict(),
+  ])
+  .superRefine((value, context) => {
+    if (
+      value.scope === "selected" &&
+      new Set(value.technologyIds).size !== value.technologyIds.length
+    )
+      context.addIssue({
+        code: "custom",
+        message: "Technology IDs must be unique.",
+      });
+  });
+const technologySelection = (
+  value: z.output<typeof technologyMutationSchema>,
+) =>
+  value.scope === "all"
+    ? ("All" as const)
+    : value.technologyIds.length === 1
+      ? value.technologyIds[0]!
+      : value.technologyIds;
+
+app.post(
+  "/api/servers/:serverId/paldefender/players/:playerId/technology/learn",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    const input = technologyMutationSchema.parse(request.body);
+    return palDefenderService.learnTechnology(
+      serverId,
+      playerId,
+      technologySelection(input),
+    );
+  },
+);
+
+app.post(
+  "/api/servers/:serverId/paldefender/players/:playerId/technology/forget",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    const input = technologyMutationSchema.parse(request.body);
+    return palDefenderService.forgetTechnology(
+      serverId,
+      playerId,
+      technologySelection(input),
+    );
+  },
+);
+
 app.get(
   "/api/servers/:serverId/paldefender/players/:playerId/progression",
   async (request) => {
@@ -1859,6 +1931,9 @@ app.setErrorHandler((error, request, reply) => {
       (/\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals|progression)$/.test(
         request.url,
       ) ||
+        /\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/technology\/(learn|forget)$/.test(
+          request.url,
+        ) ||
         /\/api\/servers\/[^/]+\/paldefender\/broadcast$/.test(request.url) ||
         /\/api\/servers\/[^/]+\/moderation\/.+\/(ban|unban)$/.test(
           request.url,

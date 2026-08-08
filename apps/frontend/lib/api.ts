@@ -778,6 +778,37 @@ export async function getPalDefenderTechnology(
   return result.technologies;
 }
 
+export type PalDefenderTechnologyMutation =
+  | { scope: "selected"; technologyIds: string[] }
+  | { scope: "all" };
+export interface PalDefenderTechnologyMutationResult {
+  changedCount: number;
+  changed: string[] | "All";
+  skipped: string[];
+}
+
+export function learnPalDefenderTechnology(
+  serverId: string,
+  playerId: string,
+  mutation: PalDefenderTechnologyMutation,
+): Promise<PalDefenderTechnologyMutationResult> {
+  return request(
+    `${palDefenderPlayerPath(serverId, playerId)}/technology/learn`,
+    { method: "POST", body: JSON.stringify(mutation) },
+  );
+}
+
+export function forgetPalDefenderTechnology(
+  serverId: string,
+  playerId: string,
+  mutation: PalDefenderTechnologyMutation,
+): Promise<PalDefenderTechnologyMutationResult> {
+  return request(
+    `${palDefenderPlayerPath(serverId, playerId)}/technology/forget`,
+    { method: "POST", body: JSON.stringify(mutation) },
+  );
+}
+
 export function getPalDefenderProgression(
   serverId: string,
   playerId: string,
