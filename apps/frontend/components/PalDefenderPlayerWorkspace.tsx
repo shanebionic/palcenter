@@ -39,6 +39,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApplicationShell } from "./ApplicationShell";
 import { BrandedLoader } from "./BrandedLoader";
+import {
+  PalDefenderServerSelector,
+  usePalDefenderServerSelection,
+} from "./PalDefenderServerSelector";
 import { SectionCard } from "./ui/SectionCard";
 import {
   banPalDefenderPlayer,
@@ -76,6 +80,8 @@ const message = (error: unknown) =>
   error instanceof Error ? error.message : "Unable to load PalDefender data.";
 
 export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
+  const selection = usePalDefenderServerSelection();
+  const serverId = selection.selectedServerId;
   const [activeTab, setActiveTab] = useState<TabName>("overview");
   const [player, setPlayer] =
     useState<Loadable<PalDefenderPlayerDetails>>(initial);
@@ -108,15 +114,16 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
   >(null);
 
   const loadPlayer = useCallback(async () => {
+    if (!serverId) return;
     setPlayer((value) => ({ ...value, loading: true, error: "" }));
     try {
       setPlayer({
-        data: await getPalDefenderPlayer(playerId),
+        data: await getPalDefenderPlayer(serverId, playerId),
         loading: false,
         error: "",
       });
     } catch (error) {
-      const listedPlayer = await getPalDefenderPlayers()
+      const listedPlayer = await getPalDefenderPlayers(serverId)
         .then((players) =>
           players.find((candidate) => candidate.playerId === playerId),
         )
@@ -139,25 +146,33 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
         error: message(error),
       }));
     }
-  }, [playerId]);
-  const loadInventory = useCallback(
-    async () =>
-      loadCollection(setInventory, () => getPalDefenderInventory(playerId)),
-    [playerId],
-  );
-  const loadPals = useCallback(
-    async () => loadCollection(setPals, () => getPalDefenderPals(playerId)),
-    [playerId],
-  );
-  const loadTechnology = useCallback(
-    async () =>
-      loadCollection(setTechnology, () => getPalDefenderTechnology(playerId)),
-    [playerId],
-  );
+  }, [playerId, serverId]);
+  const loadInventory = useCallback(async () => {
+    if (serverId)
+      await loadCollection(setInventory, () =>
+        getPalDefenderInventory(serverId, playerId),
+      );
+  }, [playerId, serverId]);
+  const loadPals = useCallback(async () => {
+    if (serverId)
+      await loadCollection(setPals, () =>
+        getPalDefenderPals(serverId, playerId),
+      );
+  }, [playerId, serverId]);
+  const loadTechnology = useCallback(async () => {
+    if (serverId)
+      await loadCollection(setTechnology, () =>
+        getPalDefenderTechnology(serverId, playerId),
+      );
+  }, [playerId, serverId]);
 
   useEffect(() => {
+    setPlayer(initial());
+    setInventory(initial());
+    setPals(initial());
+    setTechnology(initial());
     void loadPlayer();
-  }, [loadPlayer]);
+  }, [loadPlayer, serverId]);
   useEffect(() => {
     if (
       activeTab === "inventory" &&
@@ -209,7 +224,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
         title: options.successTitle,
         message: options.successMessage,
       });
-      await Promise.all([loadPlayer(), getPalDefenderPlayers()]);
+      await Promise.all([loadPlayer(), getPalDefenderPlayers(serverId!)]);
     } catch (error) {
       notifications.show({
         color: "red",
@@ -227,7 +242,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
   const kickPlayer = () =>
     executeModeration({
       action: "kick",
-      execute: () => kickPalDefenderPlayer(playerId, kickMessage),
+      execute: () => kickPalDefenderPlayer(serverId!, playerId, kickMessage),
       close: () => setKickOpened(false),
       reset: () => setKickMessage(""),
       successTitle: "Player kicked",
@@ -238,7 +253,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
     executeModeration({
       action: "ban",
       execute: () =>
-        banPalDefenderPlayer(playerId, { reason: banReason, ipBan }),
+        banPalDefenderPlayer(serverId!, playerId, { reason: banReason, ipBan }),
       close: () => setBanOpened(false),
       reset: () => {
         setBanReason("");
@@ -259,7 +274,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
     const grants = normalizeItemGrants(itemGrants);
     setSubmittingAction("give-items");
     try {
-      const result = await givePalDefenderItems(playerId, grants);
+      const result = await givePalDefenderItems(serverId!, playerId, grants);
       setGiveItemsConfirmationOpened(false);
       setGiveItemsOpened(false);
       setItemGrants([{ itemId: "", count: 1 }]);
@@ -272,7 +287,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
       await Promise.all([
         loadInventory(),
         loadPlayer(),
-        getPalDefenderPlayers(),
+        getPalDefenderPlayers(serverId!),
       ]);
     } catch (error) {
       setGiveItemsConfirmationOpened(false);
@@ -300,7 +315,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
     const grant = normalizePalGrant(palGrant);
     setSubmittingAction("give-pal");
     try {
-      const result = await givePalDefenderPals(playerId, [grant]);
+      const result = await givePalDefenderPals(serverId!, playerId, [grant]);
       setGivePalConfirmationOpened(false);
       setGivePalOpened(false);
       setPalGrant({ palId: "", level: 1 });
@@ -310,7 +325,11 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
         title: "Pal granted",
         message: `PalDefender granted ${result.grantedPals} Pal to ${player.data?.name ?? "the player"}.`,
       });
-      await Promise.all([loadPals(), loadPlayer(), getPalDefenderPlayers()]);
+      await Promise.all([
+        loadPals(),
+        loadPlayer(),
+        getPalDefenderPlayers(serverId!),
+      ]);
     } catch (error) {
       setGivePalConfirmationOpened(false);
       notifications.show({
@@ -333,7 +352,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
           <Stack gap="sm">
             <Button
               component={Link}
-              href="/paldefender/players"
+              href={`/paldefender/players?serverId=${encodeURIComponent(serverId ?? "")}`}
               variant="subtle"
               leftSection={<IconArrowLeft size={17} />}
               w="fit-content"
@@ -365,6 +384,7 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
             Refresh
           </Button>
         </Group>
+        <PalDefenderServerSelector selection={selection} />
         {player.error && (
           <Alert color="red" title="Player details unavailable">
             {player.error}

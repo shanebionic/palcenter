@@ -16,30 +16,39 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApplicationShell } from "../../../components/ApplicationShell";
 import { BrandedLoader } from "../../../components/BrandedLoader";
 import { PageHeader } from "../../../components/PageHeader";
+import {
+  PalDefenderServerSelector,
+  usePalDefenderServerSelection,
+} from "../../../components/PalDefenderServerSelector";
 import { SectionCard } from "../../../components/ui/SectionCard";
 import { getPalDefenderGuilds, type PalDefenderGuild } from "../../../lib/api";
 import { palDefenderGuildHref } from "../../../lib/paldefender";
 
 export default function PalDefenderGuildsPage() {
   const router = useRouter();
+  const selection = usePalDefenderServerSelection();
   const [guilds, setGuilds] = useState<PalDefenderGuild[] | null>(null);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadGuilds = useCallback(async (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    setError("");
-    try {
-      setGuilds(await getPalDefenderGuilds());
-    } catch (value) {
-      setError(
-        value instanceof Error ? value.message : "Unable to load guilds.",
-      );
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
+  const loadGuilds = useCallback(
+    async (refresh = false) => {
+      if (!selection.selectedServerId) return;
+      if (refresh) setRefreshing(true);
+      setError("");
+      try {
+        setGuilds(await getPalDefenderGuilds(selection.selectedServerId));
+      } catch (value) {
+        setError(
+          value instanceof Error ? value.message : "Unable to load guilds.",
+        );
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    [selection.selectedServerId],
+  );
 
   useEffect(() => {
     void loadGuilds();
@@ -78,6 +87,7 @@ export default function PalDefenderGuildsPage() {
             </Button>
           }
         />
+        <PalDefenderServerSelector selection={selection} />
         {error && <Alert color="red">{error}</Alert>}
         {!guilds && !error && <BrandedLoader message="Loading guilds" />}
         {guilds && (
@@ -113,12 +123,22 @@ export default function PalDefenderGuildsPage() {
                         role="link"
                         style={{ cursor: "pointer" }}
                         onClick={() =>
-                          router.push(palDefenderGuildHref(guild.guildId))
+                          router.push(
+                            palDefenderGuildHref(
+                              selection.selectedServerId!,
+                              guild.guildId,
+                            ),
+                          )
                         }
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
-                            router.push(palDefenderGuildHref(guild.guildId));
+                            router.push(
+                              palDefenderGuildHref(
+                                selection.selectedServerId!,
+                                guild.guildId,
+                              ),
+                            );
                           }
                         }}
                       >

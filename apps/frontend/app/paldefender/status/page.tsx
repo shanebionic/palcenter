@@ -11,21 +11,33 @@ import { ApplicationShell } from "../../../components/ApplicationShell";
 import { BrandedLoader } from "../../../components/BrandedLoader";
 import { PageHeader } from "../../../components/PageHeader";
 import { StatCard } from "../../../components/ui/StatCard";
+import {
+  PalDefenderServerSelector,
+  usePalDefenderServerSelection,
+} from "../../../components/PalDefenderServerSelector";
 import { getPalDefenderStatus, type PalDefenderStatus } from "../../../lib/api";
 
 export default function PalDefenderStatusPage() {
+  const selection = usePalDefenderServerSelection();
   const [status, setStatus] = useState<PalDefenderStatus | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void getPalDefenderStatus()
+    if (!selection.selectedServerId) {
+      setStatus(null);
+      setError("");
+      return;
+    }
+    setStatus(null);
+    setError("");
+    void getPalDefenderStatus(selection.selectedServerId)
       .then(setStatus)
       .catch((value: unknown) => {
         setError(
           value instanceof Error ? value.message : "Unable to load status.",
         );
       });
-  }, []);
+  }, [selection.selectedServerId]);
 
   return (
     <ApplicationShell>
@@ -35,8 +47,11 @@ export default function PalDefenderStatusPage() {
           title="Status"
           description="Live connectivity and version information from the configured PalDefender server."
         />
+        <PalDefenderServerSelector selection={selection} />
         {error && <Alert color="red">{error}</Alert>}
-        {!status && !error && <BrandedLoader message="Checking PalDefender" />}
+        {selection.selectedServerId && !status && !error && (
+          <BrandedLoader message="Checking PalDefender" />
+        )}
         {status && (
           <SimpleGrid cols={{ base: 1, sm: 3 }}>
             <StatCard

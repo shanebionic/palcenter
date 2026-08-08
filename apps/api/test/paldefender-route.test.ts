@@ -12,8 +12,6 @@ process.env.NODE_ENV = "test";
 process.env.CONFIG_DIR = directory;
 process.env.LOG_LEVEL = "silent";
 process.env.HISTORY_INTERVAL_SECONDS = "3600";
-process.env.PALDEFENDER_URL = "http://paldefender";
-process.env.PALDEFENDER_TOKEN = "route-test-token";
 
 let app: FastifyInstance;
 let administratorCookie = "";
@@ -28,6 +26,26 @@ function cookie(response: {
 }
 
 before(async () => {
+  const now = new Date().toISOString();
+  await fs.writeFile(
+    path.join(directory, "servers.json"),
+    JSON.stringify({
+      version: 1,
+      servers: [
+        {
+          id: "server-a",
+          name: "Server A",
+          baseUrl: "http://palworld-a",
+          adminPassword: "admin-password",
+          palDefenderEnabled: true,
+          palDefenderEndpoint: "http://paldefender",
+          palDefenderToken: "route-test-token",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+    }),
+  );
   globalThis.fetch = async (input, init) => {
     assert.equal(
       new Headers(init?.headers).get("Authorization"),
@@ -246,52 +264,52 @@ after(async () => {
 test("PalDefender player workspace routes require PalCenter authentication", async () => {
   const response = await app.inject({
     method: "GET",
-    url: "/api/paldefender/players/player-1",
+    url: "/api/servers/server-a/paldefender/players/player-1",
   });
   assert.equal(response.statusCode, 401);
   const kick = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/player-1/kick",
+    url: "/api/servers/server-a/paldefender/players/player-1/kick",
     payload: {},
   });
   assert.equal(kick.statusCode, 401);
   const ban = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/player-1/ban",
+    url: "/api/servers/server-a/paldefender/players/player-1/ban",
     payload: {},
   });
   assert.equal(ban.statusCode, 401);
   const giveItems = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/player-1/items",
+    url: "/api/servers/server-a/paldefender/players/player-1/items",
     payload: { items: [{ itemId: "Wood", count: 1 }] },
   });
   assert.equal(giveItems.statusCode, 401);
   const givePals = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/player-1/pals",
+    url: "/api/servers/server-a/paldefender/players/player-1/pals",
     payload: { pals: [{ palId: "Anubis", level: 35 }] },
   });
   assert.equal(givePals.statusCode, 401);
   const broadcast = await app.inject({
     method: "POST",
-    url: "/api/paldefender/broadcast",
+    url: "/api/servers/server-a/paldefender/broadcast",
     payload: { message: "Hello" },
   });
   assert.equal(broadcast.statusCode, 401);
   const guilds = await app.inject({
     method: "GET",
-    url: "/api/paldefender/guilds",
+    url: "/api/servers/server-a/paldefender/guilds",
   });
   assert.equal(guilds.statusCode, 401);
   const bases = await app.inject({
     method: "GET",
-    url: "/api/paldefender/bases",
+    url: "/api/servers/server-a/paldefender/bases",
   });
   assert.equal(bases.statusCode, 401);
   const base = await app.inject({
     method: "GET",
-    url: "/api/paldefender/bases/base-1",
+    url: "/api/servers/server-a/paldefender/bases/base-1",
   });
   assert.equal(base.statusCode, 401);
 });
@@ -299,7 +317,7 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
 test("PalDefender guild route returns PalCenter-owned models", async () => {
   const response = await app.inject({
     method: "GET",
-    url: "/api/paldefender/guilds",
+    url: "/api/servers/server-a/paldefender/guilds",
     headers: { cookie: administratorCookie },
   });
   assert.equal(response.statusCode, 200);
@@ -328,7 +346,7 @@ test("PalDefender guild route returns PalCenter-owned models", async () => {
 test("PalDefender base route aggregates documented guild camps", async () => {
   const response = await app.inject({
     method: "GET",
-    url: "/api/paldefender/bases",
+    url: "/api/servers/server-a/paldefender/bases",
     headers: { cookie: administratorCookie },
   });
   assert.equal(response.statusCode, 200);
@@ -350,7 +368,7 @@ test("PalDefender base details select and normalize a documented guild camp", as
   const headers = { cookie: administratorCookie };
   const response = await app.inject({
     method: "GET",
-    url: "/api/paldefender/bases/base-1",
+    url: "/api/servers/server-a/paldefender/bases/base-1",
     headers,
   });
   assert.equal(response.statusCode, 200);
@@ -369,7 +387,7 @@ test("PalDefender base details select and normalize a documented guild camp", as
 
   const missing = await app.inject({
     method: "GET",
-    url: "/api/paldefender/bases/missing",
+    url: "/api/servers/server-a/paldefender/bases/missing",
     headers,
   });
   assert.equal(missing.statusCode, 404);
@@ -380,7 +398,7 @@ test("PalDefender guild details normalize live data and missing guilds", async (
   const headers = { cookie: administratorCookie };
   const response = await app.inject({
     method: "GET",
-    url: "/api/paldefender/guilds/guild-1",
+    url: "/api/servers/server-a/paldefender/guilds/guild-1",
     headers,
   });
   assert.equal(response.statusCode, 200);
@@ -415,7 +433,7 @@ test("PalDefender guild details normalize live data and missing guilds", async (
 
   const missing = await app.inject({
     method: "GET",
-    url: "/api/paldefender/guilds/missing",
+    url: "/api/servers/server-a/paldefender/guilds/missing",
     headers,
   });
   assert.equal(missing.statusCode, 404);
@@ -426,7 +444,7 @@ test("PalDefender kick route normalizes success and offline errors", async () =>
   const headers = { cookie: administratorCookie };
   const kicked = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/player-1/kick",
+    url: "/api/servers/server-a/paldefender/players/player-1/kick",
     headers,
     payload: { message: "Please reconnect" },
   });
@@ -435,7 +453,7 @@ test("PalDefender kick route normalizes success and offline errors", async () =>
 
   const offline = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/offline/kick",
+    url: "/api/servers/server-a/paldefender/players/offline/kick",
     headers,
     payload: {},
   });
@@ -450,7 +468,7 @@ test("PalDefender give items route validates input and normalizes responses", as
   const headers = { cookie: administratorCookie };
   const granted = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/player-1/items",
+    url: "/api/servers/server-a/paldefender/players/player-1/items",
     headers,
     payload: {
       items: [
@@ -471,7 +489,7 @@ test("PalDefender give items route validates input and normalizes responses", as
   ]) {
     const invalid = await app.inject({
       method: "POST",
-      url: "/api/paldefender/players/player-1/items",
+      url: "/api/servers/server-a/paldefender/players/player-1/items",
       headers,
       payload,
     });
@@ -480,7 +498,7 @@ test("PalDefender give items route validates input and normalizes responses", as
 
   const rejected = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/invalid-item/items",
+    url: "/api/servers/server-a/paldefender/players/invalid-item/items",
     headers,
     payload: { items: [{ itemId: "DefinitelyNotAnItem", count: 1 }] },
   });
@@ -495,7 +513,7 @@ test("PalDefender give Pals route validates input and normalizes responses", asy
   const headers = { cookie: administratorCookie };
   const granted = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/player-1/pals",
+    url: "/api/servers/server-a/paldefender/players/player-1/pals",
     headers,
     payload: {
       pals: [
@@ -517,7 +535,7 @@ test("PalDefender give Pals route validates input and normalizes responses", asy
   ]) {
     const invalid = await app.inject({
       method: "POST",
-      url: "/api/paldefender/players/player-1/pals",
+      url: "/api/servers/server-a/paldefender/players/player-1/pals",
       headers,
       payload,
     });
@@ -526,7 +544,7 @@ test("PalDefender give Pals route validates input and normalizes responses", asy
 
   const rejected = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/invalid-pal/pals",
+    url: "/api/servers/server-a/paldefender/players/invalid-pal/pals",
     headers,
     payload: { pals: [{ palId: "DefinitelyNotAPal", level: 1 }] },
   });
@@ -541,7 +559,7 @@ test("PalDefender broadcast validates and normalizes messages and failures", asy
   const headers = { cookie: administratorCookie };
   const sent = await app.inject({
     method: "POST",
-    url: "/api/paldefender/broadcast",
+    url: "/api/servers/server-a/paldefender/broadcast",
     headers,
     payload: { message: "Hello, Palpagos! ⚡" },
   });
@@ -551,7 +569,7 @@ test("PalDefender broadcast validates and normalizes messages and failures", asy
   for (const message of ["", "   \n\t"]) {
     const invalid = await app.inject({
       method: "POST",
-      url: "/api/paldefender/broadcast",
+      url: "/api/servers/server-a/paldefender/broadcast",
       headers,
       payload: { message },
     });
@@ -560,7 +578,7 @@ test("PalDefender broadcast validates and normalizes messages and failures", asy
 
   const failed = await app.inject({
     method: "POST",
-    url: "/api/paldefender/broadcast",
+    url: "/api/servers/server-a/paldefender/broadcast",
     headers,
     payload: { message: "fail" },
   });
@@ -575,7 +593,7 @@ test("PalDefender ban route normalizes success and unavailable IP errors", async
   const headers = { cookie: administratorCookie };
   const banned = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/player-1/ban",
+    url: "/api/servers/server-a/paldefender/players/player-1/ban",
     headers,
     payload: { reason: "Repeated abuse", ipBan: true },
   });
@@ -590,7 +608,7 @@ test("PalDefender ban route normalizes success and unavailable IP errors", async
 
   const unavailableIp = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/no-ip/ban",
+    url: "/api/servers/server-a/paldefender/players/no-ip/ban",
     headers,
     payload: { ipBan: true },
   });
@@ -603,7 +621,7 @@ test("PalDefender ban route normalizes success and unavailable IP errors", async
 
   const rejected = await app.inject({
     method: "POST",
-    url: "/api/paldefender/players/rejected/ban",
+    url: "/api/servers/server-a/paldefender/players/rejected/ban",
     headers,
     payload: {},
   });
@@ -618,7 +636,7 @@ test("PalDefender player workspace routes return normalized models", async () =>
   const headers = { cookie: administratorCookie };
   const detail = await app.inject({
     method: "GET",
-    url: "/api/paldefender/players/player-1",
+    url: "/api/servers/server-a/paldefender/players/player-1",
     headers,
   });
   assert.equal(detail.statusCode, 200);
@@ -633,7 +651,7 @@ test("PalDefender player workspace routes return normalized models", async () =>
   });
   const inventory = await app.inject({
     method: "GET",
-    url: "/api/paldefender/players/player-1/inventory",
+    url: "/api/servers/server-a/paldefender/players/player-1/inventory",
     headers,
   });
   assert.deepEqual(inventory.json().items, [
@@ -641,13 +659,13 @@ test("PalDefender player workspace routes return normalized models", async () =>
   ]);
   const pals = await app.inject({
     method: "GET",
-    url: "/api/paldefender/players/player-1/pals",
+    url: "/api/servers/server-a/paldefender/players/player-1/pals",
     headers,
   });
   assert.deepEqual(pals.json(), { pals: [] });
   const technology = await app.inject({
     method: "GET",
-    url: "/api/paldefender/players/player-1/technology",
+    url: "/api/servers/server-a/paldefender/players/player-1/technology",
     headers,
   });
   assert.deepEqual(technology.json(), { technologies: ["Technology_Wood"] });
@@ -657,14 +675,14 @@ test("PalDefender not-found and invalid player identifiers are normalized", asyn
   const headers = { cookie: administratorCookie };
   const missing = await app.inject({
     method: "GET",
-    url: "/api/paldefender/players/missing",
+    url: "/api/servers/server-a/paldefender/players/missing",
     headers,
   });
   assert.equal(missing.statusCode, 404);
   assert.equal(missing.json().error, "paldefender_player_not_found");
   const invalid = await app.inject({
     method: "GET",
-    url: "/api/paldefender/players/bad%2Fid",
+    url: "/api/servers/server-a/paldefender/players/bad%2Fid",
     headers,
   });
   assert.equal(invalid.statusCode, 400);

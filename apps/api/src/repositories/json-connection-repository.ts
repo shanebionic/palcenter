@@ -22,6 +22,9 @@ const storedConnectionSchema = z.object({
     .regex(/^[0-9A-Fa-f]{32}$/)
     .nullable()
     .default(null),
+  palDefenderEnabled: z.boolean().default(false),
+  palDefenderEndpoint: z.string().url().nullable().default(null),
+  palDefenderToken: z.string().max(2_048).default(""),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

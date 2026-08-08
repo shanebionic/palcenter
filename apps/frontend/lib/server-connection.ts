@@ -22,6 +22,16 @@ export function serverConnectionPayload(
     ...(values.administratorPlayerId !== undefined
       ? { administratorPlayerId: values.administratorPlayerId }
       : {}),
+    ...(values.palDefenderEnabled !== undefined
+      ? { palDefenderEnabled: values.palDefenderEnabled }
+      : {}),
+    ...(values.palDefenderEndpoint !== undefined
+      ? { palDefenderEndpoint: values.palDefenderEndpoint?.trim() || null }
+      : {}),
+    ...(values.palDefenderToken
+      ? { palDefenderToken: values.palDefenderToken }
+      : {}),
+    ...(values.clearPalDefenderToken ? { clearPalDefenderToken: true } : {}),
   };
 }
 

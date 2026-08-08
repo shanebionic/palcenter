@@ -18,6 +18,9 @@ const original: StoredConnection = {
   companionHost: "companion.internal",
   companionPort: 18213,
   companionApiToken: "companion-secret",
+  palDefenderEnabled: true,
+  palDefenderEndpoint: "http://paldefender.internal:8212",
+  palDefenderToken: "paldefender-secret",
   createdAt: "2026-07-28T00:00:00.000Z",
   updatedAt: "2026-07-28T00:00:00.000Z",
 };
@@ -88,6 +91,13 @@ test("connection updates preserve identity, credentials, and server-scoped data"
     assert.equal(stored?.createdAt, original.createdAt);
     assert.equal(stored?.adminPassword, original.adminPassword);
     assert.equal(stored?.companionApiToken, original.companionApiToken);
+    assert.equal(stored?.palDefenderToken, original.palDefenderToken);
+    assert.equal(publicConnection.palDefender.tokenConfigured, true);
+    assert.equal(
+      publicConnection.palDefender.endpoint,
+      original.palDefenderEndpoint,
+    );
+    assert.equal("palDefenderToken" in publicConnection, false);
     assert.equal(publicConnection.companion.tokenConfigured, true);
     assert.equal(history.listMetrics(original.id, 10).length, 1);
     assert.equal(history.listEvents(original.id, 10).length, 1);
@@ -114,6 +124,24 @@ test("connection updates preserve identity, credentials, and server-scoped data"
       "replacement-companion-secret",
     );
     assert.equal("companionApiToken" in publicConnection, false);
+
+    await manager.update(original.id, {
+      name: "Updated",
+      baseUrl: "https://new.example:9443",
+      palDefenderToken: "",
+    });
+    assert.equal(
+      (await connections.get(original.id))?.palDefenderToken,
+      original.palDefenderToken,
+      "A blank token preserves the stored PalDefender credential.",
+    );
+    const cleared = await manager.update(original.id, {
+      name: "Updated",
+      baseUrl: "https://new.example:9443",
+      clearPalDefenderToken: true,
+    });
+    assert.equal((await connections.get(original.id))?.palDefenderToken, "");
+    assert.equal(cleared.palDefender.tokenConfigured, false);
   } finally {
     automation.close();
     history.close();

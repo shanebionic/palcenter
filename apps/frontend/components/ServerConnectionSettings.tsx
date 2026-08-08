@@ -19,10 +19,12 @@ import { notifications } from "@mantine/notifications";
 import { useEffect, useState } from "react";
 import {
   testServerUpdate,
+  testPalDefenderConnection,
   updateServer,
   refreshCompanionStatus,
   getPlayers,
   type ConnectionTestResult,
+  type PalDefenderConnectionTestResult,
   type ServerConnectionUpdate,
 } from "../lib/api";
 import {
@@ -53,6 +55,10 @@ export function ServerConnectionSettings({
       companionPort: connection.companion.port,
       companionApiToken: "",
       administratorPlayerId: connection.companion.administratorPlayerId,
+      palDefenderEnabled: connection.palDefender.enabled,
+      palDefenderEndpoint: connection.palDefender.endpoint,
+      palDefenderToken: "",
+      clearPalDefenderToken: false,
     },
     validate: {
       name: (value) => (value.trim() ? null : "Display name is required."),
@@ -66,6 +72,23 @@ export function ServerConnectionSettings({
           return "Enter a valid REST URL.";
         }
       },
+      palDefenderEndpoint: (value, values) => {
+        if (!values.palDefenderEnabled) return null;
+        if (!value?.trim())
+          return "PalDefender endpoint is required when enabled.";
+        try {
+          const url = new URL(value);
+          return ["http:", "https:"].includes(url.protocol) &&
+            !url.username &&
+            !url.password &&
+            !url.search &&
+            !url.hash
+            ? null
+            : "Use an HTTP or HTTPS URL without credentials, query, or fragment.";
+        } catch {
+          return "Enter a valid PalDefender endpoint.";
+        }
+      },
     },
   });
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(
@@ -75,6 +98,12 @@ export function ServerConnectionSettings({
   const [testError, setTestError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [palDefenderTestResult, setPalDefenderTestResult] =
+    useState<PalDefenderConnectionTestResult | null>(null);
+  const [palDefenderTestError, setPalDefenderTestError] = useState<
+    string | null
+  >(null);
+  const [testingPalDefender, setTestingPalDefender] = useState(false);
   const [onlineCharacters, setOnlineCharacters] = useState<
     { value: string; label: string }[]
   >([]);
@@ -119,6 +148,32 @@ export function ServerConnectionSettings({
     }
   };
 
+  const testPalDefender = async () => {
+    const endpointError = form.validateField("palDefenderEndpoint");
+    if (endpointError.hasError || !form.values.palDefenderEndpoint) return;
+    setTestingPalDefender(true);
+    setPalDefenderTestResult(null);
+    setPalDefenderTestError(null);
+    try {
+      setPalDefenderTestResult(
+        await testPalDefenderConnection(connection.id, {
+          endpoint: form.values.palDefenderEndpoint,
+          ...(form.values.palDefenderToken
+            ? { token: form.values.palDefenderToken }
+            : {}),
+        }),
+      );
+    } catch (error) {
+      setPalDefenderTestError(
+        error instanceof Error
+          ? error.message
+          : "Unable to test PalDefender connection.",
+      );
+    } finally {
+      setTestingPalDefender(false);
+    }
+  };
+
   const save = form.onSubmit(async (values) => {
     if (!currentTested && !window.confirm(untestedConnectionWarning)) {
       return;
@@ -133,6 +188,8 @@ export function ServerConnectionSettings({
         message: "The saved PalCenter connection was updated.",
       });
       form.setFieldValue("adminPassword", "");
+      form.setFieldValue("palDefenderToken", "");
+      form.setFieldValue("clearPalDefenderToken", false);
       setTestedKey("");
       setTestResult(null);
       await onSaved();
@@ -174,6 +231,92 @@ export function ServerConnectionSettings({
               description="Leave blank to keep the currently stored password."
               {...form.getInputProps("adminPassword")}
             />
+            <Stack gap="sm" mt="md">
+              <Text fw={700} size="lg">
+                PalDefender Integration
+              </Text>
+              <Text size="sm" c="dimmed">
+                Configure the PalDefender REST API associated only with this
+                Palworld server.
+              </Text>
+              <Switch
+                label="Enable PalDefender"
+                {...form.getInputProps("palDefenderEnabled", {
+                  type: "checkbox",
+                })}
+              />
+              <TextInput
+                label="Endpoint"
+                description="Include the protocol, hostname or private IP address, and PalDefender REST port."
+                placeholder="http://10.10.40.20:17993"
+                disabled={!form.values.palDefenderEnabled}
+                {...form.getInputProps("palDefenderEndpoint")}
+              />
+              <PasswordInput
+                label="Bearer Token"
+                description={
+                  connection.palDefender.tokenConfigured &&
+                  !form.values.clearPalDefenderToken
+                    ? "A token is configured. Leave blank to keep it, or enter a replacement."
+                    : "Paste a PalDefender REST bearer token."
+                }
+                placeholder={
+                  connection.palDefender.tokenConfigured &&
+                  !form.values.clearPalDefenderToken
+                    ? "Configured"
+                    : "Not configured"
+                }
+                disabled={
+                  !form.values.palDefenderEnabled ||
+                  Boolean(form.values.clearPalDefenderToken)
+                }
+                {...form.getInputProps("palDefenderToken")}
+              />
+              {connection.palDefender.tokenConfigured && (
+                <Button
+                  type="button"
+                  variant="subtle"
+                  color={form.values.clearPalDefenderToken ? "gray" : "red"}
+                  w="fit-content"
+                  disabled={!form.values.palDefenderEnabled}
+                  onClick={() =>
+                    form.setFieldValue(
+                      "clearPalDefenderToken",
+                      !form.values.clearPalDefenderToken,
+                    )
+                  }
+                >
+                  {form.values.clearPalDefenderToken
+                    ? "Keep stored token"
+                    : "Clear stored token on save"}
+                </Button>
+              )}
+              {palDefenderTestError && (
+                <Alert color="orange" title="PalDefender connection failed">
+                  {palDefenderTestError}
+                </Alert>
+              )}
+              {palDefenderTestResult && (
+                <Alert color="green" title="PalDefender connected">
+                  Version: {palDefenderTestResult.version} · Response time:{" "}
+                  {palDefenderTestResult.responseTime} ms
+                </Alert>
+              )}
+              <Button
+                type="button"
+                variant="default"
+                w="fit-content"
+                onClick={() => void testPalDefender()}
+                loading={testingPalDefender}
+                disabled={
+                  saving ||
+                  !form.values.palDefenderEnabled ||
+                  Boolean(form.values.clearPalDefenderToken)
+                }
+              >
+                Test PalDefender Connection
+              </Button>
+            </Stack>
             <Accordion variant="separated">
               <Accordion.Item value="companion">
                 <Accordion.Control>

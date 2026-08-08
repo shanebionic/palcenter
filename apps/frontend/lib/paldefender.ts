@@ -1,11 +1,21 @@
-export function palDefenderPlayerHref(playerId: string): string {
-  return `/paldefender/players/${encodeURIComponent(playerId)}`;
+function serverQuery(serverId: string): string {
+  return `?serverId=${encodeURIComponent(serverId)}`;
 }
 
-export function palDefenderGuildHref(guildId: string): string {
-  return `/paldefender/guilds/${encodeURIComponent(guildId)}`;
+export function palDefenderPlayerHref(
+  serverId: string,
+  playerId: string,
+): string {
+  return `/paldefender/players/${encodeURIComponent(playerId)}${serverQuery(serverId)}`;
 }
 
-export function palDefenderBaseHref(baseId: string): string {
-  return `/paldefender/bases/${encodeURIComponent(baseId)}`;
+export function palDefenderGuildHref(
+  serverId: string,
+  guildId: string,
+): string {
+  return `/paldefender/guilds/${encodeURIComponent(guildId)}${serverQuery(serverId)}`;
+}
+
+export function palDefenderBaseHref(serverId: string, baseId: string): string {
+  return `/paldefender/bases/${encodeURIComponent(baseId)}${serverQuery(serverId)}`;
 }

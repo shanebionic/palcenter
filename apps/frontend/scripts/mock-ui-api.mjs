@@ -34,6 +34,11 @@ const connection = {
   baseUrl: "http://palworld.example:8212",
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: now,
+  palDefender: {
+    enabled: false,
+    endpoint: null,
+    tokenConfigured: false,
+  },
   companion: {
     enabled: true,
     host: "companion.internal",

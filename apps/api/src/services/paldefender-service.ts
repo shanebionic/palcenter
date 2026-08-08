@@ -1,132 +1,232 @@
 import {
   PalDefenderClient,
-  type PalDefenderPlayer,
-  type PalDefenderPlayerDetails,
-  type PalDefenderInventoryItem,
-  type PalDefenderPal,
-  type PalDefenderKickResult,
   type PalDefenderBanOptions,
   type PalDefenderBanResult,
-  type PalDefenderBroadcastResult,
-  type PalDefenderGuild,
   type PalDefenderBase,
   type PalDefenderBaseDetails,
-  type PalDefenderGuildDetails,
-  type PalDefenderItemGrant,
+  type PalDefenderBroadcastResult,
   type PalDefenderGiveItemsResult,
-  type PalDefenderPalGrant,
   type PalDefenderGivePalsResult,
+  type PalDefenderGuild,
+  type PalDefenderGuildDetails,
+  type PalDefenderInventoryItem,
+  type PalDefenderItemGrant,
+  type PalDefenderKickResult,
+  type PalDefenderPal,
+  type PalDefenderPalGrant,
+  type PalDefenderPlayer,
+  type PalDefenderPlayerDetails,
 } from "../clients/paldefender-client.js";
+import type { ConnectionRepository } from "../repositories/connection-repository.js";
+import type { StoredConnection } from "../types/connections.js";
 
 export interface PalDefenderStatus {
+  enabled: boolean;
+  configured: boolean;
   connected: boolean;
   version: string;
   responseTime: number;
 }
 
+export interface PalDefenderConnectionTestResult {
+  connected: true;
+  version: string;
+  responseTime: number;
+}
+
+type ClientFactory = (endpoint: string, token: string) => PalDefenderClient;
+
 export class PalDefenderService {
-  constructor(private readonly client: PalDefenderClient | null) {}
+  constructor(
+    private readonly repository: ConnectionRepository,
+    private readonly createClient: ClientFactory = (endpoint, token) =>
+      new PalDefenderClient(endpoint, token),
+  ) {}
 
-  async status(): Promise<PalDefenderStatus> {
-    const startedAt = performance.now();
-
-    if (!this.client) {
-      return { connected: false, version: "Not configured", responseTime: 0 };
-    }
-
-    try {
-      const version = await this.client.getVersion();
+  async status(serverId: string): Promise<PalDefenderStatus> {
+    const connection = await this.requireConnection(serverId);
+    const enabled = connection.palDefenderEnabled ?? false;
+    const configured = Boolean(
+      connection.palDefenderEndpoint && connection.palDefenderToken,
+    );
+    if (!enabled) {
       return {
-        connected: true,
-        version,
-        responseTime: Math.max(1, Math.round(performance.now() - startedAt)),
+        enabled: false,
+        configured,
+        connected: false,
+        version: "Disabled",
+        responseTime: 0,
       };
+    }
+    if (!configured) {
+      return {
+        enabled: true,
+        configured: false,
+        connected: false,
+        version: "Configuration required",
+        responseTime: 0,
+      };
+    }
+    try {
+      const result = await this.testConnection(
+        connection.palDefenderEndpoint!,
+        connection.palDefenderToken!,
+      );
+      return { enabled: true, configured: true, ...result };
     } catch {
       return {
+        enabled: true,
+        configured: true,
         connected: false,
         version: "Unavailable",
-        responseTime: Math.max(1, Math.round(performance.now() - startedAt)),
+        responseTime: 0,
       };
     }
   }
 
-  async players(): Promise<PalDefenderPlayer[]> {
-    if (!this.client) {
-      throw new PalDefenderNotConfiguredError();
-    }
-    return this.client.getPlayers();
+  async testForServer(
+    serverId: string,
+    endpoint: string,
+    token?: string,
+  ): Promise<PalDefenderConnectionTestResult> {
+    const connection = await this.requireConnection(serverId);
+    const selectedToken = token?.trim() || connection.palDefenderToken || "";
+    if (!selectedToken) throw new PalDefenderConfigurationRequiredError();
+    return this.testConnection(endpoint, selectedToken);
   }
 
-  async player(id: string): Promise<PalDefenderPlayerDetails> {
-    return this.configuredClient().getPlayer(id);
+  async players(serverId: string): Promise<PalDefenderPlayer[]> {
+    return (await this.clientForServer(serverId)).getPlayers();
   }
 
-  async inventory(id: string): Promise<PalDefenderInventoryItem[]> {
-    return this.configuredClient().getInventory(id);
+  async player(
+    serverId: string,
+    id: string,
+  ): Promise<PalDefenderPlayerDetails> {
+    return (await this.clientForServer(serverId)).getPlayer(id);
   }
 
-  async pals(id: string): Promise<PalDefenderPal[]> {
-    return this.configuredClient().getPals(id);
+  async inventory(
+    serverId: string,
+    id: string,
+  ): Promise<PalDefenderInventoryItem[]> {
+    return (await this.clientForServer(serverId)).getInventory(id);
   }
 
-  async technology(id: string): Promise<string[]> {
-    return this.configuredClient().getTechnology(id);
+  async pals(serverId: string, id: string): Promise<PalDefenderPal[]> {
+    return (await this.clientForServer(serverId)).getPals(id);
   }
 
-  async guilds(): Promise<PalDefenderGuild[]> {
-    return this.configuredClient().getGuilds();
+  async technology(serverId: string, id: string): Promise<string[]> {
+    return (await this.clientForServer(serverId)).getTechnology(id);
   }
 
-  async bases(): Promise<PalDefenderBase[]> {
-    return this.configuredClient().getBases();
+  async guilds(serverId: string): Promise<PalDefenderGuild[]> {
+    return (await this.clientForServer(serverId)).getGuilds();
   }
 
-  async base(id: string): Promise<PalDefenderBaseDetails> {
-    return this.configuredClient().getBase(id);
+  async bases(serverId: string): Promise<PalDefenderBase[]> {
+    return (await this.clientForServer(serverId)).getBases();
   }
 
-  async guild(id: string): Promise<PalDefenderGuildDetails> {
-    return this.configuredClient().getGuild(id);
+  async base(serverId: string, id: string): Promise<PalDefenderBaseDetails> {
+    return (await this.clientForServer(serverId)).getBase(id);
   }
 
-  async kick(id: string, message?: string): Promise<PalDefenderKickResult> {
-    return this.configuredClient().kickPlayer(id, message);
+  async guild(serverId: string, id: string): Promise<PalDefenderGuildDetails> {
+    return (await this.clientForServer(serverId)).getGuild(id);
+  }
+
+  async kick(
+    serverId: string,
+    id: string,
+    message?: string,
+  ): Promise<PalDefenderKickResult> {
+    return (await this.clientForServer(serverId)).kickPlayer(id, message);
   }
 
   async ban(
+    serverId: string,
     id: string,
     options?: PalDefenderBanOptions,
   ): Promise<PalDefenderBanResult> {
-    return this.configuredClient().banPlayer(id, options);
+    return (await this.clientForServer(serverId)).banPlayer(id, options);
   }
 
-  async broadcast(message: string): Promise<PalDefenderBroadcastResult> {
-    return this.configuredClient().broadcast(message);
+  async broadcast(
+    serverId: string,
+    message: string,
+  ): Promise<PalDefenderBroadcastResult> {
+    return (await this.clientForServer(serverId)).broadcast(message);
   }
 
   async giveItems(
+    serverId: string,
     id: string,
     items: PalDefenderItemGrant[],
   ): Promise<PalDefenderGiveItemsResult> {
-    return this.configuredClient().giveItems(id, items);
+    return (await this.clientForServer(serverId)).giveItems(id, items);
   }
 
   async givePals(
+    serverId: string,
     id: string,
     pals: PalDefenderPalGrant[],
   ): Promise<PalDefenderGivePalsResult> {
-    return this.configuredClient().givePals(id, pals);
+    return (await this.clientForServer(serverId)).givePals(id, pals);
   }
 
-  private configuredClient(): PalDefenderClient {
-    if (!this.client) throw new PalDefenderNotConfiguredError();
-    return this.client;
+  private async testConnection(
+    endpoint: string,
+    token: string,
+  ): Promise<PalDefenderConnectionTestResult> {
+    const startedAt = performance.now();
+    const version = await this.createClient(endpoint, token).getVersion();
+    return {
+      connected: true,
+      version,
+      responseTime: Math.max(1, Math.round(performance.now() - startedAt)),
+    };
+  }
+
+  private async clientForServer(serverId: string): Promise<PalDefenderClient> {
+    const connection = await this.requireConnection(serverId);
+    if (!(connection.palDefenderEnabled ?? false)) {
+      throw new PalDefenderDisabledError();
+    }
+    if (!connection.palDefenderEndpoint || !connection.palDefenderToken) {
+      throw new PalDefenderConfigurationRequiredError();
+    }
+    return this.createClient(
+      connection.palDefenderEndpoint,
+      connection.palDefenderToken,
+    );
+  }
+
+  private async requireConnection(serverId: string): Promise<StoredConnection> {
+    const connection = await this.repository.get(serverId);
+    if (!connection) throw new PalDefenderServerNotFoundError();
+    return connection;
   }
 }
 
-export class PalDefenderNotConfiguredError extends Error {
+export class PalDefenderDisabledError extends Error {
   constructor() {
-    super("Set PALDEFENDER_URL and PALDEFENDER_TOKEN to use PalDefender.");
-    this.name = "PalDefenderNotConfiguredError";
+    super("PalDefender is not enabled for this server.");
+    this.name = "PalDefenderDisabledError";
+  }
+}
+
+export class PalDefenderConfigurationRequiredError extends Error {
+  constructor() {
+    super("Configure a PalDefender endpoint and bearer token for this server.");
+    this.name = "PalDefenderConfigurationRequiredError";
+  }
+}
+
+export class PalDefenderServerNotFoundError extends Error {
+  constructor() {
+    super("The requested server does not exist.");
+    this.name = "PalDefenderServerNotFoundError";
   }
 }
