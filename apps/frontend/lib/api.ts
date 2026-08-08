@@ -77,6 +77,43 @@ export interface PalDefenderInventoryItem {
   quantity: number;
 }
 
+export interface PalDefenderProgression {
+  playerId: string;
+  requestedPlayerId: string;
+  character: { level: number; experience: number; unusedStatusPoints: number };
+  currencies: {
+    relics: Record<string, number>;
+    technologyPoints: number;
+    ancientTechnologyPoints: number;
+  };
+  bosses: {
+    towerDefeats: Record<string, number>;
+    normalDefeatFlags: Record<string, boolean>;
+    raidDefeats: Record<string, number>;
+    totalDefeats: number;
+    predatorDefeats: number;
+  };
+  captures: {
+    total: number;
+    byPal: Record<string, number>;
+    bonusesByPal: Record<string, number>;
+    butcheredByPal: Record<string, number>;
+  };
+  activities: {
+    craftedItems: Record<string, number>;
+    normalDungeonsCleared: number;
+    fixedDungeonsCleared: number;
+    oilRigsCleared: number;
+    palRankUps: Record<string, number>;
+    soloArenasCleared: Record<string, number>;
+    npcTalks: Record<string, number>;
+    fishing: Record<string, number>;
+    treasuresFound: number;
+    campsConquered: number;
+    firstFishingCompleted: boolean;
+  };
+}
+
 export interface PalDefenderPal {
   instanceId: string;
   location: "Team" | "Palbox" | "Base Camp";
@@ -681,6 +718,16 @@ export async function getPalDefenderTechnology(
     { cache: "no-store" },
   );
   return result.technologies;
+}
+
+export function getPalDefenderProgression(
+  serverId: string,
+  playerId: string,
+): Promise<PalDefenderProgression> {
+  return request<PalDefenderProgression>(
+    `${palDefenderPlayerPath(serverId, playerId)}/progression`,
+    { cache: "no-store" },
+  );
 }
 
 export function kickPalDefenderPlayer(

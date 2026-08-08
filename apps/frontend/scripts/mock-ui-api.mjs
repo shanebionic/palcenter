@@ -364,6 +364,44 @@ export function startMockUiApi(port = 3198) {
     if (url.pathname === `${enhancedPlayerPath}/technology`) {
       return json(response, { technologies: ["Technology_Wood"] });
     }
+    if (url.pathname === `${enhancedPlayerPath}/progression`) {
+      return json(response, {
+        playerId: "0094A2FA-00000000-00000000-00000000",
+        requestedPlayerId: "0094A2FA-00000000-00000000-00000000",
+        character: { level: 6, experience: 1371, unusedStatusPoints: 5 },
+        currencies: {
+          relics: {},
+          technologyPoints: 5,
+          ancientTechnologyPoints: 0,
+        },
+        bosses: {
+          towerDefeats: {},
+          normalDefeatFlags: {},
+          raidDefeats: {},
+          totalDefeats: 0,
+          predatorDefeats: 0,
+        },
+        captures: {
+          total: 9,
+          byPal: { Anubis: 1 },
+          bonusesByPal: { Anubis: 1 },
+          butcheredByPal: {},
+        },
+        activities: {
+          craftedItems: { Wood: 3 },
+          normalDungeonsCleared: 0,
+          fixedDungeonsCleared: 0,
+          oilRigsCleared: 0,
+          palRankUps: {},
+          soloArenasCleared: {},
+          npcTalks: {},
+          fishing: {},
+          treasuresFound: 0,
+          campsConquered: 0,
+          firstFishingCompleted: false,
+        },
+      });
+    }
     if (
       url.pathname === `/api/servers/${connection.id}/telemetry/players/latest`
     ) {

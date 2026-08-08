@@ -76,6 +76,48 @@ const palsResponseSchema = z.object({
 const technologyResponseSchema = z.object({
   Techs: z.object({ Unlocked: z.array(z.string()).optional().default([]) }),
 });
+const countMapSchema = z.record(z.number().int().nonnegative());
+const progressionResponseSchema = z.object({
+  Meta: z.object({ PlayerUID: z.string(), Player: z.string() }),
+  Progression: z.object({
+    Player: z.object({
+      level: z.number().int().nonnegative(),
+      exp: z.number().int().nonnegative(),
+      unusedStatusPoints: z.number().int().nonnegative(),
+    }),
+    Currencies: z.object({
+      relics: countMapSchema,
+      technologyPoints: z.number().int().nonnegative(),
+      ancientTechnologyPoints: z.number().int().nonnegative(),
+    }),
+    Bosses: z.object({
+      towerBossDefeatCounts: countMapSchema,
+      normalBossDefeatFlags: z.record(z.boolean()),
+      raidBossDefeatCounts: countMapSchema,
+      totalBossDefeatCount: z.number().int().nonnegative(),
+      predatorDefeatCount: z.number().int().nonnegative(),
+    }),
+    Captures: z.object({
+      tribeCaptureCount: z.number().int().nonnegative(),
+      palCaptureCounts: countMapSchema,
+      palCaptureBonusCounts: countMapSchema,
+      palButcherCounts: countMapSchema,
+    }),
+    Activities: z.object({
+      craftItemCounts: countMapSchema,
+      normalDungeonClearCount: z.number().int().nonnegative(),
+      fixedDungeonClearCount: z.number().int().nonnegative(),
+      oilrigClearCount: z.number().int().nonnegative(),
+      palRankUpCounts: countMapSchema,
+      arenaSoloClearCounts: countMapSchema,
+      npcTalkCounts: countMapSchema,
+      fishingCounts: countMapSchema,
+      foundTreasureCount: z.number().int().nonnegative(),
+      campConqueredCount: z.number().int().nonnegative(),
+      firstFishingComplete: z.boolean(),
+    }),
+  }),
+});
 const coordinateSchema = z.object({
   x: z.number(),
   y: z.number(),
@@ -202,6 +244,42 @@ export interface PalDefenderInventoryItem {
   slot: number;
   itemId: string;
   quantity: number;
+}
+export interface PalDefenderProgression {
+  playerId: string;
+  requestedPlayerId: string;
+  character: { level: number; experience: number; unusedStatusPoints: number };
+  currencies: {
+    relics: Record<string, number>;
+    technologyPoints: number;
+    ancientTechnologyPoints: number;
+  };
+  bosses: {
+    towerDefeats: Record<string, number>;
+    normalDefeatFlags: Record<string, boolean>;
+    raidDefeats: Record<string, number>;
+    totalDefeats: number;
+    predatorDefeats: number;
+  };
+  captures: {
+    total: number;
+    byPal: Record<string, number>;
+    bonusesByPal: Record<string, number>;
+    butcheredByPal: Record<string, number>;
+  };
+  activities: {
+    craftedItems: Record<string, number>;
+    normalDungeonsCleared: number;
+    fixedDungeonsCleared: number;
+    oilRigsCleared: number;
+    palRankUps: Record<string, number>;
+    soloArenasCleared: Record<string, number>;
+    npcTalks: Record<string, number>;
+    fishing: Record<string, number>;
+    treasuresFound: number;
+    campsConquered: number;
+    firstFishingCompleted: boolean;
+  };
 }
 export interface PalDefenderPal {
   instanceId: string;
@@ -441,6 +519,54 @@ export class PalDefenderClient {
       `/techs/${encodePlayerId(playerId)}`,
     );
     return response.Techs.Unlocked ?? [];
+  }
+
+  async getProgression(playerId: string): Promise<PalDefenderProgression> {
+    const response = await this.parse(
+      progressionResponseSchema,
+      `/progression/${encodePlayerId(playerId)}`,
+    );
+    const value = response.Progression;
+    return {
+      playerId: response.Meta.PlayerUID,
+      requestedPlayerId: response.Meta.Player,
+      character: {
+        level: value.Player.level,
+        experience: value.Player.exp,
+        unusedStatusPoints: value.Player.unusedStatusPoints,
+      },
+      currencies: {
+        relics: value.Currencies.relics,
+        technologyPoints: value.Currencies.technologyPoints,
+        ancientTechnologyPoints: value.Currencies.ancientTechnologyPoints,
+      },
+      bosses: {
+        towerDefeats: value.Bosses.towerBossDefeatCounts,
+        normalDefeatFlags: value.Bosses.normalBossDefeatFlags,
+        raidDefeats: value.Bosses.raidBossDefeatCounts,
+        totalDefeats: value.Bosses.totalBossDefeatCount,
+        predatorDefeats: value.Bosses.predatorDefeatCount,
+      },
+      captures: {
+        total: value.Captures.tribeCaptureCount,
+        byPal: value.Captures.palCaptureCounts,
+        bonusesByPal: value.Captures.palCaptureBonusCounts,
+        butcheredByPal: value.Captures.palButcherCounts,
+      },
+      activities: {
+        craftedItems: value.Activities.craftItemCounts,
+        normalDungeonsCleared: value.Activities.normalDungeonClearCount,
+        fixedDungeonsCleared: value.Activities.fixedDungeonClearCount,
+        oilRigsCleared: value.Activities.oilrigClearCount,
+        palRankUps: value.Activities.palRankUpCounts,
+        soloArenasCleared: value.Activities.arenaSoloClearCounts,
+        npcTalks: value.Activities.npcTalkCounts,
+        fishing: value.Activities.fishingCounts,
+        treasuresFound: value.Activities.foundTreasureCount,
+        campsConquered: value.Activities.campConqueredCount,
+        firstFishingCompleted: value.Activities.firstFishingComplete,
+      },
+    };
   }
 
   async getGuilds(): Promise<PalDefenderGuild[]> {

@@ -98,6 +98,45 @@ test("status distinguishes optional-provider authentication and availability fai
   assert.equal((await service.status("offline")).state, "unreachable");
 });
 
+test("progression stays isolated per server and disabled servers make no request", async () => {
+  const servers = new Map([
+    ["server-a", connection("server-a", "http://progression-a", "token-a")],
+    ["server-b", connection("server-b", null, "", false)],
+    ["server-c", connection("server-c", "http://progression-c", "token-c")],
+  ]);
+  const repository = {
+    get: async (id: string) => servers.get(id) ?? null,
+  } as ConnectionRepository;
+  const created: Array<{ endpoint: string; token: string }> = [];
+  const service = new PalDefenderService(repository, (endpoint, token) => {
+    created.push({ endpoint, token });
+    return {
+      getProgression: async () => {
+        if (endpoint.endsWith("-c"))
+          throw new PalDefenderError(
+            "Unable to reach PalDefender.",
+            undefined,
+            "CONNECTION_FAILED",
+          );
+        return { playerId: "player-a", character: { level: 6 } };
+      },
+    } as unknown as PalDefenderClient;
+  });
+
+  const progression = await service.progression("server-a", "player-a");
+  assert.equal(progression.playerId, "player-a");
+  await assert.rejects(() => service.progression("server-b", "player-b"), {
+    name: "PalDefenderDisabledError",
+  });
+  await assert.rejects(() => service.progression("server-c", "player-c"), {
+    name: "PalDefenderError",
+  });
+  assert.deepEqual(created, [
+    { endpoint: "http://progression-a", token: "token-a" },
+    { endpoint: "http://progression-c", token: "token-c" },
+  ]);
+});
+
 test("candidate connection tests preserve a saved token only for the selected server", async () => {
   const servers = new Map([
     ["server-a", connection("server-a", "http://saved-a", "saved-token-a")],

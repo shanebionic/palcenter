@@ -16,6 +16,7 @@ import {
   getPalDefenderBases,
   getPalDefenderGuilds,
   getPalDefenderGuild,
+  getPalDefenderProgression,
   givePalDefenderItems,
   givePalDefenderPals,
   kickPalDefenderPlayer,
@@ -136,6 +137,31 @@ test("builds an encoded PalDefender player workspace route", () => {
     palDefenderPlayerHref("server-1", "player id/unsafe"),
     "/paldefender/players/player%20id%2Funsafe?serverId=server-1",
   );
+});
+
+test("loads server-scoped PalDefender progression without caching", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let cache: RequestCache | undefined;
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input);
+    cache = init?.cache;
+    return Response.json({
+      playerId: "player-1",
+      character: { level: 6, experience: 1371, unusedStatusPoints: 5 },
+    });
+  };
+  try {
+    const progression = await getPalDefenderProgression("server-a", "player-1");
+    assert.equal(
+      requestedUrl,
+      "/api/servers/server-a/paldefender/players/player-1/progression",
+    );
+    assert.equal(cache, "no-store");
+    assert.equal(progression.character.experience, 1371);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("validates broadcast content and counts Unicode characters", () => {

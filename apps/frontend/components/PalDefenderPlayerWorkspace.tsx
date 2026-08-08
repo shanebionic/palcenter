@@ -25,6 +25,7 @@ import {
   IconArrowLeft,
   IconBackpack,
   IconBan,
+  IconChartBar,
   IconGift,
   IconPlus,
   IconRefresh,
@@ -46,6 +47,7 @@ import {
   getPalDefenderPals,
   getPalDefenderPlayer,
   getPalDefenderPlayers,
+  getPalDefenderProgression,
   getPalDefenderTechnology,
   givePalDefenderItems,
   givePalDefenderPals,
@@ -53,6 +55,7 @@ import {
   type PalDefenderInventoryItem,
   type PalDefenderPal,
   type PalDefenderPlayerDetails,
+  type PalDefenderProgression,
 } from "../lib/api";
 import {
   normalizeItemGrants,
@@ -65,7 +68,13 @@ import {
   type PalGrantInput,
 } from "../lib/paldefender-pals";
 
-type TabName = "overview" | "inventory" | "pals" | "technology" | "actions";
+type TabName =
+  | "overview"
+  | "inventory"
+  | "pals"
+  | "technology"
+  | "progression"
+  | "actions";
 type Loadable<T> = { data: T | null; loading: boolean; error: string };
 const initial = <T,>(): Loadable<T> => ({
   data: null,
@@ -93,6 +102,8 @@ export function PalDefenderPlayerWorkspace({
     useState<Loadable<PalDefenderInventoryItem[]>>(initial);
   const [pals, setPals] = useState<Loadable<PalDefenderPal[]>>(initial);
   const [technology, setTechnology] = useState<Loadable<string[]>>(initial);
+  const [progression, setProgression] =
+    useState<Loadable<PalDefenderProgression>>(initial);
   const [kickOpened, setKickOpened] = useState(false);
   const [kickMessage, setKickMessage] = useState("");
   const [banOpened, setBanOpened] = useState(false);
@@ -169,12 +180,19 @@ export function PalDefenderPlayerWorkspace({
         getPalDefenderTechnology(serverId, playerId),
       );
   }, [playerId, serverId]);
+  const loadProgression = useCallback(async () => {
+    if (serverId)
+      await loadCollection(setProgression, () =>
+        getPalDefenderProgression(serverId, playerId),
+      );
+  }, [playerId, serverId]);
 
   useEffect(() => {
     setPlayer(initial());
     setInventory(initial());
     setPals(initial());
     setTechnology(initial());
+    setProgression(initial());
     void loadPlayer();
   }, [loadPlayer, serverId]);
   useEffect(() => {
@@ -192,14 +210,23 @@ export function PalDefenderPlayerWorkspace({
       !technology.loading
     )
       void loadTechnology();
+    if (
+      activeTab === "progression" &&
+      progression.data === null &&
+      !progression.loading &&
+      !progression.error
+    )
+      void loadProgression();
   }, [
     activeTab,
     inventory,
     pals,
     technology,
+    progression,
     loadInventory,
     loadPals,
     loadTechnology,
+    loadProgression,
   ]);
 
   const refresh = () => {
@@ -207,6 +234,7 @@ export function PalDefenderPlayerWorkspace({
     if (activeTab === "inventory") void loadInventory();
     if (activeTab === "pals") void loadPals();
     if (activeTab === "technology") void loadTechnology();
+    if (activeTab === "progression") void loadProgression();
   };
 
   const executeModeration = async (options: {
@@ -418,6 +446,12 @@ export function PalDefenderPlayerWorkspace({
                 Technology
               </Tabs.Tab>
               <Tabs.Tab
+                value="progression"
+                leftSection={<IconChartBar size={16} />}
+              >
+                Progression
+              </Tabs.Tab>
+              <Tabs.Tab
                 value="actions"
                 leftSection={<IconUserMinus size={16} />}
               >
@@ -435,6 +469,9 @@ export function PalDefenderPlayerWorkspace({
             </Tabs.Panel>
             <Tabs.Panel value="technology" pt="xl">
               <Technology state={technology} refresh={loadTechnology} />
+            </Tabs.Panel>
+            <Tabs.Panel value="progression" pt="xl">
+              <Progression state={progression} refresh={loadProgression} />
             </Tabs.Panel>
             <Tabs.Panel value="actions" pt="xl">
               <Stack gap="md">
@@ -1134,6 +1171,207 @@ function Technology({
         )}
       </State>
     </Stack>
+  );
+}
+
+function Progression({
+  state,
+  refresh,
+}: {
+  state: Loadable<PalDefenderProgression>;
+  refresh: () => Promise<void>;
+}) {
+  const [search, setSearch] = useState("");
+  if (state.loading && !state.data)
+    return <BrandedLoader message="Loading player progression" />;
+  if (state.error)
+    return (
+      <Stack>
+        <Alert color="red" title="Progression unavailable">
+          {state.error}
+        </Alert>
+        <Button onClick={() => void refresh()} w="fit-content">
+          Try again
+        </Button>
+      </Stack>
+    );
+  if (!state.data)
+    return (
+      <Text ta="center" c="dimmed" py="xl">
+        No progression data was returned.
+      </Text>
+    );
+  const value = state.data;
+  const collections: Array<{
+    title: string;
+    values: Record<string, number | boolean>;
+  }> = [
+    { title: "Relics", values: value.currencies.relics },
+    { title: "Pal captures", values: value.captures.byPal },
+    { title: "Capture bonuses", values: value.captures.bonusesByPal },
+    { title: "Pals butchered", values: value.captures.butcheredByPal },
+    { title: "Tower bosses", values: value.bosses.towerDefeats },
+    { title: "Normal bosses", values: value.bosses.normalDefeatFlags },
+    { title: "Raid bosses", values: value.bosses.raidDefeats },
+    { title: "Crafted items", values: value.activities.craftedItems },
+    { title: "Pal rank-ups", values: value.activities.palRankUps },
+    { title: "Solo arenas", values: value.activities.soloArenasCleared },
+    { title: "NPC conversations", values: value.activities.npcTalks },
+    { title: "Fishing", values: value.activities.fishing },
+  ];
+  return (
+    <Stack gap="xl">
+      <Group justify="space-between">
+        <TextInput
+          value={search}
+          onChange={(event) => setSearch(event.currentTarget.value)}
+          placeholder="Search progression IDs"
+          leftSection={<IconSearch size={16} />}
+        />
+        <Button
+          variant="light"
+          leftSection={<IconRefresh size={16} />}
+          onClick={() => void refresh()}
+          loading={state.loading}
+        >
+          Refresh
+        </Button>
+      </Group>
+      <div>
+        <Title order={3} mb="sm">
+          Character
+        </Title>
+        <SimpleGrid cols={{ base: 1, sm: 3 }}>
+          <ProgressionFact label="Level" value={value.character.level} />
+          <ProgressionFact
+            label="Experience"
+            value={value.character.experience}
+          />
+          <ProgressionFact
+            label="Unused status points"
+            value={value.character.unusedStatusPoints}
+          />
+        </SimpleGrid>
+      </div>
+      <div>
+        <Title order={3} mb="sm">
+          Points and currency
+        </Title>
+        <SimpleGrid cols={{ base: 1, sm: 3 }}>
+          <ProgressionFact
+            label="Technology points"
+            value={value.currencies.technologyPoints}
+          />
+          <ProgressionFact
+            label="Ancient technology points"
+            value={value.currencies.ancientTechnologyPoints}
+          />
+          <ProgressionFact
+            label="Relic types"
+            value={Object.keys(value.currencies.relics).length}
+          />
+        </SimpleGrid>
+      </div>
+      <div>
+        <Title order={3} mb="sm">
+          Captures and bosses
+        </Title>
+        <SimpleGrid cols={{ base: 1, sm: 3 }}>
+          <ProgressionFact
+            label="Total captures"
+            value={value.captures.total}
+          />
+          <ProgressionFact
+            label="Boss defeats"
+            value={value.bosses.totalDefeats}
+          />
+          <ProgressionFact
+            label="Predator defeats"
+            value={value.bosses.predatorDefeats}
+          />
+        </SimpleGrid>
+      </div>
+      <div>
+        <Title order={3} mb="sm">
+          Activities
+        </Title>
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
+          <ProgressionFact
+            label="Normal dungeons"
+            value={value.activities.normalDungeonsCleared}
+          />
+          <ProgressionFact
+            label="Fixed dungeons"
+            value={value.activities.fixedDungeonsCleared}
+          />
+          <ProgressionFact
+            label="Oil rigs"
+            value={value.activities.oilRigsCleared}
+          />
+          <ProgressionFact
+            label="Treasures found"
+            value={value.activities.treasuresFound}
+          />
+          <ProgressionFact
+            label="Camps conquered"
+            value={value.activities.campsConquered}
+          />
+          <ProgressionFact
+            label="First fishing completed"
+            value={value.activities.firstFishingCompleted ? "Yes" : "No"}
+          />
+        </SimpleGrid>
+      </div>
+      {collections.map((collection) => {
+        const entries = Object.entries(collection.values).filter(([id]) =>
+          id.toLowerCase().includes(search.trim().toLowerCase()),
+        );
+        if (!entries.length) return null;
+        return (
+          <div key={collection.title}>
+            <Title order={3} mb="sm">
+              {collection.title}
+            </Title>
+            <Table striped>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Internal ID</Table.Th>
+                  <Table.Th>Value</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {entries.map(([id, count]) => (
+                  <Table.Tr key={id}>
+                    <Table.Td ff="monospace">{id}</Table.Td>
+                    <Table.Td>
+                      {typeof count === "boolean"
+                        ? count
+                          ? "Completed"
+                          : "Not completed"
+                        : count}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </div>
+        );
+      })}
+    </Stack>
+  );
+}
+
+function ProgressionFact({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <Card withBorder>
+      <Fact label={label} value={value} />
+    </Card>
   );
 }
 

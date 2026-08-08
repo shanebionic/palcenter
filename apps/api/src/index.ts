@@ -830,6 +830,16 @@ app.get(
   },
 );
 
+app.get(
+  "/api/servers/:serverId/paldefender/players/:playerId/progression",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    return palDefenderService.progression(serverId, playerId);
+  },
+);
+
 const palDefenderKickBodySchema = z
   .object({ message: z.string().max(2_000).optional() })
   .strict();
