@@ -90,15 +90,15 @@ test("normal Players progressively exposes enhanced player management", async ({
   await page.getByLabel("Technology IDs").fill("Technology_Camp");
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("1 selected technology")).toBeVisible();
-  await page
-    .getByRole("dialog", { name: "Confirm Learn Technology" })
+  const learnConfirmation = page.getByRole("dialog", {
+    name: "Confirm Learn Technology",
+  });
+  await expect(learnConfirmation.getByText("Technology_Camp")).toBeVisible();
+  await learnConfirmation
     .getByRole("button", { name: "Learn Technology" })
     .click();
   await expect(page.getByText("Technology learned")).toBeVisible();
-  await expect(page.getByText("Technology_Camp")).toBeVisible();
-  await expect(
-    page.getByRole("dialog", { name: "Confirm Learn Technology" }),
-  ).toBeHidden();
+  await expect(learnConfirmation).toBeHidden();
   await page
     .getByRole("tabpanel", { name: "Technology" })
     .getByRole("button", { name: "Forget Technology" })
