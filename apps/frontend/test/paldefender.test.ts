@@ -16,8 +16,13 @@ import {
   getPalDefenderBases,
   getPalDefenderGuilds,
   getPalDefenderGuild,
+  givePalDefenderItems,
   kickPalDefenderPlayer,
 } from "../lib/api";
+import {
+  normalizeItemGrants,
+  validateItemGrants,
+} from "../lib/paldefender-items";
 
 test("builds and loads an encoded PalDefender base details route", async () => {
   assert.equal(
@@ -214,6 +219,54 @@ test("submits a normalized PalDefender kick request", async () => {
     );
     assert.equal(requestedUrl, "/api/paldefender/players/player-1/kick");
     assert.equal(requestBody, JSON.stringify({ message: "Please reconnect" }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("validates and normalizes PalDefender item grants", () => {
+  assert.equal(validateItemGrants([]), "Add at least one item.");
+  assert.equal(
+    validateItemGrants([{ itemId: "", count: 1 }]),
+    "Enter an Item ID for every item.",
+  );
+  assert.equal(
+    validateItemGrants([{ itemId: "Wood", count: 0 }]),
+    "Quantities must be positive whole numbers.",
+  );
+  assert.equal(validateItemGrants([{ itemId: " Wood ", count: "2" }]), null);
+  assert.deepEqual(normalizeItemGrants([{ itemId: " Wood ", count: "2" }]), [
+    { itemId: "Wood", count: 2 },
+  ]);
+});
+
+test("submits multiple item grants to the selected PalDefender player", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestBody = "";
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input);
+    requestBody = String(init?.body ?? "");
+    return Response.json({ playerId: "player-1", grantedItems: 7 });
+  };
+  try {
+    assert.deepEqual(
+      await givePalDefenderItems("player-1", [
+        { itemId: "CopperIngot", count: 5 },
+        { itemId: "Polymer", count: 2 },
+      ]),
+      { playerId: "player-1", grantedItems: 7 },
+    );
+    assert.equal(requestedUrl, "/api/paldefender/players/player-1/items");
+    assert.equal(
+      requestBody,
+      JSON.stringify({
+        items: [
+          { itemId: "CopperIngot", count: 5 },
+          { itemId: "Polymer", count: 2 },
+        ],
+      }),
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

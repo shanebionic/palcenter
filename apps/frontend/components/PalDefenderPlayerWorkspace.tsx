@@ -2,11 +2,13 @@
 
 import {
   Alert,
+  Anchor,
   Badge,
   Button,
   Card,
   Group,
   Modal,
+  NumberInput,
   Select,
   SimpleGrid,
   Stack,
@@ -23,12 +25,15 @@ import {
   IconArrowLeft,
   IconBackpack,
   IconBan,
+  IconGift,
+  IconPlus,
   IconRefresh,
   IconSearch,
   IconShieldCheck,
   IconSparkles,
   IconUserMinus,
   IconUser,
+  IconTrash,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -42,11 +47,17 @@ import {
   getPalDefenderPlayer,
   getPalDefenderPlayers,
   getPalDefenderTechnology,
+  givePalDefenderItems,
   kickPalDefenderPlayer,
   type PalDefenderInventoryItem,
   type PalDefenderPal,
   type PalDefenderPlayerDetails,
 } from "../lib/api";
+import {
+  normalizeItemGrants,
+  validateItemGrants,
+  type ItemGrantInput,
+} from "../lib/paldefender-items";
 
 type TabName = "overview" | "inventory" | "pals" | "technology" | "actions";
 type Loadable<T> = { data: T | null; loading: boolean; error: string };
@@ -71,8 +82,15 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
   const [banOpened, setBanOpened] = useState(false);
   const [banReason, setBanReason] = useState("");
   const [ipBan, setIpBan] = useState(false);
+  const [giveItemsOpened, setGiveItemsOpened] = useState(false);
+  const [giveItemsConfirmationOpened, setGiveItemsConfirmationOpened] =
+    useState(false);
+  const [itemGrants, setItemGrants] = useState<ItemGrantInput[]>([
+    { itemId: "", count: 1 },
+  ]);
+  const [itemGrantError, setItemGrantError] = useState("");
   const [submittingAction, setSubmittingAction] = useState<
-    "kick" | "ban" | null
+    "kick" | "ban" | "give-items" | null
   >(null);
 
   const loadPlayer = useCallback(async () => {
@@ -216,6 +234,47 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
       successMessage: `${player.data?.name ?? "The player"} was banned from the server.`,
     });
 
+  const reviewItemGrant = () => {
+    const error = validateItemGrants(itemGrants);
+    setItemGrantError(error ?? "");
+    if (!error) setGiveItemsConfirmationOpened(true);
+  };
+
+  const giveItems = async () => {
+    if (submittingAction) return;
+    const grants = normalizeItemGrants(itemGrants);
+    setSubmittingAction("give-items");
+    try {
+      const result = await givePalDefenderItems(playerId, grants);
+      setGiveItemsConfirmationOpened(false);
+      setGiveItemsOpened(false);
+      setItemGrants([{ itemId: "", count: 1 }]);
+      setItemGrantError("");
+      notifications.show({
+        color: "green",
+        title: grants.length === 1 ? "Item granted" : "Items granted",
+        message: `PalDefender granted ${result.grantedItems} item units to ${player.data?.name ?? "the player"}.`,
+      });
+      await Promise.all([
+        loadInventory(),
+        loadPlayer(),
+        getPalDefenderPlayers(),
+      ]);
+    } catch (error) {
+      setGiveItemsConfirmationOpened(false);
+      notifications.show({
+        color: "red",
+        title: "Unable to give items",
+        message:
+          error instanceof Error
+            ? error.message
+            : "PalDefender could not grant these items.",
+      });
+    } finally {
+      setSubmittingAction(null);
+    }
+  };
+
   return (
     <ApplicationShell>
       <Stack gap="xl">
@@ -306,6 +365,19 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
             <Tabs.Panel value="actions" pt="xl">
               <Stack gap="md">
                 <div>
+                  <Title order={3}>Give Item</Title>
+                  <Text c="dimmed" size="sm">
+                    Grant one or more items directly to this player.
+                  </Text>
+                </div>
+                <Button
+                  leftSection={<IconGift size={18} />}
+                  onClick={() => setGiveItemsOpened(true)}
+                  w="fit-content"
+                >
+                  Give Item
+                </Button>
+                <div>
                   <Title order={3}>Kick Player</Title>
                   <Text c="dimmed" size="sm">
                     Immediately disconnect this player without banning them.
@@ -379,6 +451,154 @@ export function PalDefenderPlayerWorkspace({ playerId }: { playerId: string }) {
           disabled={submittingAction === "ban"}
         />
       </ModerationModal>
+      <Modal
+        opened={giveItemsOpened}
+        onClose={() => {
+          if (!submittingAction) setGiveItemsOpened(false);
+        }}
+        title="Give Item"
+        centered
+        size="lg"
+        closeOnClickOutside={!submittingAction}
+        closeOnEscape={!submittingAction}
+      >
+        <Stack>
+          <Text>
+            Recipient:{" "}
+            <Text span fw={700}>
+              {player.data?.name ?? playerId}
+            </Text>
+          </Text>
+          <Text size="sm" c="dimmed">
+            PalDefender requires the internal Palworld ItemID. Find an item’s
+            Asset Name on{" "}
+            <Anchor
+              href="https://paldeck.cc/items"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Paldeck’s item database
+            </Anchor>
+            , then paste it below.
+          </Text>
+          {itemGrants.map((grant, index) => (
+            <Group key={index} align="flex-end" wrap="nowrap">
+              <TextInput
+                label="Item ID"
+                placeholder="For example: CopperIngot"
+                value={grant.itemId}
+                disabled={Boolean(submittingAction)}
+                onChange={(event) =>
+                  setItemGrants((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index
+                        ? { ...item, itemId: event.currentTarget.value }
+                        : item,
+                    ),
+                  )
+                }
+                style={{ flex: 1 }}
+              />
+              <NumberInput
+                label="Quantity"
+                min={1}
+                step={1}
+                allowDecimal={false}
+                value={grant.count}
+                disabled={Boolean(submittingAction)}
+                onChange={(value) =>
+                  setItemGrants((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, count: value } : item,
+                    ),
+                  )
+                }
+                w={130}
+              />
+              <Button
+                variant="subtle"
+                color="red"
+                aria-label={`Remove item ${index + 1}`}
+                disabled={itemGrants.length === 1 || Boolean(submittingAction)}
+                onClick={() =>
+                  setItemGrants((current) =>
+                    current.filter((_, itemIndex) => itemIndex !== index),
+                  )
+                }
+              >
+                <IconTrash size={18} />
+              </Button>
+            </Group>
+          ))}
+          <Button
+            variant="subtle"
+            leftSection={<IconPlus size={17} />}
+            w="fit-content"
+            disabled={Boolean(submittingAction)}
+            onClick={() =>
+              setItemGrants((current) => [...current, { itemId: "", count: 1 }])
+            }
+          >
+            Add Item
+          </Button>
+          {itemGrantError && <Alert color="red">{itemGrantError}</Alert>}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setGiveItemsOpened(false)}>
+              Cancel
+            </Button>
+            <Button
+              leftSection={<IconGift size={18} />}
+              onClick={reviewItemGrant}
+            >
+              Review Grant
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={giveItemsConfirmationOpened}
+        onClose={() => {
+          if (!submittingAction) setGiveItemsConfirmationOpened(false);
+        }}
+        title={
+          itemGrants.length === 1 ? "Confirm Item Grant" : "Confirm Item Grants"
+        }
+        centered
+        closeOnClickOutside={!submittingAction}
+        closeOnEscape={!submittingAction}
+      >
+        <Stack>
+          <Text>
+            Give the following to{" "}
+            <Text span fw={700}>
+              {player.data?.name ?? playerId}
+            </Text>
+            ?
+          </Text>
+          {normalizeItemGrants(itemGrants).map((grant) => (
+            <Text key={`${grant.itemId}-${grant.count}`} ff="monospace">
+              {grant.count} × {grant.itemId}
+            </Text>
+          ))}
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              disabled={submittingAction === "give-items"}
+              onClick={() => setGiveItemsConfirmationOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              leftSection={<IconGift size={18} />}
+              loading={submittingAction === "give-items"}
+              disabled={submittingAction === "give-items"}
+              onClick={() => void giveItems()}
+            >
+              {itemGrants.length === 1 ? "Give Item" : "Give Items"}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </ApplicationShell>
   );
 }
