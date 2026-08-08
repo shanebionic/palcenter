@@ -182,6 +182,9 @@ const broadcastResponseSchema = z.object({ Success: z.boolean() });
 const giveItemsResponseSchema = z.object({
   Granted: z.object({ Items: z.number().int().nonnegative() }),
 });
+const givePalsResponseSchema = z.object({
+  Granted: z.object({ Pals: z.number().int().nonnegative() }),
+});
 
 export interface PalDefenderPlayer {
   name: string;
@@ -254,6 +257,14 @@ export interface PalDefenderItemGrant {
 export interface PalDefenderGiveItemsResult {
   playerId: string;
   grantedItems: number;
+}
+export interface PalDefenderPalGrant {
+  palId: string;
+  level: number;
+}
+export interface PalDefenderGivePalsResult {
+  playerId: string;
+  grantedPals: number;
 }
 export interface PalDefenderGuildCamp {
   id: string;
@@ -643,6 +654,23 @@ export class PalDefenderClient {
       },
     );
     return { playerId, grantedItems: response.Granted.Items };
+  }
+
+  async givePals(
+    playerId: string,
+    pals: PalDefenderPalGrant[],
+  ): Promise<PalDefenderGivePalsResult> {
+    const response = await this.parse(
+      givePalsResponseSchema,
+      `/give/pals/${encodePlayerId(playerId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          Pals: pals.map((pal) => ({ PalID: pal.palId, Level: pal.level })),
+        }),
+      },
+    );
+    return { playerId, grantedPals: response.Granted.Pals };
   }
 
   private moderatePlayer<TSchema extends z.ZodTypeAny>(
