@@ -189,6 +189,34 @@ export interface PalDefenderBanResult {
   bannedIp: string | null;
   kickedPlayers: number;
 }
+export interface ModerationActor {
+  type: string;
+  name: string;
+  ip: string;
+  reason: string;
+  timestamp: string;
+}
+export interface ModerationState {
+  version: number;
+  bannedMessage: string;
+  userBans: Array<{
+    userId: string;
+    active: boolean;
+    bannedBy: ModerationActor;
+    unbannedBy: ModerationActor | null;
+  }>;
+  ipBans: Array<{
+    ip: string;
+    active: boolean;
+    bannedBy: ModerationActor;
+    unbannedBy: ModerationActor | null;
+  }>;
+}
+export interface ModerationResult {
+  success: boolean;
+  target: string;
+  kickedPlayers?: number;
+}
 export interface PalDefenderBroadcastResult {
   success: boolean;
 }
@@ -794,6 +822,48 @@ export function banPalDefenderPlayer(
       ...(options.ipBan ? { ipBan: true } : {}),
     },
   );
+}
+
+const moderationPath = (serverId: string) =>
+  `/api/servers/${encodeURIComponent(serverId)}/moderation`;
+
+export function getModerationState(serverId: string): Promise<ModerationState> {
+  return request<ModerationState>(moderationPath(serverId), {
+    cache: "no-store",
+  });
+}
+
+export function unbanModerationUser(
+  serverId: string,
+  userId: string,
+  reason?: string,
+): Promise<ModerationResult> {
+  return jsonRequest<ModerationResult>(
+    `${moderationPath(serverId)}/users/${encodeURIComponent(userId)}/unban`,
+    reason?.trim() ? { reason: reason.trim() } : {},
+  );
+}
+
+export function banModerationIp(
+  serverId: string,
+  ip: string,
+  reason?: string,
+): Promise<ModerationResult> {
+  return jsonRequest<ModerationResult>(`${moderationPath(serverId)}/ip/ban`, {
+    ip,
+    ...(reason?.trim() ? { reason: reason.trim() } : {}),
+  });
+}
+
+export function unbanModerationIp(
+  serverId: string,
+  ip: string,
+  reason?: string,
+): Promise<ModerationResult> {
+  return jsonRequest<ModerationResult>(`${moderationPath(serverId)}/ip/unban`, {
+    ip,
+    ...(reason?.trim() ? { reason: reason.trim() } : {}),
+  });
 }
 
 export interface PalDefenderItemGrant {

@@ -76,6 +76,7 @@ let eventMode = "populated";
 let palDefenderMode = "disabled";
 let sessionRole = "administrator";
 let broadcasts = [];
+let moderationIpBanned = true;
 let progressionExperience = 1371;
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
@@ -286,6 +287,79 @@ export function startMockUiApi(port = 3198) {
         success: true,
         message: "Announcement sent.",
         provider,
+      });
+    }
+    const moderationPath = `/api/servers/${connection.id}/moderation`;
+    const actor = {
+      type: "rest",
+      name: "PalCenter",
+      ip: "192.0.2.1",
+      reason: "Controlled test",
+      timestamp: "2026-08-08T20:00:00.000Z",
+    };
+    if (request.method === "GET" && url.pathname === moderationPath) {
+      if (palDefenderMode !== "connected")
+        return json(
+          response,
+          {
+            error:
+              palDefenderMode === "disabled"
+                ? "paldefender_disabled"
+                : "paldefender_unavailable",
+            message:
+              palDefenderMode === "disabled"
+                ? "PalDefender is not enabled for this server."
+                : "Unable to reach PalDefender.",
+          },
+          palDefenderMode === "disabled" ? 409 : 502,
+        );
+      return json(response, {
+        version: 1,
+        bannedMessage: "You are banned.",
+        userBans: [
+          {
+            userId: "steam_76561198000000001",
+            active: true,
+            bannedBy: actor,
+            unbannedBy: null,
+          },
+        ],
+        ipBans: moderationIpBanned
+          ? [
+              {
+                ip: "192.0.2.10",
+                active: true,
+                bannedBy: actor,
+                unbannedBy: null,
+              },
+            ]
+          : [],
+      });
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === `${moderationPath}/users/steam_76561198000000001/unban`
+    )
+      return json(response, {
+        success: true,
+        target: "steam_76561198000000001",
+      });
+    if (
+      request.method === "POST" &&
+      url.pathname === `${moderationPath}/ip/unban`
+    ) {
+      moderationIpBanned = false;
+      return json(response, { success: true, target: "192.0.2.10" });
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === `${moderationPath}/ip/ban`
+    ) {
+      moderationIpBanned = true;
+      return json(response, {
+        success: true,
+        target: "192.0.2.10",
+        kickedPlayers: 0,
       });
     }
     if (

@@ -152,6 +152,41 @@ before(async () => {
         { status: 400 },
       );
     }
+    const moderationActor = {
+      Type: "rest",
+      NameValue: "route-test",
+      IP: "192.0.2.1",
+      Reason: "Test record",
+      Timestamp: {
+        UTC: 1720000000,
+        Year: 2024,
+        Month: 7,
+        Day: 3,
+        Hour: 9,
+        Min: 46,
+        Sec: 40,
+        Msec: 0,
+      },
+    };
+    if (url.endsWith("/banlist?active=true"))
+      return Response.json({
+        Banlist: {
+          Version: 1,
+          BannedMessage: "You are banned.",
+          UserEntries: [
+            { UserId: "steam_1", Active: true, BannedBy: moderationActor },
+          ],
+          IPEntries: [
+            { IP: "192.0.2.10", Active: true, BannedBy: moderationActor },
+          ],
+        },
+      });
+    if (url.endsWith("/unban/steam_1"))
+      return Response.json({ Success: true, UserId: "steam_1" });
+    if (url.endsWith("/banip/192.0.2.10"))
+      return Response.json({ Success: true, IP: "192.0.2.10", Kicked: 0 });
+    if (url.endsWith("/unbanip/192.0.2.10"))
+      return Response.json({ Success: true, IP: "192.0.2.10" });
     if (url.endsWith("/Broadcast")) {
       assert.equal(init?.method, "POST");
       const body = JSON.parse(String(init?.body)) as { Message: string };
@@ -779,6 +814,58 @@ test("Give Progression validates every documented grant and normalizes failures"
     error: "paldefender_request_failed",
     message: "Player controller unavailable",
   });
+});
+
+test("moderation routes normalize the banlist and validate reversible mutations", async () => {
+  const headers = { cookie: administratorCookie };
+  const list = await app.inject({
+    method: "GET",
+    url: "/api/servers/server-a/moderation",
+    headers,
+  });
+  assert.equal(list.statusCode, 200);
+  assert.equal(list.json().userBans[0].userId, "steam_1");
+  assert.equal(list.json().ipBans[0].ip, "192.0.2.10");
+  for (const [url, payload, target] of [
+    [
+      "/api/servers/server-a/moderation/users/steam_1/unban",
+      { reason: "Appeal accepted" },
+      "steam_1",
+    ],
+    [
+      "/api/servers/server-a/moderation/ip/ban",
+      { ip: "192.0.2.10", reason: "Controlled test" },
+      "192.0.2.10",
+    ],
+    [
+      "/api/servers/server-a/moderation/ip/unban",
+      { ip: "192.0.2.10" },
+      "192.0.2.10",
+    ],
+  ] as const) {
+    const response = await app.inject({
+      method: "POST",
+      url,
+      headers,
+      payload,
+    });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().target, target);
+  }
+  const invalidIp = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/moderation/ip/ban",
+    headers,
+    payload: { ip: "not-an-ip" },
+  });
+  assert.equal(invalidIp.statusCode, 400);
+  const invalidUser = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/moderation/users/..%2Fplayers/unban",
+    headers,
+    payload: {},
+  });
+  assert.equal(invalidUser.statusCode, 400);
 });
 
 test("PalDefender not-found and invalid player identifiers are normalized", async () => {

@@ -188,6 +188,24 @@ test("Administration selects a safe Broadcast provider without provider-oriented
   await expect(
     page.getByRole("heading", { name: "Server Shutdown" }),
   ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Moderation" })).toBeVisible();
+  await expect(page.getByText("steam_76561198000000001")).toBeVisible();
+  await expect(page.getByText("192.0.2.10")).toBeVisible();
+  await page.screenshot({
+    path: "../../docs/screenshots/moderation-management.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Unban IP" }).click();
+  await page
+    .getByRole("dialog", { name: "Unban IP" })
+    .getByRole("button", { name: "Unban IP" })
+    .click();
+  await expect(page.getByText("No active IP bans found.")).toBeVisible();
+  await page.getByLabel("IP address").fill("192.0.2.10");
+  await page.getByRole("button", { name: "Ban IP Address" }).click();
+  await page.getByRole("button", { name: "Ban IP", exact: true }).click();
+  await expect(page.getByText("The IP address is now banned.")).toBeVisible();
+  await expect(page.getByText("192.0.2.10")).toBeVisible();
   await page.getByLabel("Announcement").fill("Connected provider broadcast");
   await page.getByRole("button", { name: "Send Broadcast" }).click();
   await expect(page.getByText("Announcement sent.").last()).toBeVisible();

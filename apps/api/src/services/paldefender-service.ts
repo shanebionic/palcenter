@@ -13,6 +13,8 @@ import {
   type PalDefenderInventoryItem,
   type PalDefenderItemGrant,
   type PalDefenderKickResult,
+  type PalDefenderModerationResult,
+  type PalDefenderModerationState,
   type PalDefenderPal,
   type PalDefenderPalGrant,
   type PalDefenderPlayer,
@@ -188,6 +190,34 @@ export class PalDefenderService {
     options?: PalDefenderBanOptions,
   ): Promise<PalDefenderBanResult> {
     return (await this.clientForServer(serverId)).banPlayer(id, options);
+  }
+
+  async banlist(serverId: string): Promise<PalDefenderModerationState> {
+    return (await this.clientForServer(serverId)).getBanlist();
+  }
+
+  async unbanUser(
+    serverId: string,
+    userId: string,
+    reason?: string,
+  ): Promise<PalDefenderModerationResult> {
+    return (await this.clientForServer(serverId)).unbanUser(userId, reason);
+  }
+
+  async banIp(
+    serverId: string,
+    ip: string,
+    reason?: string,
+  ): Promise<PalDefenderModerationResult> {
+    return (await this.clientForServer(serverId)).banIp(ip, reason);
+  }
+
+  async unbanIp(
+    serverId: string,
+    ip: string,
+    reason?: string,
+  ): Promise<PalDefenderModerationResult> {
+    return (await this.clientForServer(serverId)).unbanIp(ip, reason);
   }
 
   async broadcast(

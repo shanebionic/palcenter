@@ -1,6 +1,7 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
 import { readFileSync } from "node:fs";
+import { isIP } from "node:net";
 import { z } from "zod";
 import { PalworldRestError } from "./clients/palworld-rest-client.js";
 import { PalDefenderError } from "./clients/paldefender-client.js";
@@ -1090,6 +1091,68 @@ app.post(
   },
 );
 
+const moderationReasonSchema = z.string().max(2_000).optional();
+const moderationBodySchema = z
+  .object({ reason: moderationReasonSchema })
+  .strict();
+const moderationUserParametersSchema = z.object({
+  serverId: z.string().min(1),
+  userId: z
+    .string()
+    .min(1)
+    .max(256)
+    .regex(/^[A-Za-z0-9_:-]+$/),
+});
+const moderationIpBodySchema = z.object({
+  ip: z
+    .string()
+    .refine((value) => isIP(value) !== 0, "A valid IP address is required."),
+  reason: moderationReasonSchema,
+});
+
+app.get("/api/servers/:serverId/moderation", async (request) => {
+  const { serverId } = palDefenderServerParametersSchema.parse(request.params);
+  return palDefenderService.banlist(serverId);
+});
+
+app.post(
+  "/api/servers/:serverId/moderation/users/:userId/unban",
+  async (request) => {
+    const { serverId, userId } = moderationUserParametersSchema.parse(
+      request.params,
+    );
+    const { reason } = moderationBodySchema.parse(request.body ?? {});
+    const actor = currentUser(request.headers.cookie);
+    app.log.info(
+      { actorUserId: actor.id, reasonProvided: Boolean(reason?.trim()) },
+      "User unban requested.",
+    );
+    return palDefenderService.unbanUser(serverId, userId, reason);
+  },
+);
+
+app.post("/api/servers/:serverId/moderation/ip/ban", async (request) => {
+  const { serverId } = palDefenderServerParametersSchema.parse(request.params);
+  const { ip, reason } = moderationIpBodySchema.parse(request.body ?? {});
+  const actor = currentUser(request.headers.cookie);
+  app.log.info(
+    { actorUserId: actor.id, reasonProvided: Boolean(reason?.trim()) },
+    "IP ban requested.",
+  );
+  return palDefenderService.banIp(serverId, ip, reason);
+});
+
+app.post("/api/servers/:serverId/moderation/ip/unban", async (request) => {
+  const { serverId } = palDefenderServerParametersSchema.parse(request.params);
+  const { ip, reason } = moderationIpBodySchema.parse(request.body ?? {});
+  const actor = currentUser(request.headers.cookie);
+  app.log.info(
+    { actorUserId: actor.id, reasonProvided: Boolean(reason?.trim()) },
+    "IP unban requested.",
+  );
+  return palDefenderService.unbanIp(serverId, ip, reason);
+});
+
 const palDefenderBroadcastBodySchema = z
   .object({
     message: z
@@ -1796,7 +1859,13 @@ app.setErrorHandler((error, request, reply) => {
       (/\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals|progression)$/.test(
         request.url,
       ) ||
-        /\/api\/servers\/[^/]+\/paldefender\/broadcast$/.test(request.url));
+        /\/api\/servers\/[^/]+\/paldefender\/broadcast$/.test(request.url) ||
+        /\/api\/servers\/[^/]+\/moderation\/.+\/(ban|unban)$/.test(
+          request.url,
+        ) ||
+        /\/api\/servers\/[^/]+\/moderation\/ip\/(ban|unban)$/.test(
+          request.url,
+        ));
     const playerOffline =
       request.method === "POST" &&
       /\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/kick$/.test(
