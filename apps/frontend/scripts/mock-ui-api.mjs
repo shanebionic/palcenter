@@ -82,6 +82,7 @@ let eventMode = "populated";
 let companionMode = "connected";
 let palDefenderMode = "disabled";
 let sessionRole = "administrator";
+let broadcasts = [];
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
   const joined = index % 2 === 0;
@@ -237,6 +238,10 @@ export function startMockUiApi(port = 3198) {
       palDefenderMode = url.searchParams.get("mode") ?? "disabled";
       return json(response, { mode: palDefenderMode });
     }
+    if (url.pathname === "/__test/broadcasts") {
+      if (url.searchParams.get("reset") === "true") broadcasts = [];
+      return json(response, { broadcasts });
+    }
 
     if (url.pathname === "/api/auth/session") {
       return json(response, {
@@ -278,6 +283,34 @@ export function startMockUiApi(port = 3198) {
           region: "North America",
           crossplayPlatforms: "Steam, Xbox",
         },
+      });
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === `/api/servers/${connection.id}/admin/announce`
+    ) {
+      const provider =
+        palDefenderMode === "connected" ? "paldefender" : "native";
+      broadcasts.push({ serverId: connection.id, provider });
+      return json(response, {
+        success: true,
+        message: "Announcement sent.",
+        provider,
+      });
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === `/api/servers/${connection.id}/admin/save`
+    ) {
+      return json(response, { success: true, message: "World saved." });
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === `/api/servers/${connection.id}/admin/shutdown`
+    ) {
+      return json(response, {
+        success: true,
+        message: "Server shutdown scheduled.",
       });
     }
     if (url.pathname.startsWith(`/api/servers/${connection.id}/companion`)) {

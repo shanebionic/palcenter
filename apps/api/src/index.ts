@@ -336,7 +336,10 @@ const playerService = new PlayerService(
     return event;
   },
 );
-const serverAdminService = new ServerAdminService(repository);
+const serverAdminService = new ServerAdminService(
+  repository,
+  palDefenderService,
+);
 const scheduleCalculator = new ScheduleCalculator();
 const automationService = new AutomationService(
   automationRepository,
@@ -1285,11 +1288,20 @@ app.post("/api/servers/:id/admin/announce", async (request) => {
     .strict()
     .parse(request.body);
 
-  await serverAdminService.announce(parameters.id, input.message);
+  request.log.info({ serverId: parameters.id }, "Server broadcast requested.");
+  const result = await serverAdminService.announce(
+    parameters.id,
+    input.message,
+  );
+  request.log.info(
+    { serverId: parameters.id, provider: result.provider },
+    "Server broadcast completed.",
+  );
 
   return {
     success: true,
     message: "Announcement sent.",
+    provider: result.provider,
   };
 });
 

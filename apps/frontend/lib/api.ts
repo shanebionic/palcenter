@@ -580,11 +580,10 @@ export function deleteServer(id: string): Promise<void> {
 export function announce(
   serverId: string,
   message: string,
-): Promise<AdminActionResponse> {
-  return jsonRequest<AdminActionResponse>(
-    `/api/servers/${encodeURIComponent(serverId)}/admin/announce`,
-    { message },
-  );
+): Promise<AdminActionResponse & { provider?: "paldefender" | "native" }> {
+  return jsonRequest<
+    AdminActionResponse & { provider?: "paldefender" | "native" }
+  >(`/api/servers/${encodeURIComponent(serverId)}/admin/announce`, { message });
 }
 
 export function saveWorld(serverId: string): Promise<AdminActionResponse> {

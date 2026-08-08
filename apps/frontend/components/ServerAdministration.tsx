@@ -129,7 +129,7 @@ export function ServerAdministration({
       <Stack gap="lg" pt="lg">
         <SectionHeader
           title="Administration"
-          description="Run immediate server operations through the Palworld REST API."
+          description="Run immediate server operations using the capabilities configured for this server."
         />
 
         <SectionCard>
@@ -156,7 +156,7 @@ export function ServerAdministration({
                 disabled={!announcement.trim() || submitting !== null}
                 loading={submitting === "announce"}
               >
-                Send
+                Send Broadcast
               </Button>
             </Group>
           </Stack>

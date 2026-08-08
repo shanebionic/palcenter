@@ -62,6 +62,19 @@ async function setPalDefenderMode(
   expect(response.ok()).toBe(true);
 }
 
+async function resetBroadcasts(page: Page) {
+  await page.request.get("http://127.0.0.1:3198/__test/broadcasts?reset=true");
+}
+
+async function recordedBroadcasts(page: Page) {
+  const response = await page.request.get(
+    "http://127.0.0.1:3198/__test/broadcasts",
+  );
+  return (await response.json()) as {
+    broadcasts: Array<{ serverId: string; provider: string }>;
+  };
+}
+
 test("normal Players progressively exposes enhanced player management", async ({
   page,
 }) => {
@@ -143,6 +156,46 @@ test("server overview uses branded status, configuration, and networking surface
   ).toBeVisible();
   await expect(page.getByText("North America")).toBeVisible();
   await expect(page.getByText("203.0.113.10")).toBeVisible();
+});
+
+test("Administration selects a safe Broadcast provider without provider-oriented navigation", async ({
+  page,
+}) => {
+  await resetBroadcasts(page);
+  await setPalDefenderMode(page, "connected");
+  await openWorkspace(page);
+  await expect(page.getByRole("link", { name: "PalDefender" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Administration" }).click();
+
+  await expect(page.getByRole("heading", { name: "Broadcast" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Save World" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Server Shutdown" }),
+  ).toBeVisible();
+  await page.getByLabel("Announcement").fill("Connected provider broadcast");
+  await page.getByRole("button", { name: "Send Broadcast" }).click();
+  await expect(page.getByText("Announcement sent.").last()).toBeVisible();
+  await expect(page.getByLabel("Announcement")).toHaveValue("");
+
+  await setPalDefenderMode(page, "disabled");
+  await page.getByLabel("Announcement").fill("Native broadcast");
+  await page.getByRole("button", { name: "Send Broadcast" }).click();
+  await expect(page.getByText("Announcement sent.").last()).toBeVisible();
+  await expect(page.getByLabel("Announcement")).toHaveValue("");
+
+  await setPalDefenderMode(page, "unreachable");
+  await page.getByLabel("Announcement").fill("Safe native fallback");
+  await page.getByRole("button", { name: "Send Broadcast" }).click();
+  await expect(page.getByText("Announcement sent.").last()).toBeVisible();
+  await expect(page.getByLabel("Announcement")).toHaveValue("");
+
+  await expect
+    .poll(async () => (await recordedBroadcasts(page)).broadcasts)
+    .toEqual([
+      { serverId: "srv-test", provider: "paldefender" },
+      { serverId: "srv-test", provider: "native" },
+      { serverId: "srv-test", provider: "native" },
+    ]);
 });
 
 test("Companion discovery presents connected, disconnected, refresh, and responsive states", async ({
