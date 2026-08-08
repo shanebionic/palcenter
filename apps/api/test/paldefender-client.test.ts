@@ -66,6 +66,66 @@ test("normalizes PalDefender players without leaking raw DTO fields", async () =
   ]);
 });
 
+test("gets and normalizes documented player progression with bearer authentication", async () => {
+  let requestedUrl = "";
+  let authorization = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "progression-token",
+    async (input, init) => {
+      requestedUrl = String(input);
+      authorization = new Headers(init?.headers).get("Authorization") ?? "";
+      return Response.json({
+        Meta: { PlayerUID: "player-1", Player: "player-1" },
+        Progression: {
+          Player: { level: 6, exp: 1371, unusedStatusPoints: 5 },
+          Currencies: {
+            relics: { Relic: 2 },
+            technologyPoints: 5,
+            ancientTechnologyPoints: 1,
+          },
+          Bosses: {
+            towerBossDefeatCounts: { TowerA: 1 },
+            normalBossDefeatFlags: { BossA: true },
+            raidBossDefeatCounts: {},
+            totalBossDefeatCount: 1,
+            predatorDefeatCount: 0,
+          },
+          Captures: {
+            tribeCaptureCount: 9,
+            palCaptureCounts: { Anubis: 1 },
+            palCaptureBonusCounts: { Anubis: 1 },
+            palButcherCounts: {},
+          },
+          Activities: {
+            craftItemCounts: { Wood: 3 },
+            normalDungeonClearCount: 1,
+            fixedDungeonClearCount: 0,
+            oilrigClearCount: 0,
+            palRankUpCounts: {},
+            arenaSoloClearCounts: {},
+            npcTalkCounts: {},
+            fishingCounts: {},
+            foundTreasureCount: 2,
+            campConqueredCount: 1,
+            firstFishingComplete: false,
+          },
+        },
+      });
+    },
+  );
+  const result = await client.getProgression("player-1");
+  assert.equal(
+    requestedUrl,
+    "http://paldefender/v1/pdapi/progression/player-1",
+  );
+  assert.equal(authorization, "Bearer progression-token");
+  assert.equal(result.character.level, 6);
+  assert.equal(result.character.experience, 1371);
+  assert.deepEqual(result.captures.byPal, { Anubis: 1 });
+  assert.deepEqual(result.activities.craftedItems, { Wood: 3 });
+});
+
 test("normalizes documented PalDefender guild summaries", async () => {
   const client = new PalDefenderClient(
     "http://paldefender",

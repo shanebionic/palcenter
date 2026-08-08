@@ -73,11 +73,25 @@ test("normal Players progressively exposes enhanced player management", async ({
   await page.getByRole("link", { name: "Denalb" }).click();
   await expect(page).toHaveURL(/\/servers\/srv-test\/players\//);
   await expect(page.getByText("Player Workspace")).toBeVisible();
-  for (const tab of ["Inventory", "Pals", "Technology", "Actions"]) {
+  for (const tab of [
+    "Inventory",
+    "Pals",
+    "Technology",
+    "Progression",
+    "Actions",
+  ]) {
     await expect(page.getByRole("tab", { name: tab })).toBeVisible();
   }
   await page.getByRole("tab", { name: "Inventory" }).click();
   await expect(page.getByText("Wood")).toBeVisible();
+  await page.getByRole("tab", { name: "Progression" }).click();
+  await expect(page.getByText("Character")).toBeVisible();
+  await expect(page.getByText("1371")).toBeVisible();
+  await expect(page.getByText("Anubis").first()).toBeVisible();
+  await page.screenshot({
+    path: "../../docs/screenshots/player-progression.png",
+    fullPage: true,
+  });
   await page.getByRole("tab", { name: "Actions" }).click();
   for (const action of ["Kick Player", "Ban Player", "Give Item", "Give Pal"]) {
     await expect(page.getByRole("button", { name: action })).toBeVisible();

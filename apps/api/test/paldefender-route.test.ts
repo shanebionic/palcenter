@@ -237,6 +237,44 @@ before(async () => {
       return Response.json({ Pals: { Team: {}, Palbox: {}, BaseCamps: [] } });
     if (url.includes("/techs/"))
       return Response.json({ Techs: { Unlocked: ["Technology_Wood"] } });
+    if (url.includes("/progression/"))
+      return Response.json({
+        Meta: { PlayerUID: "player-1", Player: "player-1" },
+        Progression: {
+          Player: { level: 6, exp: 1371, unusedStatusPoints: 5 },
+          Currencies: {
+            relics: {},
+            technologyPoints: 5,
+            ancientTechnologyPoints: 0,
+          },
+          Bosses: {
+            towerBossDefeatCounts: {},
+            normalBossDefeatFlags: {},
+            raidBossDefeatCounts: {},
+            totalBossDefeatCount: 0,
+            predatorDefeatCount: 0,
+          },
+          Captures: {
+            tribeCaptureCount: 9,
+            palCaptureCounts: { Anubis: 1 },
+            palCaptureBonusCounts: { Anubis: 1 },
+            palButcherCounts: {},
+          },
+          Activities: {
+            craftItemCounts: { Wood: 3 },
+            normalDungeonClearCount: 0,
+            fixedDungeonClearCount: 0,
+            oilrigClearCount: 0,
+            palRankUpCounts: {},
+            arenaSoloClearCounts: {},
+            npcTalkCounts: {},
+            fishingCounts: {},
+            foundTreasureCount: 0,
+            campConqueredCount: 0,
+            firstFishingComplete: false,
+          },
+        },
+      });
     throw new Error(`Unexpected request: ${url}`);
   };
   ({ app } = await import("../src/index.js"));
@@ -669,6 +707,15 @@ test("PalDefender player workspace routes return normalized models", async () =>
     headers,
   });
   assert.deepEqual(technology.json(), { technologies: ["Technology_Wood"] });
+  const progression = await app.inject({
+    method: "GET",
+    url: "/api/servers/server-a/paldefender/players/player-1/progression",
+    headers,
+  });
+  assert.equal(progression.statusCode, 200);
+  assert.equal(progression.json().character.level, 6);
+  assert.deepEqual(progression.json().captures.byPal, { Anubis: 1 });
+  assert.deepEqual(progression.json().activities.craftedItems, { Wood: 3 });
 });
 
 test("PalDefender not-found and invalid player identifiers are normalized", async () => {

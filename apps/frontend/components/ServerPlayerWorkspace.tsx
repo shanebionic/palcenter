@@ -110,9 +110,9 @@ export function ServerPlayerWorkspace({
         : status?.state === "unreachable"
           ? "PalDefender is temporarily unreachable. Native player information remains available."
           : status?.state === "configuration_required"
-            ? "Complete the PalDefender connection settings to enable Inventory, Pals, Technology, and enhanced actions."
+            ? "Complete the PalDefender connection settings to enable Inventory, Pals, Technology, Progression, and enhanced actions."
             : status?.state === "disabled"
-              ? "Enable PalDefender for this server to add Inventory, Pals, Technology, and enhanced actions."
+              ? "Enable PalDefender for this server to add Inventory, Pals, Technology, Progression, and enhanced actions."
               : "Enhanced player management is unavailable.";
 
   return (
@@ -155,6 +155,7 @@ export function ServerPlayerWorkspace({
                 <Tabs.Tab value="inventory">Inventory</Tabs.Tab>
                 <Tabs.Tab value="pals">Pals</Tabs.Tab>
                 <Tabs.Tab value="technology">Technology</Tabs.Tab>
+                <Tabs.Tab value="progression">Progression</Tabs.Tab>
                 <Tabs.Tab value="actions">Actions</Tabs.Tab>
               </Tabs.List>
               <Tabs.Panel value="overview" pt="lg">
@@ -185,13 +186,19 @@ export function ServerPlayerWorkspace({
                   </SimpleGrid>
                 </SectionCard>
               </Tabs.Panel>
-              {(["inventory", "pals", "technology", "actions"] as const).map(
-                (tab) => (
-                  <Tabs.Panel key={tab} value={tab} pt="lg">
-                    <Alert color="gray">{unavailableMessage}</Alert>
-                  </Tabs.Panel>
-                ),
-              )}
+              {(
+                [
+                  "inventory",
+                  "pals",
+                  "technology",
+                  "progression",
+                  "actions",
+                ] as const
+              ).map((tab) => (
+                <Tabs.Panel key={tab} value={tab} pt="lg">
+                  <Alert color="gray">{unavailableMessage}</Alert>
+                </Tabs.Panel>
+              ))}
             </Tabs>
           </>
         )}
