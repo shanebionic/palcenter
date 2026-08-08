@@ -80,6 +80,7 @@ const telemetryPlayer = {
 let playerMode = "populated";
 let eventMode = "populated";
 let companionMode = "connected";
+let palDefenderMode = "disabled";
 let sessionRole = "administrator";
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
@@ -232,6 +233,10 @@ export function startMockUiApi(port = 3198) {
       companionMode = url.searchParams.get("mode") ?? "connected";
       return json(response, { companionMode });
     }
+    if (url.pathname === "/__test/paldefender") {
+      palDefenderMode = url.searchParams.get("mode") ?? "disabled";
+      return json(response, { mode: palDefenderMode });
+    }
 
     if (url.pathname === "/api/auth/session") {
       return json(response, {
@@ -331,6 +336,56 @@ export function startMockUiApi(port = 3198) {
       return json(response, {
         players: playerMode === "empty" ? [] : connectedPlayers,
       });
+    }
+    if (url.pathname === `/api/servers/${connection.id}/paldefender/status`) {
+      const connected = palDefenderMode === "connected";
+      const enabled = palDefenderMode !== "disabled";
+      return json(response, {
+        state: connected ? "connected" : enabled ? palDefenderMode : "disabled",
+        enabled,
+        configured: enabled,
+        connected,
+        version: connected ? "1.8.3" : "Unavailable",
+        responseTime: connected ? 4 : 0,
+      });
+    }
+    if (url.pathname === `/api/servers/${connection.id}/paldefender/players`) {
+      return json(response, {
+        players: [
+          {
+            name: "Denalb",
+            playerId: "0094A2FA-00000000-00000000-00000000",
+            online: true,
+            guild: "Pal Tamers",
+            level: 42,
+          },
+        ],
+      });
+    }
+    const enhancedPlayerPath = `/api/servers/${connection.id}/paldefender/players/0094A2FA-00000000-00000000-00000000`;
+    if (url.pathname === enhancedPlayerPath) {
+      return json(response, {
+        name: "Denalb",
+        playerId: "0094A2FA-00000000-00000000-00000000",
+        online: true,
+        guild: "Pal Tamers",
+        level: 42,
+        worldLocation: null,
+        mapLocation: null,
+      });
+    }
+    if (url.pathname === `${enhancedPlayerPath}/inventory`) {
+      return json(response, {
+        items: [
+          { container: "Inventory", slot: 0, itemId: "Wood", quantity: 5 },
+        ],
+      });
+    }
+    if (url.pathname === `${enhancedPlayerPath}/pals`) {
+      return json(response, { pals: [] });
+    }
+    if (url.pathname === `${enhancedPlayerPath}/technology`) {
+      return json(response, { technologies: ["Technology_Wood"] });
     }
     if (
       url.pathname === `/api/servers/${connection.id}/telemetry/players/latest`

@@ -17,6 +17,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   banPlayer,
   getLatestPlayerTelemetry,
@@ -24,7 +25,12 @@ import {
   kickPlayer,
   getCompanionStatus,
   teleportPlayer,
+  getPalDefenderPlayers,
+  getPalDefenderStatus,
+  type PalDefenderPlayer,
+  type PalDefenderStatus,
 } from "../lib/api";
+import { matchPalDefenderPlayer } from "../lib/player-identity";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
 import type { CompanionStatus } from "../types/companion";
 import {
@@ -60,6 +66,11 @@ export function ServerPlayers({
   const [pending, setPending] = useState<PendingPlayerAction | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [companion, setCompanion] = useState<CompanionStatus | null>(null);
+  const [palDefenderStatus, setPalDefenderStatus] =
+    useState<PalDefenderStatus | null>(null);
+  const [palDefenderPlayers, setPalDefenderPlayers] = useState<
+    PalDefenderPlayer[]
+  >([]);
   const [pendingTeleport, setPendingTeleport] = useState<{
     action: TeleportAction;
     player: ConnectedPlayer;
@@ -69,6 +80,11 @@ export function ServerPlayers({
     async (background = false) => {
       if (background) {
         setRefreshing(true);
+      } else {
+        setPlayers([]);
+        setTelemetry([]);
+        setPalDefenderPlayers([]);
+        setPalDefenderStatus(null);
       }
 
       setError(null);
@@ -81,6 +97,15 @@ export function ServerPlayers({
         setPlayers(connectedPlayers);
         setTelemetry(latestTelemetry);
         setCompanion(await getCompanionStatus(serverId).catch(() => null));
+        const integration = await getPalDefenderStatus(serverId).catch(
+          () => null,
+        );
+        setPalDefenderStatus(integration);
+        setPalDefenderPlayers(
+          integration?.connected
+            ? await getPalDefenderPlayers(serverId).catch(() => [])
+            : [],
+        );
       } catch (requestError) {
         setError(
           requestError instanceof Error
@@ -236,6 +261,18 @@ export function ServerPlayers({
 
         {error && <Alert color="red">{error}</Alert>}
 
+        {palDefenderStatus?.enabled &&
+          palDefenderStatus.configured &&
+          !palDefenderStatus.connected && (
+            <Alert
+              color="orange"
+              title="Enhanced player management unavailable"
+            >
+              Native players remain available. PalDefender-backed details and
+              actions are temporarily unavailable.
+            </Alert>
+          )}
+
         {teleportSupported("admin-to-player") && !mapTeleportSupported && (
           <Alert color="blue" title="Map teleport unavailable">
             {mapTeleportUnavailable}
@@ -267,12 +304,13 @@ export function ServerPlayers({
         ) : (
           <SectionCard p={0}>
             <ScrollArea>
-              <Table striped highlightOnHover miw={960}>
+              <Table striped highlightOnHover miw={900}>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Player Name</Table.Th>
                     <Table.Th>Player ID</Table.Th>
-                    <Table.Th>IP Address</Table.Th>
+                    <Table.Th>Guild</Table.Th>
+                    <Table.Th>Level</Table.Th>
                     <Table.Th>Coordinates</Table.Th>
                     <Table.Th>Telemetry Updated</Table.Th>
                     <Table.Th>Status</Table.Th>
@@ -282,15 +320,29 @@ export function ServerPlayers({
                 <Table.Tbody>
                   {filteredPlayers.map((player) => {
                     const snapshot = telemetryByPlayer.get(player.userId);
+                    const enhanced = matchPalDefenderPlayer(
+                      player,
+                      palDefenderPlayers,
+                    );
                     return (
                       <Table.Tr key={player.userId}>
-                        <Table.Td>{player.name}</Table.Td>
+                        <Table.Td>
+                          <Text
+                            component={Link}
+                            href={`/servers/${encodeURIComponent(serverId)}/players/${encodeURIComponent(player.playerId)}`}
+                            c="cyan.4"
+                            fw={600}
+                          >
+                            {player.name}
+                          </Text>
+                        </Table.Td>
                         <Table.Td>
                           <Text ff="monospace" size="sm">
                             {player.playerId}
                           </Text>
                         </Table.Td>
-                        <Table.Td>{player.ip ?? "Unavailable"}</Table.Td>
+                        <Table.Td>{enhanced?.guild ?? "—"}</Table.Td>
+                        <Table.Td>{enhanced?.level ?? "—"}</Table.Td>
                         <Table.Td>
                           <Text ff="monospace" size="sm">
                             X: {coordinate(snapshot?.x ?? null)} · Y:{" "}

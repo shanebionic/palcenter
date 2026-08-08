@@ -52,6 +52,65 @@ async function setCompanionMode(
   expect(response.ok()).toBe(true);
 }
 
+async function setPalDefenderMode(
+  page: Page,
+  mode: "connected" | "disabled" | "unreachable" | "authentication_failed",
+) {
+  const response = await page.request.get(
+    `http://127.0.0.1:3198/__test/paldefender?mode=${mode}`,
+  );
+  expect(response.ok()).toBe(true);
+}
+
+test("normal Players progressively exposes enhanced player management", async ({
+  page,
+}) => {
+  await setPalDefenderMode(page, "connected");
+  await page.goto("/servers/srv-test/players");
+  await expect(
+    page.getByRole("heading", { name: "Palpagos Test Server" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Denalb" })).toHaveCount(1);
+  await expect(page.getByText("Pal Tamers")).toBeVisible();
+  await page.getByRole("link", { name: "Denalb" }).click();
+  await expect(page).toHaveURL(/\/servers\/srv-test\/players\//);
+  await expect(page.getByText("Player Workspace")).toBeVisible();
+  for (const tab of ["Inventory", "Pals", "Technology", "Actions"]) {
+    await expect(page.getByRole("tab", { name: tab })).toBeVisible();
+  }
+  await page.getByRole("tab", { name: "Inventory" }).click();
+  await expect(page.getByText("Wood")).toBeVisible();
+  await page.getByRole("tab", { name: "Actions" }).click();
+  for (const action of ["Kick Player", "Ban Player", "Give Item", "Give Pal"]) {
+    await expect(page.getByRole("button", { name: action })).toBeVisible();
+  }
+
+  await setPalDefenderMode(page, "disabled");
+  await page.goto("/servers/srv-test/players/0094A2FA000000000000000000000000");
+  await expect(
+    page
+      .getByRole("alert", { name: "Enhanced player management unavailable" })
+      .getByText("Enable PalDefender for this server"),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Denalb" })).toBeVisible();
+
+  await setPalDefenderMode(page, "unreachable");
+  await page.reload();
+  await expect(
+    page
+      .getByRole("alert", { name: "Enhanced player management unavailable" })
+      .getByText("PalDefender is temporarily unreachable"),
+  ).toBeVisible();
+
+  await setPalDefenderMode(page, "authentication_failed");
+  await page.reload();
+  await expect(
+    page
+      .getByRole("alert", { name: "Enhanced player management unavailable" })
+      .getByText("PalDefender authentication failed"),
+  ).toBeVisible();
+});
+
 async function openWorkspace(page: Page): Promise<void> {
   await page.goto("/servers/srv-test");
   await expect(

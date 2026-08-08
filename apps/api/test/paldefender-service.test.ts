@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { PalDefenderClient } from "../src/clients/paldefender-client.js";
+import {
+  PalDefenderError,
+  type PalDefenderClient,
+} from "../src/clients/paldefender-client.js";
 import type { ConnectionRepository } from "../src/repositories/connection-repository.js";
 import { PalDefenderService } from "../src/services/paldefender-service.js";
 import type { StoredConnection } from "../src/types/connections.js";
@@ -62,7 +65,37 @@ test("PalDefender requests use only the selected server credentials", async () =
   const disabled = await service.status("server-c");
   assert.equal(disabled.connected, false);
   assert.equal(disabled.enabled, false);
+  assert.equal(disabled.state, "disabled");
   assert.equal(created.length, 2, "disabled Server C must make no request");
+});
+
+test("status distinguishes optional-provider authentication and availability failures", async () => {
+  const servers = new Map([
+    ["auth", connection("auth", "http://auth", "token")],
+    ["offline", connection("offline", "http://offline", "token")],
+  ]);
+  const repository = {
+    get: async (id: string) => servers.get(id) ?? null,
+  } as ConnectionRepository;
+  const service = new PalDefenderService(
+    repository,
+    (endpoint) =>
+      ({
+        getVersion: async () => {
+          if (endpoint.endsWith("auth")) {
+            throw new PalDefenderError("Unauthorized", 401, "UNAUTHORIZED");
+          }
+          throw new PalDefenderError(
+            "Unable to reach PalDefender.",
+            undefined,
+            "CONNECTION_FAILED",
+          );
+        },
+      }) as PalDefenderClient,
+  );
+
+  assert.equal((await service.status("auth")).state, "authentication_failed");
+  assert.equal((await service.status("offline")).state, "unreachable");
 });
 
 test("candidate connection tests preserve a saved token only for the selected server", async () => {
