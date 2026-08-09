@@ -1,4 +1,4 @@
-import { ServerPlayersPage } from "../../../../components/ServerPlayersPage";
+import { redirect } from "next/navigation";
 
 export default async function PlayersPage({
   params,
@@ -6,5 +6,5 @@ export default async function PlayersPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ServerPlayersPage serverId={id} />;
+  redirect(`/servers/${encodeURIComponent(id)}?tab=players`);
 }

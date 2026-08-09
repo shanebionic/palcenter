@@ -19,16 +19,20 @@ import { ServerAuditLog } from "./ServerAuditLog";
 
 interface ServerWorkspaceProps {
   serverId: string;
+  initialTab?: string;
 }
 
-export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
+export function ServerWorkspace({
+  serverId,
+  initialTab = "overview",
+}: ServerWorkspaceProps) {
   const [server, setServer] = useState<ServerWorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [canOperate, setCanOperate] = useState(false);
   const [canManage, setCanManage] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   const loadServer = useCallback(
     async (background = false) => {

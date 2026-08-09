@@ -233,8 +233,8 @@ export function PalDefenderPlayerWorkspace({
     setPals(initial());
     setTechnology(initial());
     setProgression(initial());
-    void loadPlayer();
-  }, [loadPlayer, serverId]);
+    void Promise.all([loadPlayer(), loadProgression()]);
+  }, [loadPlayer, loadProgression, serverId]);
   useEffect(() => {
     setGivePalTemplateOpened(false);
     setGivePalTemplateConfirmationOpened(false);
@@ -286,11 +286,10 @@ export function PalDefenderPlayerWorkspace({
   ]);
 
   const refresh = () => {
-    void loadPlayer();
+    void Promise.all([loadPlayer(), loadProgression()]);
     if (activeTab === "inventory") void loadInventory();
     if (activeTab === "pals") void loadPals();
     if (activeTab === "technology") void loadTechnology();
-    if (activeTab === "progression") void loadProgression();
   };
 
   const executeModeration = async (options: {
@@ -601,7 +600,7 @@ export function PalDefenderPlayerWorkspace({
               </Tabs.Tab>
             </Tabs.List>
             <Tabs.Panel value="overview" pt="xl">
-              <Overview state={player} />
+              <Overview state={player} progression={progression} />
             </Tabs.Panel>
             <Tabs.Panel value="inventory" pt="xl">
               <Inventory
@@ -1340,7 +1339,13 @@ function State<T>({
   return children(state.data);
 }
 
-function Overview({ state }: { state: Loadable<PalDefenderPlayerDetails> }) {
+function Overview({
+  state,
+  progression,
+}: {
+  state: Loadable<PalDefenderPlayerDetails>;
+  progression: Loadable<PalDefenderProgression>;
+}) {
   if (state.loading && !state.data)
     return <BrandedLoader message="Loading player details" />;
   if (!state.data)
@@ -1355,7 +1360,7 @@ function Overview({ state }: { state: Loadable<PalDefenderPlayerDetails> }) {
     ["Player ID", p.playerId],
     ["Guild", p.guild],
     ["Online status", p.online ? "Online" : "Offline"],
-    ["Level", p.level],
+    ["Level", progression.data?.character.level ?? p.level],
     ["World X", p.worldLocation?.x],
     ["World Y", p.worldLocation?.y],
     ["World Z", p.worldLocation?.z],

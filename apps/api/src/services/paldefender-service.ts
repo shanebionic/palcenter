@@ -59,6 +59,11 @@ export interface PalDefenderConnectionTestResult {
 type ClientFactory = (endpoint: string, token: string) => PalDefenderClient;
 
 export class PalDefenderService {
+  private readonly progressionLevels = new Map<
+    string,
+    { level: number; expiresAt: number }
+  >();
+
   constructor(
     private readonly repository: ConnectionRepository,
     private readonly createClient: ClientFactory = (endpoint, token) =>
@@ -129,14 +134,22 @@ export class PalDefenderService {
   }
 
   async players(serverId: string): Promise<PalDefenderPlayer[]> {
-    return (await this.clientForServer(serverId)).getPlayers();
+    const players = await (await this.clientForServer(serverId)).getPlayers();
+    return players.map((player) => ({
+      ...player,
+      level: this.cachedLevel(serverId, player.playerId) ?? player.level,
+    }));
   }
 
   async player(
     serverId: string,
     id: string,
   ): Promise<PalDefenderPlayerDetails> {
-    return (await this.clientForServer(serverId)).getPlayer(id);
+    const player = await (await this.clientForServer(serverId)).getPlayer(id);
+    return {
+      ...player,
+      level: this.cachedLevel(serverId, player.playerId) ?? player.level,
+    };
   }
 
   async inventory(
@@ -180,7 +193,18 @@ export class PalDefenderService {
     serverId: string,
     id: string,
   ): Promise<PalDefenderProgression> {
-    return (await this.clientForServer(serverId)).getProgression(id);
+    const progression = await (
+      await this.clientForServer(serverId)
+    ).getProgression(id);
+    this.progressionLevels.set(this.levelKey(serverId, id), {
+      level: progression.character.level,
+      expiresAt: Date.now() + 5 * 60_000,
+    });
+    this.progressionLevels.set(this.levelKey(serverId, progression.playerId), {
+      level: progression.character.level,
+      expiresAt: Date.now() + 5 * 60_000,
+    });
+    return progression;
   }
 
   async giveProgression(
@@ -188,7 +212,26 @@ export class PalDefenderService {
     id: string,
     grant: PalDefenderProgressionGrant,
   ): Promise<PalDefenderGiveProgressionResult> {
-    return (await this.clientForServer(serverId)).giveProgression(id, grant);
+    const result = await (
+      await this.clientForServer(serverId)
+    ).giveProgression(id, grant);
+    this.progressionLevels.delete(this.levelKey(serverId, id));
+    return result;
+  }
+
+  private levelKey(serverId: string, playerId: string): string {
+    return `${serverId}:${playerId.replaceAll("-", "").toLowerCase()}`;
+  }
+
+  private cachedLevel(serverId: string, playerId: string): number | null {
+    const key = this.levelKey(serverId, playerId);
+    const cached = this.progressionLevels.get(key);
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+      this.progressionLevels.delete(key);
+      return null;
+    }
+    return cached.level;
   }
 
   async guilds(serverId: string): Promise<PalDefenderGuild[]> {

@@ -169,6 +169,52 @@ test("progression stays isolated per server and disabled servers make no request
   ]);
 });
 
+test("known progression levels enrich player reads without per-player requests", async () => {
+  const repository = {
+    get: async () => connection("server-a", "http://progression-a", "token-a"),
+  } as ConnectionRepository;
+  let progressionRequests = 0;
+  const service = new PalDefenderService(
+    repository,
+    () =>
+      ({
+        getPlayers: async () => [
+          {
+            name: "Denalb",
+            playerId: "0094A2FA000000000000000000000000",
+            online: true,
+            guild: "Pal Tamers",
+            level: null,
+          },
+        ],
+        getPlayer: async () => ({
+          name: "Denalb",
+          playerId: "0094A2FA000000000000000000000000",
+          online: true,
+          guild: "Pal Tamers",
+          level: null,
+        }),
+        getProgression: async () => {
+          progressionRequests += 1;
+          return {
+            playerId: "0094A2FA-00000000-00000000-00000000",
+            character: { level: 80 },
+          };
+        },
+      }) as unknown as PalDefenderClient,
+  );
+
+  assert.equal((await service.players("server-a"))[0]?.level, null);
+  await service.progression("server-a", "0094A2FA000000000000000000000000");
+  assert.equal((await service.players("server-a"))[0]?.level, 80);
+  assert.equal(
+    (await service.player("server-a", "0094A2FA000000000000000000000000"))
+      .level,
+    80,
+  );
+  assert.equal(progressionRequests, 1);
+});
+
 test("candidate connection tests preserve a saved token only for the selected server", async () => {
   const servers = new Map([
     ["server-a", connection("server-a", "http://saved-a", "saved-token-a")],

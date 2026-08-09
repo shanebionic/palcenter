@@ -91,7 +91,7 @@ export function ServerPlayerWorkspace({
     };
   }, [playerId, serverId]);
 
-  const backHref = `/servers/${encodeURIComponent(serverId)}/players`;
+  const backHref = `/servers/${encodeURIComponent(serverId)}?tab=players`;
   if (!loading && status?.connected && palDefenderPlayerId) {
     return (
       <PalDefenderPlayerWorkspace

@@ -184,7 +184,7 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
       <Stack gap="lg" pt="lg">
         <SectionHeader
           title="Players"
-          description="View and manage connected players."
+          description="View and manage players."
           action={
             <Button
               variant="light"
