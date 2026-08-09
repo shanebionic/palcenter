@@ -4,12 +4,14 @@ import {
   Alert,
   Button,
   Group,
+  Modal,
   PasswordInput,
   Switch,
   SimpleGrid,
   Stack,
   Text,
   TextInput,
+  Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -17,6 +19,7 @@ import { useState } from "react";
 import {
   testServerUpdate,
   testPalDefenderConnection,
+  reloadPalDefenderConfiguration,
   updateServer,
   type ConnectionTestResult,
   type PalDefenderConnectionTestResult,
@@ -93,6 +96,31 @@ export function ServerConnectionSettings({
     string | null
   >(null);
   const [testingPalDefender, setTestingPalDefender] = useState(false);
+  const [reloadOpened, setReloadOpened] = useState(false);
+  const [reloading, setReloading] = useState(false);
+
+  const reloadPalDefender = async () => {
+    if (reloading) return;
+    setReloading(true);
+    try {
+      await reloadPalDefenderConfiguration(connection.id);
+      setReloadOpened(false);
+      notifications.show({
+        color: "teal",
+        title: "PalDefender configuration reloaded",
+        message: "PalDefender accepted the configuration reload request.",
+      });
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Unable to reload PalDefender configuration",
+        message:
+          error instanceof Error ? error.message : "The reload request failed.",
+      });
+    } finally {
+      setReloading(false);
+    }
+  };
 
   const connectionKey = (values: ServerConnectionUpdate) =>
     `${values.baseUrl}\u0000${values.adminPassword ?? ""}`;
@@ -332,6 +360,85 @@ export function ServerConnectionSettings({
           </Stack>
         </form>
       </SectionCard>
+
+      <SectionCard>
+        <Group justify="space-between" align="flex-end">
+          <div>
+            <Title order={3}>Reload PalDefender Configuration</Title>
+            <Text c="dimmed" size="sm">
+              Apply supported PalDefender configuration-file changes without
+              restarting the game server. Unsupported changes may still require
+              a restart during a maintenance window.
+            </Text>
+          </div>
+          <Button
+            variant="light"
+            onClick={() => setReloadOpened(true)}
+            disabled={
+              !connection.palDefender.enabled ||
+              !connection.palDefender.endpoint ||
+              !connection.palDefender.tokenConfigured ||
+              reloading
+            }
+          >
+            Reload Configuration
+          </Button>
+        </Group>
+        {!connection.palDefender.enabled && (
+          <Alert color="orange" mt="md">
+            Enable and save PalDefender for this server before reloading its
+            configuration.
+          </Alert>
+        )}
+        {connection.palDefender.enabled &&
+          (!connection.palDefender.endpoint ||
+            !connection.palDefender.tokenConfigured) && (
+            <Alert color="orange" mt="md">
+              Save a PalDefender endpoint and Bearer token before reloading its
+              configuration.
+            </Alert>
+          )}
+      </SectionCard>
+
+      <Modal
+        opened={reloadOpened}
+        onClose={() => !reloading && setReloadOpened(false)}
+        title="Reload PalDefender Configuration"
+        centered
+        closeOnClickOutside={!reloading}
+        closeOnEscape={!reloading}
+      >
+        <Stack>
+          <Text>
+            Reload PalDefender configuration for{" "}
+            <strong>{connection.name}</strong>?
+          </Text>
+          <Alert color="orange">
+            PalDefender will re-read supported runtime configuration files.
+            Changes that are not reloadable still require a server restart.
+          </Alert>
+          <Text size="sm" c="dimmed">
+            PalCenter will submit this operation once and will not retry an
+            ambiguous failure automatically.
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setReloadOpened(false)}
+              disabled={reloading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void reloadPalDefender()}
+              loading={reloading}
+              disabled={reloading}
+            >
+              Reload Configuration
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

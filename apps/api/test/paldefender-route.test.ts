@@ -280,6 +280,11 @@ before(async () => {
       assert.equal(init?.body, JSON.stringify({ Message: "Urgent" }));
       return Response.json({ Success: true });
     }
+    if (url.endsWith("/ReloadConfig")) {
+      assert.equal(init?.method, "POST");
+      assert.equal(init?.body, undefined);
+      return Response.json({ Success: true });
+    }
     if (url.endsWith("/SendPlayerMessage")) {
       assert.equal(
         init?.body,
@@ -987,6 +992,24 @@ test("PalDefender alert and player message routes validate and normalize request
     });
     assert.equal(response.statusCode, 400);
   }
+});
+
+test("PalDefender configuration reload is administrator-only and normalized", async () => {
+  const administrator = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/reload-config",
+    headers: { cookie: administratorCookie },
+    payload: {},
+  });
+  assert.equal(administrator.statusCode, 200);
+  assert.deepEqual(administrator.json(), { success: true });
+
+  const unauthenticated = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/reload-config",
+    payload: {},
+  });
+  assert.equal(unauthenticated.statusCode, 401);
 });
 
 test("PalDefender ban route normalizes success and unavailable IP errors", async () => {
