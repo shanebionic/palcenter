@@ -55,6 +55,7 @@ test("normal Players progressively exposes enhanced player management", async ({
 }) => {
   await setPalDefenderMode(page, "connected");
   await page.goto("/servers/srv-test/players");
+  await expect(page).toHaveURL(/\/servers\/srv-test\?tab=players$/);
   await expect(
     page.getByRole("heading", { name: "Palpagos Test Server" }),
   ).toBeVisible();
@@ -63,6 +64,17 @@ test("normal Players progressively exposes enhanced player management", async ({
   await page.getByRole("link", { name: "Denalb" }).click();
   await expect(page).toHaveURL(/\/servers\/srv-test\/players\//);
   await expect(page.getByText("Player Workspace")).toBeVisible();
+  const overview = page.getByRole("tabpanel", { name: "Overview" });
+  await expect(overview.getByText("Level")).toBeVisible();
+  await expect(overview.getByText("6", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Back to Players" }).click();
+  await expect(page).toHaveURL(/\/servers\/srv-test\?tab=players$/);
+  await expect(page.getByRole("tab", { name: "Players" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.getByText("View and manage players.")).toBeVisible();
+  await page.getByRole("link", { name: "Denalb" }).click();
   for (const tab of [
     "Inventory",
     "Pals",
@@ -73,7 +85,9 @@ test("normal Players progressively exposes enhanced player management", async ({
     await expect(page.getByRole("tab", { name: tab })).toBeVisible();
   }
   await page.getByRole("tab", { name: "Inventory" }).click();
-  await expect(page.getByText("Wood")).toBeVisible();
+  await expect(
+    page.getByRole("tabpanel", { name: "Inventory" }).getByText("Wood"),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Give Item" })).toBeVisible();
   await page.getByRole("tab", { name: "Pals" }).click();
   for (const action of ["Give Pal", "Give Pal from Template", "Give Pal Egg"]) {
