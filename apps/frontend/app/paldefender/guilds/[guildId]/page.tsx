@@ -29,6 +29,7 @@ import {
   getPalDefenderGuild,
   type PalDefenderGuildDetails,
 } from "../../../../lib/api";
+import { catalogLabel, findPalEntry } from "../../../../lib/game-catalogs";
 import { palDefenderPlayerHref } from "../../../../lib/paldefender";
 
 function Value({ label, children }: { label: string; children: ReactNode }) {
@@ -243,7 +244,14 @@ export default function PalDefenderGuildDetailsPage() {
                             <Table.Tbody>
                               {camp.pals.map((pal) => (
                                 <Table.Tr key={pal.instanceId}>
-                                  <Table.Td>{pal.nickname ?? "—"}</Table.Td>
+                                  <Table.Td>
+                                    {(() => {
+                                      const entry = findPalEntry(pal.palId);
+                                      return entry
+                                        ? catalogLabel(entry)
+                                        : pal.palId;
+                                    })()}
+                                  </Table.Td>
                                   <Table.Td>{pal.palId}</Table.Td>
                                   <Table.Td>{pal.level}</Table.Td>
                                   <Table.Td>{pal.gender ?? "—"}</Table.Td>

@@ -83,3 +83,20 @@ export function findCatalogEntry(
 ): CatalogEntry | undefined {
   return catalog.find((entry) => entry.id === id);
 }
+
+function stripPalPrefix(id: string): string {
+  const prefixes = ["BOSS_", "Mega_"];
+  for (const prefix of prefixes) {
+    if (id.startsWith(prefix)) {
+      return id.slice(prefix.length);
+    }
+  }
+  return id;
+}
+
+export function findPalEntry(palId: string): CatalogEntry | undefined {
+  const entry = findCatalogEntry(palCatalog, palId);
+  if (entry) return entry;
+
+  return findCatalogEntry(palCatalog, stripPalPrefix(palId));
+}
