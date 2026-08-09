@@ -1008,6 +1008,52 @@ const palDefenderGivePalsBodySchema = z
       .min(1),
   })
   .strict();
+const palTemplateFilenameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(255)
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*$/)
+  .refine((value) => !value.includes(".."));
+const palDefenderGivePalTemplatesBodySchema = z
+  .object({ palTemplates: z.array(palTemplateFilenameSchema).min(1).max(100) })
+  .strict();
+const palDefenderPalEggSchema = z.discriminatedUnion("mode", [
+  z
+    .object({
+      mode: z.literal("pal-id"),
+      eggId: z
+        .string()
+        .trim()
+        .min(1)
+        .max(256)
+        .regex(/^[A-Za-z0-9_]+$/),
+      palId: z
+        .string()
+        .trim()
+        .min(1)
+        .max(256)
+        .regex(/^[A-Za-z0-9_]+$/),
+      level: z.number().int().positive().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      mode: z.literal("template"),
+      eggId: z
+        .string()
+        .trim()
+        .min(1)
+        .max(256)
+        .regex(/^[A-Za-z0-9_]+$/),
+      palTemplate: palTemplateFilenameSchema,
+      level: z.number().int().positive().optional(),
+    })
+    .strict(),
+]);
+const palDefenderGivePalEggsBodySchema = z
+  .object({ palEggs: z.array(palDefenderPalEggSchema).min(1).max(100) })
+  .strict();
 
 app.post(
   "/api/servers/:serverId/paldefender/players/:playerId/items",
@@ -1069,6 +1115,93 @@ app.post(
       app.log.warn(
         { err: error, actorUserId: actor.id, playerId },
         "PalDefender give Pals failed.",
+      );
+      throw error;
+    }
+  },
+);
+
+app.post(
+  "/api/servers/:serverId/paldefender/players/:playerId/pal-templates",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    const { palTemplates } = palDefenderGivePalTemplatesBodySchema.parse(
+      request.body ?? {},
+    );
+    const actor = currentUser(request.headers.cookie);
+    app.log.info(
+      { actorUserId: actor.id, playerId, grantCount: palTemplates.length },
+      "PalDefender give Pal templates requested.",
+    );
+    try {
+      const result = await palDefenderService.givePalTemplates(
+        serverId,
+        playerId,
+        palTemplates,
+      );
+      app.log.info(
+        {
+          actorUserId: actor.id,
+          playerId,
+          grantedPalTemplates: result.grantedPalTemplates,
+        },
+        "PalDefender give Pal templates completed.",
+      );
+      return result;
+    } catch (error) {
+      app.log.warn(
+        { err: error, actorUserId: actor.id, playerId },
+        "PalDefender give Pal templates failed.",
+      );
+      throw error;
+    }
+  },
+);
+
+app.post(
+  "/api/servers/:serverId/paldefender/players/:playerId/pal-eggs",
+  async (request) => {
+    const { serverId, playerId } = palDefenderServerParametersSchema
+      .extend(palDefenderPlayerParametersSchema.shape)
+      .parse(request.params);
+    const { palEggs } = palDefenderGivePalEggsBodySchema.parse(
+      request.body ?? {},
+    );
+    const grants = palEggs.map((egg) =>
+      egg.mode === "pal-id"
+        ? { eggId: egg.eggId, palId: egg.palId, level: egg.level }
+        : {
+            eggId: egg.eggId,
+            palTemplate: egg.palTemplate,
+            level: egg.level,
+          },
+    );
+    const actor = currentUser(request.headers.cookie);
+    app.log.info(
+      { actorUserId: actor.id, playerId, grantCount: grants.length },
+      "PalDefender give Pal eggs requested.",
+    );
+    try {
+      const result = await palDefenderService.givePalEggs(
+        serverId,
+        playerId,
+        grants,
+      );
+      app.log.info(
+        {
+          actorUserId: actor.id,
+          playerId,
+          grantedPalEggs: result.grantedPalEggs,
+        },
+        "PalDefender give Pal eggs completed.",
+      );
+      return result;
+    } catch (error) {
+      app.log.warn(
+        { err: error, actorUserId: actor.id, playerId },
+        "PalDefender give Pal eggs failed.",
       );
       throw error;
     }
@@ -1928,7 +2061,7 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof PalDefenderError) {
     const isPalDefenderWriteRequest =
       request.method === "POST" &&
-      (/\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals|progression)$/.test(
+      (/\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals|pal-templates|pal-eggs|progression)$/.test(
         request.url,
       ) ||
         /\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/technology\/(learn|forget)$/.test(

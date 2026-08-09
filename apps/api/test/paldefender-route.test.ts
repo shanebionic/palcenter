@@ -137,6 +137,49 @@ before(async () => {
         { status: 400 },
       );
     }
+    if (url.endsWith("/give/paltemplate/player-1")) {
+      assert.equal(init?.method, "POST");
+      assert.equal(
+        init?.body,
+        JSON.stringify({ PalTemplates: ["starter.json", "raid-01"] }),
+      );
+      return Response.json({ Granted: { PalTemplates: 2 } });
+    }
+    if (url.endsWith("/give/paltemplate/rejected")) {
+      return Response.json(
+        {
+          Error: {
+            Code: "VALIDATION_FAILED",
+            Message: "The requested Pal template is unavailable.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+    if (url.endsWith("/give/paleggs/player-1")) {
+      assert.equal(init?.method, "POST");
+      assert.equal(
+        init?.body,
+        JSON.stringify({
+          PalEggs: [
+            { EggID: "PalEgg_Fire_01", PalID: "Kitsunebi", Level: 12 },
+            { EggID: "PalEgg_Dark_01", PalTemplate: "reward.json" },
+          ],
+        }),
+      );
+      return Response.json({ Granted: { PalEggs: 2 } });
+    }
+    if (url.endsWith("/give/paleggs/rejected")) {
+      return Response.json(
+        {
+          Error: {
+            Code: "VALIDATION_FAILED",
+            Message: "The requested Pal egg is invalid.",
+          },
+        },
+        { status: 400 },
+      );
+    }
     if (url.endsWith("/give/progression/player-1")) {
       const body = JSON.parse(String(init?.body));
       return Response.json({ Granted: body, Totals: body });
@@ -416,6 +459,22 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     });
     assert.equal(technology.statusCode, 401);
   }
+  const givePalTemplates = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/pal-templates",
+    payload: { palTemplates: ["starter.json"] },
+  });
+  assert.equal(givePalTemplates.statusCode, 401);
+  const givePalEggs = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/pal-eggs",
+    payload: {
+      palEggs: [
+        { mode: "pal-id", eggId: "PalEgg_Fire_01", palId: "Kitsunebi" },
+      ],
+    },
+  });
+  assert.equal(givePalEggs.statusCode, 401);
   const broadcast = await app.inject({
     method: "POST",
     url: "/api/servers/server-a/paldefender/broadcast",
@@ -737,6 +796,109 @@ test("PalDefender give Pals route validates input and normalizes responses", asy
   assert.deepEqual(rejected.json(), {
     error: "paldefender_request_failed",
     message: "The requested PalID is invalid.",
+  });
+});
+
+test("PalDefender Pal provisioning routes validate and normalize both contracts", async () => {
+  const headers = { cookie: administratorCookie };
+  const templates = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/pal-templates",
+    headers,
+    payload: { palTemplates: ["starter.json", "raid-01"] },
+  });
+  assert.equal(templates.statusCode, 200);
+  assert.deepEqual(templates.json(), {
+    playerId: "player-1",
+    grantedPalTemplates: 2,
+  });
+
+  for (const payload of [
+    {},
+    { palTemplates: [] },
+    { palTemplates: ["../unsafe.json"] },
+    { palTemplates: ["folder/template.json"] },
+  ]) {
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/api/servers/server-a/paldefender/players/player-1/pal-templates",
+      headers,
+      payload,
+    });
+    assert.equal(invalid.statusCode, 400);
+  }
+
+  const eggs = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/pal-eggs",
+    headers,
+    payload: {
+      palEggs: [
+        {
+          mode: "pal-id",
+          eggId: "PalEgg_Fire_01",
+          palId: "Kitsunebi",
+          level: 12,
+        },
+        {
+          mode: "template",
+          eggId: "PalEgg_Dark_01",
+          palTemplate: "reward.json",
+        },
+      ],
+    },
+  });
+  assert.equal(eggs.statusCode, 200);
+  assert.deepEqual(eggs.json(), { playerId: "player-1", grantedPalEggs: 2 });
+
+  for (const payload of [
+    {},
+    { palEggs: [] },
+    { palEggs: [{ mode: "pal-id", eggId: "bad id", palId: "Kitsunebi" }] },
+    { palEggs: [{ mode: "pal-id", eggId: "PalEgg_Fire_01" }] },
+    {
+      palEggs: [
+        {
+          mode: "pal-id",
+          eggId: "PalEgg_Fire_01",
+          palId: "Kitsunebi",
+          palTemplate: "also.json",
+        },
+      ],
+    },
+    {
+      palEggs: [
+        {
+          mode: "template",
+          eggId: "PalEgg_Dark_01",
+          palTemplate: "../unsafe.json",
+        },
+      ],
+    },
+  ]) {
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/api/servers/server-a/paldefender/players/player-1/pal-eggs",
+      headers,
+      payload,
+    });
+    assert.equal(invalid.statusCode, 400);
+  }
+
+  const rejected = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/rejected/pal-eggs",
+    headers,
+    payload: {
+      palEggs: [
+        { mode: "pal-id", eggId: "PalEgg_Fire_01", palId: "Kitsunebi" },
+      ],
+    },
+  });
+  assert.equal(rejected.statusCode, 400);
+  assert.deepEqual(rejected.json(), {
+    error: "paldefender_request_failed",
+    message: "The requested Pal egg is invalid.",
   });
 });
 
