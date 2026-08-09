@@ -792,9 +792,9 @@ export function learnPalDefenderTechnology(
   playerId: string,
   mutation: PalDefenderTechnologyMutation,
 ): Promise<PalDefenderTechnologyMutationResult> {
-  return request(
+  return jsonRequest(
     `${palDefenderPlayerPath(serverId, playerId)}/technology/learn`,
-    { method: "POST", body: JSON.stringify(mutation) },
+    mutation,
   );
 }
 
@@ -803,9 +803,9 @@ export function forgetPalDefenderTechnology(
   playerId: string,
   mutation: PalDefenderTechnologyMutation,
 ): Promise<PalDefenderTechnologyMutationResult> {
-  return request(
+  return jsonRequest(
     `${palDefenderPlayerPath(serverId, playerId)}/technology/forget`,
-    { method: "POST", body: JSON.stringify(mutation) },
+    mutation,
   );
 }
 
