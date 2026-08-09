@@ -266,6 +266,21 @@ const banResponseSchema = z.object({
 const broadcastResponseSchema = z.object({ Success: z.boolean() });
 const alertResponseSchema = z.object({ Success: z.boolean() });
 const reloadConfigResponseSchema = z.object({ Success: z.boolean() });
+const deleteBaseResponseSchema = z.object({
+  BaseCamp: z.object({ Id: z.string(), Summary: z.string() }),
+  Deleted: z.object({
+    BaseCampPals: z.number().int().nonnegative(),
+    StorageContainers: z.number().int().nonnegative(),
+    ItemStacks: z.number().int().nonnegative(),
+    ItemCount: z.number().int().nonnegative(),
+    Buildings: z.number().int().nonnegative(),
+    DropItems: z.number().int().nonnegative(),
+    DefenseModels: z.number().int().nonnegative(),
+    OtherMapObjects: z.number().int().nonnegative(),
+    PalBox: z.boolean(),
+  }),
+  Archive: z.string(),
+});
 const playerMessageResponseSchema = z.object({
   Success: z.boolean(),
   SentCount: z.number().int().nonnegative(),
@@ -563,6 +578,21 @@ export interface PalDefenderBaseDetails extends PalDefenderBase {
   state: string | null;
   buildings: string | null;
   pals: PalDefenderGuildDetails["camps"][number]["pals"];
+}
+export interface PalDefenderDeleteBaseResult {
+  base: { id: string; summary: string };
+  deleted: {
+    baseCampPals: number;
+    storageContainers: number;
+    itemStacks: number;
+    itemCount: number;
+    buildings: number;
+    dropItems: number;
+    defenseModels: number;
+    otherMapObjects: number;
+    palBox: boolean;
+  };
+  archive: string;
 }
 export interface PalDefenderGuildDetails {
   guildId: string;
@@ -881,6 +911,29 @@ export class PalDefenderClient {
       state: camp.state,
       buildings: camp.buildings === "WIP" ? null : camp.buildings,
       pals: camp.pals,
+    };
+  }
+
+  async deleteBase(baseId: string): Promise<PalDefenderDeleteBaseResult> {
+    const response = await this.parse(
+      deleteBaseResponseSchema,
+      `/deletebase/${encodeURIComponent(baseId)}`,
+      { method: "POST" },
+    );
+    return {
+      base: { id: response.BaseCamp.Id, summary: response.BaseCamp.Summary },
+      deleted: {
+        baseCampPals: response.Deleted.BaseCampPals,
+        storageContainers: response.Deleted.StorageContainers,
+        itemStacks: response.Deleted.ItemStacks,
+        itemCount: response.Deleted.ItemCount,
+        buildings: response.Deleted.Buildings,
+        dropItems: response.Deleted.DropItems,
+        defenseModels: response.Deleted.DefenseModels,
+        otherMapObjects: response.Deleted.OtherMapObjects,
+        palBox: response.Deleted.PalBox,
+      },
+      archive: response.Archive,
     };
   }
 

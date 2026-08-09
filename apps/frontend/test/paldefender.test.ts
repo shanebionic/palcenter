@@ -11,6 +11,7 @@ import {
 } from "../lib/paldefender-broadcast";
 import {
   banPalDefenderPlayer,
+  deletePalDefenderBase,
   broadcastPalDefenderMessage,
   sendPalDefenderAlert,
   sendPalDefenderPlayerMessage,
@@ -44,6 +45,10 @@ import {
   validatePalGrant,
   validatePalTemplateGrant,
 } from "../lib/paldefender-pals";
+import {
+  canConfirmBaseDeletion,
+  deleteBaseConfirmation,
+} from "../lib/paldefender-bases";
 
 test("builds and loads an encoded PalDefender base details route", async () => {
   assert.equal(
@@ -93,6 +98,35 @@ test("loads normalized PalDefender bases through the PalCenter API", async () =>
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("deletes a Base Camp through the selected server and exact encoded ID", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestedBody = "";
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input);
+    requestedBody = String(init?.body);
+    return Response.json({ base: { id: "base/id", summary: "Test base" } });
+  };
+  try {
+    const result = await deletePalDefenderBase("server-1", "base/id");
+    assert.equal(
+      requestedUrl,
+      "/api/servers/server-1/paldefender/bases/base%2Fid/delete",
+    );
+    assert.equal(requestedBody, "{}");
+    assert.equal(result.base.id, "base/id");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("requires the explicit destructive base deletion confirmation", () => {
+  assert.equal(deleteBaseConfirmation, "DELETE");
+  assert.equal(canConfirmBaseDeletion(""), false);
+  assert.equal(canConfirmBaseDeletion("delete"), false);
+  assert.equal(canConfirmBaseDeletion("DELETE"), true);
 });
 
 test("builds an encoded PalDefender guild details route", () => {

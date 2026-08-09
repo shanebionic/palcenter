@@ -263,6 +263,21 @@ export interface PalDefenderBaseDetails extends PalDefenderBase {
   buildings: string | null;
   pals: PalDefenderGuildDetails["camps"][number]["pals"];
 }
+export interface PalDefenderDeleteBaseResult {
+  base: { id: string; summary: string };
+  deleted: {
+    baseCampPals: number;
+    storageContainers: number;
+    itemStacks: number;
+    itemCount: number;
+    buildings: number;
+    dropItems: number;
+    defenseModels: number;
+    otherMapObjects: number;
+    palBox: boolean;
+  };
+  archive: string;
+}
 export interface PalDefenderGuildDetails {
   guildId: string;
   name: string | null;
@@ -730,6 +745,16 @@ export function getPalDefenderBase(
   return request<PalDefenderBaseDetails>(
     `${palDefenderPath(serverId)}/bases/${encodeURIComponent(baseId)}`,
     { cache: "no-store" },
+  );
+}
+
+export function deletePalDefenderBase(
+  serverId: string,
+  baseId: string,
+): Promise<PalDefenderDeleteBaseResult> {
+  return jsonRequest<PalDefenderDeleteBaseResult>(
+    `${palDefenderPath(serverId)}/bases/${encodeURIComponent(baseId)}/delete`,
+    {},
   );
 }
 

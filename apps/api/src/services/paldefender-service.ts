@@ -9,6 +9,7 @@ import {
   type PalDefenderPlayerMessageResult,
   type PalDefenderPlayerMessageType,
   type PalDefenderReloadConfigResult,
+  type PalDefenderDeleteBaseResult,
   type PalDefenderGiveItemsResult,
   type PalDefenderGivePalsResult,
   type PalDefenderGivePalTemplatesResult,
@@ -200,6 +201,13 @@ export class PalDefenderService {
 
   async base(serverId: string, id: string): Promise<PalDefenderBaseDetails> {
     return (await this.clientForServer(serverId)).getBase(id);
+  }
+
+  async deleteBase(
+    serverId: string,
+    id: string,
+  ): Promise<PalDefenderDeleteBaseResult> {
+    return (await this.clientForServer(serverId)).deleteBase(id);
   }
 
   async guild(serverId: string, id: string): Promise<PalDefenderGuildDetails> {
