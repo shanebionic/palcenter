@@ -54,7 +54,7 @@ import {
 test("builds and loads an encoded PalDefender base details route", async () => {
   assert.equal(
     palDefenderBaseHref("server-1", "base id/unsafe"),
-    "/paldefender/bases/base%20id%2Funsafe?serverId=server-1",
+    "/servers/server-1/bases/base%20id%2Funsafe",
   );
   const originalFetch = globalThis.fetch;
   let requestedUrl = "";
@@ -134,7 +134,7 @@ test("requires the explicit destructive base deletion confirmation", () => {
 test("builds an encoded PalDefender guild details route", () => {
   assert.equal(
     palDefenderGuildHref("server-1", "guild id/unsafe"),
-    "/paldefender/guilds/guild%20id%2Funsafe?serverId=server-1",
+    "/servers/server-1/guilds/guild%20id%2Funsafe",
   );
 });
 
@@ -189,7 +189,7 @@ test("loads normalized PalDefender guilds through the PalCenter API", async () =
 test("builds an encoded PalDefender player workspace route", () => {
   assert.equal(
     palDefenderPlayerHref("server-1", "player id/unsafe"),
-    "/paldefender/players/player%20id%2Funsafe?serverId=server-1",
+    "/servers/server-1/players/player%20id%2Funsafe",
   );
 });
 
