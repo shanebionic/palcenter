@@ -861,6 +861,79 @@ test("reloads configuration with the documented bodyless request", async () => {
   assert.equal(requestBody, undefined);
 });
 
+test("deletes a base with the documented Base Camp ID and normalizes cleanup", async () => {
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestBody: BodyInit | null | undefined;
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = init?.method ?? "";
+      requestBody = init?.body;
+      return Response.json({
+        BaseCamp: { Id: "base-guid", Summary: "Test Guild base" },
+        Deleted: {
+          BaseCampPals: 1,
+          StorageContainers: 2,
+          ItemStacks: 3,
+          ItemCount: 4,
+          Buildings: 5,
+          DropItems: 6,
+          DefenseModels: 7,
+          OtherMapObjects: 8,
+          PalBox: true,
+        },
+        Archive: "Saved/PalDefender/Archives/base-guid.zip",
+      });
+    },
+  );
+  assert.deepEqual(await client.deleteBase("base-guid"), {
+    base: { id: "base-guid", summary: "Test Guild base" },
+    deleted: {
+      baseCampPals: 1,
+      storageContainers: 2,
+      itemStacks: 3,
+      itemCount: 4,
+      buildings: 5,
+      dropItems: 6,
+      defenseModels: 7,
+      otherMapObjects: 8,
+      palBox: true,
+    },
+    archive: "Saved/PalDefender/Archives/base-guid.zip",
+  });
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/deletebase/base-guid");
+  assert.equal(requestMethod, "POST");
+  assert.equal(requestBody, undefined);
+});
+
+test("does not retry an ambiguous base deletion timeout", async () => {
+  let requests = 0;
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () => {
+      requests += 1;
+      return Response.json(
+        {
+          Error: {
+            Code: "REQUEST_TIMEOUT",
+            Message: "The game-thread callback timed out.",
+          },
+        },
+        { status: 500 },
+      );
+    },
+  );
+  await assert.rejects(
+    () => client.deleteBase("base-guid"),
+    /game-thread callback timed out/i,
+  );
+  assert.equal(requests, 1);
+});
+
 test("sends player messages with deduplicated documented targets", async () => {
   let requestBody = "";
   const client = new PalDefenderClient(

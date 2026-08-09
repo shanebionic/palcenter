@@ -5,16 +5,19 @@ import {
   Badge,
   Button,
   Group,
+  Modal,
   ScrollArea,
   SimpleGrid,
   Stack,
   Table,
   Text,
+  TextInput,
   Title,
 } from "@mantine/core";
-import { IconArrowLeft, IconRefresh } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
+import { IconArrowLeft, IconRefresh, IconTrash } from "@tabler/icons-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ApplicationShell } from "../../../../components/ApplicationShell";
 import { BrandedLoader } from "../../../../components/BrandedLoader";
@@ -25,9 +28,16 @@ import {
 } from "../../../../components/PalDefenderServerSelector";
 import { SectionCard } from "../../../../components/ui/SectionCard";
 import {
+  deletePalDefenderBase,
   getPalDefenderBase,
+  getPalDefenderBases,
   type PalDefenderBaseDetails,
 } from "../../../../lib/api";
+import {
+  canConfirmBaseDeletion,
+  deleteBaseConfirmation,
+  deleteBaseWarning,
+} from "../../../../lib/paldefender-bases";
 import { palDefenderGuildHref } from "../../../../lib/paldefender";
 
 const coordinateFormatter = new Intl.NumberFormat(undefined, {
@@ -52,12 +62,16 @@ function Value({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export default function PalDefenderBaseDetailsPage() {
+  const router = useRouter();
   const selection = usePalDefenderServerSelection();
   const { baseId: encodedBaseId } = useParams<{ baseId: string }>();
   const baseId = decodeURIComponent(encodedBaseId);
   const [base, setBase] = useState<PalDefenderBaseDetails | null>(null);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteOpened, setDeleteOpened] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const loadBase = useCallback(
     async (refresh = false) => {
@@ -82,6 +96,64 @@ export default function PalDefenderBaseDetailsPage() {
   useEffect(() => {
     void loadBase();
   }, [loadBase]);
+
+  const deleteBase = async () => {
+    if (
+      deleting ||
+      !base ||
+      !selection.selectedServerId ||
+      !canConfirmBaseDeletion(deleteConfirmation)
+    ) {
+      return;
+    }
+    setDeleting(true);
+    let result: Awaited<ReturnType<typeof deletePalDefenderBase>>;
+    try {
+      result = await deletePalDefenderBase(
+        selection.selectedServerId,
+        base.baseId,
+      );
+    } catch (value) {
+      notifications.show({
+        color: "red",
+        title: "Unable to delete base",
+        message:
+          value instanceof Error
+            ? value.message
+            : "PalDefender could not delete this base.",
+      });
+      setDeleting(false);
+      return;
+    }
+
+    let deletionIsAuthoritative = false;
+    let refreshFailed = false;
+    try {
+      const bases = await getPalDefenderBases(selection.selectedServerId);
+      deletionIsAuthoritative = !bases.some(
+        (candidate) => candidate.baseId === base.baseId,
+      );
+    } catch {
+      refreshFailed = true;
+    }
+    notifications.show({
+      color: deletionIsAuthoritative ? "green" : "yellow",
+      title: deletionIsAuthoritative ? "Base deleted" : "Deletion accepted",
+      message: deletionIsAuthoritative
+        ? `${result.base.summary || base.baseId} was permanently deleted.`
+        : refreshFailed
+          ? "PalDefender reported success, but PalCenter could not refresh guild data. Do not submit the deletion again; refresh the Bases page to verify."
+          : "PalDefender reported success, but the base is still present in the latest guild data. Do not submit the deletion again; refresh before taking another action.",
+    });
+    setDeleteOpened(false);
+    if (deletionIsAuthoritative || refreshFailed) {
+      router.replace(
+        `/paldefender/bases?serverId=${encodeURIComponent(selection.selectedServerId)}`,
+      );
+      router.refresh();
+    }
+    setDeleting(false);
+  };
 
   return (
     <ApplicationShell>
@@ -162,6 +234,33 @@ export default function PalDefenderBaseDetailsPage() {
               </Stack>
             </SectionCard>
 
+            <SectionCard>
+              <Stack gap="md">
+                <div>
+                  <Title order={2}>Danger zone</Title>
+                  <Text c="dimmed" size="sm">
+                    Permanently delete this base and its associated camp data.
+                  </Text>
+                </div>
+                <Group justify="space-between" align="center">
+                  <div>
+                    <Text fw={700}>Delete base</Text>
+                    <Text c="dimmed" size="sm">
+                      This operation cannot be undone and is never retried
+                      automatically.
+                    </Text>
+                  </div>
+                  <Button
+                    color="red"
+                    leftSection={<IconTrash size={18} />}
+                    onClick={() => setDeleteOpened(true)}
+                  >
+                    Delete Base
+                  </Button>
+                </Group>
+              </Stack>
+            </SectionCard>
+
             <SectionCard p={0}>
               <Stack gap={0}>
                 <Title order={2} p="lg">
@@ -215,6 +314,66 @@ export default function PalDefenderBaseDetailsPage() {
             </SectionCard>
           </>
         )}
+        <Modal
+          opened={deleteOpened}
+          onClose={() => {
+            if (!deleting) {
+              setDeleteOpened(false);
+              setDeleteConfirmation("");
+            }
+          }}
+          title="Permanently Delete Base"
+          centered
+          closeOnClickOutside={!deleting}
+          closeOnEscape={!deleting}
+        >
+          <Stack>
+            <Alert color="red" title="This cannot be undone">
+              {deleteBaseWarning}
+            </Alert>
+            {base && (
+              <SimpleGrid cols={1} spacing="xs">
+                <Value label="Guild">{base.guildName ?? "—"}</Value>
+                <Value label="Base Camp ID">
+                  <Text ff="monospace" size="sm">
+                    {base.baseId}
+                  </Text>
+                </Value>
+                <Value label="Map Position">{position(base.mapPosition)}</Value>
+                <Value label="World Position">
+                  {position(base.worldPosition)}
+                </Value>
+              </SimpleGrid>
+            )}
+            <TextInput
+              label={`Type ${deleteBaseConfirmation} to confirm`}
+              value={deleteConfirmation}
+              onChange={(event) =>
+                setDeleteConfirmation(event.currentTarget.value)
+              }
+              disabled={deleting}
+              autoComplete="off"
+            />
+            <Group justify="flex-end">
+              <Button
+                variant="default"
+                onClick={() => setDeleteOpened(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                color="red"
+                leftSection={<IconTrash size={18} />}
+                loading={deleting}
+                disabled={!canConfirmBaseDeletion(deleteConfirmation)}
+                onClick={() => void deleteBase()}
+              >
+                Permanently Delete Base
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
     </ApplicationShell>
   );

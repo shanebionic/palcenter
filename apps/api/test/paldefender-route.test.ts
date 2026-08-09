@@ -285,6 +285,47 @@ before(async () => {
       assert.equal(init?.body, undefined);
       return Response.json({ Success: true });
     }
+    if (url.endsWith("/deletebase/base-1")) {
+      assert.equal(init?.method, "POST");
+      assert.equal(init?.body, undefined);
+      return Response.json({
+        BaseCamp: { Id: "base-1", Summary: "Pal Tamers base" },
+        Deleted: {
+          BaseCampPals: 0,
+          StorageContainers: 1,
+          ItemStacks: 2,
+          ItemCount: 10,
+          Buildings: 3,
+          DropItems: 0,
+          DefenseModels: 0,
+          OtherMapObjects: 1,
+          PalBox: true,
+        },
+        Archive: "archive/base-1.zip",
+      });
+    }
+    if (url.endsWith("/deletebase/missing-base")) {
+      return Response.json(
+        {
+          Error: {
+            Code: "BASE_CAMP_NOT_FOUND",
+            Message: "No base camp matched the supplied GUID.",
+          },
+        },
+        { status: 404 },
+      );
+    }
+    if (url.endsWith("/deletebase/timeout-base")) {
+      return Response.json(
+        {
+          Error: {
+            Code: "REQUEST_TIMEOUT",
+            Message: "The game-thread callback timed out.",
+          },
+        },
+        { status: 500 },
+      );
+    }
     if (url.endsWith("/SendPlayerMessage")) {
       assert.equal(
         init?.body,
@@ -596,6 +637,56 @@ test("PalDefender base details select and normalize a documented guild camp", as
   });
   assert.equal(missing.statusCode, 404);
   assert.equal(missing.json().error, "paldefender_base_not_found");
+});
+
+test("PalDefender base deletion routes the exact Base Camp ID and is administrator-only", async () => {
+  const administrator = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/bases/base-1/delete",
+    headers: { cookie: administratorCookie },
+    payload: {},
+  });
+  assert.equal(administrator.statusCode, 200);
+  assert.deepEqual(administrator.json(), {
+    base: { id: "base-1", summary: "Pal Tamers base" },
+    deleted: {
+      baseCampPals: 0,
+      storageContainers: 1,
+      itemStacks: 2,
+      itemCount: 10,
+      buildings: 3,
+      dropItems: 0,
+      defenseModels: 0,
+      otherMapObjects: 1,
+      palBox: true,
+    },
+    archive: "archive/base-1.zip",
+  });
+
+  const unauthenticated = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/bases/base-1/delete",
+    payload: {},
+  });
+  assert.equal(unauthenticated.statusCode, 401);
+
+  const missing = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/bases/missing-base/delete",
+    headers: { cookie: administratorCookie },
+    payload: {},
+  });
+  assert.equal(missing.statusCode, 404);
+  assert.equal(missing.json().error, "paldefender_base_not_found");
+
+  const ambiguous = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/bases/timeout-base/delete",
+    headers: { cookie: administratorCookie },
+    payload: {},
+  });
+  assert.equal(ambiguous.statusCode, 504);
+  assert.equal(ambiguous.json().error, "paldefender_timeout");
 });
 
 test("PalDefender guild details normalize live data and missing guilds", async () => {
