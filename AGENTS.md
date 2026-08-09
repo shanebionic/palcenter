@@ -33,6 +33,81 @@ For normal feature work:
 
 Do not duplicate expensive CI work locally before opening the PR. Never target `main` or merge a PR unless the project owner explicitly directs it.
 
+## GitHub Issue and PR Lifecycle
+
+Every feature and fix must maintain its GitHub Issue and Project state throughout development.
+
+### Before development
+
+For work associated with existing GitHub issues:
+
+1. Confirm the issue numbers and scope.
+2. Work from the latest `origin/dev` unless explicitly instructed otherwise.
+3. Do not create duplicate issues for existing work.
+
+### When opening the PR
+
+Every PR associated with issues must explicitly link those issues. Include one closing keyword per line in the PR body:
+
+```text
+Closes #<issue>
+Closes #<issue>
+```
+
+Do not rely only on mentioning an issue number in prose. Also ensure:
+
+- the PR targets `dev`
+- related issues move to Review when implementation and required UAT are complete
+- genuinely blocked issues remain open and are marked blocked rather than Review or Done
+- the PR description accurately reflects UAT status and known limitations
+
+### After the project owner reports a merge
+
+Perform post-merge housekeeping automatically before beginning new feature work. Because feature PRs merge into `dev` rather than the repository default branch, GitHub may not automatically close issues referenced by `Closes`.
+
+For every issue completed by the merged PR:
+
+1. Confirm the PR is actually merged into `origin/dev`.
+2. Confirm the merged code contains the intended implementation.
+3. Close the GitHub issue as completed if it remains open.
+4. Move the issue to Done in PalCenter Project #2.
+5. Remove temporary `blocked` labels when no longer applicable.
+6. Verify the final issue state.
+
+Do not create another PR for post-merge housekeeping.
+
+### Partial or blocked PR scope
+
+If a PR contains multiple issues and only some are successfully completed:
+
+- close and move to Done only the completed issues
+- leave blocked or incomplete issues open
+- preserve the appropriate Project status and labels
+- clearly document the distinction in the PR
+
+Never close an issue merely because code exists if required live UAT failed or the feature remains blocked.
+
+### Final report
+
+At the end of feature work, report:
+
+- PR number
+- target branch
+- linked issue numbers
+- issue Project status
+- UAT status
+- GitHub Actions status
+- whether the PR is ready for owner merge
+
+After the owner reports the merge, report:
+
+- merge confirmation
+- issues closed
+- issues moved to Done
+- blocked labels cleaned up where applicable
+
+Then proceed to the next requested work. Do not merge PRs yourself unless explicitly instructed by the project owner.
+
 ## PalDefender validation discipline
 
 A PalDefender `VALIDATION_FAILED` response does not establish that an endpoint is broken. Before classifying an endpoint as blocked or provider-defective:
