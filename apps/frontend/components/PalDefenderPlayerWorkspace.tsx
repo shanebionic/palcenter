@@ -2,13 +2,11 @@
 
 import {
   Alert,
-  Anchor,
   Badge,
   Button,
   Card,
   Group,
   Modal,
-  MultiSelect,
   NumberInput,
   Pagination,
   Select,
@@ -43,6 +41,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApplicationShell } from "./ApplicationShell";
 import { BrandedLoader } from "./BrandedLoader";
 import { SectionCard } from "./ui/SectionCard";
+import { CatalogMultiSelect, CatalogSelect } from "./ui/CatalogSelect";
+import {
+  eggCatalog,
+  findCatalogEntry,
+  itemCatalog,
+  palCatalog,
+  technologyCatalog,
+  type CatalogEntry,
+} from "../lib/game-catalogs";
 import {
   banPalDefenderPlayer,
   getPalDefenderInventory,
@@ -749,26 +756,18 @@ export function PalDefenderPlayerWorkspace({
             </Text>
           </Text>
           <Text size="sm" c="dimmed">
-            PalDefender requires the internal Palworld ItemID. Find an item’s
-            Asset Name on{" "}
-            <Anchor
-              href="https://paldeck.cc/items"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Paldeck’s item database
-            </Anchor>
-            , then paste it below.
+            Search by item name or internal ID. PalCenter sends the selected
+            internal ID to PalDefender.
           </Text>
           {itemGrants.map((grant, index) => (
             <Group key={index} align="flex-end" wrap="nowrap">
-              <TextInput
-                label="Item ID"
-                placeholder="For example: CopperIngot"
+              <CatalogSelect
+                catalog={itemCatalog}
+                label="Item"
+                placeholder="Search items"
                 value={grant.itemId}
                 disabled={Boolean(submittingAction)}
-                onChange={(event) => {
-                  const value = event.currentTarget.value;
+                onChange={(value) => {
                   setItemGrants((current) =>
                     current.map((item, itemIndex) =>
                       itemIndex === index ? { ...item, itemId: value } : item,
@@ -894,17 +893,14 @@ export function PalDefenderPlayerWorkspace({
               {player.data?.name ?? playerId}
             </Text>
           </Text>
-          <Text size="sm" c="dimmed">
-            PalDefender requires the internal PalID. Use Paldeck to find the
-            Pal’s Asset Name, then paste it below.
-          </Text>
-          <TextInput
-            label="Pal ID"
-            placeholder="For example: Anubis"
+          <CatalogSelect
+            catalog={palCatalog}
+            label="Pal"
+            placeholder="Search Pals"
+            description="PalCenter sends the selected internal Pal ID to PalDefender."
             value={palGrant.palId}
             disabled={Boolean(submittingAction)}
-            onChange={(event) => {
-              const value = event.currentTarget.value;
+            onChange={(value) => {
               setPalGrant((current) => ({
                 ...current,
                 palId: value,
@@ -922,14 +918,6 @@ export function PalDefenderPlayerWorkspace({
               setPalGrant((current) => ({ ...current, level: value }))
             }
           />
-          <Anchor
-            href="https://paldeck.cc/pals"
-            target="_blank"
-            rel="noreferrer"
-            w="fit-content"
-          >
-            Find Pal ID on Paldeck
-          </Anchor>
           {palGrantError && <Alert color="red">{palGrantError}</Alert>}
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setGivePalOpened(false)}>
@@ -1102,13 +1090,14 @@ export function PalDefenderPlayerWorkspace({
               }))
             }
           />
-          <TextInput
-            label="Egg item ID"
-            placeholder="For example: PalEgg_Fire_01"
+          <CatalogSelect
+            catalog={eggCatalog}
+            label="Egg"
+            placeholder="Search eggs"
+            description="Only valid Pal egg items are shown."
             value={palEggGrant.eggId}
             disabled={Boolean(submittingAction)}
-            onChange={(event) => {
-              const value = event.currentTarget.value;
+            onChange={(value) => {
               setPalEggGrant((current) => ({
                 ...current,
                 eggId: value,
@@ -1117,17 +1106,14 @@ export function PalDefenderPlayerWorkspace({
           />
           {palEggGrant.mode === "pal-id" ? (
             <>
-              <Text size="sm" c="dimmed">
-                Enter the internal Pal ID, not the display name. For example,
-                Foxparks uses the internal ID Kitsunebi.
-              </Text>
-              <TextInput
-                label="Internal Pal ID"
-                placeholder="For example: Kitsunebi"
+              <CatalogSelect
+                catalog={palCatalog}
+                label="Pal inside egg"
+                placeholder="Search Pals"
+                description="PalCenter sends the selected internal Pal ID to PalDefender."
                 value={palEggGrant.palId}
                 disabled={Boolean(submittingAction)}
-                onChange={(event) => {
-                  const value = event.currentTarget.value;
+                onChange={(value) => {
                   setPalEggGrant((current) => ({
                     ...current,
                     palId: value,
@@ -1633,7 +1619,7 @@ function Technology({
   const [search, setSearch] = useState("");
   const [action, setAction] = useState<"learn" | "forget" | null>(null);
   const [scope, setScope] = useState<"selected" | "all">("selected");
-  const [learnIds, setLearnIds] = useState("");
+  const [learnIds, setLearnIds] = useState<string[]>([]);
   const [forgetIds, setForgetIds] = useState<string[]>([]);
   const [confirmationOpened, setConfirmationOpened] = useState(false);
   const [confirmationText, setConfirmationText] = useState("");
@@ -1642,16 +1628,15 @@ function Technology({
   const technologies = (state.data ?? [])
     .filter((id) => id.toLowerCase().includes(search.toLowerCase()))
     .sort();
-  const selectedIds =
-    action === "forget"
-      ? forgetIds
-      : [...new Set(learnIds.split(/[\s,]+/).map((id) => id.trim()))].filter(
-          Boolean,
-        );
+  const selectedIds = action === "forget" ? forgetIds : learnIds;
+  const unlockedTechnologyCatalog = (state.data ?? []).map(
+    (id): CatalogEntry =>
+      findCatalogEntry(technologyCatalog, id) ?? { id, name: id },
+  );
   const resetAction = () => {
     setAction(null);
     setScope("selected");
-    setLearnIds("");
+    setLearnIds([]);
     setForgetIds([]);
     setConfirmationOpened(false);
     setConfirmationText("");
@@ -1660,7 +1645,7 @@ function Technology({
   useEffect(() => {
     setAction(null);
     setScope("selected");
-    setLearnIds("");
+    setLearnIds([]);
     setForgetIds([]);
     setConfirmationOpened(false);
     setConfirmationText("");
@@ -1795,23 +1780,21 @@ function Technology({
                 : "This unlocks every technology supported by the server for this player."}
             </Alert>
           ) : action === "forget" ? (
-            <MultiSelect
-              label="Unlocked technology IDs"
-              description="Select one or more IDs returned by the live Technology endpoint."
-              data={(state.data ?? []).map((id) => ({ value: id, label: id }))}
+            <CatalogMultiSelect
+              catalog={unlockedTechnologyCatalog}
+              label="Unlocked technologies"
+              description="Select one or more technologies currently unlocked for this player."
               value={forgetIds}
               onChange={setForgetIds}
-              searchable
-              nothingFoundMessage="No unlocked technology matches"
             />
           ) : (
-            <Textarea
-              label="Technology IDs"
-              description="Enter one or more exact TechIDs separated by commas or new lines."
+            <CatalogMultiSelect
+              catalog={technologyCatalog}
+              label="Technologies"
+              description="Search by technology name or internal ID."
               value={learnIds}
-              onChange={(event) => setLearnIds(event.currentTarget.value)}
-              minRows={4}
-              placeholder="Arrow"
+              onChange={setLearnIds}
+              placeholder="Search technologies"
             />
           )}
           {actionError && <Alert color="red">{actionError}</Alert>}
