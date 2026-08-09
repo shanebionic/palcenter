@@ -89,12 +89,34 @@ test("normal Players progressively exposes enhanced player management", async ({
     page.getByRole("tabpanel", { name: "Inventory" }).getByText("Wood"),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Give Item" })).toBeVisible();
+  await page.getByRole("button", { name: "Give Item" }).click();
+  const itemGrant = page.getByRole("dialog", { name: "Give Item" });
+  await itemGrant.getByRole("combobox", { name: "Item" }).fill("ultimate");
+  await page.getByRole("option", { name: /Ultimate Sphere/ }).click();
+  await itemGrant.getByRole("button", { name: "Review Grant" }).click();
+  const itemConfirmation = page.getByRole("dialog", {
+    name: "Confirm Item Grant",
+  });
+  await expect(itemConfirmation.getByText("PalSphere_Ultimate")).toBeVisible();
+  await itemConfirmation.getByRole("button", { name: "Give Item" }).click();
+  await expect(page.getByText("Item granted")).toBeVisible();
   await page.getByRole("tab", { name: "Pals" }).click();
   for (const action of ["Give Pal", "Give Pal from Template", "Give Pal Egg"]) {
     await expect(
       page.getByRole("button", { name: action, exact: true }),
     ).toBeVisible();
   }
+  await page.getByRole("button", { name: "Give Pal", exact: true }).click();
+  const palGrant = page.getByRole("dialog", { name: "Give Pal", exact: true });
+  await palGrant.getByRole("combobox", { name: "Pal" }).fill("lamball");
+  await page.getByRole("option", { name: /Lamball/ }).click();
+  await palGrant.getByRole("button", { name: "Review Grant" }).click();
+  const palConfirmation = page.getByRole("dialog", {
+    name: "Confirm Pal Grant",
+  });
+  await expect(palConfirmation.getByText("Pal ID: SheepBall")).toBeVisible();
+  await palConfirmation.getByRole("button", { name: "Give Pal" }).click();
+  await expect(page.getByText("Pal granted")).toBeVisible();
   await page
     .getByRole("button", { name: "Give Pal from Template", exact: true })
     .click();
@@ -119,15 +141,23 @@ test("normal Players progressively exposes enhanced player management", async ({
 
   await page.getByRole("button", { name: "Give Pal Egg", exact: true }).click();
   const eggGrant = page.getByRole("dialog", { name: "Give Pal Egg" });
-  await eggGrant.getByLabel("Egg item ID").fill("PalEgg_Fire_01");
-  await eggGrant.getByLabel("Internal Pal ID").fill("Kitsunebi");
+  await eggGrant
+    .getByRole("combobox", { name: "Egg", exact: true })
+    .fill("common egg");
+  await page
+    .getByRole("option", { name: "Common Egg PalEgg_Normal_01" })
+    .click();
+  await eggGrant
+    .getByRole("combobox", { name: "Pal inside egg" })
+    .fill("foxparks");
+  await page.getByRole("option", { name: "Foxparks Kitsunebi" }).click();
   await eggGrant.getByLabel("Level (optional)").fill("1");
   await eggGrant.getByRole("button", { name: "Review Grant" }).click();
   const eggConfirmation = page.getByRole("dialog", {
     name: "Confirm Pal Egg Grant",
   });
   await expect(
-    eggConfirmation.getByText("Egg ID: PalEgg_Fire_01"),
+    eggConfirmation.getByText("Egg ID: PalEgg_Normal_01"),
   ).toBeVisible();
   await expect(eggConfirmation.getByText("Pal ID: Kitsunebi")).toBeVisible();
   await eggConfirmation.getByRole("button", { name: "Give Pal Egg" }).click();
@@ -137,15 +167,19 @@ test("normal Players progressively exposes enhanced player management", async ({
     fullPage: true,
   });
   await page.getByRole("tab", { name: "Technology" }).click();
-  await expect(page.getByText("Technology_Wood")).toBeVisible();
+  await expect(page.getByText("Arrow")).toBeVisible();
   await page.getByRole("button", { name: "Learn Technology" }).click();
-  await page.getByLabel("Technology IDs").fill("Technology_Camp");
+  await page
+    .getByRole("combobox", { name: "Technologies" })
+    .fill("primitive workbench");
+  await page.getByRole("option", { name: /Primitive Workbench/ }).click();
+  await page.getByRole("combobox", { name: "Technologies" }).press("Escape");
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("1 selected technology")).toBeVisible();
   const learnConfirmation = page.getByRole("dialog", {
     name: "Confirm Learn Technology",
   });
-  await expect(learnConfirmation.getByText("Technology_Camp")).toBeVisible();
+  await expect(learnConfirmation.getByText("Workbench")).toBeVisible();
   await learnConfirmation
     .getByRole("button", { name: "Learn Technology" })
     .click();
@@ -155,10 +189,10 @@ test("normal Players progressively exposes enhanced player management", async ({
     .getByRole("tabpanel", { name: "Technology" })
     .getByRole("button", { name: "Forget Technology" })
     .click();
-  await page.getByRole("combobox", { name: "Unlocked technology IDs" }).click();
-  await page.getByRole("option", { name: "Technology_Camp" }).click();
+  await page.getByRole("combobox", { name: "Unlocked technologies" }).click();
+  await page.getByRole("option", { name: /Primitive Workbench/ }).click();
   await page
-    .getByRole("combobox", { name: "Unlocked technology IDs" })
+    .getByRole("combobox", { name: "Unlocked technologies" })
     .press("Escape");
   await page.getByRole("button", { name: "Continue" }).click();
   await page
@@ -166,7 +200,7 @@ test("normal Players progressively exposes enhanced player management", async ({
     .getByRole("button", { name: "Forget Technology" })
     .click();
   await expect(page.getByText("Technology forgotten")).toBeVisible();
-  await expect(page.getByText("Technology_Camp")).toHaveCount(0);
+  await expect(page.getByText("Workbench")).toHaveCount(0);
   await expect(
     page.getByRole("dialog", { name: "Confirm Forget Technology" }),
   ).toBeHidden();
@@ -175,9 +209,10 @@ test("normal Players progressively exposes enhanced player management", async ({
     fullPage: true,
   });
   await page.getByRole("tab", { name: "Progression" }).click();
-  await expect(page.getByText("Character")).toBeVisible();
-  await expect(page.getByText("1371")).toBeVisible();
-  await expect(page.getByText("Anubis").first()).toBeVisible();
+  const progressionPanel = page.getByRole("tabpanel", { name: "Progression" });
+  await expect(progressionPanel.getByText("Character")).toBeVisible();
+  await expect(progressionPanel.getByText("1371")).toBeVisible();
+  await expect(progressionPanel.getByText("Anubis").first()).toBeVisible();
   await page.screenshot({
     path: "../../docs/screenshots/player-progression.png",
     fullPage: true,

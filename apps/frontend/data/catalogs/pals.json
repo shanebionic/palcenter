@@ -1,0 +1,1715 @@
+{
+  "schemaVersion": 1,
+  "catalog": "pals",
+  "count": 288,
+  "items": [
+    {
+      "id": "SheepBall",
+      "name": "Lamball",
+      "dexNumber": "1",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "PinkCat",
+      "name": "Cattiva",
+      "dexNumber": "2",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "ChickenPal",
+      "name": "Chikipi",
+      "dexNumber": "3",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "Carbunclo",
+      "name": "Lifmunk",
+      "dexNumber": "4",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "BluePlatypus",
+      "name": "Fuack",
+      "dexNumber": "5",
+      "elements": ["Water"]
+    },
+    {
+      "id": "BluePlatypus_Fire",
+      "name": "Fuack Ignis",
+      "dexNumber": "5B",
+      "elements": ["Water", "Fire"]
+    },
+    {
+      "id": "CuteFox",
+      "name": "Vixy",
+      "dexNumber": "6",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "FlyingManta",
+      "name": "Celaray",
+      "dexNumber": "7",
+      "elements": ["Water"]
+    },
+    {
+      "id": "FlyingManta_Thunder",
+      "name": "Celaray Lux",
+      "dexNumber": "7B",
+      "elements": ["Water", "Electric"]
+    },
+    {
+      "id": "WoolFox",
+      "name": "Cremis",
+      "dexNumber": "8",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "KendoFrog",
+      "name": "Croajiro",
+      "dexNumber": "9",
+      "elements": ["Water"]
+    },
+    {
+      "id": "KendoFrog_Dark",
+      "name": "Croajiro Noct",
+      "dexNumber": "9B",
+      "elements": ["Water", "Dark"]
+    },
+    {
+      "id": "LeafMomonga",
+      "name": "Herbil",
+      "dexNumber": "10",
+      "elements": ["Grass", "Neutral"]
+    },
+    {
+      "id": "Ganesha",
+      "name": "Teafant",
+      "dexNumber": "11",
+      "elements": ["Water"]
+    },
+    {
+      "id": "PlantSlime",
+      "name": "Gumoss",
+      "dexNumber": "12",
+      "elements": ["Grass", "Ground"]
+    },
+    {
+      "id": "SamuraiDog",
+      "name": "Pupperai",
+      "dexNumber": "13",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "CloverFairy",
+      "name": "Clovee",
+      "dexNumber": "14",
+      "elements": ["Grass", "Neutral"]
+    },
+    {
+      "id": "Hedgehog",
+      "name": "Jolthog",
+      "dexNumber": "15",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "Hedgehog_Ice",
+      "name": "Jolthog Cryst",
+      "dexNumber": "15B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "NegativeKoala",
+      "name": "Depresso",
+      "dexNumber": "16",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "Penguin",
+      "name": "Pengullet",
+      "dexNumber": "17",
+      "elements": ["Water", "Ice"]
+    },
+    {
+      "id": "Penguin_Electric",
+      "name": "Pengullet Lux",
+      "dexNumber": "17B",
+      "elements": ["Water", "Electric"]
+    },
+    {
+      "id": "CaptainPenguin",
+      "name": "Penking",
+      "dexNumber": "18",
+      "elements": ["Water", "Ice"]
+    },
+    {
+      "id": "CaptainPenguin_Black",
+      "name": "Penking Lux",
+      "dexNumber": "18B",
+      "elements": ["Water", "Electric"]
+    },
+    {
+      "id": "WizardOwl",
+      "name": "Hoocrates",
+      "dexNumber": "19",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "Alpaca",
+      "name": "Melpaca",
+      "dexNumber": "20",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "KingAlpaca",
+      "name": "Kingpaca",
+      "dexNumber": "21",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "KingAlpaca_Ice",
+      "name": "Kingpaca Cryst",
+      "dexNumber": "21B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "DreamDemon",
+      "name": "Daedream",
+      "dexNumber": "22",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "Monkey",
+      "name": "Tanzee",
+      "dexNumber": "23",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "Monkey_Fire",
+      "name": "Tanzee Ignis",
+      "dexNumber": "23B",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "NightFox",
+      "name": "Nox",
+      "dexNumber": "24",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "LavaGirl",
+      "name": "Flambelle",
+      "dexNumber": "25",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "FlameBambi",
+      "name": "Rooby",
+      "dexNumber": "26",
+      "elements": ["Fire"]
+    },
+    { "id": "Bastet", "name": "Mau", "dexNumber": "27", "elements": ["Dark"] },
+    {
+      "id": "Bastet_Ice",
+      "name": "Mau Cryst",
+      "dexNumber": "27B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "Boar",
+      "name": "Rushoar",
+      "dexNumber": "28",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "Kitsunebi",
+      "name": "Foxparks",
+      "dexNumber": "29",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "Kitsunebi_Ice",
+      "name": "Foxparks Cryst",
+      "dexNumber": "29B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "NegativeOctopus",
+      "name": "Killamari",
+      "dexNumber": "30",
+      "elements": ["Dark", "Water"]
+    },
+    {
+      "id": "NegativeOctopus_Neutral",
+      "name": "Killamari Primo",
+      "dexNumber": "30B",
+      "elements": ["Neutral", "Water"]
+    },
+    {
+      "id": "CuteMole",
+      "name": "Fuddler",
+      "dexNumber": "31",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "Deer",
+      "name": "Eikthyrdeer",
+      "dexNumber": "32",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "Deer_Ground",
+      "name": "Eikthyrdeer Terra",
+      "dexNumber": "32B",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "Garm",
+      "name": "Direhowl",
+      "dexNumber": "33",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "BerryGoat",
+      "name": "Caprity",
+      "dexNumber": "34",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "BerryGoat_Dark",
+      "name": "Caprity Noct",
+      "dexNumber": "34B",
+      "elements": ["Dark"]
+    },
+    { "id": "MopBaby", "name": "Swee", "dexNumber": "35", "elements": ["Ice"] },
+    {
+      "id": "MopKing",
+      "name": "Sweepa",
+      "dexNumber": "36",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "TentacleTurtle",
+      "name": "Turtacle",
+      "dexNumber": "37",
+      "elements": ["Water"]
+    },
+    {
+      "id": "TentacleTurtle_Ground",
+      "name": "Turtacle Terra",
+      "dexNumber": "37B",
+      "elements": ["Water", "Ground"]
+    },
+    {
+      "id": "WindChimes",
+      "name": "Hangyu",
+      "dexNumber": "38",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "WindChimes_Ice",
+      "name": "Hangyu Cryst",
+      "dexNumber": "38B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "SweetsSheep",
+      "name": "Woolipop",
+      "dexNumber": "39",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "SweetsSheep_Ground",
+      "name": "Woolipop Terra",
+      "dexNumber": "39B",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "CowPal",
+      "name": "Mozzarina",
+      "dexNumber": "40",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "BlueDragon",
+      "name": "Azurobe",
+      "dexNumber": "41",
+      "elements": ["Water", "Dragon"]
+    },
+    {
+      "id": "BlueDragon_Ice",
+      "name": "Azurobe Cryst",
+      "dexNumber": "41B",
+      "elements": ["Ice", "Dragon"]
+    },
+    {
+      "id": "ElecCat",
+      "name": "Sparkit",
+      "dexNumber": "42",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "Kelpie",
+      "name": "Kelpsea",
+      "dexNumber": "43",
+      "elements": ["Water"]
+    },
+    {
+      "id": "Kelpie_Fire",
+      "name": "Kelpsea Ignis",
+      "dexNumber": "43B",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "PinkRabbit",
+      "name": "Ribbuny",
+      "dexNumber": "44",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "PinkRabbit_Grass",
+      "name": "Ribbuny Botan",
+      "dexNumber": "44B",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "JellyfishFairy",
+      "name": "Jelliette",
+      "dexNumber": "45",
+      "elements": ["Water"]
+    },
+    {
+      "id": "JellyfishGhost",
+      "name": "Jellroy",
+      "dexNumber": "46",
+      "elements": ["Water", "Dark"]
+    },
+    {
+      "id": "ClioneTwins",
+      "name": "Amione",
+      "dexNumber": "47",
+      "elements": ["Water"]
+    },
+    {
+      "id": "OctopusGirl",
+      "name": "Gloopie",
+      "dexNumber": "48",
+      "elements": ["Water", "Dark"]
+    },
+    {
+      "id": "OctopusGirl_Neutral",
+      "name": "Gloopie Primo",
+      "dexNumber": "48B",
+      "elements": ["Water", "Neutral"]
+    },
+    {
+      "id": "Eagle",
+      "name": "Galeclaw",
+      "dexNumber": "49",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "GhostBlackCat",
+      "name": "Wispaw",
+      "dexNumber": "50",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "HawkBird",
+      "name": "Nitewing",
+      "dexNumber": "51",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "CatBat",
+      "name": "Tombat",
+      "dexNumber": "52",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "ColorfulBird",
+      "name": "Tocotoco",
+      "dexNumber": "53",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "Kirin",
+      "name": "Univolt",
+      "dexNumber": "54",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "Kirin_Ice",
+      "name": "Univolt Cryst",
+      "dexNumber": "54B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "SharkKid",
+      "name": "Gobfin",
+      "dexNumber": "55",
+      "elements": ["Water"]
+    },
+    {
+      "id": "SharkKid_Fire",
+      "name": "Gobfin Ignis",
+      "dexNumber": "55B",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "Werewolf",
+      "name": "Loupmoon",
+      "dexNumber": "56",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "Werewolf_Ice",
+      "name": "Loupmoon Cryst",
+      "dexNumber": "56B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "DarkCrow",
+      "name": "Cawgnito",
+      "dexNumber": "57",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "FlameBuffalo",
+      "name": "Arsox",
+      "dexNumber": "58",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "FluffyBird",
+      "name": "Muffly",
+      "dexNumber": "59",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "LittleBriarRose",
+      "name": "Bristla",
+      "dexNumber": "60",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "CuteButterfly",
+      "name": "Cinnamoth",
+      "dexNumber": "61",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "ElecPomeranian",
+      "name": "Puffolt",
+      "dexNumber": "62",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "FairyDragon",
+      "name": "Elphidran",
+      "dexNumber": "63",
+      "elements": ["Dragon"]
+    },
+    {
+      "id": "FairyDragon_Water",
+      "name": "Elphidran Aqua",
+      "dexNumber": "63B",
+      "elements": ["Dragon", "Water"]
+    },
+    {
+      "id": "BirdDragon",
+      "name": "Vanwyrm",
+      "dexNumber": "64",
+      "elements": ["Fire", "Dark"]
+    },
+    {
+      "id": "BirdDragon_Ice",
+      "name": "Vanwyrm Cryst",
+      "dexNumber": "64B",
+      "elements": ["Ice", "Dark"]
+    },
+    {
+      "id": "CatVampire",
+      "name": "Felbat",
+      "dexNumber": "65",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "VioletFairy",
+      "name": "Vaelet",
+      "dexNumber": "66",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "SoldierBee",
+      "name": "Beegarde",
+      "dexNumber": "67",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "QueenBee",
+      "name": "Elizabee",
+      "dexNumber": "68",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "PinkLizard",
+      "name": "Lovander",
+      "dexNumber": "69",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "NaughtyCat",
+      "name": "Grintale",
+      "dexNumber": "70",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "PurpleSpider",
+      "name": "Tarantriss",
+      "dexNumber": "71",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "IceSeal",
+      "name": "Polapup",
+      "dexNumber": "72",
+      "elements": ["Ice", "Water"]
+    },
+    {
+      "id": "IceSeal_Ground",
+      "name": "Polapup Terra",
+      "dexNumber": "72B",
+      "elements": ["Ice", "Ground"]
+    },
+    {
+      "id": "LizardMan",
+      "name": "Leezpunk",
+      "dexNumber": "73",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "LizardMan_Fire",
+      "name": "Leezpunk Ignis",
+      "dexNumber": "73B",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "Gorilla",
+      "name": "Gorirat",
+      "dexNumber": "74",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "Gorilla_Ground",
+      "name": "Gorirat Terra",
+      "dexNumber": "74B",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "Serpent",
+      "name": "Surfent",
+      "dexNumber": "75",
+      "elements": ["Water"]
+    },
+    {
+      "id": "Serpent_Ground",
+      "name": "Surfent Terra",
+      "dexNumber": "75B",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "RobinHood",
+      "name": "Robinquill",
+      "dexNumber": "76",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "RobinHood_Ground",
+      "name": "Robinquill Terra",
+      "dexNumber": "76B",
+      "elements": ["Grass", "Ground"]
+    },
+    {
+      "id": "FlowerRabbit",
+      "name": "Flopie",
+      "dexNumber": "77",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "FoxMage",
+      "name": "Wixen",
+      "dexNumber": "78",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "FoxMage_Dark",
+      "name": "Wixen Noct",
+      "dexNumber": "78B",
+      "elements": ["Fire", "Dark"]
+    },
+    {
+      "id": "CatMage",
+      "name": "Katress",
+      "dexNumber": "79",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "CatMage_Fire",
+      "name": "Katress Ignis",
+      "dexNumber": "79B",
+      "elements": ["Dark", "Fire"]
+    },
+    {
+      "id": "HadesBird",
+      "name": "Helzephyr",
+      "dexNumber": "80",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "HadesBird_Electric",
+      "name": "Helzephyr Lux",
+      "dexNumber": "80B",
+      "elements": ["Dark", "Electric"]
+    },
+    {
+      "id": "GrassMinotaur",
+      "name": "Elgrove",
+      "dexNumber": "81",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "GrassMinotaur_Ice",
+      "name": "Elgrove Cryst",
+      "dexNumber": "81B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "Mutant",
+      "name": "Lunaris",
+      "dexNumber": "82",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "FengyunDeeper",
+      "name": "Fenglope",
+      "dexNumber": "83",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "FengyunDeeper_Electric",
+      "name": "Fenglope Lux",
+      "dexNumber": "83B",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "FlowerDinosaur",
+      "name": "Dinossom",
+      "dexNumber": "84",
+      "elements": ["Grass", "Dragon"]
+    },
+    {
+      "id": "FlowerDinosaur_Electric",
+      "name": "Dinossom Lux",
+      "dexNumber": "84B",
+      "elements": ["Electric", "Dragon"]
+    },
+    { "id": "Ronin", "name": "Bushi", "dexNumber": "85", "elements": ["Fire"] },
+    {
+      "id": "Ronin_Dark",
+      "name": "Bushi Noct",
+      "dexNumber": "85B",
+      "elements": ["Fire", "Dark"]
+    },
+    {
+      "id": "IceCrocodile",
+      "name": "Munchill",
+      "dexNumber": "86",
+      "elements": ["Ice", "Water"]
+    },
+    {
+      "id": "GrassMammoth",
+      "name": "Mammorest",
+      "dexNumber": "87",
+      "elements": ["Grass", "Ground"]
+    },
+    {
+      "id": "GrassMammoth_Ice",
+      "name": "Mammorest Cryst",
+      "dexNumber": "87B",
+      "elements": ["Ice", "Ground"]
+    },
+    {
+      "id": "StuffedShark",
+      "name": "Finsider",
+      "dexNumber": "88",
+      "elements": ["Water"]
+    },
+    {
+      "id": "StuffedShark_Fire",
+      "name": "Finsider Ignis",
+      "dexNumber": "88B",
+      "elements": ["Water", "Fire"]
+    },
+    {
+      "id": "FlowerDoll",
+      "name": "Petallia",
+      "dexNumber": "89",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "FlowerDoll_Fire",
+      "name": "Petallia Ignis",
+      "dexNumber": "89B",
+      "elements": ["Grass", "Fire"]
+    },
+    {
+      "id": "PandaGirl",
+      "name": "Leafan",
+      "dexNumber": "90",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "Baphomet",
+      "name": "Incineram",
+      "dexNumber": "91",
+      "elements": ["Fire", "Dark"]
+    },
+    {
+      "id": "Baphomet_Dark",
+      "name": "Incineram Noct",
+      "dexNumber": "91B",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "RaijinDaughter",
+      "name": "Dazzi",
+      "dexNumber": "92",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "RaijinDaughter_Water",
+      "name": "Dazzi Noct",
+      "dexNumber": "92B",
+      "elements": ["Dark", "Electric"]
+    },
+    {
+      "id": "FireKirin",
+      "name": "Pyrin",
+      "dexNumber": "93",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "FireKirin_Dark",
+      "name": "Pyrin Noct",
+      "dexNumber": "93B",
+      "elements": ["Fire", "Dark"]
+    },
+    {
+      "id": "LazyDragon",
+      "name": "Relaxaurus",
+      "dexNumber": "94",
+      "elements": ["Dragon", "Water"]
+    },
+    {
+      "id": "LazyDragon_Electric",
+      "name": "Relaxaurus Lux",
+      "dexNumber": "94B",
+      "elements": ["Dragon", "Electric"]
+    },
+    {
+      "id": "IceFox",
+      "name": "Foxcicle",
+      "dexNumber": "95",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "ThunderBird",
+      "name": "Beakon",
+      "dexNumber": "96",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "ThunderBird_Ice",
+      "name": "Beakon Cryst",
+      "dexNumber": "96B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "GhostAnglerfish",
+      "name": "Ghangler",
+      "dexNumber": "97",
+      "elements": ["Dark", "Water"]
+    },
+    {
+      "id": "GhostAnglerfish_Fire",
+      "name": "Ghangler Ignis",
+      "dexNumber": "97B",
+      "elements": ["Fire", "Water"]
+    },
+    {
+      "id": "ThunderDog",
+      "name": "Rayhound",
+      "dexNumber": "98",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "ThunderDog_Ice",
+      "name": "Rayhound Cryst",
+      "dexNumber": "98B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "DarkScorpion",
+      "name": "Menasting",
+      "dexNumber": "99",
+      "elements": ["Dark", "Ground"]
+    },
+    {
+      "id": "DarkScorpion_Ground",
+      "name": "Menasting Terra",
+      "dexNumber": "99B",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "CactusDoll",
+      "name": "Needoll",
+      "dexNumber": "100",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "CactusDoll_Dark",
+      "name": "Needoll Noct",
+      "dexNumber": "100B",
+      "elements": ["Dark", "Grass"]
+    },
+    {
+      "id": "IceDeer",
+      "name": "Reindrix",
+      "dexNumber": "101",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "GrassPanda",
+      "name": "Mossanda",
+      "dexNumber": "102",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "GrassPanda_Electric",
+      "name": "Mossanda Lux",
+      "dexNumber": "102B",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "WeaselDragon",
+      "name": "Chillet",
+      "dexNumber": "103",
+      "elements": ["Ice", "Dragon"]
+    },
+    {
+      "id": "WeaselDragon_Fire",
+      "name": "Chillet Ignis",
+      "dexNumber": "103B",
+      "elements": ["Fire", "Dragon"]
+    },
+    {
+      "id": "RedArmorBird",
+      "name": "Ragnahawk",
+      "dexNumber": "104",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "VolcanoDragon",
+      "name": "Moldron",
+      "dexNumber": "105",
+      "elements": ["Fire", "Ground"]
+    },
+    {
+      "id": "VolcanoDragon_Ice",
+      "name": "Moldron Cryst",
+      "dexNumber": "105B",
+      "elements": ["Ice", "Ground"]
+    },
+    {
+      "id": "TropicalOstrich",
+      "name": "Palumba",
+      "dexNumber": "106",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "DrillGame",
+      "name": "Digtoise",
+      "dexNumber": "107",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "SakuraSaurus",
+      "name": "Broncherry",
+      "dexNumber": "108",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "SakuraSaurus_Water",
+      "name": "Broncherry Aqua",
+      "dexNumber": "108B",
+      "elements": ["Grass", "Water"]
+    },
+    {
+      "id": "LazyCatfish",
+      "name": "Dumud",
+      "dexNumber": "109",
+      "elements": ["Ground", "Water"]
+    },
+    {
+      "id": "LazyCatfish_Gold",
+      "name": "Dumud Gild",
+      "dexNumber": "109B",
+      "elements": ["Ground", "Water"]
+    },
+    {
+      "id": "Plesiosaur",
+      "name": "Braloha",
+      "dexNumber": "110",
+      "elements": ["Grass", "Ground"]
+    },
+    {
+      "id": "AmaterasuWolf",
+      "name": "Kitsun",
+      "dexNumber": "111",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "AmaterasuWolf_Dark",
+      "name": "Kitsun Noct",
+      "dexNumber": "111B",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "Manticore",
+      "name": "Blazehowl",
+      "dexNumber": "112",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "Manticore_Dark",
+      "name": "Blazehowl Noct",
+      "dexNumber": "112B",
+      "elements": ["Fire", "Dark"]
+    },
+    {
+      "id": "HerculesBeetle",
+      "name": "Warsect",
+      "dexNumber": "113",
+      "elements": ["Ground", "Grass"]
+    },
+    {
+      "id": "HerculesBeetle_Ground",
+      "name": "Warsect Terra",
+      "dexNumber": "113B",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "SnowPeafowl",
+      "name": "Frostplume",
+      "dexNumber": "114",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "DarkFlameFox",
+      "name": "Majex",
+      "dexNumber": "115",
+      "elements": ["Dark", "Fire"]
+    },
+    {
+      "id": "WhiteMoth",
+      "name": "Sibelyx",
+      "dexNumber": "116",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "WhiteMoth_Neutral",
+      "name": "Sibelyx Primo",
+      "dexNumber": "116B",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "GhostBeast",
+      "name": "Maraith",
+      "dexNumber": "117",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "MushroomDragon",
+      "name": "Shroomer",
+      "dexNumber": "118",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "MushroomDragon_Dark",
+      "name": "Shroomer Noct",
+      "dexNumber": "118B",
+      "elements": ["Grass", "Dark"]
+    },
+    {
+      "id": "IceWitch",
+      "name": "Icelyn",
+      "dexNumber": "119",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "MummyPal",
+      "name": "Gildra",
+      "dexNumber": "120",
+      "elements": ["Dark", "Ground"]
+    },
+    {
+      "id": "Umihebi",
+      "name": "Jormuntide",
+      "dexNumber": "121",
+      "elements": ["Dragon", "Water"]
+    },
+    {
+      "id": "Umihebi_Fire",
+      "name": "Jormuntide Ignis",
+      "dexNumber": "121B",
+      "elements": ["Dragon", "Fire"]
+    },
+    {
+      "id": "Suzaku",
+      "name": "Suzaku",
+      "dexNumber": "122",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "Suzaku_Water",
+      "name": "Suzaku Aqua",
+      "dexNumber": "122B",
+      "elements": ["Water"]
+    },
+    {
+      "id": "FeatherOstrich",
+      "name": "Dazemu",
+      "dexNumber": "123",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "SkyDragon",
+      "name": "Quivern",
+      "dexNumber": "124",
+      "elements": ["Dragon"]
+    },
+    {
+      "id": "SkyDragon_Grass",
+      "name": "Quivern Botan",
+      "dexNumber": "124B",
+      "elements": ["Dragon", "Grass"]
+    },
+    {
+      "id": "LeafPrincess",
+      "name": "Lullu",
+      "dexNumber": "125",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "SmallArmadillo",
+      "name": "Kikit",
+      "dexNumber": "126",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "GuardianDog",
+      "name": "Yakumo",
+      "dexNumber": "127",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "SwordCutlassfish",
+      "name": "Skutlass",
+      "dexNumber": "128",
+      "elements": ["Water"]
+    },
+    {
+      "id": "SwordCutlassfish_Fire",
+      "name": "Skutlass Ignis",
+      "dexNumber": "128B",
+      "elements": ["Water", "Fire"]
+    },
+    {
+      "id": "VolcanicMonster",
+      "name": "Reptyro",
+      "dexNumber": "129",
+      "elements": ["Fire", "Ground"]
+    },
+    {
+      "id": "VolcanicMonster_Ice",
+      "name": "Reptyro Cryst",
+      "dexNumber": "129B",
+      "elements": ["Ice", "Ground"]
+    },
+    {
+      "id": "NightBlueHorse",
+      "name": "Starryon",
+      "dexNumber": "130",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "NightBlueHorse_Neutral",
+      "name": "Starryon Primo",
+      "dexNumber": "130B",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "RockBeast",
+      "name": "Pierdon",
+      "dexNumber": "131",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "RockBeast_Ice",
+      "name": "Pierdon Cryst",
+      "dexNumber": "131B",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "WhiteTiger",
+      "name": "Cryolinx",
+      "dexNumber": "132",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "WhiteTiger_Ground",
+      "name": "Cryolinx Terra",
+      "dexNumber": "132B",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "SmallYeti",
+      "name": "Snugloo",
+      "dexNumber": "133",
+      "elements": ["Ice"]
+    },
+    { "id": "Yeti", "name": "Wumpo", "dexNumber": "134", "elements": ["Ice"] },
+    {
+      "id": "Yeti_Grass",
+      "name": "Wumpo Botan",
+      "dexNumber": "134B",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "CandleGhost",
+      "name": "Sootseer",
+      "dexNumber": "135",
+      "elements": ["Dark", "Fire"]
+    },
+    {
+      "id": "VenusFlytrap",
+      "name": "Carnibora",
+      "dexNumber": "136",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "KingBahamut",
+      "name": "Blazamut",
+      "dexNumber": "137",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "KingBahamut_Dragon",
+      "name": "Blazamut Ryu",
+      "dexNumber": "137B",
+      "elements": ["Dragon", "Fire"]
+    },
+    {
+      "id": "GrassGolem",
+      "name": "Dualith",
+      "dexNumber": "138",
+      "elements": ["Ground", "Grass"]
+    },
+    {
+      "id": "GrassGolem_Dark",
+      "name": "Dualith Noct",
+      "dexNumber": "138B",
+      "elements": ["Ground", "Dark"]
+    },
+    {
+      "id": "Anubis",
+      "name": "Anubis",
+      "dexNumber": "139",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "Sekhmet",
+      "name": "Sekhmet",
+      "dexNumber": "140",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "ScorpionMan",
+      "name": "Prixter",
+      "dexNumber": "141",
+      "elements": ["Dark", "Ground"]
+    },
+    {
+      "id": "ScorpionMan_Electric",
+      "name": "Prixter Lux",
+      "dexNumber": "141B",
+      "elements": ["Electric", "Ground"]
+    },
+    {
+      "id": "CubeTurtle",
+      "name": "Tetroise",
+      "dexNumber": "142",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "CubeTurtle_Neutral",
+      "name": "Tetroise Primo",
+      "dexNumber": "142B",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "BadCatgirl",
+      "name": "Nyafia",
+      "dexNumber": "143",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "MimicDog",
+      "name": "Mimog",
+      "dexNumber": "144",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "DarkAlien",
+      "name": "Xenovader",
+      "dexNumber": "145",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "WhiteAlienDragon",
+      "name": "Xenogard",
+      "dexNumber": "146",
+      "elements": ["Dragon"]
+    },
+    {
+      "id": "BlueberryFairy",
+      "name": "Prunelia",
+      "dexNumber": "147",
+      "elements": ["Grass", "Dark"]
+    },
+    {
+      "id": "GhostRabbit",
+      "name": "Nitemary",
+      "dexNumber": "148",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "GhostRabbit_Grass",
+      "name": "Nitemary Botan",
+      "dexNumber": "148B",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "BlackPuppy",
+      "name": "Smokie",
+      "dexNumber": "149",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "BlackPuppy_Ice",
+      "name": "Smokie Cryst",
+      "dexNumber": "149B",
+      "elements": ["Dark", "Ice"]
+    },
+    {
+      "id": "MysteryMask",
+      "name": "Omascul",
+      "dexNumber": "150",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "IceNarwhal",
+      "name": "Whalaska",
+      "dexNumber": "151",
+      "elements": ["Ice", "Water"]
+    },
+    {
+      "id": "IceNarwhal_Fire",
+      "name": "Whalaska Ignis",
+      "dexNumber": "151B",
+      "elements": ["Ice", "Fire"]
+    },
+    {
+      "id": "GrassRabbitMan",
+      "name": "Verdash",
+      "dexNumber": "152",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "GrimGirl",
+      "name": "Splatterina",
+      "dexNumber": "153",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "GoldenHorse",
+      "name": "Gildane",
+      "dexNumber": "154",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "SifuDog",
+      "name": "Dogen",
+      "dexNumber": "155",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "SumoDog",
+      "name": "Bulldosu",
+      "dexNumber": "156",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "WhiteDeer",
+      "name": "Celesdir",
+      "dexNumber": "157",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "WhiteDeer_Dark",
+      "name": "Celesdir Noct",
+      "dexNumber": "157B",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "BlackMetalDragon",
+      "name": "Astegon",
+      "dexNumber": "158",
+      "elements": ["Dragon", "Dark"]
+    },
+    {
+      "id": "WingGolem",
+      "name": "Knocklem",
+      "dexNumber": "159",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "WingGolem_Fire",
+      "name": "Knocklem Ignis",
+      "dexNumber": "159B",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "WhiteShieldDragon",
+      "name": "Silvegis",
+      "dexNumber": "160",
+      "elements": ["Dragon"]
+    },
+    {
+      "id": "BlueThunderHorse",
+      "name": "Azurmane",
+      "dexNumber": "161",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "LongCat",
+      "name": "Valentail",
+      "dexNumber": "162",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "ElecSnail",
+      "name": "Snock",
+      "dexNumber": "163",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "ElecSnail_Ground",
+      "name": "Snock Lux",
+      "dexNumber": "163B",
+      "elements": ["Electric", "Ground"]
+    },
+    {
+      "id": "DandelionGirl",
+      "name": "Souffline",
+      "dexNumber": "164",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "BrownRabbit",
+      "name": "Lapiron",
+      "dexNumber": "165",
+      "elements": ["Ground"]
+    },
+    {
+      "id": "HoodGhost",
+      "name": "Hoodle",
+      "dexNumber": "166",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "ElecLizard",
+      "name": "Slowatt",
+      "dexNumber": "167",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "OniGhostGirl",
+      "name": "Bakemi",
+      "dexNumber": "168",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "KingSunfish",
+      "name": "Solmora",
+      "dexNumber": "169",
+      "elements": ["Water"]
+    },
+    {
+      "id": "KingSunfish_Thunder",
+      "name": "Solmora Lux",
+      "dexNumber": "169B",
+      "elements": ["Water", "Electric"]
+    },
+    {
+      "id": "SleeveRabbit",
+      "name": "Lapure",
+      "dexNumber": "170",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "GhostDragon",
+      "name": "Eidrolon",
+      "dexNumber": "171",
+      "elements": ["Dragon", "Dark"]
+    },
+    {
+      "id": "GhostDragon_Fire",
+      "name": "Eidrolon Ignis",
+      "dexNumber": "171B",
+      "elements": ["Dragon", "Fire"]
+    },
+    {
+      "id": "ThunderFluffyBird",
+      "name": "Dynamoff",
+      "dexNumber": "172",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "RedFlowerBird",
+      "name": "Tropicaw",
+      "dexNumber": "173",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "FoxExorcist",
+      "name": "Flaracle",
+      "dexNumber": "174",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "LotusDragon",
+      "name": "Ophydia",
+      "dexNumber": "175",
+      "elements": ["Grass", "Water"]
+    },
+    {
+      "id": "ClownRabbit",
+      "name": "Dupin",
+      "dexNumber": "176",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "ThiefBird",
+      "name": "Roujay",
+      "dexNumber": "177",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "SnakeGirl",
+      "name": "Venusa",
+      "dexNumber": "178",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "MushroomLady",
+      "name": "Mycora",
+      "dexNumber": "179",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "LanternButler",
+      "name": "Loomen",
+      "dexNumber": "180",
+      "elements": ["Dark", "Fire"]
+    },
+    {
+      "id": "MoonChild",
+      "name": "Wistella",
+      "dexNumber": "181",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "MonochromeQueen",
+      "name": "Solenne",
+      "dexNumber": "182",
+      "elements": ["Dark", "Neutral"]
+    },
+    {
+      "id": "KabukiMan",
+      "name": "Renjishi",
+      "dexNumber": "183",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "DomeArmorDragon",
+      "name": "Aegidron",
+      "dexNumber": "184",
+      "elements": ["Dragon", "Ground"]
+    },
+    {
+      "id": "ElecPanda",
+      "name": "Grizzbolt",
+      "dexNumber": "185",
+      "elements": ["Electric"]
+    },
+    {
+      "id": "LilyQueen",
+      "name": "Lyleen",
+      "dexNumber": "186",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "LilyQueen_Dark",
+      "name": "Lyleen Noct",
+      "dexNumber": "186B",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "ThunderDragonMan",
+      "name": "Orserk",
+      "dexNumber": "187",
+      "elements": ["Dragon", "Electric"]
+    },
+    {
+      "id": "Horus",
+      "name": "Faleris",
+      "dexNumber": "188",
+      "elements": ["Fire"]
+    },
+    {
+      "id": "Horus_Water",
+      "name": "Faleris Aqua",
+      "dexNumber": "188B",
+      "elements": ["Water"]
+    },
+    {
+      "id": "BlackGriffon",
+      "name": "Shadowbeak",
+      "dexNumber": "189",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "MoonQueen",
+      "name": "Selyne",
+      "dexNumber": "190",
+      "elements": ["Dark", "Neutral"]
+    },
+    {
+      "id": "SnowTigerBeastman",
+      "name": "Bastigor",
+      "dexNumber": "191",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "BlueSkyDragon",
+      "name": "Shaolong",
+      "dexNumber": "192",
+      "elements": ["Dragon", "Water"]
+    },
+    {
+      "id": "Mothman",
+      "name": "Silvance",
+      "dexNumber": "193",
+      "elements": ["Grass"]
+    },
+    {
+      "id": "FlowerPrince",
+      "name": "Dandilord",
+      "dexNumber": "194",
+      "elements": ["Grass", "Dark"]
+    },
+    {
+      "id": "NightLady",
+      "name": "Bellanoir",
+      "dexNumber": "195",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "NightLady_Dark",
+      "name": "Bellanoir Libero",
+      "dexNumber": "195B",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "DarkMechaDragon",
+      "name": "Xenolord",
+      "dexNumber": "196",
+      "elements": ["Dark", "Dragon"]
+    },
+    {
+      "id": "LegendDeer",
+      "name": "Hartalis",
+      "dexNumber": "197",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "SaintCentaur",
+      "name": "Paladius",
+      "dexNumber": "198",
+      "elements": ["Neutral"]
+    },
+    {
+      "id": "BlackCentaur",
+      "name": "Necromus",
+      "dexNumber": "199",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "IceHorse",
+      "name": "Frostallion",
+      "dexNumber": "200",
+      "elements": ["Ice"]
+    },
+    {
+      "id": "IceHorse_Dark",
+      "name": "Frostallion Noct",
+      "dexNumber": "200B",
+      "elements": ["Dark"]
+    },
+    {
+      "id": "PoseidonOrca",
+      "name": "Neptilius",
+      "dexNumber": "201",
+      "elements": ["Water"]
+    },
+    {
+      "id": "JetDragon",
+      "name": "Jetragon",
+      "dexNumber": "202",
+      "elements": ["Dragon"]
+    },
+    {
+      "id": "KingWhale",
+      "name": "Panthalus",
+      "dexNumber": "203",
+      "elements": ["Water"]
+    },
+    {
+      "id": "WorldTreeDragon",
+      "name": "Astralym",
+      "dexNumber": "204",
+      "elements": []
+    }
+  ]
+}

@@ -85,7 +85,7 @@ let sessionRole = "administrator";
 let broadcasts = [];
 let moderationIpBanned = true;
 let progressionExperience = 1371;
-let unlockedTechnologies = ["Technology_Wood"];
+let unlockedTechnologies = ["Arrow"];
 let grantedPals = [];
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
@@ -435,6 +435,19 @@ export function startMockUiApi(port = 3198) {
         mapLocation: null,
       });
     }
+    if (
+      url.pathname === `${enhancedPlayerPath}/items` &&
+      request.method === "POST"
+    ) {
+      const input = await readJson(request);
+      if (input.items?.[0]?.itemId !== "PalSphere_Ultimate") {
+        return json(response, { message: "Expected catalog ItemID" }, 422);
+      }
+      return json(response, {
+        playerId: "0094A2FA-00000000-00000000-00000000",
+        grantedItems: 1,
+      });
+    }
     if (url.pathname === `${enhancedPlayerPath}/inventory`) {
       return json(response, {
         items: [
@@ -444,11 +457,15 @@ export function startMockUiApi(port = 3198) {
     }
     if (url.pathname === `${enhancedPlayerPath}/pals`) {
       if (request.method === "POST") {
+        const input = await readJson(request);
+        if (input.pals?.[0]?.palId !== "SheepBall") {
+          return json(response, { message: "Expected catalog PalID" }, 422);
+        }
         grantedPals.push({
           instanceId: "given-pal",
           location: "Palbox",
           baseCampId: null,
-          palId: "Anubis",
+          palId: input.pals[0].palId,
           nickname: null,
           level: 1,
           experience: null,
@@ -518,6 +535,13 @@ export function startMockUiApi(port = 3198) {
       });
     }
     if (url.pathname === `${enhancedPlayerPath}/pal-eggs`) {
+      const input = await readJson(request);
+      if (
+        input.palEggs?.[0]?.eggId !== "PalEgg_Normal_01" ||
+        input.palEggs?.[0]?.palId !== "Kitsunebi"
+      ) {
+        return json(response, { message: "Expected catalog egg IDs" }, 422);
+      }
       return json(response, {
         playerId: "0094A2FA-00000000-00000000-00000000",
         grantedPalEggs: 1,
@@ -535,6 +559,9 @@ export function startMockUiApi(port = 3198) {
         input.scope === "all"
           ? ["Technology_Wood", "Technology_Camp", "Technology_ElecBaton"]
           : input.technologyIds;
+      if (input.scope === "selected" && !requested.includes("Workbench")) {
+        return json(response, { message: "Expected catalog TechID" }, 422);
+      }
       const changed = requested.filter(
         (id) => !unlockedTechnologies.includes(id),
       );
