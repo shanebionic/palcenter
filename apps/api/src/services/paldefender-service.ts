@@ -6,6 +6,8 @@ import {
   type PalDefenderBase,
   type PalDefenderBaseDetails,
   type PalDefenderBroadcastResult,
+  type PalDefenderPlayerMessageResult,
+  type PalDefenderPlayerMessageType,
   type PalDefenderGiveItemsResult,
   type PalDefenderGivePalsResult,
   type PalDefenderGivePalTemplatesResult,
@@ -252,6 +254,26 @@ export class PalDefenderService {
     message: string,
   ): Promise<PalDefenderBroadcastResult> {
     return (await this.clientForServer(serverId)).broadcast(message);
+  }
+
+  async alert(
+    serverId: string,
+    message: string,
+  ): Promise<PalDefenderBroadcastResult> {
+    return (await this.clientForServer(serverId)).alert(message);
+  }
+
+  async sendPlayerMessage(
+    serverId: string,
+    userIds: string[],
+    sendType: PalDefenderPlayerMessageType,
+    message: string,
+  ): Promise<PalDefenderPlayerMessageResult> {
+    return (await this.clientForServer(serverId)).sendPlayerMessage(
+      userIds,
+      sendType,
+      message,
+    );
   }
 
   async giveItems(

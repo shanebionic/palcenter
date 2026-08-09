@@ -824,6 +824,73 @@ test("broadcasts documented messages without changing Unicode or formatting", as
   assert.equal(requestBody, JSON.stringify({ Message: message }));
 });
 
+test("sends documented alerts and normalizes success", async () => {
+  let requestUrl = "";
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body ?? "");
+      return Response.json({ Success: true });
+    },
+  );
+  assert.deepEqual(await client.alert("Restart now."), { success: true });
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/Alert");
+  assert.equal(requestBody, JSON.stringify({ Message: "Restart now." }));
+});
+
+test("sends player messages with deduplicated documented targets", async () => {
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      assert.equal(
+        String(input),
+        "http://paldefender/v1/pdapi/SendPlayerMessage",
+      );
+      requestBody = String(init?.body ?? "");
+      return Response.json({ Success: true, SentCount: 2 });
+    },
+  );
+  assert.deepEqual(
+    await client.sendPlayerMessage(
+      ["steam_1", "steam_1", "gdk_2"],
+      "PlayerLogImportant",
+      "Event soon.",
+    ),
+    { success: true, sentCount: 2 },
+  );
+  assert.equal(
+    requestBody,
+    JSON.stringify({
+      SendType: "PlayerLogImportant",
+      UserIDs: ["steam_1", "gdk_2"],
+      Message: "Event soon.",
+    }),
+  );
+});
+
+test("uses UserID for a single player message target", async () => {
+  let body: unknown;
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (_input, init) => {
+      body = JSON.parse(String(init?.body));
+      return Response.json({ Success: true, SentCount: 1 });
+    },
+  );
+  await client.sendPlayerMessage(["steam_1"], "PlayerChat", "Hello");
+  assert.deepEqual(body, {
+    SendType: "PlayerChat",
+    UserID: "steam_1",
+    Message: "Hello",
+  });
+});
+
 test("encodes supported player identifiers and rejects path injection", async () => {
   let requested = "";
   const client = new PalDefenderClient(

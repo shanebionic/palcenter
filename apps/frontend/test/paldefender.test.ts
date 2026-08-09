@@ -12,6 +12,8 @@ import {
 import {
   banPalDefenderPlayer,
   broadcastPalDefenderMessage,
+  sendPalDefenderAlert,
+  sendPalDefenderPlayerMessage,
   getPalDefenderBase,
   getPalDefenderBases,
   getPalDefenderGuilds,
@@ -241,6 +243,52 @@ test("submits a normalized Unicode PalDefender broadcast request", async () => {
     });
     assert.equal(requestedUrl, "/api/servers/server-1/paldefender/broadcast");
     assert.equal(requestBody, JSON.stringify({ message }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("submits server alerts and targeted player messages without leaking server scope", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ url: string; body: unknown }> = [];
+  globalThis.fetch = async (input, init) => {
+    requests.push({
+      url: String(input),
+      body: JSON.parse(String(init?.body)),
+    });
+    return Response.json(
+      String(input).endsWith("/alert")
+        ? { success: true }
+        : { success: true, sentCount: 2 },
+    );
+  };
+  try {
+    assert.deepEqual(await sendPalDefenderAlert("server-a", "Urgent"), {
+      success: true,
+    });
+    assert.deepEqual(
+      await sendPalDefenderPlayerMessage(
+        "server-b",
+        ["steam_1", "gdk_2"],
+        "PlayerLogImportant",
+        "Private notice",
+      ),
+      { success: true, sentCount: 2 },
+    );
+    assert.deepEqual(requests, [
+      {
+        url: "/api/servers/server-a/paldefender/alert",
+        body: { message: "Urgent" },
+      },
+      {
+        url: "/api/servers/server-b/paldefender/player-message",
+        body: {
+          playerIds: ["steam_1", "gdk_2"],
+          sendType: "PlayerLogImportant",
+          message: "Private notice",
+        },
+      },
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -56,7 +56,9 @@ export class AuthorizationService {
         /^\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals)$/.test(
           path,
         ) ||
-        /^\/api\/servers\/[^/]+\/paldefender\/broadcast$/.test(path))
+        /^\/api\/servers\/[^/]+\/paldefender\/(broadcast|alert|player-message)$/.test(
+          path,
+        ))
     ) {
       return "operate";
     }

@@ -1365,6 +1365,27 @@ const palDefenderBroadcastBodySchema = z
       .refine((value) => value.trim().length > 0, "Message is required."),
   })
   .strict();
+const palDefenderPlayerMessageTypes = [
+  "PlayerChat",
+  "PlayerGlobalChat",
+  "PlayerGuildChat",
+  "PlayerLogNormal",
+  "PlayerLogImportant",
+  "PlayerLogVeryImportant",
+] as const;
+const palDefenderPlayerMessageBodySchema = z
+  .object({
+    playerIds: z.array(z.string().trim().min(1)).min(1),
+    sendType: z.enum(palDefenderPlayerMessageTypes),
+    message: z
+      .string()
+      .refine((value) => value.trim().length > 0, "Message is required."),
+  })
+  .strict()
+  .transform((value) => ({
+    ...value,
+    playerIds: [...new Set(value.playerIds)],
+  }));
 
 app.post("/api/servers/:serverId/paldefender/broadcast", async (request) => {
   const { serverId } = palDefenderServerParametersSchema.parse(request.params);
@@ -1389,6 +1410,60 @@ app.post("/api/servers/:serverId/paldefender/broadcast", async (request) => {
     throw error;
   }
 });
+
+app.post("/api/servers/:serverId/paldefender/alert", async (request) => {
+  const { serverId } = palDefenderServerParametersSchema.parse(request.params);
+  const { message } = palDefenderBroadcastBodySchema.parse(request.body ?? {});
+  const actor = currentUser(request.headers.cookie);
+  request.log.info(
+    { actorUserId: actor.id, serverId, messageLength: [...message].length },
+    "PalDefender alert requested.",
+  );
+  const result = await palDefenderService.alert(serverId, message);
+  request.log.info(
+    { actorUserId: actor.id, serverId, success: result.success },
+    "PalDefender alert completed.",
+  );
+  return result;
+});
+
+app.post(
+  "/api/servers/:serverId/paldefender/player-message",
+  async (request) => {
+    const { serverId } = palDefenderServerParametersSchema.parse(
+      request.params,
+    );
+    const { playerIds, sendType, message } =
+      palDefenderPlayerMessageBodySchema.parse(request.body ?? {});
+    const actor = currentUser(request.headers.cookie);
+    request.log.info(
+      {
+        actorUserId: actor.id,
+        serverId,
+        sendType,
+        recipientCount: playerIds.length,
+        messageLength: [...message].length,
+      },
+      "PalDefender player message requested.",
+    );
+    const result = await palDefenderService.sendPlayerMessage(
+      serverId,
+      playerIds,
+      sendType,
+      message,
+    );
+    request.log.info(
+      {
+        actorUserId: actor.id,
+        serverId,
+        sendType,
+        sentCount: result.sentCount,
+      },
+      "PalDefender player message completed.",
+    );
+    return result;
+  },
+);
 
 const currentUser = (cookie: string | undefined) => {
   const session = authenticationService.sessionFromCookie(cookie);
@@ -2067,7 +2142,9 @@ app.setErrorHandler((error, request, reply) => {
         /\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/technology\/(learn|forget)$/.test(
           request.url,
         ) ||
-        /\/api\/servers\/[^/]+\/paldefender\/broadcast$/.test(request.url) ||
+        /\/api\/servers\/[^/]+\/paldefender\/(broadcast|alert|player-message)$/.test(
+          request.url,
+        ) ||
         /\/api\/servers\/[^/]+\/moderation\/.+\/(ban|unban)$/.test(
           request.url,
         ) ||

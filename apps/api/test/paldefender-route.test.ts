@@ -276,6 +276,21 @@ before(async () => {
       assert.equal(body.Message, "Hello, Palpagos! ⚡");
       return Response.json({ Success: true });
     }
+    if (url.endsWith("/Alert")) {
+      assert.equal(init?.body, JSON.stringify({ Message: "Urgent" }));
+      return Response.json({ Success: true });
+    }
+    if (url.endsWith("/SendPlayerMessage")) {
+      assert.equal(
+        init?.body,
+        JSON.stringify({
+          SendType: "PlayerChat",
+          UserIDs: ["steam_1", "gdk_2"],
+          Message: "Private notice",
+        }),
+      );
+      return Response.json({ Success: true, SentCount: 2 });
+    }
     if (url.endsWith("/guild/guild-1")) {
       return Response.json({
         Guild: {
@@ -934,6 +949,44 @@ test("PalDefender broadcast validates and normalizes messages and failures", asy
     error: "paldefender_request_failed",
     message: "Broadcast failed",
   });
+});
+
+test("PalDefender alert and player message routes validate and normalize requests", async () => {
+  const headers = { cookie: administratorCookie };
+  const alert = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/alert",
+    headers,
+    payload: { message: "Urgent" },
+  });
+  assert.deepEqual(alert.json(), { success: true });
+
+  const playerMessage = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/player-message",
+    headers,
+    payload: {
+      playerIds: ["steam_1", "gdk_2", "steam_1"],
+      sendType: "PlayerChat",
+      message: "Private notice",
+    },
+  });
+  assert.deepEqual(playerMessage.json(), { success: true, sentCount: 2 });
+
+  for (const payload of [
+    { message: "" },
+    { playerIds: [], sendType: "PlayerChat", message: "Hello" },
+    { playerIds: ["steam_1"], sendType: "Unknown", message: "Hello" },
+  ]) {
+    const url = "playerIds" in payload ? "player-message" : "alert";
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/servers/server-a/paldefender/${url}`,
+      headers,
+      payload,
+    });
+    assert.equal(response.statusCode, 400);
+  }
 });
 
 test("PalDefender ban route normalizes success and unavailable IP errors", async () => {
