@@ -87,6 +87,8 @@ import { SaveWorldTaskExecutor } from "./services/save-world-task-executor.js";
 import { ShutdownTaskExecutor } from "./services/shutdown-task-executor.js";
 import { TaskDispatcher } from "./services/task-dispatcher.js";
 import { automationTaskTypes } from "./types/automation.js";
+import { auditCategories } from "./types/audit.js";
+import { administrativeAuditEntry } from "./services/administrative-audit-service.js";
 import { PlayerTelemetryCollector } from "./telemetry/collectors/player-telemetry-collector.js";
 import { SqliteTelemetryRepository } from "./telemetry/repositories/sqlite-telemetry-repository.js";
 import {
@@ -574,6 +576,27 @@ app.addHook("onSend", async (_request, reply, payload) => {
   return payload;
 });
 
+app.addHook("onResponse", async (request, reply) => {
+  const session = authenticationService.sessionFromCookie(
+    request.headers.cookie,
+  );
+  if (!session) return;
+  const entry = administrativeAuditEntry(
+    request,
+    reply.statusCode,
+    session.user,
+  );
+  if (!entry) return;
+  try {
+    historyRepository.appendAudit(entry);
+  } catch (error) {
+    request.log.error(
+      { err: error, action: entry.action, serverId: entry.serverId },
+      "Unable to record administrative audit entry.",
+    );
+  }
+});
+
 const loginSchema = z
   .object({
     username: z.string().min(1).max(80),
@@ -602,6 +625,28 @@ const passwordSchema = z
       /[^a-zA-Z0-9]/.test(value),
     "Use upper- and lowercase letters, a number, and a symbol.",
   );
+
+const auditQuerySchema = z.object({
+  actorUserId: z.string().min(1).optional(),
+  category: z.enum(auditCategories).optional(),
+  result: z.enum(["success", "failed"]).optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  search: z.string().trim().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(200),
+});
+
+app.get("/api/servers/:serverId/audit-log", async (request) => {
+  const { serverId } = z
+    .object({ serverId: z.string().min(1) })
+    .parse(request.params);
+  return {
+    entries: historyRepository.listAudit(
+      serverId,
+      auditQuerySchema.parse(request.query),
+    ),
+  };
+});
 
 app.get("/api/auth/setup-status", async () => ({
   setupRequired: userService.setupRequired(),

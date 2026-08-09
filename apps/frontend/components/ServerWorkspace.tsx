@@ -13,8 +13,9 @@ import { ServerSettings } from "./ServerSettings";
 import { ServerDangerZone } from "./ServerDangerZone";
 import { ServerConnectionSettings } from "./ServerConnectionSettings";
 import { ServerWorldMap } from "./ServerWorldMap";
-import { ServerWorldEvents } from "./ServerWorldEvents";
-import type { WorldEvent } from "../types/servers";
+import { ServerGuilds } from "./ServerGuilds";
+import { ServerBases } from "./ServerBases";
+import { ServerAuditLog } from "./ServerAuditLog";
 
 interface ServerWorkspaceProps {
   serverId: string;
@@ -28,7 +29,6 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
   const [canOperate, setCanOperate] = useState(false);
   const [canManage, setCanManage] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [mapEvent, setMapEvent] = useState<WorldEvent | null>(null);
 
   const loadServer = useCallback(
     async (background = false) => {
@@ -119,8 +119,10 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
             <Tabs.List>
               <Tabs.Tab value="overview">Overview</Tabs.Tab>
               {canOperate && <Tabs.Tab value="players">Players</Tabs.Tab>}
+              {canOperate && <Tabs.Tab value="guilds">Guilds</Tabs.Tab>}
+              {canOperate && <Tabs.Tab value="bases">Bases</Tabs.Tab>}
               {canOperate && <Tabs.Tab value="map">Map</Tabs.Tab>}
-              {canOperate && <Tabs.Tab value="events">Activity</Tabs.Tab>}
+              {canOperate && <Tabs.Tab value="audit">Audit Log</Tabs.Tab>}
               {canOperate && (
                 <Tabs.Tab value="administration">Administration</Tabs.Tab>
               )}
@@ -140,25 +142,27 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
               </Tabs.Panel>
             )}
             {canOperate && (
+              <Tabs.Panel value="guilds">
+                <ServerGuilds serverId={server.connection.id} />
+              </Tabs.Panel>
+            )}
+            {canOperate && (
+              <Tabs.Panel value="bases">
+                <ServerBases serverId={server.connection.id} />
+              </Tabs.Panel>
+            )}
+            {canOperate && (
               <Tabs.Panel value="map">
                 <ServerWorldMap
                   serverId={server.connection.id}
                   serverOnline={server.status.status === "online"}
                   canCalibrate={canManage}
-                  focusEvent={mapEvent}
                 />
               </Tabs.Panel>
             )}
             {canOperate && (
-              <Tabs.Panel value="events">
-                <ServerWorldEvents
-                  serverId={server.connection.id}
-                  serverOnline={server.status.status === "online"}
-                  onViewOnMap={(event) => {
-                    setMapEvent(event);
-                    setActiveTab("map");
-                  }}
-                />
+              <Tabs.Panel value="audit">
+                <ServerAuditLog serverId={server.connection.id} />
               </Tabs.Panel>
             )}
             {canOperate && (

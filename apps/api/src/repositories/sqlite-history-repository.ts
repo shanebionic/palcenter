@@ -12,6 +12,7 @@ import type {
   ServerEvent,
   ServerMetric,
 } from "../types/connections.js";
+import type { AuditEntry, AuditQuery, NewAuditEntry } from "../types/audit.js";
 import {
   tightenFilePermissionsSync,
   type StoragePermissionWarningHandler,
@@ -51,7 +52,21 @@ interface IntegrityCheckRow {
   quick_check: string;
 }
 
-const schemaVersion = 9;
+interface AuditRow {
+  id: number;
+  server_id: string;
+  actor_user_id: string;
+  actor_username: string;
+  occurred_at: string;
+  action: string;
+  category: AuditEntry["category"];
+  target_type: string | null;
+  target_id: string | null;
+  result: AuditEntry["result"];
+  details_json: string;
+}
+
+const schemaVersion = 10;
 
 export class SqliteHistoryRepository implements HistoryRepository {
   private database: DatabaseSync | null = null;
@@ -243,6 +258,22 @@ export class SqliteHistoryRepository implements HistoryRepository {
         coordinate_space_id TEXT NOT NULL,
         PRIMARY KEY (server_id, user_id)
       );
+
+      CREATE TABLE IF NOT EXISTS administrative_audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        server_id TEXT NOT NULL,
+        actor_user_id TEXT NOT NULL,
+        actor_username TEXT NOT NULL,
+        occurred_at TEXT NOT NULL,
+        action TEXT NOT NULL,
+        category TEXT NOT NULL,
+        target_type TEXT,
+        target_id TEXT,
+        result TEXT NOT NULL CHECK (result IN ('success', 'failed')),
+        details_json TEXT NOT NULL DEFAULT '{}'
+      );
+      CREATE INDEX IF NOT EXISTS administrative_audit_server_time
+        ON administrative_audit_log (server_id, occurred_at DESC, id DESC);
 
       `);
       if (version === 5 || version === 6) {
@@ -508,6 +539,81 @@ export class SqliteHistoryRepository implements HistoryRepository {
     });
   }
 
+  appendAudit(entry: NewAuditEntry): AuditEntry {
+    const result = this.requireDatabase()
+      .prepare(
+        `INSERT INTO administrative_audit_log (
+        server_id, actor_user_id, actor_username, occurred_at, action,
+        category, target_type, target_id, result, details_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        entry.serverId,
+        entry.actorUserId,
+        entry.actorUsername,
+        entry.occurredAt,
+        entry.action,
+        entry.category,
+        entry.targetType,
+        entry.targetId,
+        entry.result,
+        JSON.stringify(entry.details),
+      );
+    return { id: Number(result.lastInsertRowid), ...entry };
+  }
+
+  listAudit(serverId: string, query: AuditQuery): AuditEntry[] {
+    const conditions = ["server_id = ?"];
+    const values: Array<string | number> = [serverId];
+    if (query.actorUserId) {
+      conditions.push("actor_user_id = ?");
+      values.push(query.actorUserId);
+    }
+    if (query.category) {
+      conditions.push("category = ?");
+      values.push(query.category);
+    }
+    if (query.result) {
+      conditions.push("result = ?");
+      values.push(query.result);
+    }
+    if (query.from) {
+      conditions.push("occurred_at >= ?");
+      values.push(query.from);
+    }
+    if (query.to) {
+      conditions.push("occurred_at <= ?");
+      values.push(query.to);
+    }
+    if (query.search) {
+      conditions.push(
+        "(actor_username LIKE ? OR action LIKE ? OR target_id LIKE ?)",
+      );
+      const search = `%${query.search}%`;
+      values.push(search, search, search);
+    }
+    values.push(query.limit);
+    const rows = this.requireDatabase()
+      .prepare(
+        `SELECT * FROM administrative_audit_log WHERE ${conditions.join(" AND ")}
+       ORDER BY occurred_at DESC, id DESC LIMIT ?`,
+      )
+      .all(...values) as unknown as AuditRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      serverId: row.server_id,
+      actorUserId: row.actor_user_id,
+      actorUsername: row.actor_username,
+      occurredAt: row.occurred_at,
+      action: row.action,
+      category: row.category,
+      targetType: row.target_type,
+      targetId: row.target_id,
+      result: row.result,
+      details: JSON.parse(row.details_json) as Record<string, unknown>,
+    }));
+  }
+
   deleteServerData(serverId: string): void {
     const database = this.requireDatabase();
     database.exec("BEGIN IMMEDIATE");
@@ -536,6 +642,9 @@ export class SqliteHistoryRepository implements HistoryRepository {
         .run(serverId);
       database
         .prepare("DELETE FROM world_player_activity_state WHERE server_id = ?")
+        .run(serverId);
+      database
+        .prepare("DELETE FROM administrative_audit_log WHERE server_id = ?")
         .run(serverId);
       database.exec("COMMIT");
     } catch (error) {

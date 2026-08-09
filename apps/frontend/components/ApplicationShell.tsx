@@ -16,7 +16,6 @@ import {
   IconLayoutDashboard,
   IconServer,
   IconTools,
-  IconUsers,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -38,7 +37,6 @@ const primaryLinks: Array<{
 }> = [
   { href: "/", label: "Dashboard", icon: IconLayoutDashboard },
   { href: "/servers", label: "Servers", icon: IconServer },
-  { href: "/players", label: "Players", icon: IconUsers },
   { href: "/automation", label: "Automation", icon: IconAutomation },
   { href: "/tools", label: "Tools", icon: IconTools },
   { href: "/settings", label: "Settings", icon: IconAdjustments },

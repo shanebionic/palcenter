@@ -34,14 +34,12 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { BrandedLoader } from "./BrandedLoader";
-import { PlayerActivitySummary } from "./PlayerActivitySummary";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
 import {
   getPlayers,
   getPlayerTelemetry,
   getPlayerTrailHistory,
-  getWorldEvents,
 } from "../lib/api";
 import {
   buildLivePlayerMapModel,
@@ -72,33 +70,20 @@ import {
   worldMapLayerClasses,
   type WorldMapLayer,
 } from "../lib/world-map/layers";
-import {
-  palpagosProjection,
-  worldToNormalizedMapPosition,
-} from "../lib/world-map/projection";
+import { palpagosProjection } from "../lib/world-map/projection";
 import { playerColor } from "../lib/world-map/player-color";
-import {
-  buildPlayerActivitySummary,
-  type ActivitySummary,
-} from "../lib/world-map/activity-summary";
 import {
   buildRenderedTrailSegments,
   processMovementTrail,
   type ProcessedTrail,
-  type TrailHistoryPoint,
 } from "../lib/world-map/trail";
 import { palpagosMapDefinition } from "../lib/world-map/map-definitions";
-import type {
-  ConnectedPlayer,
-  LatestPlayerTelemetry,
-  WorldEvent,
-} from "../types/servers";
+import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
 
 interface ServerWorldMapProps {
   serverId: string;
   serverOnline: boolean;
   canCalibrate: boolean;
-  focusEvent?: WorldEvent | null;
 }
 
 const defaultTelemetry: LatestPlayerTelemetry = {
@@ -121,10 +106,8 @@ export function ServerWorldMap({
   serverId,
   serverOnline,
   canCalibrate,
-  focusEvent,
 }: ServerWorldMapProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
-  const [recentActivity, setRecentActivity] = useState<WorldEvent[]>([]);
   const [telemetry, setTelemetry] =
     useState<LatestPlayerTelemetry>(defaultTelemetry);
   const [loading, setLoading] = useState(true);
@@ -141,13 +124,9 @@ export function ServerWorldMap({
   const [mapView, setMapView] = useState<"palpagos" | "world_tree">("palpagos");
   const [followPlayer, setFollowPlayer] = useState(false);
   const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
-  const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
   const [trailEnabled, setTrailEnabled] = useState(false);
   const [trailRange, setTrailRange] = useState<TrailRange>("1h");
   const [trail, setTrail] = useState<ProcessedTrail | null>(null);
-  const [trailHistoryPoints, setTrailHistoryPoints] = useState<
-    TrailHistoryPoint[]
-  >([]);
   const [trailLoading, setTrailLoading] = useState(false);
   const [trailError, setTrailError] = useState<string | null>(null);
   const [trailTruncated, setTrailTruncated] = useState(false);
@@ -185,15 +164,10 @@ export function ServerWorldMap({
       setError(null);
       setPlayerRequestFailed(false);
 
-      const [playersResult, telemetryResult, activityResult] =
-        await Promise.allSettled([
-          getPlayers(serverId),
-          getPlayerTelemetry(serverId),
-          getWorldEvents(serverId, {
-            from: new Date(Date.now() - 60 * 60 * 1_000).toISOString(),
-            limit: 12,
-          }),
-        ]);
+      const [playersResult, telemetryResult] = await Promise.allSettled([
+        getPlayers(serverId),
+        getPlayerTelemetry(serverId),
+      ]);
 
       if (playersResult.status === "fulfilled") {
         setPlayers(playersResult.value);
@@ -215,17 +189,6 @@ export function ServerWorldMap({
           current
             ? `${current} Position telemetry is also unavailable.`
             : "Position telemetry is unavailable.",
-        );
-      }
-
-      if (activityResult.status === "fulfilled") {
-        setRecentActivity(
-          activityResult.value
-            .filter((event) =>
-              ["player_joined", "player_disconnected"].includes(event.type),
-            )
-            .slice(-5)
-            .reverse(),
         );
       }
 
@@ -340,29 +303,6 @@ export function ServerWorldMap({
     () => (trail ? buildRenderedTrailSegments(trail) : []),
     [trail],
   );
-  const activitySummary = useMemo(
-    () =>
-      trail && trail.pointCount > 0
-        ? buildPlayerActivitySummary({
-            points: trailHistoryPoints,
-            selectedRangeMs: trailRangeMilliseconds[trailRange],
-            renderedTrailSegments: renderedTrailSegments.length,
-            currentlyOnline: selected !== null,
-            currentPositionCapturedAt:
-              selectedTelemetry?.capturedAt ?? trail.lastTimestamp,
-            pollingIntervalSeconds: telemetry.pollingIntervalSeconds,
-          })
-        : null,
-    [
-      renderedTrailSegments.length,
-      selected,
-      selectedTelemetry?.capturedAt,
-      telemetry.pollingIntervalSeconds,
-      trail,
-      trailHistoryPoints,
-      trailRange,
-    ],
-  );
   const contentState = mapContentState({
     loading,
     serverOnline,
@@ -384,7 +324,6 @@ export function ServerWorldMap({
       setTrailLoading(true);
       setTrailError(null);
       setTrail(null);
-      setTrailHistoryPoints([]);
       const end = new Date();
       const start = new Date(end.getTime() - trailRangeMilliseconds[range]);
       try {
@@ -396,7 +335,6 @@ export function ServerWorldMap({
           controller.signal,
         );
         if (controller.signal.aborted) return;
-        setTrailHistoryPoints(history.points);
         setTrail(
           processMovementTrail(history.points, palpagosProjection, {
             pollingIntervalSeconds: telemetry.pollingIntervalSeconds,
@@ -408,7 +346,6 @@ export function ServerWorldMap({
       } catch (trailLoadError) {
         if (controller.signal.aborted) return;
         setTrail(null);
-        setTrailHistoryPoints([]);
         setTrailError(
           trailLoadError instanceof Error
             ? trailLoadError.message
@@ -424,7 +361,6 @@ export function ServerWorldMap({
   useEffect(() => {
     setTrailEnabled(false);
     setTrail(null);
-    setTrailHistoryPoints([]);
     setTrailError(null);
     trailRequest.current?.abort();
   }, [serverId, selectedId]);
@@ -476,19 +412,6 @@ export function ServerWorldMap({
   useEffect(() => {
     applyFitMap();
   }, [applyFitMap, expanded]);
-
-  useEffect(() => {
-    if (!focusEvent?.position || surfaceSize === 0) return;
-    const position = worldToNormalizedMapPosition(
-      focusEvent.position,
-      palpagosProjection,
-    );
-    if (!position) return;
-    const view = centerMapOnPosition(position, viewportSize, surfaceSize);
-    setZoom(view.zoom);
-    setPan(view.pan);
-    setFocusedEventId(focusEvent.id);
-  }, [focusEvent, surfaceSize, viewportSize]);
 
   useEffect(() => {
     const element = viewport.current;
@@ -656,12 +579,6 @@ export function ServerWorldMap({
         Native Palworld REST coordinates do not identify dungeons, towers, or
         other instanced areas, so those positions may appear on the main map.
       </Alert>
-
-      {focusedEventId && (
-        <Alert color="cyan" title="Event location centered">
-          The map is centered on the selected event position.
-        </Alert>
-      )}
 
       {canCalibrate && (
         <Accordion
@@ -1120,7 +1037,6 @@ export function ServerWorldMap({
                 setFollowPlayer(false);
               }}
             />
-            <RecentActivityPanel events={recentActivity} />
             <OffMapPlayersPanel
               players={model.unmappedPlayers}
               onSelect={(userId) => {
@@ -1166,7 +1082,6 @@ export function ServerWorldMap({
               enabled={trailEnabled}
               range={trailRange}
               trail={trail}
-              activitySummary={activitySummary}
               playerColor={selectedPlayerColor}
               renderedSegmentCount={renderedTrailSegments.length}
               loading={trailLoading}
@@ -1183,7 +1098,6 @@ export function ServerWorldMap({
                 trailRequest.current?.abort();
                 setTrailEnabled(false);
                 setTrail(null);
-                setTrailHistoryPoints([]);
                 setTrailError(null);
               }}
             />
@@ -1261,41 +1175,6 @@ function OnlinePlayersPanel({
             );
           })}
         </Stack>
-      </Stack>
-    </Card>
-  );
-}
-
-function RecentActivityPanel({ events }: { events: WorldEvent[] }) {
-  return (
-    <Card withBorder radius="md" padding="lg" className="pc-panel">
-      <Stack gap="sm">
-        <Title order={4}>Recently in your world</Title>
-        {events.length === 0 ? (
-          <Text size="sm" c="dimmed">
-            Joins and departures from the last hour will appear here.
-          </Text>
-        ) : (
-          events.map((event) => {
-            const name =
-              typeof event.metadata.playerName === "string"
-                ? event.metadata.playerName
-                : "A player";
-            return (
-              <Group key={event.id} justify="space-between" wrap="nowrap">
-                <Text size="sm">
-                  {name} {event.type === "player_joined" ? "joined" : "left"}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {new Intl.DateTimeFormat(undefined, {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  }).format(new Date(event.timestamp))}
-                </Text>
-              </Group>
-            );
-          })
-        )}
       </Stack>
     </Card>
   );
@@ -1388,7 +1267,6 @@ function TrailControls({
   enabled,
   range,
   trail,
-  activitySummary,
   playerColor,
   renderedSegmentCount,
   loading,
@@ -1407,7 +1285,6 @@ function TrailControls({
   enabled: boolean;
   range: TrailRange;
   trail: ProcessedTrail | null;
-  activitySummary: ActivitySummary | null;
   playerColor: string;
   renderedSegmentCount: number;
   loading: boolean;
@@ -1497,9 +1374,6 @@ function TrailControls({
             selected range. Keep telemetry collection running and check again
             after the player has been active.
           </Alert>
-        )}
-        {enabled && activitySummary && (
-          <PlayerActivitySummary summary={activitySummary} />
         )}
         {enabled && trail && trail.pointCount > 0 && (
           <Stack gap={4} role="status" aria-label="Movement trail summary">
