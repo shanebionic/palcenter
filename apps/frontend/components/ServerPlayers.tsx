@@ -16,7 +16,7 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   banPlayer,
@@ -24,11 +24,15 @@ import {
   getPlayers,
   kickPlayer,
   getPalDefenderPlayers,
+  getPalDefenderProgression,
   getPalDefenderStatus,
   type PalDefenderPlayer,
   type PalDefenderStatus,
 } from "../lib/api";
-import { matchPalDefenderPlayer } from "../lib/player-identity";
+import {
+  canonicalPlayerId,
+  matchPalDefenderPlayer,
+} from "../lib/player-identity";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
@@ -44,6 +48,8 @@ interface ServerPlayersProps {
   serverId: string;
 }
 
+const MAX_CONCURRENT_PROGRESSION = 3;
+
 export function ServerPlayers({ serverId }: ServerPlayersProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [telemetry, setTelemetry] = useState<PlayerPositionSnapshot[]>([]);
@@ -58,6 +64,9 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
   const [palDefenderPlayers, setPalDefenderPlayers] = useState<
     PalDefenderPlayer[]
   >([]);
+  const [enrichedLevels, setEnrichedLevels] = useState<Map<string, number>>(
+    new Map(),
+  );
 
   const loadPlayers = useCallback(
     async (background = false) => {
@@ -105,6 +114,83 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
   useEffect(() => {
     void loadPlayers();
   }, [loadPlayers]);
+
+  const resolveLevel = useCallback(
+    (player: ConnectedPlayer): number | null => {
+      const enhanced = matchPalDefenderPlayer(player, palDefenderPlayers);
+      if (enhanced?.level != null) return enhanced.level;
+      const key = canonicalPlayerId(enhanced?.playerId ?? player.playerId);
+      const cached = enrichedLevels.get(key);
+      if (cached != null) return cached;
+      return null;
+    },
+    [palDefenderPlayers, enrichedLevels],
+  );
+
+  const inFlightRef = useRef(new Map<string, Promise<void>>());
+  const enrichedRef = useRef(enrichedLevels);
+
+  useEffect(() => {
+    enrichedRef.current = enrichedLevels;
+  }, [enrichedLevels]);
+
+  useEffect(() => {
+    if (!palDefenderStatus?.connected || players.length === 0) return;
+
+    void (async () => {
+      const queue: ConnectedPlayer[] = [];
+
+      for (const player of players) {
+        const enhanced = matchPalDefenderPlayer(player, palDefenderPlayers);
+        if (enhanced?.level != null) continue;
+        const key = canonicalPlayerId(enhanced?.playerId ?? player.playerId);
+        if (enrichedRef.current.has(key)) continue;
+
+        const existing = inFlightRef.current.get(key);
+        if (existing) {
+          queue.push(player);
+          continue;
+        }
+
+        const promise = (async () => {
+          try {
+            const progression = await getPalDefenderProgression(
+              serverId,
+              player.playerId,
+            );
+            setEnrichedLevels((prev) => {
+              const next = new Map(prev);
+              next.set(key, progression.character.level);
+              return next;
+            });
+          } catch {
+            /* one failure does not block the rest */
+          } finally {
+            inFlightRef.current.delete(key);
+          }
+        })();
+
+        inFlightRef.current.set(key, promise);
+        queue.push(player);
+      }
+
+      let idx = 0;
+      while (idx < queue.length) {
+        const batch: Promise<void>[] = [];
+        for (
+          let i = 0;
+          i < MAX_CONCURRENT_PROGRESSION && idx < queue.length;
+          i++, idx++
+        ) {
+          const player = queue[idx]!;
+          const enhanced = matchPalDefenderPlayer(player, palDefenderPlayers);
+          const key = canonicalPlayerId(enhanced?.playerId ?? player.playerId);
+          batch.push(inFlightRef.current.get(key)!);
+        }
+        await Promise.all(batch).catch(() => {});
+      }
+    })();
+  }, [palDefenderStatus, palDefenderPlayers, players, serverId]);
 
   const filteredPlayers = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -256,6 +342,7 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
                       player,
                       palDefenderPlayers,
                     );
+                    const levelValue = resolveLevel(player);
                     return (
                       <Table.Tr key={player.userId}>
                         <Table.Td>
@@ -274,7 +361,9 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
                           </Text>
                         </Table.Td>
                         <Table.Td>{enhanced?.guild ?? "—"}</Table.Td>
-                        <Table.Td>{enhanced?.level ?? "—"}</Table.Td>
+                        <Table.Td>
+                          {levelValue != null ? levelValue : "—"}
+                        </Table.Td>
                         <Table.Td>
                           <Text ff="monospace" size="sm">
                             X: {coordinate(snapshot?.x ?? null)} · Y:{" "}
