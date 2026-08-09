@@ -43,8 +43,10 @@ import { BrandedLoader } from "./BrandedLoader";
 import { SectionCard } from "./ui/SectionCard";
 import { CatalogMultiSelect, CatalogSelect } from "./ui/CatalogSelect";
 import {
+  catalogLabel,
   eggCatalog,
   findCatalogEntry,
+  findPalEntry,
   itemCatalog,
   palCatalog,
   technologyCatalog,
@@ -1478,13 +1480,23 @@ function Pals({
           <Stack gap="lg">
             <Group justify="space-between">
               <div>
-                <Title order={2}>{selected.nickname ?? selected.palId}</Title>
+                {(() => {
+                  const entry = findPalEntry(selected.palId);
+                  return (
+                    <Title order={2}>
+                      {entry ? catalogLabel(entry) : selected.palId}
+                    </Title>
+                  );
+                })()}
                 <Text c="dimmed" ff="monospace">
                   {selected.palId}
                 </Text>
               </div>
               <Badge>{selected.location}</Badge>
             </Group>
+            {selected.nickname && (
+              <Fact label="Nickname" value={selected.nickname} />
+            )}
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
               <Fact label="Level" value={selected.level} />
               <Fact label="Gender" value={selected.gender} />
@@ -1563,11 +1575,16 @@ function Pals({
                 style={{ cursor: "pointer", textAlign: "left" }}
               >
                 <Group justify="space-between">
-                  <Title order={3}>{pal.nickname ?? pal.palId}</Title>
+                  <Title order={3}>
+                    {(() => {
+                      const entry = findPalEntry(pal.palId);
+                      return entry ? catalogLabel(entry) : pal.palId;
+                    })()}
+                  </Title>
                   <Badge>{pal.location}</Badge>
                 </Group>
                 <Text c="dimmed" size="sm">
-                  {pal.nickname ? pal.palId : "—"}
+                  {pal.palId}
                 </Text>
                 <SimpleGrid cols={3} mt="sm">
                   <Fact label="Level" value={pal.level} />

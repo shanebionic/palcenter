@@ -33,6 +33,7 @@ import {
   getPalDefenderBases,
   type PalDefenderBaseDetails,
 } from "../../../../lib/api";
+import { catalogLabel, findPalEntry } from "../../../../lib/game-catalogs";
 import {
   canConfirmBaseDeletion,
   deleteBaseConfirmation,
@@ -292,7 +293,12 @@ export default function PalDefenderBaseDetailsPage() {
                       <Table.Tbody>
                         {base.pals.map((pal) => (
                           <Table.Tr key={pal.instanceId}>
-                            <Table.Td fw={600}>{pal.nickname ?? "—"}</Table.Td>
+                            <Table.Td fw={600}>
+                              {(() => {
+                                const entry = findPalEntry(pal.palId);
+                                return entry ? catalogLabel(entry) : pal.palId;
+                              })()}
+                            </Table.Td>
                             <Table.Td>{pal.palId}</Table.Td>
                             <Table.Td>{pal.level}</Table.Td>
                             <Table.Td>{pal.gender ?? "—"}</Table.Td>

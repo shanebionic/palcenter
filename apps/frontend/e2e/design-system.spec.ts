@@ -137,7 +137,7 @@ test("normal Players progressively exposes enhanced player management", async ({
     .getByRole("button", { name: "Give Template Pal" })
     .click();
   await expect(page.getByText("Template Pal granted")).toBeVisible();
-  await expect(page.getByText("Pengullet")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pengullet" })).toBeVisible();
 
   await page.getByRole("button", { name: "Give Pal Egg", exact: true }).click();
   const eggGrant = page.getByRole("dialog", { name: "Give Pal Egg" });
