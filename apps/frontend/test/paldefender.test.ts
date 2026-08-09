@@ -48,6 +48,7 @@ import {
 import {
   canConfirmBaseDeletion,
   deleteBaseConfirmation,
+  deleteBaseWarning,
 } from "../lib/paldefender-bases";
 
 test("builds and loads an encoded PalDefender base details route", async () => {
@@ -127,6 +128,7 @@ test("requires the explicit destructive base deletion confirmation", () => {
   assert.equal(canConfirmBaseDeletion(""), false);
   assert.equal(canConfirmBaseDeletion("delete"), false);
   assert.equal(canConfirmBaseDeletion("DELETE"), true);
+  assert.match(deleteBaseWarning, /worker Pals are not returned/i);
 });
 
 test("builds an encoded PalDefender guild details route", () => {

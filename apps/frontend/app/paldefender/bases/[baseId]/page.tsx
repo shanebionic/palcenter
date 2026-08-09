@@ -36,6 +36,7 @@ import {
 import {
   canConfirmBaseDeletion,
   deleteBaseConfirmation,
+  deleteBaseWarning,
 } from "../../../../lib/paldefender-bases";
 import { palDefenderGuildHref } from "../../../../lib/paldefender";
 
@@ -328,8 +329,7 @@ export default function PalDefenderBaseDetailsPage() {
         >
           <Stack>
             <Alert color="red" title="This cannot be undone">
-              The selected base, its Palbox, workers, structures, storage, and
-              other camp data will be permanently deleted.
+              {deleteBaseWarning}
             </Alert>
             {base && (
               <SimpleGrid cols={1} spacing="xs">
