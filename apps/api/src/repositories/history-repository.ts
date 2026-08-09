@@ -4,6 +4,7 @@ import type {
   ServerEventType,
   ServerMetric,
 } from "../types/connections.js";
+import type { AuditEntry, AuditQuery, NewAuditEntry } from "../types/audit.js";
 
 export type NewServerMetric = Omit<ServerMetric, "id">;
 export type NewServerEvent = Omit<ServerEvent, "id">;
@@ -20,6 +21,8 @@ export interface HistoryRepository {
   appendEvent(event: NewServerEvent): ServerEvent;
   listMetrics(serverId: string, limit: number): ServerMetric[];
   listEvents(serverId: string, limit: number): ServerEvent[];
+  appendAudit(entry: NewAuditEntry): AuditEntry;
+  listAudit(serverId: string, query: AuditQuery): AuditEntry[];
   deleteServerData(serverId: string): void;
 }
 

@@ -192,7 +192,7 @@ test("non-player, missing-identity, and unrelated player events are ignored", ()
   }
 });
 
-test("schema version 7 checkpoints migrate through coordinate-aware schema version 9", () => {
+test("schema version 7 checkpoints migrate through the current schema", () => {
   const context = fixture();
   context.repository.append([
     {
@@ -264,7 +264,7 @@ test("schema version 7 checkpoints migrate through coordinate-aware schema versi
       .prepare("PRAGMA table_info(player_position_snapshots)")
       .all() as unknown as Array<{ name: string }>;
     migrated.close();
-    assert.equal(version.user_version, 9);
+    assert.equal(version.user_version, 10);
     assert.ok(activityTable);
     assert.ok(
       activityColumns.some(({ name }) => name === "coordinate_space_id"),

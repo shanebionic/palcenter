@@ -10,6 +10,7 @@ import {
   Modal,
   MultiSelect,
   NumberInput,
+  Pagination,
   Select,
   SimpleGrid,
   Stack,
@@ -603,7 +604,11 @@ export function PalDefenderPlayerWorkspace({
               <Overview state={player} />
             </Tabs.Panel>
             <Tabs.Panel value="inventory" pt="xl">
-              <Inventory state={inventory} refresh={loadInventory} />
+              <Inventory
+                state={inventory}
+                refresh={loadInventory}
+                onGiveItems={() => setGiveItemsOpened(true)}
+              />
             </Tabs.Panel>
             <Tabs.Panel value="pals" pt="xl">
               <Stack gap="lg">
@@ -652,19 +657,6 @@ export function PalDefenderPlayerWorkspace({
             </Tabs.Panel>
             <Tabs.Panel value="actions" pt="xl">
               <Stack gap="md">
-                <div>
-                  <Title order={3}>Give Item</Title>
-                  <Text c="dimmed" size="sm">
-                    Grant one or more items directly to this player.
-                  </Text>
-                </div>
-                <Button
-                  leftSection={<IconGift size={18} />}
-                  onClick={() => setGiveItemsOpened(true)}
-                  w="fit-content"
-                >
-                  Give Item
-                </Button>
                 <div>
                   <Title order={3}>Kick Player</Title>
                   <Text c="dimmed" size="sm">
@@ -1390,9 +1382,11 @@ function Overview({ state }: { state: Loadable<PalDefenderPlayerDetails> }) {
 function Inventory({
   state,
   refresh,
+  onGiveItems,
 }: {
   state: Loadable<PalDefenderInventoryItem[]>;
   refresh: () => Promise<void>;
+  onGiveItems: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("item");
@@ -1411,16 +1405,21 @@ function Inventory({
   );
   return (
     <Stack>
-      <Toolbar search={search} setSearch={setSearch} refresh={refresh}>
-        <Select
-          value={sort}
-          onChange={(v) => setSort(v ?? "item")}
-          data={[
-            { value: "item", label: "Sort by item" },
-            { value: "quantity", label: "Sort by quantity" },
-          ]}
-        />
-      </Toolbar>
+      <Group justify="space-between" align="end">
+        <Toolbar search={search} setSearch={setSearch} refresh={refresh}>
+          <Select
+            value={sort}
+            onChange={(v) => setSort(v ?? "item")}
+            data={[
+              { value: "item", label: "Sort by item" },
+              { value: "quantity", label: "Sort by quantity" },
+            ]}
+          />
+        </Toolbar>
+        <Button leftSection={<IconGift size={16} />} onClick={onGiveItems}>
+          Give Item
+        </Button>
+      </Group>
       <State
         state={{ ...state, data: items }}
         empty="No inventory items were returned."
@@ -1457,23 +1456,121 @@ function Pals({
   state: Loadable<PalDefenderPal[]>;
   refresh: () => Promise<void>;
 }) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState("12");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const all = state.data ?? [];
+  const filtered = all.filter((pal) =>
+    [pal.nickname, pal.palId, pal.location, ...pal.passiveSkills].some(
+      (value) => value?.toLowerCase().includes(search.trim().toLowerCase()),
+    ),
+  );
+  const size = Number(pageSize);
+  const pages = Math.max(1, Math.ceil(filtered.length / size));
+  const currentPage = Math.min(page, pages);
+  const visible = filtered.slice((currentPage - 1) * size, currentPage * size);
+  const selected = all.find((pal) => pal.instanceId === selectedId) ?? null;
+  useEffect(() => setPage(1), [search, pageSize]);
+  if (selected) {
+    return (
+      <Stack>
+        <Button
+          variant="subtle"
+          leftSection={<IconArrowLeft size={16} />}
+          onClick={() => setSelectedId(null)}
+          w="fit-content"
+        >
+          Back to Pals
+        </Button>
+        <SectionCard>
+          <Stack gap="lg">
+            <Group justify="space-between">
+              <div>
+                <Title order={2}>{selected.nickname ?? selected.palId}</Title>
+                <Text c="dimmed" ff="monospace">
+                  {selected.palId}
+                </Text>
+              </div>
+              <Badge>{selected.location}</Badge>
+            </Group>
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
+              <Fact label="Level" value={selected.level} />
+              <Fact label="Gender" value={selected.gender} />
+              <Fact label="Rank" value={selected.rank} />
+              <Fact label="Experience" value={selected.experience} />
+              <Fact label="Health" value={selected.physicalHealth} />
+              <Fact label="HP" value={selected.hp} />
+              <Fact label="Sanity" value={selected.sanity} />
+              <Fact label="Hunger" value={selected.hunger} />
+              <Fact label="Support" value={selected.support} />
+              <Fact label="Craft speed" value={selected.craftSpeed} />
+              <Fact
+                label="Shiny"
+                value={
+                  selected.shiny === null ? null : selected.shiny ? "Yes" : "No"
+                }
+              />
+              <Fact label="Base Camp ID" value={selected.baseCampId} />
+            </SimpleGrid>
+            <div>
+              <Text fw={700}>Passive skills</Text>
+              <Text>{selected.passiveSkills.join(", ") || "—"}</Text>
+            </div>
+            <div>
+              <Text fw={700}>Active skills</Text>
+              <Text>{selected.activeSkills.join(", ") || "—"}</Text>
+            </div>
+            <div>
+              <Text fw={700}>Learned skills</Text>
+              <Text>{selected.learnedSkills.join(", ") || "—"}</Text>
+            </div>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <Fact label="Pal souls" value={recordValues(selected.palSouls)} />
+              <Fact label="IVs" value={recordValues(selected.ivs)} />
+            </SimpleGrid>
+          </Stack>
+        </SectionCard>
+      </Stack>
+    );
+  }
   return (
     <Stack>
-      <Group justify="flex-end">
-        <Button
-          variant="light"
-          leftSection={<IconRefresh size={16} />}
-          onClick={() => void refresh()}
-          loading={state.loading}
-        >
-          Refresh
-        </Button>
+      <Group justify="space-between" align="end">
+        <TextInput
+          label="Search Pals"
+          leftSection={<IconSearch size={16} />}
+          value={search}
+          onChange={(event) => setSearch(event.currentTarget.value)}
+        />
+        <Group>
+          <Select
+            label="Per page"
+            data={["12", "24", "48", "96"]}
+            value={pageSize}
+            onChange={(value) => setPageSize(value ?? "12")}
+          />
+          <Button
+            variant="light"
+            leftSection={<IconRefresh size={16} />}
+            onClick={() => void refresh()}
+            loading={state.loading}
+          >
+            Refresh
+          </Button>
+        </Group>
       </Group>
       <State state={state} empty="No Pals were returned.">
-        {(data) => (
-          <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }}>
-            {data.map((pal) => (
-              <Card key={pal.instanceId} withBorder>
+        {() => (
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }}>
+            {visible.map((pal) => (
+              <Card
+                key={pal.instanceId}
+                withBorder
+                component="button"
+                onClick={() => setSelectedId(pal.instanceId)}
+                style={{ cursor: "pointer", textAlign: "left" }}
+              >
                 <Group justify="space-between">
                   <Title order={3}>{pal.nickname ?? pal.palId}</Title>
                   <Badge>{pal.location}</Badge>
@@ -1481,63 +1578,36 @@ function Pals({
                 <Text c="dimmed" size="sm">
                   {pal.nickname ? pal.palId : "—"}
                 </Text>
-                <SimpleGrid cols={2} mt="md">
+                <SimpleGrid cols={3} mt="sm">
                   <Fact label="Level" value={pal.level} />
                   <Fact label="Gender" value={pal.gender} />
                   <Fact label="Rank" value={pal.rank} />
-                  <Fact
-                    label="Shiny"
-                    value={pal.shiny === null ? null : pal.shiny ? "Yes" : "No"}
-                  />
-                  <Fact label="Health" value={pal.physicalHealth} />
-                  <Fact label="Sanity" value={pal.sanity} />
-                  <Fact label="HP" value={pal.hp} />
-                  <Fact
-                    label="Hunger"
-                    value={
-                      pal.hunger === null
-                        ? null
-                        : `${pal.hunger}${pal.maxHunger === null ? "" : ` / ${pal.maxHunger}`}`
-                    }
-                  />
-                  <Fact label="Support" value={pal.support} />
-                  <Fact label="Craft speed" value={pal.craftSpeed} />
                 </SimpleGrid>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={700} mt="md">
-                  Passive skills
-                </Text>
-                <Text>
+                <Text size="sm" c="dimmed" mt="sm" lineClamp={2}>
                   {pal.passiveSkills.length
                     ? pal.passiveSkills.join(", ")
-                    : "—"}
+                    : "No passive skills returned"}
                 </Text>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={700} mt="md">
-                  Active skills
-                </Text>
-                <Text>
-                  {pal.activeSkills.length ? pal.activeSkills.join(", ") : "—"}
-                </Text>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={700} mt="md">
-                  Learned skills
-                </Text>
-                <Text>
-                  {pal.learnedSkills.length
-                    ? pal.learnedSkills.join(", ")
-                    : "—"}
-                </Text>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={700} mt="md">
-                  Pal souls
-                </Text>
-                <Text>{recordValues(pal.palSouls)}</Text>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={700} mt="md">
-                  IVs
-                </Text>
-                <Text>{recordValues(pal.ivs)}</Text>
               </Card>
             ))}
           </SimpleGrid>
         )}
       </State>
+      {filtered.length === 0 && state.data && (
+        <Text ta="center" c="dimmed">
+          No Pals match your search.
+        </Text>
+      )}
+      <Group justify="space-between">
+        <Text size="sm" c="dimmed">
+          {filtered.length
+            ? `${(currentPage - 1) * size + 1}–${Math.min(currentPage * size, filtered.length)} of ${filtered.length}`
+            : "0 Pals"}
+        </Text>
+        {pages > 1 && (
+          <Pagination value={currentPage} onChange={setPage} total={pages} />
+        )}
+      </Group>
     </Stack>
   );
 }

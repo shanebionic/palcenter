@@ -14,10 +14,7 @@ import type {
   ServerWorkspaceData,
   UserProfile,
   UserRole,
-  WorldEvent,
-  WorldEventQuery,
 } from "../types/servers";
-import { buildWorldEventQuery } from "./world-events";
 import type {
   AutomationExecution,
   AutomationExecutionDetail,
@@ -223,6 +220,29 @@ export interface PalDefenderBroadcastResult {
 export interface PalDefenderReloadConfigResult {
   success: boolean;
 }
+export interface AdministrativeAuditEntry {
+  id: number;
+  serverId: string;
+  actorUserId: string;
+  actorUsername: string;
+  occurredAt: string;
+  action: string;
+  category: "players" | "moderation" | "messaging" | "server" | "bases";
+  targetType: string | null;
+  targetId: string | null;
+  result: "success" | "failed";
+  details: Record<string, unknown>;
+}
+
+export async function getAdministrativeAuditLog(
+  serverId: string,
+): Promise<AdministrativeAuditEntry[]> {
+  const result = await request<{ entries: AdministrativeAuditEntry[] }>(
+    `/api/servers/${encodeURIComponent(serverId)}/audit-log?limit=500`,
+    { cache: "no-store" },
+  );
+  return result.entries;
+}
 export type PalDefenderPlayerMessageType =
   | "PlayerChat"
   | "PlayerGlobalChat"
@@ -340,10 +360,6 @@ interface HistoryResponse {
 
 interface EventsResponse {
   events: ServerEvent[];
-}
-
-interface WorldEventsResponse {
-  events: WorldEvent[];
 }
 
 interface NotificationsResponse {
@@ -586,18 +602,6 @@ export async function getServerEvents(id: string): Promise<ServerEvent[]> {
     { cache: "no-store" },
   );
 
-  return result.events;
-}
-
-export async function getWorldEvents(
-  serverId: string,
-  query: WorldEventQuery,
-  signal?: AbortSignal,
-): Promise<WorldEvent[]> {
-  const result = await request<WorldEventsResponse>(
-    `/api/servers/${encodeURIComponent(serverId)}/world-events?${buildWorldEventQuery(query)}`,
-    { cache: "no-store", signal },
-  );
   return result.events;
 }
 
