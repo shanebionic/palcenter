@@ -209,6 +209,7 @@ For live Palworld/PalDefender UAT that changes real server or game state, contin
 All PalCenter development must use the canonical repository under `C:\Development`.
 
 Do not create project clones, worktrees, build staging directories, or UAT workspaces under:
+
 - the root of `C:\`
 - the user profile
 - Documents
