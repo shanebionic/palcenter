@@ -89,16 +89,20 @@ After the project owner reports successful live UAT for merged work:
 
 1. Verify the implementation is merged into `dev`.
 2. Close all linked completed GitHub issues with state reason "completed".
-3. Update the PalCenter Roadmap project item status from UAT/Review to Done.
-4. Verify any parent epic/sub-issue progress reflects the completed issue.
-5. Remove obsolete workflow/blocking labels if applicable.
-6. Do not merge pull requests unless the owner explicitly directs it.
-7. Report all issue and project-status changes made.
+3. Read the actual PalCenter Roadmap Projects v2 Status field for every completed issue. Closing a GitHub issue does NOT automatically update the project Status field.
+4. If any completed issue still shows Status = UAT or Status = Review, explicitly change it to Done using gh CLI (GitHub MCP does not expose Projects v2 field mutations).
+5. After changing a project item's Status, re-read that same Projects v2 item and independently verify Status = Done. Do not assume the write succeeded based solely on the mutation response.
+6. Verify any parent epic/sub-issue progress reflects the completed issue.
+7. Remove obsolete workflow/blocking labels if applicable.
+8. Do not merge pull requests unless the owner explicitly directs it.
+9. Report all issue and project-status changes made.
 
-Use GitHub MCP for issue/PR verification and issue updates.
-Use gh CLI only when needed to update Projects v2 fields.
+Do not report the post-UAT lifecycle as complete until both conditions are met:
 
-Do not create another PR for post-merge housekeeping.
+- The GitHub issue is closed with state reason "completed".
+- The corresponding PalCenter Roadmap project item has been independently verified as Status = Done.
+
+Use GitHub MCP for supported GitHub operations (issue closure, PR verification, metadata). Use gh CLI for Projects v2 field updates when MCP does not expose the capability. Do not create another PR for post-merge housekeeping.
 
 ### Partial or blocked PR scope
 
