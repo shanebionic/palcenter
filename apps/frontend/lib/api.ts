@@ -220,6 +220,17 @@ export interface ModerationResult {
 export interface PalDefenderBroadcastResult {
   success: boolean;
 }
+export type PalDefenderPlayerMessageType =
+  | "PlayerChat"
+  | "PlayerGlobalChat"
+  | "PlayerGuildChat"
+  | "PlayerLogNormal"
+  | "PlayerLogImportant"
+  | "PlayerLogVeryImportant";
+export interface PalDefenderPlayerMessageResult {
+  success: boolean;
+  sentCount: number;
+}
 export interface PalDefenderGuildCamp {
   id: string;
   worldPosition: { x: number; y: number; z: number };
@@ -987,6 +998,28 @@ export function broadcastPalDefenderMessage(
   return jsonRequest<PalDefenderBroadcastResult>(
     `${palDefenderPath(serverId)}/broadcast`,
     { message },
+  );
+}
+
+export function sendPalDefenderAlert(
+  serverId: string,
+  message: string,
+): Promise<PalDefenderBroadcastResult> {
+  return jsonRequest<PalDefenderBroadcastResult>(
+    `${palDefenderPath(serverId)}/alert`,
+    { message },
+  );
+}
+
+export function sendPalDefenderPlayerMessage(
+  serverId: string,
+  playerIds: string[],
+  sendType: PalDefenderPlayerMessageType,
+  message: string,
+): Promise<PalDefenderPlayerMessageResult> {
+  return jsonRequest<PalDefenderPlayerMessageResult>(
+    `${palDefenderPath(serverId)}/player-message`,
+    { playerIds, sendType, message },
   );
 }
 

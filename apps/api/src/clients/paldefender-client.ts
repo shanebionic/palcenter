@@ -264,6 +264,11 @@ const banResponseSchema = z.object({
   Kicked: z.number().int().nonnegative(),
 });
 const broadcastResponseSchema = z.object({ Success: z.boolean() });
+const alertResponseSchema = z.object({ Success: z.boolean() });
+const playerMessageResponseSchema = z.object({
+  Success: z.boolean(),
+  SentCount: z.number().int().nonnegative(),
+});
 const moderationTimestampSchema = z.object({
   UTC: z.number().int(),
   Year: z.number().int(),
@@ -480,6 +485,17 @@ export interface PalDefenderTechnologyMutationResult {
 }
 export interface PalDefenderBroadcastResult {
   success: boolean;
+}
+export type PalDefenderPlayerMessageType =
+  | "PlayerChat"
+  | "PlayerGlobalChat"
+  | "PlayerGuildChat"
+  | "PlayerLogNormal"
+  | "PlayerLogImportant"
+  | "PlayerLogVeryImportant";
+export interface PalDefenderPlayerMessageResult {
+  success: boolean;
+  sentCount: number;
 }
 export interface PalDefenderItemGrant {
   itemId: string;
@@ -1073,6 +1089,37 @@ export class PalDefenderClient {
       body: JSON.stringify({ Message: message }),
     });
     return { success: response.Success };
+  }
+
+  async alert(message: string): Promise<PalDefenderBroadcastResult> {
+    const response = await this.parse(alertResponseSchema, "/Alert", {
+      method: "POST",
+      body: JSON.stringify({ Message: message }),
+    });
+    return { success: response.Success };
+  }
+
+  async sendPlayerMessage(
+    userIds: string[],
+    sendType: PalDefenderPlayerMessageType,
+    message: string,
+  ): Promise<PalDefenderPlayerMessageResult> {
+    const targets = [...new Set(userIds)];
+    const response = await this.parse(
+      playerMessageResponseSchema,
+      "/SendPlayerMessage",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          SendType: sendType,
+          ...(targets.length === 1
+            ? { UserID: targets[0] }
+            : { UserIDs: targets }),
+          Message: message,
+        }),
+      },
+    );
+    return { success: response.Success, sentCount: response.SentCount };
   }
 
   async giveItems(
