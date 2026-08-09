@@ -426,7 +426,7 @@ test("validates documented Pal template and egg inputs", () => {
     validatePalEggGrant({
       mode: "pal-id",
       eggId: "PalEgg_Fire_01",
-      palId: "Foxparks",
+      palId: "Kitsunebi",
       palTemplate: "",
       level: "",
     }),
@@ -474,7 +474,7 @@ test("submits server-scoped Pal template and egg grants", async () => {
       {
         mode: "pal-id",
         eggId: "PalEgg_Fire_01",
-        palId: "Foxparks",
+        palId: "Kitsunebi",
         level: 12,
       },
     ]);
@@ -490,7 +490,7 @@ test("submits server-scoped Pal template and egg grants", async () => {
             {
               mode: "pal-id",
               eggId: "PalEgg_Fire_01",
-              palId: "Foxparks",
+              palId: "Kitsunebi",
               level: 12,
             },
           ],

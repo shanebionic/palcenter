@@ -555,7 +555,7 @@ test("gives Pal eggs using Pal IDs and templates with documented bodies", async 
   );
   assert.deepEqual(
     await client.givePalEggs("player-1", [
-      { eggId: "PalEgg_Fire_01", palId: "Foxparks", level: 12 },
+      { eggId: "PalEgg_Fire_01", palId: "Kitsunebi", level: 12 },
       { eggId: "PalEgg_Dark_01", palTemplate: "reward.json" },
     ]),
     { playerId: "player-1", grantedPalEggs: 2 },
@@ -565,7 +565,7 @@ test("gives Pal eggs using Pal IDs and templates with documented bodies", async 
     requestBody,
     JSON.stringify({
       PalEggs: [
-        { EggID: "PalEgg_Fire_01", PalID: "Foxparks", Level: 12 },
+        { EggID: "PalEgg_Fire_01", PalID: "Kitsunebi", Level: 12 },
         { EggID: "PalEgg_Dark_01", PalTemplate: "reward.json" },
       ],
     }),

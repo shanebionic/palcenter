@@ -162,7 +162,7 @@ before(async () => {
         init?.body,
         JSON.stringify({
           PalEggs: [
-            { EggID: "PalEgg_Fire_01", PalID: "Foxparks", Level: 12 },
+            { EggID: "PalEgg_Fire_01", PalID: "Kitsunebi", Level: 12 },
             { EggID: "PalEgg_Dark_01", PalTemplate: "reward.json" },
           ],
         }),
@@ -432,7 +432,9 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     method: "POST",
     url: "/api/servers/server-a/paldefender/players/player-1/pal-eggs",
     payload: {
-      palEggs: [{ mode: "pal-id", eggId: "PalEgg_Fire_01", palId: "Foxparks" }],
+      palEggs: [
+        { mode: "pal-id", eggId: "PalEgg_Fire_01", palId: "Kitsunebi" },
+      ],
     },
   });
   assert.equal(givePalEggs.statusCode, 401);
@@ -738,7 +740,7 @@ test("PalDefender Pal provisioning routes validate and normalize both contracts"
         {
           mode: "pal-id",
           eggId: "PalEgg_Fire_01",
-          palId: "Foxparks",
+          palId: "Kitsunebi",
           level: 12,
         },
         {
@@ -755,14 +757,14 @@ test("PalDefender Pal provisioning routes validate and normalize both contracts"
   for (const payload of [
     {},
     { palEggs: [] },
-    { palEggs: [{ mode: "pal-id", eggId: "bad id", palId: "Foxparks" }] },
+    { palEggs: [{ mode: "pal-id", eggId: "bad id", palId: "Kitsunebi" }] },
     { palEggs: [{ mode: "pal-id", eggId: "PalEgg_Fire_01" }] },
     {
       palEggs: [
         {
           mode: "pal-id",
           eggId: "PalEgg_Fire_01",
-          palId: "Foxparks",
+          palId: "Kitsunebi",
           palTemplate: "also.json",
         },
       ],
@@ -791,7 +793,9 @@ test("PalDefender Pal provisioning routes validate and normalize both contracts"
     url: "/api/servers/server-a/paldefender/players/rejected/pal-eggs",
     headers,
     payload: {
-      palEggs: [{ mode: "pal-id", eggId: "PalEgg_Fire_01", palId: "Foxparks" }],
+      palEggs: [
+        { mode: "pal-id", eggId: "PalEgg_Fire_01", palId: "Kitsunebi" },
+      ],
     },
   });
   assert.equal(rejected.statusCode, 400);

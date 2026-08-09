@@ -767,15 +767,14 @@ export function PalDefenderPlayerWorkspace({
                 placeholder="For example: CopperIngot"
                 value={grant.itemId}
                 disabled={Boolean(submittingAction)}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
                   setItemGrants((current) =>
                     current.map((item, itemIndex) =>
-                      itemIndex === index
-                        ? { ...item, itemId: event.currentTarget.value }
-                        : item,
+                      itemIndex === index ? { ...item, itemId: value } : item,
                     ),
-                  )
-                }
+                  );
+                }}
                 style={{ flex: 1 }}
               />
               <NumberInput
@@ -904,12 +903,13 @@ export function PalDefenderPlayerWorkspace({
             placeholder="For example: Anubis"
             value={palGrant.palId}
             disabled={Boolean(submittingAction)}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.currentTarget.value;
               setPalGrant((current) => ({
                 ...current,
-                palId: event.currentTarget.value,
-              }))
-            }
+                palId: value,
+              }));
+            }}
           />
           <NumberInput
             label="Level"
@@ -1107,38 +1107,47 @@ export function PalDefenderPlayerWorkspace({
             placeholder="For example: PalEgg_Fire_01"
             value={palEggGrant.eggId}
             disabled={Boolean(submittingAction)}
-            onChange={(event) =>
+            onChange={(event) => {
+              const value = event.currentTarget.value;
               setPalEggGrant((current) => ({
                 ...current,
-                eggId: event.currentTarget.value,
-              }))
-            }
+                eggId: value,
+              }));
+            }}
           />
           {palEggGrant.mode === "pal-id" ? (
-            <TextInput
-              label="Pal ID"
-              placeholder="For example: Foxparks"
-              value={palEggGrant.palId}
-              disabled={Boolean(submittingAction)}
-              onChange={(event) =>
-                setPalEggGrant((current) => ({
-                  ...current,
-                  palId: event.currentTarget.value,
-                }))
-              }
-            />
+            <>
+              <Text size="sm" c="dimmed">
+                Enter the internal Pal ID, not the display name. For example,
+                Foxparks uses the internal ID Kitsunebi.
+              </Text>
+              <TextInput
+                label="Internal Pal ID"
+                placeholder="For example: Kitsunebi"
+                value={palEggGrant.palId}
+                disabled={Boolean(submittingAction)}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setPalEggGrant((current) => ({
+                    ...current,
+                    palId: value,
+                  }));
+                }}
+              />
+            </>
           ) : (
             <TextInput
               label="Pal template filename"
               placeholder="For example: dark_event_reward.json"
               value={palEggGrant.palTemplate}
               disabled={Boolean(submittingAction)}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = event.currentTarget.value;
                 setPalEggGrant((current) => ({
                   ...current,
-                  palTemplate: event.currentTarget.value,
-                }))
-              }
+                  palTemplate: value,
+                }));
+              }}
             />
           )}
           <NumberInput
