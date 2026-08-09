@@ -33,6 +33,28 @@ For normal feature work:
 
 Do not duplicate expensive CI work locally before opening the PR. Never target `main` or merge a PR unless the project owner explicitly directs it.
 
+## GitHub / MCP workflow
+
+Prefer GitHub MCP for GitHub-native operations when the required capability is available, including:
+
+- repository metadata
+- issue lookup and updates
+- pull request lookup and updates
+- CI / GitHub Actions status and checks
+
+Use local git CLI for local repository operations such as:
+
+- branch creation
+- status/diff inspection
+- staging
+- commits
+- fetch/pull
+- push
+
+Use gh CLI only when GitHub MCP does not expose the required operation, especially GitHub Projects v2 field/status updates.
+
+Do not use gh CLI as the default substitute when a corresponding GitHub MCP tool is available.
+
 ## GitHub Issue and PR Lifecycle
 
 Every feature and fix must maintain its GitHub Issue and Project state throughout development.
@@ -61,18 +83,20 @@ Do not rely only on mentioning an issue number in prose. Also ensure:
 - genuinely blocked issues remain open and are marked blocked rather than Review or Done
 - the PR description accurately reflects UAT status and known limitations
 
-### After the project owner reports a merge
+### Successful live UAT lifecycle
 
-Perform post-merge housekeeping automatically before beginning new feature work. Because feature PRs merge into `dev` rather than the repository default branch, GitHub may not automatically close issues referenced by `Closes`.
+After the project owner reports successful live UAT for merged work:
 
-For every issue completed by the merged PR:
+1. Verify the implementation is merged into `dev`.
+2. Close all linked completed GitHub issues with state reason "completed".
+3. Update the PalCenter Roadmap project item status from UAT/Review to Done.
+4. Verify any parent epic/sub-issue progress reflects the completed issue.
+5. Remove obsolete workflow/blocking labels if applicable.
+6. Do not merge pull requests unless the owner explicitly directs it.
+7. Report all issue and project-status changes made.
 
-1. Confirm the PR is actually merged into `origin/dev`.
-2. Confirm the merged code contains the intended implementation.
-3. Close the GitHub issue as completed if it remains open.
-4. Move the issue to Done in PalCenter Project #2.
-5. Remove temporary `blocked` labels when no longer applicable.
-6. Verify the final issue state.
+Use GitHub MCP for issue/PR verification and issue updates.
+Use gh CLI only when needed to update Projects v2 fields.
 
 Do not create another PR for post-merge housekeeping.
 
@@ -171,6 +195,28 @@ When PalCenter UAT fails with `VALIDATION_FAILED` or another unclear provider er
 6. Use a direct REST comparison when needed.
 
 Once the cause is corrected, final UAT must still be repeated through the PalCenter UI.
+
+## Browser / UAT tooling
+
+Use Playwright MCP for browser automation and UI inspection when automated browser verification is appropriate.
+
+Do not substitute curl or Invoke-WebRequest for browser/UI validation when the task specifically requires rendered UI behavior.
+
+For live Palworld/PalDefender UAT that changes real server or game state, continue to follow the existing owner-operated UAT rules in AGENTS.md.
+
+## Workspace discipline
+
+All PalCenter development must use the canonical repository under `C:\Development`.
+
+Do not create project clones, worktrees, build staging directories, or UAT workspaces under:
+- the root of `C:\`
+- the user profile
+- Documents
+- arbitrary temporary locations
+
+If an isolated workspace is genuinely required, place it under `C:\Development` and clean it up when the task is complete.
+
+Clean up processes, development servers, containers, and Playwright browser sessions created during testing unless the project owner explicitly asks that they remain running for manual UAT.
 
 ## Terminology
 
