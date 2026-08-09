@@ -52,6 +52,8 @@ import {
   palDefenderRelicTypes,
   getPalDefenderTechnology,
   givePalDefenderItems,
+  givePalDefenderPalEggs,
+  givePalDefenderPalTemplates,
   givePalDefenderPals,
   kickPalDefenderPlayer,
   type PalDefenderInventoryItem,
@@ -68,8 +70,13 @@ import {
 } from "../lib/paldefender-items";
 import {
   normalizePalGrant,
+  normalizePalEggGrant,
+  validatePalEggGrant,
   validatePalGrant,
+  validatePalTemplateGrant,
+  type PalEggGrantInput,
   type PalGrantInput,
+  type PalTemplateGrantInput,
 } from "../lib/paldefender-pals";
 
 type TabName =
@@ -128,8 +135,33 @@ export function PalDefenderPlayerWorkspace({
     level: 1,
   });
   const [palGrantError, setPalGrantError] = useState("");
+  const [givePalTemplateOpened, setGivePalTemplateOpened] = useState(false);
+  const [
+    givePalTemplateConfirmationOpened,
+    setGivePalTemplateConfirmationOpened,
+  ] = useState(false);
+  const [palTemplateGrant, setPalTemplateGrant] =
+    useState<PalTemplateGrantInput>({ palTemplate: "" });
+  const [palTemplateGrantError, setPalTemplateGrantError] = useState("");
+  const [givePalEggOpened, setGivePalEggOpened] = useState(false);
+  const [givePalEggConfirmationOpened, setGivePalEggConfirmationOpened] =
+    useState(false);
+  const [palEggGrant, setPalEggGrant] = useState<PalEggGrantInput>({
+    mode: "pal-id",
+    eggId: "",
+    palId: "",
+    palTemplate: "",
+    level: "",
+  });
+  const [palEggGrantError, setPalEggGrantError] = useState("");
   const [submittingAction, setSubmittingAction] = useState<
-    "kick" | "ban" | "give-items" | "give-pal" | null
+    | "kick"
+    | "ban"
+    | "give-items"
+    | "give-pal"
+    | "give-pal-template"
+    | "give-pal-egg"
+    | null
   >(null);
 
   const loadPlayer = useCallback(async () => {
@@ -199,6 +231,22 @@ export function PalDefenderPlayerWorkspace({
     setProgression(initial());
     void loadPlayer();
   }, [loadPlayer, serverId]);
+  useEffect(() => {
+    setGivePalTemplateOpened(false);
+    setGivePalTemplateConfirmationOpened(false);
+    setPalTemplateGrant({ palTemplate: "" });
+    setPalTemplateGrantError("");
+    setGivePalEggOpened(false);
+    setGivePalEggConfirmationOpened(false);
+    setPalEggGrant({
+      mode: "pal-id",
+      eggId: "",
+      palId: "",
+      palTemplate: "",
+      level: "",
+    });
+    setPalEggGrantError("");
+  }, [playerId, serverId]);
   useEffect(() => {
     if (
       activeTab === "inventory" &&
@@ -381,6 +429,92 @@ export function PalDefenderPlayerWorkspace({
     }
   };
 
+  const reviewPalTemplateGrant = () => {
+    const error = validatePalTemplateGrant(palTemplateGrant);
+    setPalTemplateGrantError(error ?? "");
+    if (!error) setGivePalTemplateConfirmationOpened(true);
+  };
+
+  const givePalTemplate = async () => {
+    if (submittingAction) return;
+    const template = palTemplateGrant.palTemplate.trim();
+    setSubmittingAction("give-pal-template");
+    try {
+      const result = await givePalDefenderPalTemplates(serverId!, playerId, [
+        template,
+      ]);
+      setGivePalTemplateConfirmationOpened(false);
+      setGivePalTemplateOpened(false);
+      setPalTemplateGrant({ palTemplate: "" });
+      setPalTemplateGrantError("");
+      notifications.show({
+        color: "green",
+        title: "Template Pal granted",
+        message: `Granted ${result.grantedPalTemplates} template Pal to ${player.data?.name ?? "the player"}.`,
+      });
+      await Promise.all([
+        loadPals(),
+        loadPlayer(),
+        getPalDefenderPlayers(serverId!),
+      ]);
+    } catch (error) {
+      setGivePalTemplateConfirmationOpened(false);
+      notifications.show({
+        color: "red",
+        title: "Unable to give template Pal",
+        message:
+          error instanceof Error
+            ? error.message
+            : "PalCenter could not grant this template Pal.",
+      });
+    } finally {
+      setSubmittingAction(null);
+    }
+  };
+
+  const reviewPalEggGrant = () => {
+    const error = validatePalEggGrant(palEggGrant);
+    setPalEggGrantError(error ?? "");
+    if (!error) setGivePalEggConfirmationOpened(true);
+  };
+
+  const givePalEgg = async () => {
+    if (submittingAction) return;
+    const grant = normalizePalEggGrant(palEggGrant);
+    setSubmittingAction("give-pal-egg");
+    try {
+      const result = await givePalDefenderPalEggs(serverId!, playerId, [grant]);
+      setGivePalEggConfirmationOpened(false);
+      setGivePalEggOpened(false);
+      setPalEggGrant({
+        mode: "pal-id",
+        eggId: "",
+        palId: "",
+        palTemplate: "",
+        level: "",
+      });
+      setPalEggGrantError("");
+      notifications.show({
+        color: "green",
+        title: "Pal egg granted",
+        message: `Granted ${result.grantedPalEggs} Pal egg to ${player.data?.name ?? "the player"}.`,
+      });
+      await Promise.all([loadPlayer(), getPalDefenderPlayers(serverId!)]);
+    } catch (error) {
+      setGivePalEggConfirmationOpened(false);
+      notifications.show({
+        color: "red",
+        title: "Unable to give Pal egg",
+        message:
+          error instanceof Error
+            ? error.message
+            : "PalCenter could not grant this Pal egg.",
+      });
+    } finally {
+      setSubmittingAction(null);
+    }
+  };
+
   return (
     <ApplicationShell>
       <Stack gap="xl">
@@ -469,7 +603,31 @@ export function PalDefenderPlayerWorkspace({
               <Inventory state={inventory} refresh={loadInventory} />
             </Tabs.Panel>
             <Tabs.Panel value="pals" pt="xl">
-              <Pals state={pals} refresh={loadPals} />
+              <Stack gap="lg">
+                <Group>
+                  <Button
+                    leftSection={<IconSparkles size={18} />}
+                    onClick={() => setGivePalOpened(true)}
+                  >
+                    Give Pal
+                  </Button>
+                  <Button
+                    variant="light"
+                    leftSection={<IconSparkles size={18} />}
+                    onClick={() => setGivePalTemplateOpened(true)}
+                  >
+                    Give Pal from Template
+                  </Button>
+                  <Button
+                    variant="light"
+                    leftSection={<IconGift size={18} />}
+                    onClick={() => setGivePalEggOpened(true)}
+                  >
+                    Give Pal Egg
+                  </Button>
+                </Group>
+                <Pals state={pals} refresh={loadPals} />
+              </Stack>
             </Tabs.Panel>
             <Tabs.Panel value="technology" pt="xl">
               <Technology state={technology} refresh={loadTechnology} />
@@ -497,19 +655,6 @@ export function PalDefenderPlayerWorkspace({
                   w="fit-content"
                 >
                   Give Item
-                </Button>
-                <div>
-                  <Title order={3}>Give Pal</Title>
-                  <Text c="dimmed" size="sm">
-                    Grant a Pal by its internal PalID and level.
-                  </Text>
-                </div>
-                <Button
-                  leftSection={<IconSparkles size={18} />}
-                  onClick={() => setGivePalOpened(true)}
-                  w="fit-content"
-                >
-                  Give Pal
                 </Button>
                 <div>
                   <Title order={3}>Kick Player</Title>
@@ -836,6 +981,233 @@ export function PalDefenderPlayerWorkspace({
               onClick={() => void givePal()}
             >
               Give Pal
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={givePalTemplateOpened}
+        onClose={() => {
+          if (!submittingAction) setGivePalTemplateOpened(false);
+        }}
+        title="Give Pal from Template"
+        centered
+        closeOnClickOutside={!submittingAction}
+        closeOnEscape={!submittingAction}
+      >
+        <Stack>
+          <Text>
+            Recipient:{" "}
+            <Text span fw={700}>
+              {player.data?.name ?? playerId}
+            </Text>
+          </Text>
+          <Text size="sm" c="dimmed">
+            Enter a template filename already installed in PalDefender’s
+            Pals/Templates folder. PalDefender does not provide a REST endpoint
+            for listing available templates.
+          </Text>
+          <TextInput
+            label="Template filename"
+            placeholder="For example: starter_pengullet.json"
+            value={palTemplateGrant.palTemplate}
+            disabled={Boolean(submittingAction)}
+            onChange={(event) =>
+              setPalTemplateGrant({ palTemplate: event.currentTarget.value })
+            }
+          />
+          {palTemplateGrantError && (
+            <Alert color="red">{palTemplateGrantError}</Alert>
+          )}
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setGivePalTemplateOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={reviewPalTemplateGrant}>Review Grant</Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={givePalTemplateConfirmationOpened}
+        onClose={() => {
+          if (!submittingAction) setGivePalTemplateConfirmationOpened(false);
+        }}
+        title="Confirm Template Pal Grant"
+        centered
+        closeOnClickOutside={!submittingAction}
+        closeOnEscape={!submittingAction}
+      >
+        <Stack>
+          <Text>
+            Give one Pal from this server template to{" "}
+            <Text span fw={700}>
+              {player.data?.name ?? playerId}
+            </Text>
+            ?
+          </Text>
+          <Text ff="monospace">
+            Template: {palTemplateGrant.palTemplate.trim()}
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              disabled={submittingAction === "give-pal-template"}
+              onClick={() => setGivePalTemplateConfirmationOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={submittingAction === "give-pal-template"}
+              disabled={submittingAction === "give-pal-template"}
+              onClick={() => void givePalTemplate()}
+            >
+              Give Template Pal
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={givePalEggOpened}
+        onClose={() => {
+          if (!submittingAction) setGivePalEggOpened(false);
+        }}
+        title="Give Pal Egg"
+        centered
+        closeOnClickOutside={!submittingAction}
+        closeOnEscape={!submittingAction}
+      >
+        <Stack>
+          <Text>
+            Recipient:{" "}
+            <Text span fw={700}>
+              {player.data?.name ?? playerId}
+            </Text>
+          </Text>
+          <Select
+            label="Egg contents"
+            data={[
+              { value: "pal-id", label: "Pal ID" },
+              { value: "template", label: "Pal template" },
+            ]}
+            value={palEggGrant.mode}
+            disabled={Boolean(submittingAction)}
+            allowDeselect={false}
+            onChange={(value) =>
+              setPalEggGrant((current) => ({
+                ...current,
+                mode: value === "template" ? "template" : "pal-id",
+              }))
+            }
+          />
+          <TextInput
+            label="Egg item ID"
+            placeholder="For example: PalEgg_Fire_01"
+            value={palEggGrant.eggId}
+            disabled={Boolean(submittingAction)}
+            onChange={(event) =>
+              setPalEggGrant((current) => ({
+                ...current,
+                eggId: event.currentTarget.value,
+              }))
+            }
+          />
+          {palEggGrant.mode === "pal-id" ? (
+            <TextInput
+              label="Pal ID"
+              placeholder="For example: Foxparks"
+              value={palEggGrant.palId}
+              disabled={Boolean(submittingAction)}
+              onChange={(event) =>
+                setPalEggGrant((current) => ({
+                  ...current,
+                  palId: event.currentTarget.value,
+                }))
+              }
+            />
+          ) : (
+            <TextInput
+              label="Pal template filename"
+              placeholder="For example: dark_event_reward.json"
+              value={palEggGrant.palTemplate}
+              disabled={Boolean(submittingAction)}
+              onChange={(event) =>
+                setPalEggGrant((current) => ({
+                  ...current,
+                  palTemplate: event.currentTarget.value,
+                }))
+              }
+            />
+          )}
+          <NumberInput
+            label="Level (optional)"
+            min={1}
+            step={1}
+            allowDecimal={false}
+            value={palEggGrant.level}
+            disabled={Boolean(submittingAction)}
+            onChange={(value) =>
+              setPalEggGrant((current) => ({ ...current, level: value }))
+            }
+          />
+          {palEggGrantError && <Alert color="red">{palEggGrantError}</Alert>}
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setGivePalEggOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={reviewPalEggGrant}>Review Grant</Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={givePalEggConfirmationOpened}
+        onClose={() => {
+          if (!submittingAction) setGivePalEggConfirmationOpened(false);
+        }}
+        title="Confirm Pal Egg Grant"
+        centered
+        closeOnClickOutside={!submittingAction}
+        closeOnEscape={!submittingAction}
+      >
+        <Stack>
+          <Text>
+            Give one Pal egg to{" "}
+            <Text span fw={700}>
+              {player.data?.name ?? playerId}
+            </Text>
+            ?
+          </Text>
+          <Text ff="monospace">Egg ID: {palEggGrant.eggId.trim()}</Text>
+          <Text ff="monospace">
+            {palEggGrant.mode === "pal-id"
+              ? `Pal ID: ${palEggGrant.palId.trim()}`
+              : `Template: ${palEggGrant.palTemplate.trim()}`}
+          </Text>
+          <Text ff="monospace">
+            Level:{" "}
+            {palEggGrant.level === ""
+              ? "PalDefender default"
+              : palEggGrant.level}
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              disabled={submittingAction === "give-pal-egg"}
+              onClick={() => setGivePalEggConfirmationOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={submittingAction === "give-pal-egg"}
+              disabled={submittingAction === "give-pal-egg"}
+              onClick={() => void givePalEgg()}
+            >
+              Give Pal Egg
             </Button>
           </Group>
         </Stack>

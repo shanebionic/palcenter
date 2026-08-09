@@ -8,6 +8,8 @@ import {
   type PalDefenderBroadcastResult,
   type PalDefenderGiveItemsResult,
   type PalDefenderGivePalsResult,
+  type PalDefenderGivePalTemplatesResult,
+  type PalDefenderGivePalEggsResult,
   type PalDefenderGuild,
   type PalDefenderGuildDetails,
   type PalDefenderInventoryItem,
@@ -17,6 +19,7 @@ import {
   type PalDefenderModerationState,
   type PalDefenderPal,
   type PalDefenderPalGrant,
+  type PalDefenderPalEggGrant,
   type PalDefenderPlayer,
   type PalDefenderPlayerDetails,
   type PalDefenderProgression,
@@ -241,6 +244,25 @@ export class PalDefenderService {
     pals: PalDefenderPalGrant[],
   ): Promise<PalDefenderGivePalsResult> {
     return (await this.clientForServer(serverId)).givePals(id, pals);
+  }
+
+  async givePalTemplates(
+    serverId: string,
+    id: string,
+    palTemplates: string[],
+  ): Promise<PalDefenderGivePalTemplatesResult> {
+    return (await this.clientForServer(serverId)).givePalTemplates(
+      id,
+      palTemplates,
+    );
+  }
+
+  async givePalEggs(
+    serverId: string,
+    id: string,
+    palEggs: PalDefenderPalEggGrant[],
+  ): Promise<PalDefenderGivePalEggsResult> {
+    return (await this.clientForServer(serverId)).givePalEggs(id, palEggs);
   }
 
   private async testConnection(

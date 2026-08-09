@@ -313,6 +313,12 @@ const giveItemsResponseSchema = z.object({
 const givePalsResponseSchema = z.object({
   Granted: z.object({ Pals: z.number().int().nonnegative() }),
 });
+const givePalTemplatesResponseSchema = z.object({
+  Granted: z.object({ PalTemplates: z.number().int().nonnegative() }),
+});
+const givePalEggsResponseSchema = z.object({
+  Granted: z.object({ PalEggs: z.number().int().nonnegative() }),
+});
 
 export interface PalDefenderPlayer {
   name: string;
@@ -474,6 +480,24 @@ export interface PalDefenderPalGrant {
 export interface PalDefenderGivePalsResult {
   playerId: string;
   grantedPals: number;
+}
+export interface PalDefenderGivePalTemplatesResult {
+  playerId: string;
+  grantedPalTemplates: number;
+}
+export type PalDefenderPalEggGrant = {
+  eggId: string;
+  level?: number;
+} & (
+  | { palId: string; palTemplate?: never }
+  | {
+      palId?: never;
+      palTemplate: string;
+    }
+);
+export interface PalDefenderGivePalEggsResult {
+  playerId: string;
+  grantedPalEggs: number;
 }
 export interface PalDefenderGuildCamp {
   id: string;
@@ -1038,6 +1062,46 @@ export class PalDefenderClient {
       },
     );
     return { playerId, grantedPals: response.Granted.Pals };
+  }
+
+  async givePalTemplates(
+    playerId: string,
+    palTemplates: string[],
+  ): Promise<PalDefenderGivePalTemplatesResult> {
+    const response = await this.parse(
+      givePalTemplatesResponseSchema,
+      `/give/paltemplate/${encodePlayerId(playerId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ PalTemplates: palTemplates }),
+      },
+    );
+    return {
+      playerId,
+      grantedPalTemplates: response.Granted.PalTemplates,
+    };
+  }
+
+  async givePalEggs(
+    playerId: string,
+    palEggs: PalDefenderPalEggGrant[],
+  ): Promise<PalDefenderGivePalEggsResult> {
+    const response = await this.parse(
+      givePalEggsResponseSchema,
+      `/give/paleggs/${encodePlayerId(playerId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          PalEggs: palEggs.map((egg) => ({
+            EggID: egg.eggId,
+            ...(egg.palId ? { PalID: egg.palId } : {}),
+            ...(egg.palTemplate ? { PalTemplate: egg.palTemplate } : {}),
+            ...(egg.level === undefined ? {} : { Level: egg.level }),
+          })),
+        }),
+      },
+    );
+    return { playerId, grantedPalEggs: response.Granted.PalEggs };
   }
 
   private moderatePlayer<TSchema extends z.ZodTypeAny>(

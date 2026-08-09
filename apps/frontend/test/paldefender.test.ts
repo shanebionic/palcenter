@@ -18,6 +18,8 @@ import {
   getPalDefenderGuild,
   getPalDefenderProgression,
   givePalDefenderItems,
+  givePalDefenderPalEggs,
+  givePalDefenderPalTemplates,
   givePalDefenderPals,
   givePalDefenderProgression,
   kickPalDefenderPlayer,
@@ -30,7 +32,13 @@ import {
   normalizeItemGrants,
   validateItemGrants,
 } from "../lib/paldefender-items";
-import { normalizePalGrant, validatePalGrant } from "../lib/paldefender-pals";
+import {
+  normalizePalEggGrant,
+  normalizePalGrant,
+  validatePalEggGrant,
+  validatePalGrant,
+  validatePalTemplateGrant,
+} from "../lib/paldefender-pals";
 
 test("builds and loads an encoded PalDefender base details route", async () => {
   assert.equal(
@@ -398,6 +406,97 @@ test("submits Pal grants to the selected PalDefender player", async () => {
       requestBody,
       JSON.stringify({ pals: [{ palId: "Anubis", level: 35 }] }),
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("validates documented Pal template and egg inputs", () => {
+  assert.equal(
+    validatePalTemplateGrant({ palTemplate: "" }),
+    "Enter a Pal template filename.",
+  );
+  assert.ok(validatePalTemplateGrant({ palTemplate: "../unsafe.json" }));
+  assert.equal(
+    validatePalTemplateGrant({ palTemplate: " reward-01.json " }),
+    null,
+  );
+
+  assert.equal(
+    validatePalEggGrant({
+      mode: "pal-id",
+      eggId: "PalEgg_Fire_01",
+      palId: "Foxparks",
+      palTemplate: "",
+      level: "",
+    }),
+    null,
+  );
+  assert.equal(
+    validatePalEggGrant({
+      mode: "template",
+      eggId: "PalEgg_Dark_01",
+      palId: "",
+      palTemplate: " reward.json ",
+      level: "12",
+    }),
+    null,
+  );
+  assert.deepEqual(
+    normalizePalEggGrant({
+      mode: "template",
+      eggId: " PalEgg_Dark_01 ",
+      palId: "",
+      palTemplate: " reward.json ",
+      level: "12",
+    }),
+    {
+      mode: "template",
+      eggId: "PalEgg_Dark_01",
+      palTemplate: "reward.json",
+      level: 12,
+    },
+  );
+});
+
+test("submits server-scoped Pal template and egg grants", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ url: string; body: string }> = [];
+  globalThis.fetch = async (input, init) => {
+    requests.push({ url: String(input), body: String(init?.body ?? "") });
+    return requests.length === 1
+      ? Response.json({ playerId: "player-1", grantedPalTemplates: 1 })
+      : Response.json({ playerId: "player-1", grantedPalEggs: 1 });
+  };
+  try {
+    await givePalDefenderPalTemplates("server-a", "player-1", ["reward.json"]);
+    await givePalDefenderPalEggs("server-b", "player-1", [
+      {
+        mode: "pal-id",
+        eggId: "PalEgg_Fire_01",
+        palId: "Foxparks",
+        level: 12,
+      },
+    ]);
+    assert.deepEqual(requests, [
+      {
+        url: "/api/servers/server-a/paldefender/players/player-1/pal-templates",
+        body: JSON.stringify({ palTemplates: ["reward.json"] }),
+      },
+      {
+        url: "/api/servers/server-b/paldefender/players/player-1/pal-eggs",
+        body: JSON.stringify({
+          palEggs: [
+            {
+              mode: "pal-id",
+              eggId: "PalEgg_Fire_01",
+              palId: "Foxparks",
+              level: 12,
+            },
+          ],
+        }),
+      },
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
   }

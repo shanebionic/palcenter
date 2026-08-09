@@ -908,6 +908,47 @@ export function givePalDefenderPals(
   );
 }
 
+export interface PalDefenderGivePalTemplatesResult {
+  playerId: string;
+  grantedPalTemplates: number;
+}
+
+export function givePalDefenderPalTemplates(
+  serverId: string,
+  playerId: string,
+  palTemplates: string[],
+): Promise<PalDefenderGivePalTemplatesResult> {
+  return jsonRequest<PalDefenderGivePalTemplatesResult>(
+    `${palDefenderPlayerPath(serverId, playerId)}/pal-templates`,
+    { palTemplates },
+  );
+}
+
+export type PalDefenderPalEggGrant =
+  | { mode: "pal-id"; eggId: string; palId: string; level?: number }
+  | {
+      mode: "template";
+      eggId: string;
+      palTemplate: string;
+      level?: number;
+    };
+
+export interface PalDefenderGivePalEggsResult {
+  playerId: string;
+  grantedPalEggs: number;
+}
+
+export function givePalDefenderPalEggs(
+  serverId: string,
+  playerId: string,
+  palEggs: PalDefenderPalEggGrant[],
+): Promise<PalDefenderGivePalEggsResult> {
+  return jsonRequest<PalDefenderGivePalEggsResult>(
+    `${palDefenderPlayerPath(serverId, playerId)}/pal-eggs`,
+    { palEggs },
+  );
+}
+
 export function broadcastPalDefenderMessage(
   serverId: string,
   message: string,
