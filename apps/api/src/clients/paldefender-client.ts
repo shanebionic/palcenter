@@ -76,6 +76,16 @@ const palsResponseSchema = z.object({
 const technologyResponseSchema = z.object({
   Techs: z.object({ Unlocked: z.array(z.string()).optional().default([]) }),
 });
+const learnTechnologyResponseSchema = z.object({
+  UnlockedCount: z.number().int().nonnegative(),
+  Unlocked: z.array(z.string()),
+  Skipped: z.array(z.string()),
+});
+const forgetTechnologyResponseSchema = z.object({
+  ForgottenCount: z.number().int().nonnegative(),
+  Forgotten: z.union([z.array(z.string()), z.literal("All")]),
+  Skipped: z.array(z.string()),
+});
 const countMapSchema = z.record(z.number().int().nonnegative());
 const progressionResponseSchema = z.object({
   Meta: z.object({ PlayerUID: z.string(), Player: z.string() }),
@@ -462,6 +472,12 @@ export interface PalDefenderModerationResult {
   target: string;
   kickedPlayers?: number;
 }
+export type PalDefenderTechnologySelection = string | string[] | "All";
+export interface PalDefenderTechnologyMutationResult {
+  changedCount: number;
+  changed: string[] | "All";
+  skipped: string[];
+}
 export interface PalDefenderBroadcastResult {
   success: boolean;
 }
@@ -674,6 +690,38 @@ export class PalDefenderClient {
       `/techs/${encodePlayerId(playerId)}`,
     );
     return response.Techs.Unlocked ?? [];
+  }
+
+  async learnTechnology(
+    playerId: string,
+    technology: PalDefenderTechnologySelection,
+  ): Promise<PalDefenderTechnologyMutationResult> {
+    const response = await this.parse(
+      learnTechnologyResponseSchema,
+      `/learntech/${encodePlayerId(playerId)}`,
+      { method: "POST", body: JSON.stringify({ Technology: technology }) },
+    );
+    return {
+      changedCount: response.UnlockedCount,
+      changed: response.Unlocked,
+      skipped: response.Skipped,
+    };
+  }
+
+  async forgetTechnology(
+    playerId: string,
+    technology: PalDefenderTechnologySelection,
+  ): Promise<PalDefenderTechnologyMutationResult> {
+    const response = await this.parse(
+      forgetTechnologyResponseSchema,
+      `/forgettech/${encodePlayerId(playerId)}`,
+      { method: "POST", body: JSON.stringify({ Technology: technology }) },
+    );
+    return {
+      changedCount: response.ForgottenCount,
+      changed: response.Forgotten,
+      skipped: response.Skipped,
+    };
   }
 
   async getProgression(playerId: string): Promise<PalDefenderProgression> {

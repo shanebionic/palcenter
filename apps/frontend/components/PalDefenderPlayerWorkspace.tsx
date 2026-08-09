@@ -8,6 +8,7 @@ import {
   Card,
   Group,
   Modal,
+  MultiSelect,
   NumberInput,
   Select,
   SimpleGrid,
@@ -51,6 +52,8 @@ import {
   givePalDefenderProgression,
   palDefenderRelicTypes,
   getPalDefenderTechnology,
+  learnPalDefenderTechnology,
+  forgetPalDefenderTechnology,
   givePalDefenderItems,
   givePalDefenderPalEggs,
   givePalDefenderPalTemplates,
@@ -630,7 +633,13 @@ export function PalDefenderPlayerWorkspace({
               </Stack>
             </Tabs.Panel>
             <Tabs.Panel value="technology" pt="xl">
-              <Technology state={technology} refresh={loadTechnology} />
+              <Technology
+                state={technology}
+                refresh={loadTechnology}
+                serverId={serverId}
+                playerId={playerId}
+                playerName={player.data?.name ?? "Player"}
+              />
             </Tabs.Panel>
             <Tabs.Panel value="progression" pt="xl">
               <Progression
@@ -1536,17 +1545,133 @@ function Pals({
 function Technology({
   state,
   refresh,
+  serverId,
+  playerId,
+  playerName,
 }: {
   state: Loadable<string[]>;
   refresh: () => Promise<void>;
+  serverId: string;
+  playerId: string;
+  playerName: string;
 }) {
   const [search, setSearch] = useState("");
+  const [action, setAction] = useState<"learn" | "forget" | null>(null);
+  const [scope, setScope] = useState<"selected" | "all">("selected");
+  const [learnIds, setLearnIds] = useState("");
+  const [forgetIds, setForgetIds] = useState<string[]>([]);
+  const [confirmationOpened, setConfirmationOpened] = useState(false);
+  const [confirmationText, setConfirmationText] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const technologies = (state.data ?? [])
     .filter((id) => id.toLowerCase().includes(search.toLowerCase()))
     .sort();
+  const selectedIds =
+    action === "forget"
+      ? forgetIds
+      : [...new Set(learnIds.split(/[\s,]+/).map((id) => id.trim()))].filter(
+          Boolean,
+        );
+  const resetAction = () => {
+    setAction(null);
+    setScope("selected");
+    setLearnIds("");
+    setForgetIds([]);
+    setConfirmationOpened(false);
+    setConfirmationText("");
+    setActionError("");
+  };
+  useEffect(() => {
+    setAction(null);
+    setScope("selected");
+    setLearnIds("");
+    setForgetIds([]);
+    setConfirmationOpened(false);
+    setConfirmationText("");
+    setActionError("");
+    setSubmitting(false);
+  }, [playerId, serverId]);
+  const reviewAction = () => {
+    if (scope === "selected") {
+      if (!selectedIds.length) {
+        setActionError("Select or enter at least one technology ID.");
+        return;
+      }
+      if (
+        selectedIds.some(
+          (id) => id === "All" || !/^[A-Za-z0-9_]{1,256}$/.test(id),
+        )
+      ) {
+        setActionError(
+          'Technology IDs may contain letters, numbers, and underscores. "All" cannot be included in a selection.',
+        );
+        return;
+      }
+    }
+    setActionError("");
+    setConfirmationOpened(true);
+  };
+  const submitAction = async () => {
+    if (!action || submitting) return;
+    if (
+      action === "forget" &&
+      scope === "all" &&
+      confirmationText !== "FORGET ALL"
+    ) {
+      setActionError('Type "FORGET ALL" exactly to continue.');
+      return;
+    }
+    setSubmitting(true);
+    const mutation =
+      scope === "all"
+        ? ({ scope: "all" } as const)
+        : ({ scope: "selected", technologyIds: selectedIds } as const);
+    try {
+      const result =
+        action === "learn"
+          ? await learnPalDefenderTechnology(serverId, playerId, mutation)
+          : await forgetPalDefenderTechnology(serverId, playerId, mutation);
+      notifications.show({
+        color: "green",
+        title:
+          action === "learn" ? "Technology learned" : "Technology forgotten",
+        message: `${result.changedCount} technolog${result.changedCount === 1 ? "y" : "ies"} changed. Refreshing authoritative state.`,
+      });
+      await refresh();
+      resetAction();
+    } catch (error) {
+      const detail = message(error);
+      setActionError(detail);
+      notifications.show({
+        color: "red",
+        title:
+          action === "learn"
+            ? "Unable to learn technology"
+            : "Unable to forget technology",
+        message: detail,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
   return (
     <Stack>
-      <Toolbar search={search} setSearch={setSearch} refresh={refresh} />
+      <Group justify="space-between" align="end">
+        <Toolbar search={search} setSearch={setSearch} refresh={refresh} />
+        <Group>
+          <Button variant="light" onClick={() => setAction("learn")}>
+            Learn Technology
+          </Button>
+          <Button
+            color="red"
+            variant="light"
+            onClick={() => setAction("forget")}
+          >
+            Forget Technology
+          </Button>
+        </Group>
+      </Group>
       <State
         state={{ ...state, data: technologies }}
         empty="No unlocked technologies were returned."
@@ -1561,6 +1686,130 @@ function Technology({
           </SimpleGrid>
         )}
       </State>
+      <Modal
+        opened={action !== null && !confirmationOpened}
+        onClose={resetAction}
+        title={action === "learn" ? "Learn Technology" : "Forget Technology"}
+      >
+        <Stack>
+          <Text size="sm">
+            {action === "learn"
+              ? "Unlock technologies for"
+              : "Remove unlocked technologies from"}{" "}
+            <strong>{playerName}</strong>.
+          </Text>
+          <Select
+            label="Scope"
+            value={scope}
+            onChange={(value) => setScope(value === "all" ? "all" : "selected")}
+            data={[
+              { value: "selected", label: "Selected technologies" },
+              {
+                value: "all",
+                label:
+                  action === "learn"
+                    ? "All technologies"
+                    : "Forget all technologies",
+              },
+            ]}
+          />
+          {scope === "all" ? (
+            <Alert color={action === "forget" ? "red" : "orange"}>
+              {action === "forget"
+                ? "This removes every unlocked technology from the player. This is a destructive, account-wide operation."
+                : "This unlocks every technology supported by the server for this player."}
+            </Alert>
+          ) : action === "forget" ? (
+            <MultiSelect
+              label="Unlocked technology IDs"
+              description="Select one or more IDs returned by the live Technology endpoint."
+              data={(state.data ?? []).map((id) => ({ value: id, label: id }))}
+              value={forgetIds}
+              onChange={setForgetIds}
+              searchable
+              nothingFoundMessage="No unlocked technology matches"
+            />
+          ) : (
+            <Textarea
+              label="Technology IDs"
+              description="Enter one or more exact TechIDs separated by commas or new lines."
+              value={learnIds}
+              onChange={(event) => setLearnIds(event.currentTarget.value)}
+              minRows={4}
+              placeholder="Arrow"
+            />
+          )}
+          {actionError && <Alert color="red">{actionError}</Alert>}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={resetAction}>
+              Cancel
+            </Button>
+            <Button
+              color={action === "forget" ? "red" : "blue"}
+              onClick={reviewAction}
+            >
+              Continue
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={confirmationOpened}
+        onClose={() => !submitting && setConfirmationOpened(false)}
+        title={`Confirm ${action === "learn" ? "Learn Technology" : "Forget Technology"}`}
+      >
+        <Stack>
+          <Text>
+            {action === "learn" ? "Learn" : "Forget"}{" "}
+            <strong>
+              {scope === "all"
+                ? "all technologies"
+                : `${selectedIds.length} selected technolog${selectedIds.length === 1 ? "y" : "ies"}`}
+            </strong>{" "}
+            for <strong>{playerName}</strong>?
+          </Text>
+          {scope === "selected" && (
+            <Text size="sm" ff="monospace">
+              {selectedIds.join(", ")}
+            </Text>
+          )}
+          {action === "forget" && scope === "all" && (
+            <TextInput
+              label='Type "FORGET ALL" to confirm'
+              value={confirmationText}
+              onChange={(event) =>
+                setConfirmationText(event.currentTarget.value)
+              }
+              error={actionError || undefined}
+            />
+          )}
+          {actionError && !(action === "forget" && scope === "all") && (
+            <Alert color="red">{actionError}</Alert>
+          )}
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              disabled={submitting}
+              onClick={() => setConfirmationOpened(false)}
+            >
+              Back
+            </Button>
+            <Button
+              color={action === "forget" ? "red" : "blue"}
+              loading={submitting}
+              disabled={
+                submitting ||
+                (action === "forget" &&
+                  scope === "all" &&
+                  confirmationText !== "FORGET ALL")
+              }
+              onClick={() => void submitAction()}
+            >
+              {action === "learn" ? "Learn Technology" : "Forget Technology"}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

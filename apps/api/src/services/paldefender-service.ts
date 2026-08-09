@@ -25,6 +25,8 @@ import {
   type PalDefenderProgression,
   type PalDefenderProgressionGrant,
   type PalDefenderGiveProgressionResult,
+  type PalDefenderTechnologyMutationResult,
+  type PalDefenderTechnologySelection,
 } from "../clients/paldefender-client.js";
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
 import type { StoredConnection } from "../types/connections.js";
@@ -146,6 +148,28 @@ export class PalDefenderService {
 
   async technology(serverId: string, id: string): Promise<string[]> {
     return (await this.clientForServer(serverId)).getTechnology(id);
+  }
+
+  async learnTechnology(
+    serverId: string,
+    id: string,
+    technology: PalDefenderTechnologySelection,
+  ): Promise<PalDefenderTechnologyMutationResult> {
+    return (await this.clientForServer(serverId)).learnTechnology(
+      id,
+      technology,
+    );
+  }
+
+  async forgetTechnology(
+    serverId: string,
+    id: string,
+    technology: PalDefenderTechnologySelection,
+  ): Promise<PalDefenderTechnologyMutationResult> {
+    return (await this.clientForServer(serverId)).forgetTechnology(
+      id,
+      technology,
+    );
   }
 
   async progression(

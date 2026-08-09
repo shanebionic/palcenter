@@ -131,6 +131,44 @@ test("normal Players progressively exposes enhanced player management", async ({
     path: "../../docs/screenshots/pal-provisioning.png",
     fullPage: true,
   });
+  await page.getByRole("tab", { name: "Technology" }).click();
+  await expect(page.getByText("Technology_Wood")).toBeVisible();
+  await page.getByRole("button", { name: "Learn Technology" }).click();
+  await page.getByLabel("Technology IDs").fill("Technology_Camp");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByText("1 selected technology")).toBeVisible();
+  const learnConfirmation = page.getByRole("dialog", {
+    name: "Confirm Learn Technology",
+  });
+  await expect(learnConfirmation.getByText("Technology_Camp")).toBeVisible();
+  await learnConfirmation
+    .getByRole("button", { name: "Learn Technology" })
+    .click();
+  await expect(page.getByText("Technology learned")).toBeVisible();
+  await expect(learnConfirmation).toBeHidden();
+  await page
+    .getByRole("tabpanel", { name: "Technology" })
+    .getByRole("button", { name: "Forget Technology" })
+    .click();
+  await page.getByRole("combobox", { name: "Unlocked technology IDs" }).click();
+  await page.getByRole("option", { name: "Technology_Camp" }).click();
+  await page
+    .getByRole("combobox", { name: "Unlocked technology IDs" })
+    .press("Escape");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page
+    .getByRole("dialog", { name: "Confirm Forget Technology" })
+    .getByRole("button", { name: "Forget Technology" })
+    .click();
+  await expect(page.getByText("Technology forgotten")).toBeVisible();
+  await expect(page.getByText("Technology_Camp")).toHaveCount(0);
+  await expect(
+    page.getByRole("dialog", { name: "Confirm Forget Technology" }),
+  ).toBeHidden();
+  await page.screenshot({
+    path: "../../docs/screenshots/player-technology-management.png",
+    fullPage: true,
+  });
   await page.getByRole("tab", { name: "Progression" }).click();
   await expect(page.getByText("Character")).toBeVisible();
   await expect(page.getByText("1371")).toBeVisible();

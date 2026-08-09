@@ -195,6 +195,35 @@ before(async () => {
         { status: 400 },
       );
     }
+    if (url.endsWith("/learntech/player-1")) {
+      assert.equal(init?.method, "POST");
+      const technology = JSON.parse(String(init?.body)).Technology;
+      return Response.json({
+        UnlockedCount: Array.isArray(technology) ? technology.length : 1,
+        Unlocked:
+          technology === "All" ? ["Technology_Wood"] : [technology].flat(),
+        Skipped: [],
+      });
+    }
+    if (url.endsWith("/forgettech/player-1")) {
+      assert.equal(init?.method, "POST");
+      const technology = JSON.parse(String(init?.body)).Technology;
+      return Response.json({
+        ForgottenCount: technology === "All" ? 2 : [technology].flat().length,
+        Forgotten: technology,
+        Skipped: [],
+      });
+    }
+    if (url.endsWith("/learntech/stale"))
+      return Response.json(
+        {
+          Error: {
+            Code: "REQUEST_FAILED",
+            Message: "Player controller unavailable",
+          },
+        },
+        { status: 400 },
+      );
     const moderationActor = {
       Type: "rest",
       NameValue: "route-test",
@@ -422,6 +451,14 @@ test("PalDefender player workspace routes require PalCenter authentication", asy
     payload: { pals: [{ palId: "Anubis", level: 35 }] },
   });
   assert.equal(givePals.statusCode, 401);
+  for (const operation of ["learn", "forget"]) {
+    const technology = await app.inject({
+      method: "POST",
+      url: `/api/servers/server-a/paldefender/players/player-1/technology/${operation}`,
+      payload: { scope: "selected", technologyIds: ["Technology_Wood"] },
+    });
+    assert.equal(technology.statusCode, 401);
+  }
   const givePalTemplates = await app.inject({
     method: "POST",
     url: "/api/servers/server-a/paldefender/players/player-1/pal-templates",
@@ -585,6 +622,66 @@ test("PalDefender guild details normalize live data and missing guilds", async (
   });
   assert.equal(missing.statusCode, 404);
   assert.equal(missing.json().error, "paldefender_guild_not_found");
+});
+
+test("PalDefender technology mutations validate and normalize selected and all scopes", async () => {
+  const headers = { cookie: administratorCookie };
+  const learn = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/technology/learn",
+    headers,
+    payload: {
+      scope: "selected",
+      technologyIds: ["Technology_Wood", "Technology_Camp"],
+    },
+  });
+  assert.equal(learn.statusCode, 200);
+  assert.deepEqual(learn.json(), {
+    changedCount: 2,
+    changed: ["Technology_Wood", "Technology_Camp"],
+    skipped: [],
+  });
+
+  const forget = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/technology/forget",
+    headers,
+    payload: { scope: "all" },
+  });
+  assert.equal(forget.statusCode, 200);
+  assert.deepEqual(forget.json(), {
+    changedCount: 2,
+    changed: "All",
+    skipped: [],
+  });
+
+  for (const payload of [
+    { scope: "selected", technologyIds: [] },
+    { scope: "selected", technologyIds: ["Bad ID"] },
+    { scope: "selected", technologyIds: ["All"] },
+    {
+      scope: "selected",
+      technologyIds: ["Technology_Wood", "Technology_Wood"],
+    },
+    { scope: "all", technologyIds: ["Technology_Wood"] },
+  ]) {
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/api/servers/server-a/paldefender/players/player-1/technology/learn",
+      headers,
+      payload,
+    });
+    assert.equal(invalid.statusCode, 400);
+  }
+
+  const stale = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/stale/technology/learn",
+    headers,
+    payload: { scope: "selected", technologyIds: ["Technology_Wood"] },
+  });
+  assert.equal(stale.statusCode, 400);
+  assert.equal(stale.json().error, "paldefender_request_failed");
 });
 
 test("PalDefender kick route normalizes success and offline errors", async () => {
