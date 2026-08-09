@@ -512,6 +512,66 @@ test("gives multiple Pals using the documented endpoint and normalizes the resul
   );
 });
 
+test("gives Pal templates with exact filenames and normalizes the result", async () => {
+  let requestUrl = "";
+  let requestBody = "";
+  let authorization = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body ?? "");
+      authorization = new Headers(init?.headers).get("Authorization") ?? "";
+      return Response.json({ Granted: { PalTemplates: 2 } });
+    },
+  );
+  assert.deepEqual(
+    await client.givePalTemplates("player-1", ["starter.json", "raid-01"]),
+    { playerId: "player-1", grantedPalTemplates: 2 },
+  );
+  assert.equal(
+    requestUrl,
+    "http://paldefender/v1/pdapi/give/paltemplate/player-1",
+  );
+  assert.equal(authorization, "Bearer token");
+  assert.equal(
+    requestBody,
+    JSON.stringify({ PalTemplates: ["starter.json", "raid-01"] }),
+  );
+});
+
+test("gives Pal eggs using Pal IDs and templates with documented bodies", async () => {
+  let requestUrl = "";
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body ?? "");
+      return Response.json({ Granted: { PalEggs: 2 } });
+    },
+  );
+  assert.deepEqual(
+    await client.givePalEggs("player-1", [
+      { eggId: "PalEgg_Fire_01", palId: "Kitsunebi", level: 12 },
+      { eggId: "PalEgg_Dark_01", palTemplate: "reward.json" },
+    ]),
+    { playerId: "player-1", grantedPalEggs: 2 },
+  );
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/give/paleggs/player-1");
+  assert.equal(
+    requestBody,
+    JSON.stringify({
+      PalEggs: [
+        { EggID: "PalEgg_Fire_01", PalID: "Kitsunebi", Level: 12 },
+        { EggID: "PalEgg_Dark_01", PalTemplate: "reward.json" },
+      ],
+    }),
+  );
+});
+
 test("normalizes team, Palbox, and base-camp Pals", async () => {
   const client = new PalDefenderClient(
     "http://paldefender",

@@ -78,6 +78,7 @@ let sessionRole = "administrator";
 let broadcasts = [];
 let moderationIpBanned = true;
 let progressionExperience = 1371;
+let grantedPals = [];
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
   const joined = index % 2 === 0;
@@ -434,7 +435,85 @@ export function startMockUiApi(port = 3198) {
       });
     }
     if (url.pathname === `${enhancedPlayerPath}/pals`) {
-      return json(response, { pals: [] });
+      if (request.method === "POST") {
+        grantedPals.push({
+          instanceId: "given-pal",
+          location: "Palbox",
+          baseCampId: null,
+          palId: "Anubis",
+          nickname: null,
+          level: 1,
+          experience: null,
+          gender: null,
+          rank: null,
+          shiny: null,
+          condensedPals: null,
+          partnerSkillLevel: null,
+          physicalHealth: null,
+          workerSick: null,
+          imported: null,
+          hp: null,
+          hunger: null,
+          maxHunger: null,
+          sanity: null,
+          support: null,
+          craftSpeed: null,
+          palSouls: {},
+          ivs: {},
+          extraWorkSuitabilities: {},
+          disabledWorkPreferences: [],
+          passiveSkills: [],
+          activeSkills: [],
+          learnedSkills: [],
+        });
+        return json(response, {
+          playerId: "0094A2FA-00000000-00000000-00000000",
+          grantedPals: 1,
+        });
+      }
+      return json(response, { pals: grantedPals });
+    }
+    if (url.pathname === `${enhancedPlayerPath}/pal-templates`) {
+      grantedPals.push({
+        instanceId: "template-pal",
+        location: "Palbox",
+        baseCampId: null,
+        palId: "Pengullet",
+        nickname: "Template Pal",
+        level: 1,
+        experience: null,
+        gender: null,
+        rank: null,
+        shiny: null,
+        condensedPals: null,
+        partnerSkillLevel: null,
+        physicalHealth: null,
+        workerSick: null,
+        imported: null,
+        hp: null,
+        hunger: null,
+        maxHunger: null,
+        sanity: null,
+        support: null,
+        craftSpeed: null,
+        palSouls: {},
+        ivs: {},
+        extraWorkSuitabilities: {},
+        disabledWorkPreferences: [],
+        passiveSkills: [],
+        activeSkills: [],
+        learnedSkills: [],
+      });
+      return json(response, {
+        playerId: "0094A2FA-00000000-00000000-00000000",
+        grantedPalTemplates: 1,
+      });
+    }
+    if (url.pathname === `${enhancedPlayerPath}/pal-eggs`) {
+      return json(response, {
+        playerId: "0094A2FA-00000000-00000000-00000000",
+        grantedPalEggs: 1,
+      });
     }
     if (url.pathname === `${enhancedPlayerPath}/technology`) {
       return json(response, { technologies: ["Technology_Wood"] });

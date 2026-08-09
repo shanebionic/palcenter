@@ -84,6 +84,53 @@ test("normal Players progressively exposes enhanced player management", async ({
   }
   await page.getByRole("tab", { name: "Inventory" }).click();
   await expect(page.getByText("Wood")).toBeVisible();
+  await page.getByRole("tab", { name: "Pals" }).click();
+  for (const action of ["Give Pal", "Give Pal from Template", "Give Pal Egg"]) {
+    await expect(
+      page.getByRole("button", { name: action, exact: true }),
+    ).toBeVisible();
+  }
+  await page
+    .getByRole("button", { name: "Give Pal from Template", exact: true })
+    .click();
+  const templateGrant = page.getByRole("dialog", {
+    name: "Give Pal from Template",
+  });
+  await templateGrant
+    .getByLabel("Template filename")
+    .fill("starter_pengullet.json");
+  await templateGrant.getByRole("button", { name: "Review Grant" }).click();
+  const templateConfirmation = page.getByRole("dialog", {
+    name: "Confirm Template Pal Grant",
+  });
+  await expect(
+    templateConfirmation.getByText("starter_pengullet.json"),
+  ).toBeVisible();
+  await templateConfirmation
+    .getByRole("button", { name: "Give Template Pal" })
+    .click();
+  await expect(page.getByText("Template Pal granted")).toBeVisible();
+  await expect(page.getByText("Pengullet")).toBeVisible();
+
+  await page.getByRole("button", { name: "Give Pal Egg", exact: true }).click();
+  const eggGrant = page.getByRole("dialog", { name: "Give Pal Egg" });
+  await eggGrant.getByLabel("Egg item ID").fill("PalEgg_Fire_01");
+  await eggGrant.getByLabel("Internal Pal ID").fill("Kitsunebi");
+  await eggGrant.getByLabel("Level (optional)").fill("1");
+  await eggGrant.getByRole("button", { name: "Review Grant" }).click();
+  const eggConfirmation = page.getByRole("dialog", {
+    name: "Confirm Pal Egg Grant",
+  });
+  await expect(
+    eggConfirmation.getByText("Egg ID: PalEgg_Fire_01"),
+  ).toBeVisible();
+  await expect(eggConfirmation.getByText("Pal ID: Kitsunebi")).toBeVisible();
+  await eggConfirmation.getByRole("button", { name: "Give Pal Egg" }).click();
+  await expect(page.getByText("Pal egg granted")).toBeVisible();
+  await page.screenshot({
+    path: "../../docs/screenshots/pal-provisioning.png",
+    fullPage: true,
+  });
   await page.getByRole("tab", { name: "Progression" }).click();
   await expect(page.getByText("Character")).toBeVisible();
   await expect(page.getByText("1371")).toBeVisible();
@@ -110,7 +157,7 @@ test("normal Players progressively exposes enhanced player management", async ({
     fullPage: true,
   });
   await page.getByRole("tab", { name: "Actions" }).click();
-  for (const action of ["Kick Player", "Ban Player", "Give Item", "Give Pal"]) {
+  for (const action of ["Kick Player", "Ban Player", "Give Item"]) {
     await expect(page.getByRole("button", { name: action })).toBeVisible();
   }
 
