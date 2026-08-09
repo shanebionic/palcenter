@@ -29,6 +29,7 @@ Only then begin editing.
 If the working tree is unexpectedly dirty, stop and determine why before changing repository state.
 
 Never use destructive reset, restore, or stash operations to accomplish this baseline workflow. Never:
+
 - Commit feature work directly onto local `dev`.
 - Begin editing before updating `dev` and creating the branch.
 - Assume local `dev` is current because it was current earlier in the session.
@@ -47,12 +48,14 @@ All autonomous Git operations must be CLI-only and non-interactive:
 Once a task is approved for execution, continue through the requested workflow rather than stopping after every intermediate tool call.
 
 Do not end a turn merely because:
+
 - a file read completed;
 - a grep or search completed;
 - a tool returned results;
 - analysis steps produced output that requires further action to complete the task.
 
 Continue automatically until:
+
 - the requested task is fully complete;
 - a concrete blocker exists (missing credentials, permissions failure, unavailable service);
 - owner authorization is explicitly required (final live UAT, merge, release tag);
