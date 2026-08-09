@@ -67,6 +67,8 @@ export class AuthorizationService {
         (path === "/api/servers" || path === "/api/servers/test")) ||
       (method === "POST" && /^\/api\/servers\/[^/]+\/test$/.test(path)) ||
       (method === "POST" &&
+        /^\/api\/servers\/[^/]+\/paldefender\/reload-config$/.test(path)) ||
+      (method === "POST" &&
         /^\/api\/servers\/[^/]+\/paldefender\/test$/.test(path)) ||
       (method === "PUT" && /^\/api\/servers\/[^/]+$/.test(path)) ||
       (method === "DELETE" && /^\/api\/servers\/[^/]+$/.test(path))

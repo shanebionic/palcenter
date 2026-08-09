@@ -265,6 +265,7 @@ const banResponseSchema = z.object({
 });
 const broadcastResponseSchema = z.object({ Success: z.boolean() });
 const alertResponseSchema = z.object({ Success: z.boolean() });
+const reloadConfigResponseSchema = z.object({ Success: z.boolean() });
 const playerMessageResponseSchema = z.object({
   Success: z.boolean(),
   SentCount: z.number().int().nonnegative(),
@@ -484,6 +485,9 @@ export interface PalDefenderTechnologyMutationResult {
   skipped: string[];
 }
 export interface PalDefenderBroadcastResult {
+  success: boolean;
+}
+export interface PalDefenderReloadConfigResult {
   success: boolean;
 }
 export type PalDefenderPlayerMessageType =
@@ -1096,6 +1100,15 @@ export class PalDefenderClient {
       method: "POST",
       body: JSON.stringify({ Message: message }),
     });
+    return { success: response.Success };
+  }
+
+  async reloadConfig(): Promise<PalDefenderReloadConfigResult> {
+    const response = await this.parse(
+      reloadConfigResponseSchema,
+      "/ReloadConfig",
+      { method: "POST" },
+    );
     return { success: response.Success };
   }
 

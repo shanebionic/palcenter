@@ -8,6 +8,7 @@ import {
   type PalDefenderBroadcastResult,
   type PalDefenderPlayerMessageResult,
   type PalDefenderPlayerMessageType,
+  type PalDefenderReloadConfigResult,
   type PalDefenderGiveItemsResult,
   type PalDefenderGivePalsResult,
   type PalDefenderGivePalTemplatesResult,
@@ -261,6 +262,10 @@ export class PalDefenderService {
     message: string,
   ): Promise<PalDefenderBroadcastResult> {
     return (await this.clientForServer(serverId)).alert(message);
+  }
+
+  async reloadConfig(serverId: string): Promise<PalDefenderReloadConfigResult> {
+    return (await this.clientForServer(serverId)).reloadConfig();
   }
 
   async sendPlayerMessage(

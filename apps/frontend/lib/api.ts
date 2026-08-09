@@ -220,6 +220,9 @@ export interface ModerationResult {
 export interface PalDefenderBroadcastResult {
   success: boolean;
 }
+export interface PalDefenderReloadConfigResult {
+  success: boolean;
+}
 export type PalDefenderPlayerMessageType =
   | "PlayerChat"
   | "PlayerGlobalChat"
@@ -1020,6 +1023,15 @@ export function sendPalDefenderPlayerMessage(
   return jsonRequest<PalDefenderPlayerMessageResult>(
     `${palDefenderPath(serverId)}/player-message`,
     { playerIds, sendType, message },
+  );
+}
+
+export function reloadPalDefenderConfiguration(
+  serverId: string,
+): Promise<PalDefenderReloadConfigResult> {
+  return jsonRequest<PalDefenderReloadConfigResult>(
+    `${palDefenderPath(serverId)}/reload-config`,
+    {},
   );
 }
 

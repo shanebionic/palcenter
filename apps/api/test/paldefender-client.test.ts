@@ -841,6 +841,26 @@ test("sends documented alerts and normalizes success", async () => {
   assert.equal(requestBody, JSON.stringify({ Message: "Restart now." }));
 });
 
+test("reloads configuration with the documented bodyless request", async () => {
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestBody: BodyInit | null | undefined;
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = init?.method ?? "";
+      requestBody = init?.body;
+      return Response.json({ Success: true });
+    },
+  );
+  assert.deepEqual(await client.reloadConfig(), { success: true });
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/ReloadConfig");
+  assert.equal(requestMethod, "POST");
+  assert.equal(requestBody, undefined);
+});
+
 test("sends player messages with deduplicated documented targets", async () => {
   let requestBody = "";
   const client = new PalDefenderClient(

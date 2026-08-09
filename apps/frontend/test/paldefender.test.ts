@@ -14,6 +14,7 @@ import {
   broadcastPalDefenderMessage,
   sendPalDefenderAlert,
   sendPalDefenderPlayerMessage,
+  reloadPalDefenderConfiguration,
   getPalDefenderBase,
   getPalDefenderBases,
   getPalDefenderGuilds,
@@ -289,6 +290,29 @@ test("submits server alerts and targeted player messages without leaking server 
         },
       },
     ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("submits a server-scoped PalDefender configuration reload", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestedBody = "";
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input);
+    requestedBody = String(init?.body);
+    return Response.json({ success: true });
+  };
+  try {
+    assert.deepEqual(await reloadPalDefenderConfiguration("server-a"), {
+      success: true,
+    });
+    assert.equal(
+      requestedUrl,
+      "/api/servers/server-a/paldefender/reload-config",
+    );
+    assert.equal(requestedBody, "{}");
   } finally {
     globalThis.fetch = originalFetch;
   }

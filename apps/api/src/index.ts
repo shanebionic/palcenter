@@ -1428,6 +1428,34 @@ app.post("/api/servers/:serverId/paldefender/alert", async (request) => {
 });
 
 app.post(
+  "/api/servers/:serverId/paldefender/reload-config",
+  async (request) => {
+    const { serverId } = palDefenderServerParametersSchema.parse(
+      request.params,
+    );
+    const actor = currentUser(request.headers.cookie);
+    request.log.info(
+      { actorUserId: actor.id, serverId },
+      "PalDefender configuration reload requested.",
+    );
+    try {
+      const result = await palDefenderService.reloadConfig(serverId);
+      request.log.info(
+        { actorUserId: actor.id, serverId, success: result.success },
+        "PalDefender configuration reload completed.",
+      );
+      return result;
+    } catch (error) {
+      request.log.warn(
+        { err: error, actorUserId: actor.id, serverId },
+        "PalDefender configuration reload failed.",
+      );
+      throw error;
+    }
+  },
+);
+
+app.post(
   "/api/servers/:serverId/paldefender/player-message",
   async (request) => {
     const { serverId } = palDefenderServerParametersSchema.parse(
@@ -2142,7 +2170,7 @@ app.setErrorHandler((error, request, reply) => {
         /\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/technology\/(learn|forget)$/.test(
           request.url,
         ) ||
-        /\/api\/servers\/[^/]+\/paldefender\/(broadcast|alert|player-message)$/.test(
+        /\/api\/servers\/[^/]+\/paldefender\/(broadcast|alert|player-message|reload-config)$/.test(
           request.url,
         ) ||
         /\/api\/servers\/[^/]+\/moderation\/.+\/(ban|unban)$/.test(
