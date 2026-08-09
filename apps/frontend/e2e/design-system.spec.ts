@@ -17,16 +17,6 @@ async function setPlayerMode(
   expect(response.ok()).toBe(true);
 }
 
-async function setEventMode(
-  page: Page,
-  mode: "empty" | "error" | "populated",
-): Promise<void> {
-  const response = await page.request.get(
-    `http://127.0.0.1:3198/__test/events?mode=${mode}`,
-  );
-  expect(response.ok()).toBe(true);
-}
-
 async function setSessionRole(
   page: Page,
   role: "administrator" | "moderator" | "visitor",
@@ -84,6 +74,7 @@ test("normal Players progressively exposes enhanced player management", async ({
   }
   await page.getByRole("tab", { name: "Inventory" }).click();
   await expect(page.getByText("Wood")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Give Item" })).toBeVisible();
   await page.getByRole("tab", { name: "Pals" }).click();
   for (const action of ["Give Pal", "Give Pal from Template", "Give Pal Egg"]) {
     await expect(
@@ -195,9 +186,10 @@ test("normal Players progressively exposes enhanced player management", async ({
     fullPage: true,
   });
   await page.getByRole("tab", { name: "Actions" }).click();
-  for (const action of ["Kick Player", "Ban Player", "Give Item"]) {
+  for (const action of ["Kick Player", "Ban Player"]) {
     await expect(page.getByRole("button", { name: action })).toBeVisible();
   }
+  await expect(page.getByRole("button", { name: "Give Item" })).toHaveCount(0);
 
   await setPalDefenderMode(page, "disabled");
   await page.goto("/servers/srv-test/players/0094A2FA000000000000000000000000");
@@ -471,38 +463,6 @@ test("map keeps administrator calibration tools behind an advanced disclosure", 
   await expect(calibration).toBeVisible();
 });
 
-test("activity summary prioritizes key status and discloses secondary details", async ({
-  page,
-}) => {
-  await setPlayerMode(page, "populated");
-  await openWorkspace(page);
-  await page.getByRole("tab", { name: "Map" }).click();
-  await page.getByRole("button", { name: "View Denalb on map" }).click();
-  await page.getByRole("switch", { name: "Show movement trail" }).check();
-
-  const summary = page.getByRole("region", {
-    name: "Player activity summary",
-  });
-  await expect(summary).toBeVisible();
-  await expect(summary).toContainText("Selected range");
-  await expect(summary).toContainText("Observed span");
-  await expect(summary).toContainText("Travel distance");
-  await expect(summary).toContainText("Player status");
-  await expect(summary.getByText("Average movement speed")).toBeHidden();
-
-  await summary
-    .getByRole("button", { name: "Detailed movement statistics" })
-    .click();
-  await expect(summary.getByText("Average movement speed")).toBeVisible();
-  await summary.getByRole("button", { name: "Timeline and insights" }).click();
-  await expect(
-    summary.getByRole("heading", { name: "Timeline" }),
-  ).toBeVisible();
-  await expect(
-    summary.getByRole("heading", { name: "Insights" }),
-  ).toBeVisible();
-});
-
 test("world map empty and failure states explain the next action", async ({
   page,
 }) => {
@@ -581,9 +541,7 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
   await expect(
     page.locator(".pc-world-map-trail-segment").first(),
   ).toBeVisible();
-  await expect(
-    page.getByRole("region", { name: "Player activity summary" }),
-  ).toContainText("Travel distance");
+  await expect(page.getByText("Trail data details")).toBeVisible();
   await page.screenshot({
     path: "../../docs/screenshots/living-world-map.png",
     fullPage: true,
@@ -684,134 +642,4 @@ test("long StatCard values wrap fully without colliding with their icon", async 
   expect(layout.fullyVisible).toBe(true);
   expect(layout.separateFromIcon).toBe(true);
   expect(layout.pageOverflow).toBe(false);
-});
-
-test("Player Activity renders, filters, expands evidence, loads history, and links to the map", async ({
-  page,
-}) => {
-  await setSessionRole(page, "administrator");
-  await setEventMode(page, "populated");
-  await openWorkspace(page);
-  await page.getByRole("tab", { name: "Activity" }).click();
-
-  await expect(
-    page.getByRole("heading", { name: "Recent Activity" }),
-  ).toBeVisible();
-  await expect(page.locator(".pc-world-event-entry")).toHaveCount(50);
-  await expect(page.getByText("High confidence").first()).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Rapid relocation detected" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Entered an instanced area" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Changed map area" }),
-  ).toBeVisible();
-  const instanceEvent = page
-    .locator(".pc-world-event-entry")
-    .filter({ hasText: "Entered an instanced area" });
-  await expect(
-    instanceEvent.getByText(
-      "Destination map unavailable (instance:fixture-dungeon coordinate space).",
-    ),
-  ).toBeVisible();
-  await instanceEvent.getByText("Evidence and details").click();
-  await expect(
-    instanceEvent.getByText("Matched transition: Fixture Dungeon"),
-  ).toBeVisible();
-  await expect(instanceEvent.getByText(/^Distance:/)).toHaveCount(0);
-  await expect(instanceEvent.getByText(/^Implied speed:/)).toHaveCount(0);
-
-  const firstEvent = page.locator(".pc-world-event-entry").first();
-  await firstEvent.getByText("Evidence and details").click();
-  await expect(
-    firstEvent.getByText("Player moved 375000 world units in 30 seconds."),
-  ).toBeVisible();
-  await expect(
-    firstEvent.getByText(
-      "Implied travel speed was 12500 world units per second.",
-    ),
-  ).toBeVisible();
-  await expect(
-    firstEvent.getByText(/Origin: X -120000, Y 85000/),
-  ).toBeVisible();
-  await expect(firstEvent.getByText(/Confidence: 90%/)).toBeVisible();
-
-  await page.getByRole("button", { name: "Load older activity" }).click();
-  await expect(page.locator(".pc-world-event-entry")).toHaveCount(55);
-
-  await page.getByRole("combobox", { name: "Activity type" }).click();
-  await page.getByRole("option", { name: "Rapid relocation detected" }).click();
-  await page.getByRole("button", { name: "Apply filters" }).click();
-  await expect(page.locator(".pc-world-event-entry")).toHaveCount(3);
-  await expect(
-    page.getByRole("heading", { name: "Rapid relocation detected" }).first(),
-  ).toBeVisible();
-
-  await page.getByRole("button", { name: "Reset filters" }).click();
-  await page
-    .getByRole("button", { name: "View origin on map" })
-    .first()
-    .click();
-  await expect(page.getByRole("tab", { name: "Map" })).toHaveAttribute(
-    "data-active",
-    "true",
-  );
-  await expect(page.getByText("Event location centered")).toBeVisible();
-  await page.getByRole("tab", { name: "Activity" }).click();
-  await page
-    .getByRole("button", { name: "View destination on map" })
-    .first()
-    .click();
-  await expect(page.getByText("Event location centered")).toBeVisible();
-});
-
-test("Player Activity provides useful empty and unavailable states", async ({
-  page,
-}) => {
-  await setSessionRole(page, "administrator");
-  await setEventMode(page, "empty");
-  await openWorkspace(page);
-  await page.getByRole("tab", { name: "Activity" }).click();
-  await expect(page.getByText("No activity yet")).toBeVisible();
-  await expect(
-    page.getByText(/Player activity will appear here/),
-  ).toBeVisible();
-  await setEventMode(page, "error");
-  await page.getByRole("button", { name: "Refresh" }).click();
-  await expect(
-    page.getByText("Player activity is temporarily unavailable"),
-  ).toBeVisible();
-});
-
-test("Player Activity remains responsive and is not offered to Visitors", async ({
-  page,
-}) => {
-  await setSessionRole(page, "administrator");
-  await setEventMode(page, "populated");
-  await page.setViewportSize({ width: 390, height: 844 });
-  await openWorkspace(page);
-  await page.getByRole("tab", { name: "Activity" }).click();
-  await expect(page.getByLabel("Player ID")).toBeVisible();
-  await expect(
-    page.getByRole("combobox", { name: "Activity type" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("combobox", { name: "Time range" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Rapid relocation detected" }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(
-      () =>
-        document.documentElement.scrollWidth >
-        document.documentElement.clientWidth,
-    ),
-  ).toBe(false);
-
-  await setSessionRole(page, "visitor");
-  await page.reload();
-  await expect(page.getByRole("tab", { name: "Activity" })).toHaveCount(0);
 });
