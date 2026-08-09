@@ -166,25 +166,40 @@ function FindProjectItemId {
 function ReadFieldValues {
     param([string]$projectId, [string]$itemId)
 
-    # Fetch items and their fieldValues in one query, then filter by itemId
-    $q = "query{node(id:`"$projectId`"){__typename ... on ProjectV2{id title items(first:100){nodes{id fieldValues(first:50){nodes{projectField{id name} ... on ProjectV2SingleSelectFieldValue{name optionId}}}}}}}}"
+        # Fetch items and their single-select field values in one query.
+    # We avoid the problematic projectField union by selecting only
+    # optionId on ProjectV2ItemFieldSingleSelectValue nodes.
+    $q = "query{node(id:`"$projectId`"){__typename ... on ProjectV2{id title items(first:100){nodes{id fieldValues(first:50){nodes{... on ProjectV2ItemFieldSingleSelectValue{name optionId}}}}}}}}"
 
     $r = GraphQl $q
+
+    # Build a reverse lookup: optionId -> (fieldConfig entry) using cached config
+    $config = DiscoverFieldConfig
+    $optionToField = @{}
+    foreach ($fcName in $config.Keys) {
+        $fcEntry = $config[$fcName]
+        if ($fcEntry.type -eq 'SingleSelect') {
+            foreach ($optName in $fcEntry.options.Keys) {
+                $optId = $fcEntry.options[$optName].id
+                $optionToField[$optId] = @{ fieldName = $fcName; optionName = $optName }
+            }
+        }
+    }
 
     foreach ($item in $r.data.node.items.nodes) {
         if ($item.id -eq $itemId) {
             $map = @{}
             foreach ($fv in $item.fieldValues.nodes) {
-                if (-not $fv.projectField) { continue }
-                $fldName = $fv.projectField.name
-                if (-not $fldName) { continue }
+                if (-not $fv.optionId) { continue }
 
-                if ($fv.name) {
-                    $map[$fldName] = $fv.name
-                } elseif ($fv.optionId) {
-                    $map[$fldName] = "option:$($fv.optionId)"
-                } else {
-                    $map[$fldName] = '<non-single-select>'
+                if ($optionToField.ContainsKey($fv.optionId)) {
+                    $entry = $optionToField[$fv.optionId]
+                    $map[$entry.fieldName] = $entry.optionName
+                } elseif ($fv.name) {
+                    # Fallback: unknown field, use the display name we got
+                    # We can't determine which field this belongs to without
+                    # the projectField union, so skip if unresolvable.
+                    continue
                 }
             }
             return $map
