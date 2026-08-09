@@ -21,7 +21,15 @@ export default async function ServerPage({
     <ApplicationShell>
       <ServerWorkspace
         serverId={id}
-        initialTab={tab === "players" ? "players" : "overview"}
+        initialTab={
+          tab === "players"
+            ? "players"
+            : tab === "guilds"
+              ? "guilds"
+              : tab === "bases"
+                ? "bases"
+                : "overview"
+        }
       />
     </ApplicationShell>
   );
