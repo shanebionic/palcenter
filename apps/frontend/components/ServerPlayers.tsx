@@ -33,6 +33,7 @@ import {
   canonicalPlayerId,
   matchPalDefenderPlayer,
 } from "../lib/player-identity";
+import { levelEnrichmentPipeline } from "../lib/level-scheduler";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
@@ -47,8 +48,6 @@ interface PendingPlayerAction {
 interface ServerPlayersProps {
   serverId: string;
 }
-
-const MAX_CONCURRENT_PROGRESSION = 3;
 
 export function ServerPlayers({ serverId }: ServerPlayersProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
@@ -79,6 +78,7 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
         setPalDefenderStatus(null);
       }
 
+      setEnrichedLevels(new Map());
       setError(null);
 
       try {
@@ -127,7 +127,6 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
     [palDefenderPlayers, enrichedLevels],
   );
 
-  const inFlightRef = useRef(new Map<string, Promise<void>>());
   const enrichedRef = useRef(enrichedLevels);
 
   useEffect(() => {
@@ -137,59 +136,13 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
   useEffect(() => {
     if (!palDefenderStatus?.connected || players.length === 0) return;
 
-    void (async () => {
-      const queue: ConnectedPlayer[] = [];
-
-      for (const player of players) {
-        const enhanced = matchPalDefenderPlayer(player, palDefenderPlayers);
-        if (enhanced?.level != null) continue;
-        const key = canonicalPlayerId(enhanced?.playerId ?? player.playerId);
-        if (enrichedRef.current.has(key)) continue;
-
-        const existing = inFlightRef.current.get(key);
-        if (existing) {
-          queue.push(player);
-          continue;
-        }
-
-        const promise = (async () => {
-          try {
-            const progression = await getPalDefenderProgression(
-              serverId,
-              player.playerId,
-            );
-            setEnrichedLevels((prev) => {
-              const next = new Map(prev);
-              next.set(key, progression.character.level);
-              return next;
-            });
-          } catch {
-            /* one failure does not block the rest */
-          } finally {
-            inFlightRef.current.delete(key);
-          }
-        })();
-
-        inFlightRef.current.set(key, promise);
-        queue.push(player);
-      }
-
-      let idx = 0;
-      while (idx < queue.length) {
-        const batch: Promise<void>[] = [];
-        for (
-          let i = 0;
-          i < MAX_CONCURRENT_PROGRESSION && idx < queue.length;
-          i++, idx++
-        ) {
-          const player = queue[idx]!;
-          const enhanced = matchPalDefenderPlayer(player, palDefenderPlayers);
-          const key = canonicalPlayerId(enhanced?.playerId ?? player.playerId);
-          batch.push(inFlightRef.current.get(key)!);
-        }
-        await Promise.all(batch).catch(() => {});
-      }
-    })();
+    void levelEnrichmentPipeline(
+      players,
+      palDefenderPlayers,
+      enrichedRef,
+      getPalDefenderProgression,
+      serverId,
+    );
   }, [palDefenderStatus, palDefenderPlayers, players, serverId]);
 
   const filteredPlayers = useMemo(() => {
