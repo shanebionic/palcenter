@@ -1,6 +1,6 @@
 # Features and administration
 
-This guide describes the current v1.4.0 interface. Availability depends on the
+This guide describes the current v1.5.0 interface. Availability depends on the
 signed-in user's role.
 
 ## Dashboard
@@ -19,11 +19,14 @@ unreachable server does not prevent other cards from updating.
 **Servers** lists saved connections. **Manage** opens one workspace with:
 
 - **Overview** for status, configuration, networking, uptime, and health;
-- **Players** for the live player table;
+- **Players** for the live player table with level enrichment;
+- **Guilds** for the PalDefender guild list (requires PalDefender);
+- **Bases** for the PalDefender base camp list (requires PalDefender);
 - **Map** for World Intelligence;
 - **Administration** for immediate server commands;
 - **Settings** for read-only Palworld settings;
-- **Connection Settings** for Administrator-only REST connection editing;
+- **Connection Settings** for Administrator-only REST and PalDefender
+  connection editing;
 - **Monitoring** for historical metrics and events.
 
 See [Server management](SERVER-MANAGEMENT.md).
@@ -31,9 +34,39 @@ See [Server management](SERVER-MANAGEMENT.md).
 ## Players
 
 Administrators and Moderators can view the connected-player table and perform
-authorized player operations such as kick and ban. Visitors do not receive
-operational access. PalCenter sends commands to the official REST API; it does
-not edit save files.
+authorized player operations such as kick and ban. The table displays player
+levels enriched from PalDefender when available. Visitors do not receive
+operational access. Click a player to open the PalDefender Player Workspace
+(see below).
+
+## Player workspace (PalDefender)
+
+When PalDefender is configured for a server, clicking a player opens a
+six-tab workspace:
+
+- **Overview:** player details, location, and map coordinates.
+- **Inventory:** view held items and grant items using the searchable catalog.
+- **Pals:** view Pals and grant Pals, Pal templates, or Pal eggs with
+  friendly-name selectors.
+- **Technology:** view learned technology and learn or forget technology
+  entries.
+- **Progression:** view character stats and grant progression levels and points.
+- **Actions:** kick or ban the player with optional message, reason, and IP ban.
+
+Catalog selectors resolve internal game IDs to friendly names for items, Pals,
+eggs, and technology.
+
+## Guilds (PalDefender)
+
+The Guilds tab lists all guilds on the server. Select a guild to see its
+administrator, member roster with levels, status, and associated base camps.
+This is a read-only view.
+
+## Base camps (PalDefender)
+
+The Bases tab lists all base camps. Select a base to see its level, position,
+guild, and member roster. Administrators can delete a base camp with a
+confirmation dialog.
 
 ## World Map
 
@@ -65,6 +98,14 @@ Supported immediate operations are:
 - force stop;
 - kick a player;
 - ban a player.
+
+When PalDefender is configured, additional operations are available:
+
+- send a server-wide alert to all connected players;
+- send targeted messages to selected players with multiple message types;
+- broadcast a PalDefender message to the server;
+- reload PalDefender's plugin configuration;
+- unban a player or lift an IP ban.
 
 PalCenter does not start the Palworld process, restart containers, update the
 server, or manage save files.

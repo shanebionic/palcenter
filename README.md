@@ -15,7 +15,12 @@ REST API; it does not install Palworld, manage containers, or access save files.
 ## What PalCenter provides
 
 - Multi-server status, health, configuration, and connection management
-- Connected-player visibility plus kick and ban operations
+- Connected-player visibility with level data and kick/ban operations
+- Player workspace: view and manage inventory, Pals, technology, and progression
+- Player moderation: kick, ban with IP ban, and unban
+- Resource grants: items, Pals, Pal templates, Pal eggs, and progression
+- Guild and base camp browsing, inspection, and deletion
+- Server messaging: alerts, targeted messages, and broadcasts
 - World Intelligence: live Palpagos map, movement trails, and activity summaries
 - Broadcast, Save World, and Graceful Shutdown operations
 - Scheduled automation with immutable execution history
@@ -23,6 +28,10 @@ REST API; it does not install Palworld, manage containers, or access save files.
 - Administrator, Moderator, and Visitor accounts
 - Portable backup and restore
 - A standalone `PalWorldSettings.ini` configuration generator
+
+Player workspace, moderation, resource grants, guild/base management, and
+enhanced messaging require PalDefender. All other features work through the
+native Palworld REST API.
 
 ## Supported environments
 
@@ -38,8 +47,41 @@ Unraid Community Applications, and compatible NAS or VPS container platforms.
 - An existing Palworld dedicated server with its REST API enabled
 - A modern browser
 
+**For PalDefender features (optional):**
+
+- PalDefender plugin installed on the Palworld server
+- PalDefender REST API accessible from the PalCenter container
+- A read-only PalDefender API token
+
 PalCenter itself does not require the Palworld host, save directory, SteamCMD,
 Docker socket, or privileged container access.
+
+## PalDefender integration
+
+PalDefender is an optional Palworld server plugin that exposes an administration
+REST API. When PalCenter is connected to PalDefender, it unlocks detailed
+player, guild, and base camp management:
+
+- View and modify player inventory, Pals, technology, and progression
+- Grant items, Pals, Pal templates, and Pal eggs
+- Teach or remove technology
+- Grant progression levels and points
+- Kick and ban players, including IP bans
+- Browse guilds and base camps, inspect members, delete bases
+- Send server-wide alerts and targeted player messages
+- Reload PalDefender's configuration without restarting the server
+
+PalCenter connects to PalDefender on a per-server basis. After adding a
+Palworld server, open its **Connection Settings** and enter the PalDefender
+REST API URL and a read-only token. PalCenter tests the connection and stores
+the credentials with the server configuration.
+
+All standard Palworld features — server status, player lists, World
+Intelligence, broadcast, save, shutdown, and automation — work through the
+native Palworld REST API without PalDefender.
+
+For PalDefender installation and configuration, see the PalDefender project at
+[github.com/peramadev/PalDefender](https://github.com/peramadev/PalDefender).
 
 ## Quick start
 
@@ -121,6 +163,16 @@ See [Security](SECURITY.md) and the [feature guide](docs/FEATURES.md).
 
 ## Major workflows
 
+- **Player workspace:** Select a server, open **Players**, click a player, and
+  view inventory, Pals, technology, and progression. Grant items, Pals, eggs,
+  and progression or moderate with kick and ban. Requires PalDefender.
+  [Feature guide](docs/FEATURES.md#player-workspace-paldefender)
+- **Guilds and bases:** Browse guilds and base camps, inspect members, and
+  delete bases. Requires PalDefender.
+  [Feature guide](docs/FEATURES.md#guilds-paldefender)
+- **Server messaging:** Send alerts, targeted player messages, or broadcasts
+  from the Administration panel. Requires PalDefender.
+  [Feature guide](docs/FEATURES.md#administration)
 - **World Intelligence:** Select a server, open **Map**, choose a player, and
   enable a movement trail. The summary distinguishes selected range from
   observed telemetry. [World Map guide](docs/WORLD-MAP.md)
@@ -169,6 +221,7 @@ Palworld host. See the [troubleshooting guide](docs/TROUBLESHOOTING.md) and
 - [World Map and Player Activity Summary](docs/WORLD-MAP.md)
 - [Configuration generator](docs/CONFIGURATION-GENERATOR.md)
 - [Security](SECURITY.md)
+- [PalCenter Wiki](https://github.com/shanebionic/palcenter/wiki)
 
 The [PalCenter Wiki](https://github.com/shanebionic/palcenter/wiki) provides an
 additional administrator-oriented copy of the deployment documentation.
