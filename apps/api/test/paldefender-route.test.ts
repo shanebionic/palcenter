@@ -1421,14 +1421,8 @@ test("PalDefender mutation routes enforce role-based authorization", async () =>
     return cookie(relogin);
   };
 
-  const moderatorCookie = await createRoleUser(
-    "mod-pd-test-role",
-    "moderator",
-  );
-  const visitorCookie = await createRoleUser(
-    "visitor-pd-test-role",
-    "visitor",
-  );
+  const moderatorCookie = await createRoleUser("mod-pd-test-role", "moderator");
+  const visitorCookie = await createRoleUser("visitor-pd-test-role", "visitor");
 
   // Moderator CANNOT execute "manage_servers" mutations (base delete)
   const modBaseDelete = await app.inject({
