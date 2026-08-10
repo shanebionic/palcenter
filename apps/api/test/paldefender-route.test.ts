@@ -12,6 +12,7 @@ process.env.NODE_ENV = "test";
 process.env.CONFIG_DIR = directory;
 process.env.LOG_LEVEL = "silent";
 process.env.HISTORY_INTERVAL_SECONDS = "3600";
+process.env.PALCENTER_CORS_ORIGINS = "http://localhost:3000";
 
 let app: FastifyInstance;
 let administratorCookie = "";
@@ -457,6 +458,16 @@ before(async () => {
             firstFishingComplete: false,
           },
         },
+      });
+    if (url.endsWith("/players"))
+      return Response.json({
+        Players: [
+          {
+            Name: "Player",
+            PlayerUID: "player-1",
+            Status: "Online",
+          },
+        ],
       });
     throw new Error(`Unexpected request: ${url}`);
   };
@@ -1309,4 +1320,176 @@ test("PalDefender not-found and invalid player identifiers are normalized", asyn
     headers,
   });
   assert.equal(invalid.statusCode, 400);
+});
+
+test("PalDefender responses include CORS and security headers", async () => {
+  const response = await app.inject({
+    method: "GET",
+    url: "/api/servers/server-a/paldefender/players/player-1",
+    headers: {
+      cookie: administratorCookie,
+      origin: "http://localhost:3000",
+    },
+  });
+  assert.equal(response.statusCode, 200);
+  assert.ok(
+    response.headers["access-control-allow-credentials"] === "true",
+    "CORS credentials header should be present",
+  );
+  assert.ok(
+    response.headers["cache-control"] === "no-store",
+    "Cache-Control header should be set",
+  );
+  assert.ok(
+    response.headers["x-content-type-options"] === "nosniff",
+    "X-Content-Type-Options header should be set",
+  );
+});
+
+test("PalDefender CORS origin check rejects state-changing cross-origin requests", async () => {
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/kick",
+    headers: {
+      cookie: administratorCookie,
+      origin: "http://evil.example",
+      host: "localhost:3001",
+    },
+    payload: { message: "Please reconnect" },
+  });
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.json().error, "origin_not_allowed");
+});
+
+test("PalDefender CORS allows same-origin state-changing requests", async () => {
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/kick",
+    headers: {
+      cookie: administratorCookie,
+      origin: "http://localhost:3001",
+      host: "localhost:3001",
+    },
+    payload: { message: "Please reconnect" },
+  });
+  assert.equal(response.statusCode, 200);
+});
+
+test("PalDefender mutation routes enforce role-based authorization", async () => {
+  const createRoleUser = async (
+    username: string,
+    role: "moderator" | "visitor",
+  ) => {
+    const initialPassword = `${username}-Password-123!`;
+    const replacementPassword = `${username}-Replacement-456!`;
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/users",
+      headers: { cookie: administratorCookie },
+      payload: {
+        username,
+        email: `${username}@example.com`,
+        password: initialPassword,
+        role,
+      },
+    });
+    assert.equal(created.statusCode, 201);
+    const login = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { username, password: initialPassword },
+    });
+    assert.equal(login.statusCode, 200);
+    const tempCookie = cookie(login);
+    const change = await app.inject({
+      method: "POST",
+      url: "/api/users/me/password",
+      headers: { cookie: tempCookie },
+      payload: {
+        currentPassword: initialPassword,
+        newPassword: replacementPassword,
+        passwordConfirmation: replacementPassword,
+      },
+    });
+    assert.equal(change.statusCode, 200);
+    const relogin = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { username, password: replacementPassword },
+    });
+    assert.equal(relogin.statusCode, 200);
+    return cookie(relogin);
+  };
+
+  const moderatorCookie = await createRoleUser(
+    "mod-pd-test-role",
+    "moderator",
+  );
+  const visitorCookie = await createRoleUser(
+    "visitor-pd-test-role",
+    "visitor",
+  );
+
+  // Moderator CANNOT execute "manage_servers" mutations (base delete)
+  const modBaseDelete = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/bases/base-1/delete",
+    headers: { cookie: moderatorCookie },
+    payload: {},
+  });
+  assert.equal(modBaseDelete.statusCode, 403);
+  assert.equal(modBaseDelete.json().error, "insufficient_permissions");
+
+  // Moderator CANNOT execute "manage_servers" mutations (reload-config)
+  const modReload = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/reload-config",
+    headers: { cookie: moderatorCookie },
+    payload: {},
+  });
+  assert.equal(modReload.statusCode, 403);
+  assert.equal(modReload.json().error, "insufficient_permissions");
+
+  // Visitor CANNOT execute any mutation (including "operate" routes)
+  const visitorKick = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/kick",
+    headers: { cookie: visitorCookie },
+    payload: { message: "Please reconnect" },
+  });
+  assert.equal(visitorKick.statusCode, 403);
+  assert.equal(visitorKick.json().error, "insufficient_permissions");
+
+  // Visitor CAN read PalDefender data
+  const visitorRead = await app.inject({
+    method: "GET",
+    url: "/api/servers/server-a/paldefender/players",
+    headers: { cookie: visitorCookie },
+  });
+  assert.equal(visitorRead.statusCode, 200);
+});
+
+test("PalDefender network failure maps to 502 on mutation routes", async () => {
+  const originalFetchLocal = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("connect ECONNREFUSED");
+  };
+
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/servers/server-a/paldefender/players/player-1/kick",
+      headers: { cookie: administratorCookie },
+      payload: { message: "Please reconnect" },
+    });
+    assert.equal(response.statusCode, 502);
+    assert.ok(
+      ["paldefender_unavailable", "paldefender_endpoint_unavailable"].includes(
+        response.json().error,
+      ),
+      `Expected paldefender error code, got: ${response.json().error}`,
+    );
+  } finally {
+    globalThis.fetch = originalFetchLocal;
+  }
 });
