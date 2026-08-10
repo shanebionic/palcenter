@@ -223,7 +223,7 @@ function SetSingleSelectValue {
     )
 
     # Inline all IDs directly into the mutation string - avoids variable passing issues with gh api
-    $mut = "mutation{updateProjectV2ItemField(input:{projectId:`"$projectId`" itemId:`"$itemId`" fieldId:`"$fieldId`" value:{singleSelectOptionId:`"$optionId`"}}){clientMutationId}}"
+    $mut = "mutation{updateProjectV2ItemFieldValue(input:{projectId:`"$projectId`" itemId:`"$itemId`" fieldId:`"$fieldId`" value:{singleSelectOptionId:`"$optionId`"}}){clientMutationId}}"
 
     GraphQl $mut | Out-Null
 
