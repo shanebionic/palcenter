@@ -320,7 +320,8 @@ export function PalDefenderPlayerWorkspace({
         title: options.successTitle,
         message: options.successMessage,
       });
-      await Promise.all([loadPlayer(), getPalDefenderPlayers(serverId!)]);
+      await loadPlayer();
+      void getPalDefenderPlayers(serverId!).catch(() => {});
     } catch (error) {
       notifications.show({
         color: "red",
@@ -380,11 +381,8 @@ export function PalDefenderPlayerWorkspace({
         title: grants.length === 1 ? "Item granted" : "Items granted",
         message: `Granted ${result.grantedItems} item units to ${player.data?.name ?? "the player"}.`,
       });
-      await Promise.all([
-        loadInventory(),
-        loadPlayer(),
-        getPalDefenderPlayers(serverId!),
-      ]);
+      await Promise.all([loadInventory(), loadPlayer()]);
+      void getPalDefenderPlayers(serverId!).catch(() => {});
     } catch (error) {
       setGiveItemsConfirmationOpened(false);
       notifications.show({
@@ -421,11 +419,8 @@ export function PalDefenderPlayerWorkspace({
         title: "Pal granted",
         message: `Granted ${result.grantedPals} Pal to ${player.data?.name ?? "the player"}.`,
       });
-      await Promise.all([
-        loadPals(),
-        loadPlayer(),
-        getPalDefenderPlayers(serverId!),
-      ]);
+      await Promise.all([loadPals(), loadPlayer()]);
+      void getPalDefenderPlayers(serverId!).catch(() => {});
     } catch (error) {
       setGivePalConfirmationOpened(false);
       notifications.show({
@@ -464,11 +459,8 @@ export function PalDefenderPlayerWorkspace({
         title: "Template Pal granted",
         message: `Granted ${result.grantedPalTemplates} template Pal to ${player.data?.name ?? "the player"}.`,
       });
-      await Promise.all([
-        loadPals(),
-        loadPlayer(),
-        getPalDefenderPlayers(serverId!),
-      ]);
+      await Promise.all([loadPals(), loadPlayer()]);
+      void getPalDefenderPlayers(serverId!).catch(() => {});
     } catch (error) {
       setGivePalTemplateConfirmationOpened(false);
       notifications.show({
@@ -512,7 +504,8 @@ export function PalDefenderPlayerWorkspace({
         message: `Granted ${result.grantedPalEggs} Pal egg to ${player.data?.name ?? "the player"}.`,
       });
       setInventory(initial());
-      await Promise.all([loadPlayer(), getPalDefenderPlayers(serverId!)]);
+      await loadPlayer();
+      void getPalDefenderPlayers(serverId!).catch(() => {});
     } catch (error) {
       setGivePalEggConfirmationOpened(false);
       notifications.show({
