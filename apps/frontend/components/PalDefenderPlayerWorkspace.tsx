@@ -512,7 +512,7 @@ export function PalDefenderPlayerWorkspace({
         message: `Granted ${result.grantedPalEggs} Pal egg to ${player.data?.name ?? "the player"}.`,
       });
       await Promise.all([
-        loadPals(),
+        loadInventory(),
         loadPlayer(),
         getPalDefenderPlayers(serverId!),
       ]);
