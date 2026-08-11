@@ -33,6 +33,9 @@ connected, PalCenter unlocks enhanced administration features:
 PalDefender is optional. PalCenter continues to manage standard Palworld server
 functionality through the native REST API without it.
 
+For PalDefender installation and configuration, see the official project at
+[github.com/Ultimeit/PalDefender](https://github.com/Ultimeit/PalDefender).
+
 ### Player management improvements
 
 - Player levels are enriched from PalDefender's progression data and displayed
@@ -64,7 +67,7 @@ Companion was not included in any released version.
 4. Recreate the container without deleting or replacing `/app/data`.
 5. Confirm health, login, server connections, and existing features.
 6. To use PalDefender features, open a server's **Connection Settings** and
-   enter the PalDefender URL and read-only token.
+   enter the PalDefender URL and Bearer token.
 
 PalCenter does not change `history.sqlite` schema version in this release.
 Existing metrics, events, automation, and server configuration remain
@@ -83,8 +86,10 @@ Do not use `docker compose down -v`; that removes the persistent named volume.
 When editing a server's Connection Settings, two optional fields appear:
 
 - **PalDefender URL:** The PalDefender REST API address
-  (e.g. `http://127.0.0.1:17993`).
-- **PalDefender Token:** A read-only PalDefender API token.
+  (e.g. `http://PALWORLD-HOST:17993`). The URL must be reachable from the
+  PalCenter container — when PalCenter runs in Docker, `127.0.0.1` refers
+  to the container itself.
+- **PalDefender Bearer Token:** A PalDefender Bearer token.
 
 These are stored per server and are not required for standard PalCenter
 operation. PalDefender features are unavailable until configured.

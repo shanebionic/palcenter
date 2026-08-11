@@ -49,18 +49,21 @@ Unraid Community Applications, and compatible NAS or VPS container platforms.
 
 **For PalDefender features (optional):**
 
-- PalDefender plugin installed on the Palworld server
+- PalDefender installed on the Palworld server
 - PalDefender REST API accessible from the PalCenter container
-- A read-only PalDefender API token
+- A PalDefender Bearer token
 
 PalCenter itself does not require the Palworld host, save directory, SteamCMD,
 Docker socket, or privileged container access.
 
 ## PalDefender integration
 
-PalDefender is an optional Palworld server plugin that exposes an administration
-REST API. When PalCenter is connected to PalDefender, it unlocks detailed
-player, guild, and base camp management:
+PalDefender is an optional anti-cheat and server administration plugin for
+Palworld dedicated servers. It provides its own in-game commands,
+administration features, and a REST API for external tools.
+
+PalCenter integrates with PalDefender's REST API to bring supported
+PalDefender administration features into the PalCenter web interface:
 
 - View and modify player inventory, Pals, technology, and progression
 - Grant items, Pals, Pal templates, and Pal eggs
@@ -73,15 +76,17 @@ player, guild, and base camp management:
 
 PalCenter connects to PalDefender on a per-server basis. After adding a
 Palworld server, open its **Connection Settings** and enter the PalDefender
-REST API URL and a read-only token. PalCenter tests the connection and stores
-the credentials with the server configuration.
+REST API URL and Bearer token. The URL must be reachable from the PalCenter
+container — when PalCenter runs in Docker, `127.0.0.1` refers to the
+container itself, not the Palworld server.
 
 All standard Palworld features — server status, player lists, World
 Intelligence, broadcast, save, shutdown, and automation — work through the
 native Palworld REST API without PalDefender.
 
-For PalDefender installation and configuration, see the PalDefender project at
-[github.com/peramadev/PalDefender](https://github.com/peramadev/PalDefender).
+For PalDefender installation and configuration, see the official PalDefender
+project at
+[github.com/Ultimeit/PalDefender](https://github.com/Ultimeit/PalDefender).
 
 ## Quick start
 
