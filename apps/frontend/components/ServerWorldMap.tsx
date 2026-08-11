@@ -32,6 +32,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import { BrandedLoader } from "./BrandedLoader";
 import { SectionCard } from "./ui/SectionCard";
@@ -78,6 +79,7 @@ import {
   type ProcessedTrail,
 } from "../lib/world-map/trail";
 import { palpagosMapDefinition } from "../lib/world-map/map-definitions";
+import { palDefenderGuildHref, palDefenderPlayerHref } from "../lib/paldefender";
 import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
 
 interface ServerWorldMapProps {
@@ -1039,6 +1041,7 @@ export function ServerWorldMap({
             />
             <OffMapPlayersPanel
               players={model.unmappedPlayers}
+              serverId={serverId}
               onSelect={(userId) => {
                 const marker = model.markers.find(
                   (candidate) => candidate.userId === userId,
@@ -1070,6 +1073,7 @@ export function ServerWorldMap({
             )}
             <PlayerMapDetails
               marker={selected}
+              serverId={serverId}
               onCopy={canCalibrate && calibrating ? copyCalibration : undefined}
             />
             <TrailControls
@@ -1182,11 +1186,14 @@ function OnlinePlayersPanel({
 
 function OffMapPlayersPanel({
   players,
+  serverId,
   onSelect,
 }: {
   players: ReturnType<typeof buildLivePlayerMapModel>["unmappedPlayers"];
+  serverId: string;
   onSelect: (userId: string) => void;
 }) {
+  const router = useRouter();
   if (players.length === 0) return null;
   const status = (reason: (typeof players)[number]["reason"]) => {
     switch (reason) {
@@ -1242,16 +1249,35 @@ function OffMapPlayersPanel({
                   </Accordion.Item>
                 </Accordion>
               </div>
-              <Button
-                size="compact-xs"
-                variant="light"
-                onClick={() => onSelect(player.userId)}
-              >
-                {player.reason === "instanced_area" &&
-                player.lastTrustedPosition
-                  ? "View entrance"
-                  : "View details"}
-              </Button>
+              <Group gap={4}>
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  onClick={() => onSelect(player.userId)}
+                >
+                  {player.reason === "instanced_area" &&
+                  player.lastTrustedPosition
+                    ? "View entrance"
+                    : "View details"}
+                </Button>
+                {(() => {
+                  const snapPlayerId = player.snapshot?.playerId ?? null;
+                  if (!snapPlayerId) return null;
+                  return (
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      onClick={() =>
+                        router.push(
+                          palDefenderPlayerHref(serverId, snapPlayerId),
+                        )
+                      }
+                    >
+                      Workspace
+                    </Button>
+                  );
+                })()}
+              </Group>
             </Group>
           </Paper>
         ))}
@@ -1457,11 +1483,14 @@ function TrailControls({
 
 function PlayerMapDetails({
   marker,
+  serverId,
   onCopy,
 }: {
   marker: LivePlayerMapMarker | null;
+  serverId: string;
   onCopy?: (marker: LivePlayerMapMarker) => void;
 }) {
+  const router = useRouter();
   const details = marker ? playerMapDetailValues(marker) : null;
 
   return (
@@ -1480,7 +1509,11 @@ function PlayerMapDetails({
           <Group justify="space-between">
             <div>
               <Title order={3}>{details.playerName}</Title>
-              <Text c="dimmed">{details.accountName}</Text>
+              <Text c="dimmed">
+                {marker.guildName
+                  ? `${details.accountName} · ${marker.guildName}`
+                  : details.accountName}
+              </Text>
             </div>
             <Badge
               color={
@@ -1545,6 +1578,34 @@ function PlayerMapDetails({
             >
               Copy calibration point
             </Button>
+          )}
+          {marker.playerId && (
+            <Group gap="sm">
+              <Button
+                variant="light"
+                size="compact-sm"
+                onClick={() =>
+                  router.push(
+                    palDefenderPlayerHref(serverId, marker.playerId!),
+                  )
+                }
+              >
+                Player workspace
+              </Button>
+              {marker.guildId && (
+                <Button
+                  variant="light"
+                  size="compact-sm"
+                  onClick={() =>
+                    router.push(
+                      palDefenderGuildHref(serverId, marker.guildId!),
+                    )
+                  }
+                >
+                  Guild details
+                </Button>
+              )}
+            </Group>
           )}
         </Stack>
       ) : null}

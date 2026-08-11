@@ -51,6 +51,8 @@ export interface LivePlayerMapMarker {
   displayKind: "live" | "last_trusted_instance";
   reportedWorldX: number;
   reportedWorldY: number;
+  guildId: string | null;
+  guildName: string | null;
   locationAuthority: PlayerLocationAuthority;
 }
 
@@ -295,6 +297,8 @@ export function buildLivePlayerMapModel(
             coordinateSpaceId,
             spatialState,
             displayKind: "last_trusted_instance",
+            guildId: snapshot.guildId,
+            guildName: snapshot.guildName,
             locationAuthority,
           });
         }
@@ -367,6 +371,8 @@ export function buildLivePlayerMapModel(
       coordinateSpaceId,
       spatialState,
       displayKind: "live",
+      guildId: snapshot.guildId,
+      guildName: snapshot.guildName,
       locationAuthority,
     });
   }

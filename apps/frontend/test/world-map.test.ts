@@ -625,6 +625,40 @@ test("represents online marker details without exposing the player IP", () => {
   assert.equal(JSON.stringify(details).includes("192.0.2.10"), false);
 });
 
+test("carries guild identity from telemetry through to the marker", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [
+      {
+        ...snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 }),
+        guildId: "guild-abc",
+        guildName: "Pal Rangers",
+      },
+    ],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+
+  assert.equal(model.markers[0]?.guildId, "guild-abc");
+  assert.equal(model.markers[0]?.guildName, "Pal Rangers");
+});
+
+test("marker guild fields are null when telemetry has no guild", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+
+  assert.equal(model.markers[0]?.guildId, null);
+  assert.equal(model.markers[0]?.guildName, null);
+});
+
 test("standard REST positions remain visible when their coordinate space is unknown, null, or unverified", () => {
   for (const coordinateSpaceId of ["unknown", null, "world_tree"]) {
     const player = connectedPlayer("uid-rest", "pid-rest", "Explorer");
