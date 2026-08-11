@@ -5,7 +5,9 @@ import {
   Button,
   Group,
   Modal,
+  MultiSelect,
   NumberInput,
+  Select,
   Stack,
   Text,
   Textarea,
@@ -13,13 +15,37 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
-import { announce, saveWorld, shutdown, stop } from "../lib/api";
+import {
+  announce,
+  getPalDefenderPlayers,
+  saveWorld,
+  sendPalDefenderAlert,
+  sendPalDefenderPlayerMessage,
+  shutdown,
+  stop,
+  type PalDefenderPlayer,
+  type PalDefenderPlayerMessageType,
+} from "../lib/api";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
+import { ServerModeration } from "./ServerModeration";
 
 const messageLimit = 500;
 
 type AdminAction = "save" | "shutdown" | "stop";
+type MessageAction = "alert" | "player-message";
+
+const messageTypes: Array<{
+  value: PalDefenderPlayerMessageType;
+  label: string;
+}> = [
+  { value: "PlayerChat", label: "Private chat" },
+  { value: "PlayerGlobalChat", label: "Global chat shown to selected players" },
+  { value: "PlayerGuildChat", label: "Guild chat shown to selected players" },
+  { value: "PlayerLogNormal", label: "Normal on-screen log" },
+  { value: "PlayerLogImportant", label: "Important on-screen log" },
+  { value: "PlayerLogVeryImportant", label: "Very important on-screen log" },
+];
 
 interface ServerAdministrationProps {
   serverId: string;
@@ -35,6 +61,79 @@ export function ServerAdministration({
   const [waitTime, setWaitTime] = useState<number | string>(60);
   const [pendingAction, setPendingAction] = useState<AdminAction | null>(null);
   const [submitting, setSubmitting] = useState<string | null>(null);
+  const [messageAction, setMessageAction] = useState<MessageAction | null>(
+    null,
+  );
+  const [alertMessage, setAlertMessage] = useState("");
+  const [playerMessage, setPlayerMessage] = useState("");
+  const [messageType, setMessageType] =
+    useState<PalDefenderPlayerMessageType>("PlayerChat");
+  const [recipients, setRecipients] = useState<string[]>([]);
+  const [players, setPlayers] = useState<PalDefenderPlayer[]>([]);
+  const [playersLoading, setPlayersLoading] = useState(false);
+
+  const loadPlayers = async () => {
+    setPlayersLoading(true);
+    try {
+      setPlayers(await getPalDefenderPlayers(serverId));
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title: "Players unavailable",
+        message:
+          error instanceof Error ? error.message : "Unable to load players.",
+      });
+    } finally {
+      setPlayersLoading(false);
+    }
+  };
+
+  const openPlayerMessage = () => {
+    setMessageAction("player-message");
+    void loadPlayers();
+  };
+
+  const sendMessageAction = async () => {
+    if (!messageAction || submitting) return;
+    setSubmitting(messageAction);
+    try {
+      if (messageAction === "alert") {
+        await sendPalDefenderAlert(serverId, alertMessage.trim());
+        setAlertMessage("");
+        notifications.show({
+          color: "green",
+          title: "Alert sent",
+          message: "PalDefender accepted the server alert.",
+        });
+      } else {
+        const result = await sendPalDefenderPlayerMessage(
+          serverId,
+          recipients,
+          messageType,
+          playerMessage.trim(),
+        );
+        setPlayerMessage("");
+        setRecipients([]);
+        notifications.show({
+          color: "green",
+          title: "Player message sent",
+          message: `PalDefender delivered the message to ${result.sentCount} player${result.sentCount === 1 ? "" : "s"}.`,
+        });
+      }
+      setMessageAction(null);
+    } catch (error) {
+      notifications.show({
+        color: "red",
+        title:
+          messageAction === "alert"
+            ? "Unable to send alert"
+            : "Unable to send player message",
+        message: error instanceof Error ? error.message : "The request failed.",
+      });
+    } finally {
+      setSubmitting(null);
+    }
+  };
 
   const request = async (action: "announce" | AdminAction) => {
     setSubmitting(action);
@@ -129,7 +228,7 @@ export function ServerAdministration({
       <Stack gap="lg" pt="lg">
         <SectionHeader
           title="Administration"
-          description="Run immediate server operations through the Palworld REST API."
+          description="Run immediate server operations using the capabilities configured for this server."
         />
 
         <SectionCard>
@@ -156,10 +255,46 @@ export function ServerAdministration({
                 disabled={!announcement.trim() || submitting !== null}
                 loading={submitting === "announce"}
               >
-                Send
+                Send Broadcast
               </Button>
             </Group>
           </Stack>
+        </SectionCard>
+
+        <SectionCard>
+          <Group justify="space-between" align="flex-end">
+            <div>
+              <Title order={3}>Alert</Title>
+              <Text c="dimmed" size="sm">
+                Send a prominent PalDefender alert to everyone on the server.
+              </Text>
+            </div>
+            <Button
+              variant="light"
+              onClick={() => setMessageAction("alert")}
+              disabled={submitting !== null}
+            >
+              Send Alert
+            </Button>
+          </Group>
+        </SectionCard>
+
+        <SectionCard>
+          <Group justify="space-between" align="flex-end">
+            <div>
+              <Title order={3}>Player Message</Title>
+              <Text c="dimmed" size="sm">
+                Send private chat or an on-screen message to selected players.
+              </Text>
+            </div>
+            <Button
+              variant="light"
+              onClick={openPlayerMessage}
+              disabled={submitting !== null}
+            >
+              Send Player Message
+            </Button>
+          </Group>
         </SectionCard>
 
         <SectionCard>
@@ -235,6 +370,8 @@ export function ServerAdministration({
             </Alert>
           </Stack>
         </SectionCard>
+
+        <ServerModeration serverId={serverId} />
       </Stack>
 
       <Modal
@@ -265,6 +402,85 @@ export function ServerAdministration({
               loading={submitting === pendingAction}
             >
               {currentConfirmation?.button}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={messageAction !== null}
+        onClose={() => !submitting && setMessageAction(null)}
+        title={messageAction === "alert" ? "Send Alert" : "Send Player Message"}
+        centered
+        closeOnClickOutside={!submitting}
+        closeOnEscape={!submitting}
+      >
+        <Stack>
+          {messageAction === "player-message" && (
+            <>
+              <MultiSelect
+                label="Recipients"
+                description="Select one or more players returned by the live PalDefender player list."
+                data={players.map((player) => ({
+                  value: player.playerId,
+                  label: `${player.name} (${player.playerId})`,
+                }))}
+                value={recipients}
+                onChange={setRecipients}
+                searchable
+                disabled={playersLoading || Boolean(submitting)}
+                nothingFoundMessage="No players found"
+              />
+              <Select
+                label="Message type"
+                data={messageTypes}
+                value={messageType}
+                onChange={(value) =>
+                  value && setMessageType(value as PalDefenderPlayerMessageType)
+                }
+                allowDeselect={false}
+                disabled={Boolean(submitting)}
+              />
+            </>
+          )}
+          <Textarea
+            label="Message"
+            description="The text is sent exactly as entered after surrounding whitespace is removed."
+            value={messageAction === "alert" ? alertMessage : playerMessage}
+            onChange={(event) =>
+              messageAction === "alert"
+                ? setAlertMessage(event.currentTarget.value)
+                : setPlayerMessage(event.currentTarget.value)
+            }
+            autosize
+            minRows={3}
+            disabled={Boolean(submitting)}
+          />
+          <Text size="sm">
+            {messageAction === "alert"
+              ? "This alert will be sent to everyone currently on the server."
+              : `${recipients.length} selected recipient${recipients.length === 1 ? "" : "s"} · ${messageTypes.find((type) => type.value === messageType)?.label}`}
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setMessageAction(null)}
+              disabled={Boolean(submitting)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void sendMessageAction()}
+              loading={submitting === messageAction}
+              disabled={
+                Boolean(submitting) ||
+                !(
+                  messageAction === "alert" ? alertMessage : playerMessage
+                ).trim() ||
+                (messageAction === "player-message" && recipients.length === 0)
+              }
+            >
+              {messageAction === "alert" ? "Send Alert" : "Send Player Message"}
             </Button>
           </Group>
         </Stack>

@@ -1,0 +1,1139 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { PalDefenderClient } from "../src/clients/paldefender-client.js";
+
+test("gets the PalDefender version with bearer authentication", async () => {
+  let requestedUrl = "";
+  let authorization = "";
+  const client = new PalDefenderClient(
+    "http://127.0.0.1:17993/",
+    "secret-token",
+    async (input, init) => {
+      requestedUrl = String(input);
+      authorization = new Headers(init?.headers).get("Authorization") ?? "";
+      return Response.json({
+        Version: { Version: "1.8.0", VersionLong: "1.8.0 Beta 4" },
+      });
+    },
+  );
+
+  assert.equal(await client.getVersion(), "1.8.0");
+  assert.equal(requestedUrl, "http://127.0.0.1:17993/v1/pdapi/version");
+  assert.equal(authorization, "Bearer secret-token");
+});
+
+test("normalizes PalDefender players without leaking raw DTO fields", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Meta: { PlayerCount: 2, OnlineCount: 1 },
+        Players: [
+          {
+            Name: "LamballFan",
+            IP: "192.0.2.10",
+            PlayerUID: "player-1",
+            UserId: "steam_1",
+            GuildName: "Pal Tamers",
+            GuildUUID: "guild-1",
+            Status: "Online",
+          },
+          {
+            Name: "CattivaFan",
+            PlayerUID: "player-2",
+            Status: "Offline",
+          },
+        ],
+      }),
+  );
+
+  assert.deepEqual(await client.getPlayers(), [
+    {
+      name: "LamballFan",
+      playerId: "player-1",
+      online: true,
+      guild: "Pal Tamers",
+      level: null,
+    },
+    {
+      name: "CattivaFan",
+      playerId: "player-2",
+      online: false,
+      guild: null,
+      level: null,
+    },
+  ]);
+});
+
+test("gets and normalizes documented player progression with bearer authentication", async () => {
+  let requestedUrl = "";
+  let authorization = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "progression-token",
+    async (input, init) => {
+      requestedUrl = String(input);
+      authorization = new Headers(init?.headers).get("Authorization") ?? "";
+      return Response.json({
+        Meta: { PlayerUID: "player-1", Player: "player-1" },
+        Progression: {
+          Player: { level: 6, exp: 1371, unusedStatusPoints: 5 },
+          Currencies: {
+            relics: { Relic: 2 },
+            technologyPoints: 5,
+            ancientTechnologyPoints: 1,
+          },
+          Bosses: {
+            towerBossDefeatCounts: { TowerA: 1 },
+            normalBossDefeatFlags: { BossA: true },
+            raidBossDefeatCounts: {},
+            totalBossDefeatCount: 1,
+            predatorDefeatCount: 0,
+          },
+          Captures: {
+            tribeCaptureCount: 9,
+            palCaptureCounts: { Anubis: 1 },
+            palCaptureBonusCounts: { Anubis: 1 },
+            palButcherCounts: {},
+          },
+          Activities: {
+            craftItemCounts: { Wood: 3 },
+            normalDungeonClearCount: 1,
+            fixedDungeonClearCount: 0,
+            oilrigClearCount: 0,
+            palRankUpCounts: {},
+            arenaSoloClearCounts: {},
+            npcTalkCounts: {},
+            fishingCounts: {},
+            foundTreasureCount: 2,
+            campConqueredCount: 1,
+            firstFishingComplete: false,
+          },
+        },
+      });
+    },
+  );
+  const result = await client.getProgression("player-1");
+  assert.equal(
+    requestedUrl,
+    "http://paldefender/v1/pdapi/progression/player-1",
+  );
+  assert.equal(authorization, "Bearer progression-token");
+  assert.equal(result.character.level, 6);
+  assert.equal(result.character.experience, 1371);
+  assert.deepEqual(result.captures.byPal, { Anubis: 1 });
+  assert.deepEqual(result.activities.craftedItems, { Wood: 3 });
+});
+
+test("grants each documented progression category with exact authenticated bodies", async () => {
+  const requests: Array<{ url: string; body: string; authorization: string }> =
+    [];
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "grant-token",
+    async (input, init) => {
+      requests.push({
+        url: String(input),
+        body: String(init?.body),
+        authorization: new Headers(init?.headers).get("Authorization") ?? "",
+      });
+      return Response.json({
+        Granted: JSON.parse(String(init?.body)),
+        Totals: {},
+      });
+    },
+  );
+  await client.giveProgression("player-1", { type: "experience", amount: 10 });
+  await client.giveProgression("player-1", {
+    type: "technologyPoints",
+    amount: 2,
+  });
+  await client.giveProgression("player-1", {
+    type: "ancientTechnologyPoints",
+    amount: 1,
+  });
+  await client.giveProgression("player-1", {
+    type: "relic",
+    relicType: "CapturePower",
+    amount: 1,
+  });
+  assert.deepEqual(
+    requests.map(({ body }) => JSON.parse(body)),
+    [
+      { EXP: 10 },
+      { TechnologyPoints: 2 },
+      { AncientTechnologyPoints: 1 },
+      { Relics: { CapturePower: 1 } },
+    ],
+  );
+  assert.ok(
+    requests.every(
+      ({ url, authorization }) =>
+        url === "http://paldefender/v1/pdapi/give/progression/player-1" &&
+        authorization === "Bearer grant-token",
+    ),
+  );
+});
+
+test("normalizes documented PalDefender guild summaries", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Meta: { GuildCount: 1 },
+        Guilds: {
+          "guild-1": {
+            name: "Pal Tamers",
+            Level: 3,
+            admin: { id: "player-1", name: "Explorer" },
+            camp_count: 1,
+            camps: [
+              {
+                id: "camp-1",
+                world_pos: { x: 1, y: 2, z: 3 },
+                map_pos: { x: 4, y: 5, z: 6 },
+              },
+            ],
+            member_count: 2,
+            members: ["player-1", "player-2"],
+          },
+        },
+      }),
+  );
+
+  assert.deepEqual(await client.getGuilds(), [
+    {
+      guildId: "guild-1",
+      name: "Pal Tamers",
+      level: 3,
+      administrator: { playerId: "player-1", name: "Explorer" },
+      baseCount: 1,
+      camps: [
+        {
+          id: "camp-1",
+          worldPosition: { x: 1, y: 2, z: 3 },
+          mapPosition: { x: 4, y: 5, z: 6 },
+        },
+      ],
+      memberCount: 2,
+      memberIds: ["player-1", "player-2"],
+    },
+  ]);
+});
+
+test("derives normalized bases from documented guild summaries", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Guilds: {
+          "guild-1": {
+            name: "Pal Tamers",
+            Level: 3,
+            admin: { id: "player-1", name: "Explorer" },
+            camp_count: 1,
+            camps: [
+              {
+                id: "base-1",
+                world_pos: { x: 1, y: 2, z: 3 },
+                map_pos: { x: 4, y: 5, z: 6 },
+              },
+            ],
+            member_count: 1,
+            members: ["player-1"],
+          },
+        },
+      }),
+  );
+  assert.deepEqual(await client.getBases(), [
+    {
+      baseId: "base-1",
+      guildId: "guild-1",
+      guildName: "Pal Tamers",
+      guildAdministrator: { playerId: "player-1", name: "Explorer" },
+      worldPosition: { x: 1, y: 2, z: 3 },
+      mapPosition: { x: 4, y: 5, z: 6 },
+    },
+  ]);
+});
+
+test("loads one normalized base through documented guild endpoints", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input) => {
+      if (String(input).endsWith("/guilds")) {
+        return Response.json({
+          Guilds: {
+            "guild-1": {
+              name: "Pal Tamers",
+              Level: 3,
+              admin: { id: "player-1", name: "Explorer" },
+              camp_count: 1,
+              camps: [
+                {
+                  id: "base-1",
+                  world_pos: { x: 1, y: 2, z: 3 },
+                  map_pos: { x: 4, y: 5, z: 6 },
+                },
+              ],
+              member_count: 1,
+              members: ["player-1"],
+            },
+          },
+        });
+      }
+      return Response.json({
+        Guild: {
+          name: "Pal Tamers",
+          Level: 3,
+          admin: { id: "player-1", name: "Explorer" },
+          member_count: 1,
+          members: [],
+          camp_count: 1,
+          camps: [
+            {
+              id: "base-1",
+              level: 2,
+              world_pos: { x: 1, y: 2, z: 3 },
+              map_pos: { x: 4, y: 5, z: 6 },
+              state: "Normal",
+              pals: {},
+              buildings: "WIP",
+            },
+          ],
+          items: { current: 0, max: 0 },
+          expeditions: { finished: 0, missions: {} },
+          laboratory: { current_research: "None", researches: {} },
+        },
+      });
+    },
+  );
+
+  assert.deepEqual(await client.getBase("base-1"), {
+    baseId: "base-1",
+    guildId: "guild-1",
+    guildName: "Pal Tamers",
+    guildAdministrator: { playerId: "player-1", name: "Explorer" },
+    worldPosition: { x: 1, y: 2, z: 3 },
+    mapPosition: { x: 4, y: 5, z: 6 },
+    level: 2,
+    state: "Normal",
+    buildings: null,
+    pals: [],
+  });
+  await assert.rejects(
+    () => client.getBase("missing"),
+    (error: unknown) =>
+      error instanceof Error && error.message === "Base not found",
+  );
+});
+
+test("normalizes documented PalDefender guild details", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Guild: {
+          name: "Pal Tamers",
+          Level: 3,
+          admin: { id: "player-1", name: "Explorer" },
+          member_count: 1,
+          members: [
+            {
+              player_uid: "player-1",
+              player_name: "Explorer",
+              status: "Online",
+            },
+          ],
+          camp_count: 0,
+          camps: [],
+          items: {
+            container_id: "container-1",
+            current: 1,
+            max: 54,
+            "0": { item_id: "Wood", count: 10 },
+            "1": {},
+          },
+          expeditions: { finished: 2, missions: { DUNGEON_GRASS: true } },
+          laboratory: {
+            current_research: "None",
+            researches: {},
+          },
+        },
+      }),
+  );
+
+  assert.deepEqual(await client.getGuild("guild-1"), {
+    guildId: "guild-1",
+    name: "Pal Tamers",
+    level: 3,
+    administrator: { playerId: "player-1", name: "Explorer" },
+    memberCount: 1,
+    members: [{ playerId: "player-1", name: "Explorer", status: "Online" }],
+    baseCount: 0,
+    camps: [],
+    storage: {
+      containerId: "container-1",
+      occupiedSlots: 1,
+      maximumSlots: 54,
+      items: [{ slot: 0, itemId: "Wood", quantity: 10 }],
+    },
+    expeditions: { finishedCount: 2, missions: { DUNGEON_GRASS: true } },
+    laboratory: { currentResearch: null, researches: [] },
+  });
+});
+
+test("normalizes player details and omits raw platform and network identifiers", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Player: {
+          Name: "Explorer",
+          IP: "192.0.2.1",
+          PlayerUID: "player-1",
+          UserId: "gdk_secret",
+          GuildName: "Guild",
+          GuildUUID: "guild-secret",
+          Status: "Online",
+          WorldLocation: { x: 1, y: 2, z: 3 },
+          MapLocation: { x: 4, y: 5 },
+        },
+      }),
+  );
+  assert.deepEqual(await client.getPlayer("player-1"), {
+    name: "Explorer",
+    playerId: "player-1",
+    online: true,
+    guild: "Guild",
+    level: null,
+    worldLocation: { x: 1, y: 2, z: 3 },
+    mapLocation: { x: 4, y: 5 },
+  });
+});
+
+test("flattens available inventory containers into PalCenter items", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Inventory: {
+          Items: {
+            Available: true,
+            Slots: { "2": { ItemID: "Wood", Count: 12 } },
+          },
+          Armor: { Available: false, Slots: {} },
+        },
+      }),
+  );
+  assert.deepEqual(await client.getInventory("player-1"), [
+    { container: "Items", slot: 2, itemId: "Wood", quantity: 12 },
+  ]);
+});
+
+test("gives multiple items using the documented endpoint and normalizes the result", async () => {
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestBody = "";
+  let authorization = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = init?.method ?? "GET";
+      requestBody = String(init?.body ?? "");
+      authorization = new Headers(init?.headers).get("Authorization") ?? "";
+      return Response.json({ Granted: { Items: 7 } });
+    },
+  );
+  assert.deepEqual(
+    await client.giveItems("player-1", [
+      { itemId: "CopperIngot", count: 5 },
+      { itemId: "Polymer", count: 2 },
+    ]),
+    { playerId: "player-1", grantedItems: 7 },
+  );
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/give/items/player-1");
+  assert.equal(requestMethod, "POST");
+  assert.equal(authorization, "Bearer token");
+  assert.equal(
+    requestBody,
+    JSON.stringify({
+      Items: [
+        { ItemID: "CopperIngot", Count: 5 },
+        { ItemID: "Polymer", Count: 2 },
+      ],
+    }),
+  );
+});
+
+test("gives multiple Pals using the documented endpoint and normalizes the result", async () => {
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestBody = "";
+  let authorization = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = init?.method ?? "GET";
+      requestBody = String(init?.body ?? "");
+      authorization = new Headers(init?.headers).get("Authorization") ?? "";
+      return Response.json({ Granted: { Pals: 2 } });
+    },
+  );
+  assert.deepEqual(
+    await client.givePals("player-1", [
+      { palId: "Anubis", level: 35 },
+      { palId: "Kitsun", level: 25 },
+    ]),
+    { playerId: "player-1", grantedPals: 2 },
+  );
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/give/pals/player-1");
+  assert.equal(requestMethod, "POST");
+  assert.equal(authorization, "Bearer token");
+  assert.equal(
+    requestBody,
+    JSON.stringify({
+      Pals: [
+        { PalID: "Anubis", Level: 35 },
+        { PalID: "Kitsun", Level: 25 },
+      ],
+    }),
+  );
+});
+
+test("gives Pal templates with exact filenames and normalizes the result", async () => {
+  let requestUrl = "";
+  let requestBody = "";
+  let authorization = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body ?? "");
+      authorization = new Headers(init?.headers).get("Authorization") ?? "";
+      return Response.json({ Granted: { PalTemplates: 2 } });
+    },
+  );
+  assert.deepEqual(
+    await client.givePalTemplates("player-1", ["starter.json", "raid-01"]),
+    { playerId: "player-1", grantedPalTemplates: 2 },
+  );
+  assert.equal(
+    requestUrl,
+    "http://paldefender/v1/pdapi/give/paltemplate/player-1",
+  );
+  assert.equal(authorization, "Bearer token");
+  assert.equal(
+    requestBody,
+    JSON.stringify({ PalTemplates: ["starter.json", "raid-01"] }),
+  );
+});
+
+test("gives Pal eggs using Pal IDs and templates with documented bodies", async () => {
+  let requestUrl = "";
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body ?? "");
+      return Response.json({ Granted: { PalEggs: 2 } });
+    },
+  );
+  assert.deepEqual(
+    await client.givePalEggs("player-1", [
+      { eggId: "PalEgg_Fire_01", palId: "Kitsunebi", level: 12 },
+      { eggId: "PalEgg_Dark_01", palTemplate: "reward.json" },
+    ]),
+    { playerId: "player-1", grantedPalEggs: 2 },
+  );
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/give/paleggs/player-1");
+  assert.equal(
+    requestBody,
+    JSON.stringify({
+      PalEggs: [
+        { EggID: "PalEgg_Fire_01", PalID: "Kitsunebi", Level: 12 },
+        { EggID: "PalEgg_Dark_01", PalTemplate: "reward.json" },
+      ],
+    }),
+  );
+});
+
+test("normalizes team, Palbox, and base-camp Pals", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Pals: {
+          Team: {
+            instance1: {
+              PalID: "Lamball",
+              Nickname: "Fluffy",
+              Gender: "Female",
+              Level: 8,
+              Shiny: false,
+              PartnerSkillLevel: 2,
+              Passives: ["Artisan"],
+            },
+          },
+          Palbox: {},
+          BaseCamps: [],
+        },
+      }),
+  );
+  const pals = await client.getPals("player-1");
+  assert.equal(pals.length, 1);
+  assert.deepEqual(pals[0], {
+    instanceId: "instance1",
+    location: "Team",
+    baseCampId: null,
+    palId: "Lamball",
+    nickname: "Fluffy",
+    gender: "Female",
+    level: 8,
+    experience: null,
+    shiny: false,
+    rank: 2,
+    condensedPals: null,
+    physicalHealth: null,
+    workerSick: null,
+    imported: null,
+    hp: null,
+    hunger: null,
+    maxHunger: null,
+    sanity: null,
+    support: null,
+    craftSpeed: null,
+    palSouls: {},
+    ivs: {},
+    extraWorkSuitabilities: {},
+    disabledWorkPreferences: [],
+    passiveSkills: ["Artisan"],
+    activeSkills: [],
+    learnedSkills: [],
+  });
+});
+
+test("normalizes unlocked technology identifiers", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json({
+        Techs: { Unlocked: ["Technology_Wood", "Technology_Camp"] },
+      }),
+  );
+  assert.deepEqual(await client.getTechnology("player-1"), [
+    "Technology_Wood",
+    "Technology_Camp",
+  ]);
+});
+
+test("learns and forgets single, multiple, and all technologies with documented bodies", async () => {
+  const requests: Array<{ url: string; body: string; authorization: string }> =
+    [];
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requests.push({
+        url: String(input),
+        body: String(init?.body),
+        authorization: new Headers(init?.headers).get("Authorization") ?? "",
+      });
+      return String(input).includes("/learntech/")
+        ? Response.json({
+            UnlockedCount: 1,
+            Unlocked: ["Arrow"],
+            Skipped: [],
+          })
+        : Response.json({
+            ForgottenCount: 2,
+            Forgotten: "All",
+            Skipped: ["Technology_Missing"],
+          });
+    },
+  );
+
+  assert.deepEqual(await client.learnTechnology("player-1", "Arrow"), {
+    changedCount: 1,
+    changed: ["Arrow"],
+    skipped: [],
+  });
+  await client.learnTechnology("player-1", [
+    "Technology_Wood",
+    "Technology_Camp",
+  ]);
+  assert.deepEqual(await client.forgetTechnology("player-1", "All"), {
+    changedCount: 2,
+    changed: "All",
+    skipped: ["Technology_Missing"],
+  });
+  assert.deepEqual(requests, [
+    {
+      url: "http://paldefender/v1/pdapi/learntech/player-1",
+      body: JSON.stringify({ Technology: "Arrow" }),
+      authorization: "Bearer token",
+    },
+    {
+      url: "http://paldefender/v1/pdapi/learntech/player-1",
+      body: JSON.stringify({
+        Technology: ["Technology_Wood", "Technology_Camp"],
+      }),
+      authorization: "Bearer token",
+    },
+    {
+      url: "http://paldefender/v1/pdapi/forgettech/player-1",
+      body: JSON.stringify({ Technology: "All" }),
+      authorization: "Bearer token",
+    },
+  ]);
+});
+
+test("kicks a player with the documented reason body and normalizes the response", async () => {
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestBody = "";
+  let contentType = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = init?.method ?? "GET";
+      requestBody = String(init?.body ?? "");
+      contentType = new Headers(init?.headers).get("Content-Type") ?? "";
+      return Response.json({ Success: true, UserId: "steam_private" });
+    },
+  );
+  assert.deepEqual(await client.kickPlayer("player-1", "  Maintenance  "), {
+    success: true,
+    playerId: "player-1",
+  });
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/kick/player-1");
+  assert.equal(requestMethod, "POST");
+  assert.equal(requestBody, JSON.stringify({ Reason: "Maintenance" }));
+  assert.equal(contentType, "application/json");
+});
+
+test("uses an empty object when no optional kick message is supplied", async () => {
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (_input, init) => {
+      requestBody = String(init?.body ?? "");
+      return Response.json({ Success: true, UserId: "steam_private" });
+    },
+  );
+  await client.kickPlayer("player-1", "   ");
+  assert.equal(requestBody, "{}");
+});
+
+test("bans a player with every documented option and normalizes the response", async () => {
+  let requestUrl = "";
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body ?? "");
+      return Response.json({
+        Success: true,
+        UserId: "steam_private",
+        IP: true,
+        BannedIP: "192.0.2.1",
+        Kicked: 1,
+      });
+    },
+  );
+  assert.deepEqual(
+    await client.banPlayer("player-1", {
+      reason: "  Repeated abuse  ",
+      ipBan: true,
+    }),
+    {
+      success: true,
+      playerId: "player-1",
+      ipBanned: true,
+      bannedIp: "192.0.2.1",
+      kickedPlayers: 1,
+    },
+  );
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/ban/player-1");
+  assert.equal(
+    requestBody,
+    JSON.stringify({ Reason: "Repeated abuse", IP: true }),
+  );
+});
+
+test("omits undocumented and disabled ban options", async () => {
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (_input, init) => {
+      requestBody = String(init?.body ?? "");
+      return Response.json({
+        Success: true,
+        UserId: "steam_private",
+        IP: false,
+        BannedIP: "",
+        Kicked: 0,
+      });
+    },
+  );
+  const result = await client.banPlayer("player-1", {
+    reason: "   ",
+    ipBan: false,
+  });
+  assert.equal(requestBody, "{}");
+  assert.equal(result.bannedIp, null);
+});
+
+test("broadcasts documented messages without changing Unicode or formatting", async () => {
+  let requestUrl = "";
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body ?? "");
+      return Response.json({ Success: true });
+    },
+  );
+  const message = "Server restart soon.\n戻ってください — ⚡";
+  assert.deepEqual(await client.broadcast(message), { success: true });
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/Broadcast");
+  assert.equal(requestBody, JSON.stringify({ Message: message }));
+});
+
+test("sends documented alerts and normalizes success", async () => {
+  let requestUrl = "";
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body ?? "");
+      return Response.json({ Success: true });
+    },
+  );
+  assert.deepEqual(await client.alert("Restart now."), { success: true });
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/Alert");
+  assert.equal(requestBody, JSON.stringify({ Message: "Restart now." }));
+});
+
+test("reloads configuration with the documented bodyless request", async () => {
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestBody: BodyInit | null | undefined;
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = init?.method ?? "";
+      requestBody = init?.body;
+      return Response.json({ Success: true });
+    },
+  );
+  assert.deepEqual(await client.reloadConfig(), { success: true });
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/ReloadConfig");
+  assert.equal(requestMethod, "POST");
+  assert.equal(requestBody, undefined);
+});
+
+test("deletes a base with the documented Base Camp ID and normalizes cleanup", async () => {
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestBody: BodyInit | null | undefined;
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = init?.method ?? "";
+      requestBody = init?.body;
+      return Response.json({
+        BaseCamp: { Id: "base-guid", Summary: "Test Guild base" },
+        Deleted: {
+          BaseCampPals: 1,
+          StorageContainers: 2,
+          ItemStacks: 3,
+          ItemCount: 4,
+          Buildings: 5,
+          DropItems: 6,
+          DefenseModels: 7,
+          OtherMapObjects: 8,
+          PalBox: true,
+        },
+        Archive: "Saved/PalDefender/Archives/base-guid.zip",
+      });
+    },
+  );
+  assert.deepEqual(await client.deleteBase("base-guid"), {
+    base: { id: "base-guid", summary: "Test Guild base" },
+    deleted: {
+      baseCampPals: 1,
+      storageContainers: 2,
+      itemStacks: 3,
+      itemCount: 4,
+      buildings: 5,
+      dropItems: 6,
+      defenseModels: 7,
+      otherMapObjects: 8,
+      palBox: true,
+    },
+    archive: "Saved/PalDefender/Archives/base-guid.zip",
+  });
+  assert.equal(requestUrl, "http://paldefender/v1/pdapi/deletebase/base-guid");
+  assert.equal(requestMethod, "POST");
+  assert.equal(requestBody, undefined);
+});
+
+test("does not retry an ambiguous base deletion timeout", async () => {
+  let requests = 0;
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () => {
+      requests += 1;
+      return Response.json(
+        {
+          Error: {
+            Code: "REQUEST_TIMEOUT",
+            Message: "The game-thread callback timed out.",
+          },
+        },
+        { status: 500 },
+      );
+    },
+  );
+  await assert.rejects(
+    () => client.deleteBase("base-guid"),
+    /game-thread callback timed out/i,
+  );
+  assert.equal(requests, 1);
+});
+
+test("sends player messages with deduplicated documented targets", async () => {
+  let requestBody = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input, init) => {
+      assert.equal(
+        String(input),
+        "http://paldefender/v1/pdapi/SendPlayerMessage",
+      );
+      requestBody = String(init?.body ?? "");
+      return Response.json({ Success: true, SentCount: 2 });
+    },
+  );
+  assert.deepEqual(
+    await client.sendPlayerMessage(
+      ["steam_1", "steam_1", "gdk_2"],
+      "PlayerLogImportant",
+      "Event soon.",
+    ),
+    { success: true, sentCount: 2 },
+  );
+  assert.equal(
+    requestBody,
+    JSON.stringify({
+      SendType: "PlayerLogImportant",
+      UserIDs: ["steam_1", "gdk_2"],
+      Message: "Event soon.",
+    }),
+  );
+});
+
+test("uses UserID for a single player message target", async () => {
+  let body: unknown;
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (_input, init) => {
+      body = JSON.parse(String(init?.body));
+      return Response.json({ Success: true, SentCount: 1 });
+    },
+  );
+  await client.sendPlayerMessage(["steam_1"], "PlayerChat", "Hello");
+  assert.deepEqual(body, {
+    SendType: "PlayerChat",
+    UserID: "steam_1",
+    Message: "Hello",
+  });
+});
+
+test("encodes supported player identifiers and rejects path injection", async () => {
+  let requested = "";
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async (input) => {
+      requested = String(input);
+      return Response.json({
+        Player: { PlayerUID: "gdk_123", Name: "Player" },
+      });
+    },
+  );
+  await client.getPlayer("gdk_123");
+  assert.match(requested, /\/player\/gdk_123$/);
+  await assert.rejects(
+    () => client.getPlayer("../players"),
+    /identifier is invalid/i,
+  );
+});
+
+test("normalizes authentication, not-found, and malformed response errors", async () => {
+  const unauthorized = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () =>
+      Response.json(
+        { Error: { Code: "INVALID_TOKEN", Message: "Bad token" } },
+        { status: 401 },
+      ),
+  );
+  await assert.rejects(
+    () => unauthorized.getPlayer("player-1"),
+    (error: unknown) => error instanceof Error && error.message === "Bad token",
+  );
+  const malformed = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () => Response.json({ Player: { Name: "missing id" } }),
+  );
+  await assert.rejects(
+    () => malformed.getPlayer("player-1"),
+    /malformed response/i,
+  );
+});
+
+test("normalizes upstream request timeouts", async () => {
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "token",
+    async () => {
+      throw new DOMException("Timed out", "TimeoutError");
+    },
+  );
+  await assert.rejects(
+    () => client.getPlayer("player-1"),
+    (error: unknown) => {
+      return (
+        error instanceof Error &&
+        error.message === "PalDefender request timed out." &&
+        "timedOut" in error &&
+        error.timedOut === true
+      );
+    },
+  );
+});
+
+test("normalizes the banlist and executes documented moderation endpoints", async () => {
+  const requests: Array<{
+    url: string;
+    method: string;
+    body: string;
+    auth: string;
+  }> = [];
+  const timestamp = {
+    UTC: 1720000000,
+    Year: 2024,
+    Month: 7,
+    Day: 3,
+    Hour: 9,
+    Min: 46,
+    Sec: 40,
+    Msec: 0,
+  };
+  const actor = {
+    Type: "rest",
+    NameValue: "PalCenter",
+    IP: "192.0.2.1",
+    Reason: "UAT",
+    Timestamp: timestamp,
+  };
+  const client = new PalDefenderClient(
+    "http://paldefender",
+    "moderation-token",
+    async (input, init) => {
+      const url = String(input);
+      requests.push({
+        url,
+        method: init?.method ?? "GET",
+        body: String(init?.body ?? ""),
+        auth: new Headers(init?.headers).get("Authorization") ?? "",
+      });
+      if (url.includes("/banlist"))
+        return Response.json({
+          Banlist: {
+            Version: 1,
+            BannedMessage: "You are banned.",
+            UserEntries: [{ UserId: "steam_1", Active: true, BannedBy: actor }],
+            IPEntries: [{ IP: "192.0.2.10", Active: true, BannedBy: actor }],
+          },
+        });
+      if (url.includes("/unban/"))
+        return Response.json({ Success: true, UserId: "steam_1" });
+      if (url.includes("/unbanip/"))
+        return Response.json({ Success: true, IP: "192.0.2.10" });
+      return Response.json({ Success: true, IP: "192.0.2.10", Kicked: 0 });
+    },
+  );
+  const state = await client.getBanlist();
+  assert.equal(state.userBans[0]?.userId, "steam_1");
+  assert.equal(state.ipBans[0]?.ip, "192.0.2.10");
+  assert.equal(state.userBans[0]?.bannedBy.reason, "UAT");
+  await client.unbanUser("steam_1", "Appeal accepted");
+  await client.banIp("192.0.2.10", "Bot traffic");
+  await client.unbanIp("192.0.2.10", "Test complete");
+  assert.deepEqual(
+    requests.map(({ url, method, body }) => ({ url, method, body })),
+    [
+      {
+        url: "http://paldefender/v1/pdapi/banlist?active=true",
+        method: "GET",
+        body: "",
+      },
+      {
+        url: "http://paldefender/v1/pdapi/unban/steam_1",
+        method: "POST",
+        body: JSON.stringify({ Reason: "Appeal accepted" }),
+      },
+      {
+        url: "http://paldefender/v1/pdapi/banip/192.0.2.10",
+        method: "POST",
+        body: JSON.stringify({ Reason: "Bot traffic" }),
+      },
+      {
+        url: "http://paldefender/v1/pdapi/unbanip/192.0.2.10",
+        method: "POST",
+        body: JSON.stringify({ Reason: "Test complete" }),
+      },
+    ],
+  );
+  assert.ok(
+    requests.every((request) => request.auth === "Bearer moderation-token"),
+  );
+});

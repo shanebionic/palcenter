@@ -2,6 +2,48 @@
 
 All notable PalCenter changes are documented here.
 
+## 1.5.0
+
+### Added
+
+- PalDefender integration with per-server configuration for enhanced player,
+  guild, and base administration.
+- Player workspace with inventory, Pals, technology, progression, and
+  moderation actions.
+- Player resource grants: items, Pals, Pal templates, Pal eggs, and
+  progression levels and points.
+- Technology management: learn and forget technology with catalog selectors.
+- Player moderation: kick and ban with optional IP ban, plus IP unban and
+  user unban.
+- Guild list and detail view with administrator, member, and base camp
+  information.
+- Base camp list and detail view with member roster and delete capability.
+- Server broadcast, player alerts, and targeted player messages through
+  PalDefender.
+- PalDefender configuration reload from the server connection settings.
+- Friendly Palworld catalog selectors with full-text search for items, Pals,
+  eggs, and technology.
+- Player level enrichment with bounded concurrency and cache invalidation.
+
+### Changed
+
+- Server workspace routes for Guilds and Bases are scoped to the selected
+  server with canonical navigation.
+- Players list displays PalDefender-enriched level data and supports direct
+  kick and ban actions.
+- Administration panel includes PalDefender alert, player message, and
+  moderation controls alongside native REST operations.
+- Removed the discontinued PalCenter Companion integration.
+
+### Fixed
+
+- Player levels now refresh correctly after manual Players table refresh.
+- Level enrichment respects concurrency limits across large player counts.
+- Inventory tab updates correctly after granting Pal eggs.
+- Successful player actions are no longer misreported as failures when
+  background player-list refresh encounters network issues.
+- Map teleport availability, coordinate fallback, and player history display.
+
 ## 1.4.0
 
 ### Added

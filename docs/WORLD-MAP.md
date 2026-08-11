@@ -1,5 +1,21 @@
 # Palpagos world map
 
+## Living World Map
+
+The map is the quickest way to see what is happening on a server. The large
+Palpagos view shows connected players, while the right side lists everyone who
+is online, selected-player details, and recent joins or departures.
+
+- Select a player to open their details.
+- Use **Follow Player** to keep the selected player centered while they move.
+- Switch between **Palpagos** and **World Tree** manually.
+- Players in a confirmed special area receive a clear off-map view instead of
+  misleading Palpagos coordinates.
+
+PalCenter obtains player positions from the official Palworld REST API. That
+API does not identify special-stage instances, so positions in those areas are
+shown as approximate rather than presented as authoritative map locations.
+
 PalCenter v1.4 includes an interactive Palpagos reference map for current
 connected players. The position pipeline, controls, freshness indicators,
 access controls, and administrator calibration tooling remain independent from
@@ -61,6 +77,23 @@ The map projection uses these sources:
 The last source is community research rather than an official Palworld API
 contract. The constants and orientation must therefore be treated as
 calibration assumptions, not guaranteed game metadata.
+
+## Standard and exact locations
+
+PalCenter can show player locations and movement trails using the standard
+Palworld REST API. Valid REST coordinates use the Palpagos projection even when
+older or unverified telemetry does not identify a map area. Stale positions
+remain visible with a clear age label and are never described as live.
+
+The standard API cannot reliably identify dungeons, boss towers, the World
+Tree, or other secondary areas. Players in those areas may therefore appear in
+the wrong place on Palpagos. PalCenter keeps them visible rather than making the
+normal map unusable.
+
+Existing coordinate-space fields, map definitions, last trusted Palpagos
+positions, and trail segmentation remain in place for stored-data
+compatibility. No historical rows are destructively rewritten. Current
+schema-v9 `unknown` samples remain usable at display time.
 
 ## Projection
 

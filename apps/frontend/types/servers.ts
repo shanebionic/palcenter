@@ -4,6 +4,11 @@ export interface PublicConnection {
   baseUrl: string;
   createdAt: string;
   updatedAt: string;
+  palDefender: {
+    enabled: boolean;
+    endpoint: string | null;
+    tokenConfigured: boolean;
+  };
 }
 
 export interface ServerStatus {
@@ -62,11 +67,15 @@ export interface PlayerPositionSnapshot {
   buildingCount: number | null;
   guildId: string | null;
   guildName: string | null;
+  coordinateSpaceId: string | null;
+  locationAuthority?: "standard";
   createdAt: string;
 }
 
 export interface LatestPlayerTelemetry {
   players: PlayerPositionSnapshot[];
+  trustedPositions: PlayerPositionSnapshot[];
+  coordinateSpacesAuthoritative: boolean;
   pollingIntervalSeconds: number;
   lastCollectedAt: string | null;
 }
@@ -75,12 +84,68 @@ export interface PlayerTrailPoint {
   capturedAt: string;
   x: number | null;
   y: number | null;
+  coordinateSpaceId: string | null;
 }
 
 export interface PlayerTrailHistory {
   points: PlayerTrailPoint[];
   limit: number;
   truncated: boolean;
+}
+
+export const worldEventTypes = [
+  "player_joined",
+  "player_disconnected",
+  "session_started",
+  "session_ended",
+  "player_died",
+  "player_respawned",
+  "player_idle_started",
+  "player_idle_ended",
+  "player_afk_started",
+  "player_afk_ended",
+  "player_rapid_relocation",
+] as const;
+
+export type WorldEventType = (typeof worldEventTypes)[number];
+
+export interface WorldEvent {
+  id: string;
+  serverId: string;
+  userId: string;
+  playerId: string | null;
+  timestamp: string;
+  type: WorldEventType;
+  metadata: Record<string, string | number | boolean | null>;
+  confidence: number;
+  evidence: Array<{
+    // `companion` is retained only for previously stored event compatibility.
+    source: "players" | "telemetry" | "transition_registry" | "companion";
+    fact:
+      | "appeared"
+      | "disappeared"
+      | "state_changed"
+      | "within_radius"
+      | "roster_present"
+      | "moved_beyond_radius"
+      | "prior_state"
+      | "rapid_displacement"
+      | "implied_speed"
+      | "observation_continuous"
+      | "coordinate_space_changed"
+      | "transition_signature_matched"
+      | "server_hook";
+    value: string;
+  }>;
+  position: { x: number; y: number; z: number | null } | null;
+}
+
+export interface WorldEventQuery {
+  userId?: string;
+  type?: WorldEventType;
+  from?: string;
+  to?: string;
+  limit?: number;
 }
 
 export interface ServerSettings {

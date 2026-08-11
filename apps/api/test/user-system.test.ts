@@ -168,6 +168,34 @@ test("central role permissions enforce administrator, moderator, and visitor sco
     "operate",
   );
   assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/paldefender/players/player-1/kick",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/paldefender/players/player-1/ban",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/paldefender/broadcast",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/paldefender/reload-config",
+    ),
+    "manage_servers",
+  );
+  assert.equal(
     authorization.permissionFor("POST", "/api/backup"),
     "manage_backups",
   );
@@ -178,6 +206,13 @@ test("central role permissions enforce administrator, moderator, and visitor sco
   assert.equal(authorization.can("administrator", "manage_servers"), true);
   assert.equal(authorization.can("moderator", "manage_servers"), false);
   assert.equal(authorization.can("visitor", "manage_servers"), false);
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/srv_1/paldefender/bases/base-guid/delete",
+    ),
+    "manage_servers",
+  );
   assert.equal(authorization.permissionFor("GET", "/api/automations"), "read");
   assert.equal(
     authorization.permissionFor("POST", "/api/automations/task_1/run"),

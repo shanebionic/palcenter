@@ -49,6 +49,11 @@ import {
   trailStyle,
 } from "../lib/world-map/trail";
 import { isPlayerColor, playerColor } from "../lib/world-map/player-color";
+import {
+  enabledWorldMapDefinitions,
+  palpagosMapDefinition,
+  worldTreeMapDefinition,
+} from "../lib/world-map/map-definitions";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
 
 test("assigns stable readable player colors from userId", () => {
@@ -63,6 +68,18 @@ test("assigns stable readable player colors from userId", () => {
     assert.match(color, /^#[0-9a-f]{6}$/i);
     assert.equal(isPlayerColor(color), true);
   }
+});
+
+test("exposes only verified map definitions for selection", () => {
+  assert.equal(palpagosMapDefinition.supportsLivePlotting, true);
+  assert.equal(worldTreeMapDefinition.enabled, false);
+  assert.equal(worldTreeMapDefinition.projection, null);
+  assert.deepEqual(
+    enabledWorldMapDefinitions().map(
+      ({ coordinateSpaceId }) => coordinateSpaceId,
+    ),
+    ["palpagos"],
+  );
 });
 
 test("calculates safe timestamp-based trail age and bounded styles", () => {
@@ -608,6 +625,139 @@ test("represents online marker details without exposing the player IP", () => {
   assert.equal(JSON.stringify(details).includes("192.0.2.10"), false);
 });
 
+test("standard REST positions remain visible when their coordinate space is unknown, null, or unverified", () => {
+  for (const coordinateSpaceId of ["unknown", null, "world_tree"]) {
+    const player = connectedPlayer("uid-rest", "pid-rest", "Explorer");
+    const current = {
+      ...snapshot({
+        userId: player.userId,
+        playerId: player.playerId,
+        x: 10,
+        y: 20,
+      }),
+      coordinateSpaceId,
+    };
+    const model = buildLivePlayerMapModel(
+      [player],
+      [current],
+      palpagosProjection,
+      30,
+      current.capturedAt,
+      new Date(current.capturedAt),
+    );
+    assert.equal(model.markers.length, 1);
+    assert.equal(model.markers[0]?.locationAuthority, "standard");
+    assert.equal(model.unmappedPlayers.length, 0);
+  }
+});
+
+test("stale standard positions stay mapped without an off-map duplicate", () => {
+  const player = connectedPlayer("uid-stale", "pid-stale", "Explorer");
+  const current = {
+    ...snapshot({
+      userId: player.userId,
+      playerId: player.playerId,
+      x: 10,
+      y: 20,
+      coordinateSpaceId: "unknown",
+    }),
+    capturedAt: "2026-07-28T11:00:00.000Z",
+  };
+  const model = buildLivePlayerMapModel(
+    [player],
+    [current],
+    palpagosProjection,
+    30,
+    current.capturedAt,
+    new Date("2026-07-28T12:00:00.000Z"),
+  );
+  assert.equal(model.markers[0]?.freshness, "stale");
+  assert.equal(model.unmappedPlayers.length, 0);
+});
+
+test("segments and totals include only the selected coordinate space", () => {
+  const trail = processMovementTrail(
+    [
+      {
+        capturedAt: "2026-07-28T12:00:00Z",
+        x: 0,
+        y: 0,
+        coordinateSpaceId: "palpagos",
+      },
+      {
+        capturedAt: "2026-07-28T12:01:00Z",
+        x: 1_000,
+        y: 0,
+        coordinateSpaceId: "palpagos",
+      },
+      {
+        capturedAt: "2026-07-28T12:02:00Z",
+        x: 50_000,
+        y: 50_000,
+        coordinateSpaceId: "instance:fixture",
+      },
+      {
+        capturedAt: "2026-07-28T12:03:00Z",
+        x: 2_000,
+        y: 0,
+        coordinateSpaceId: "palpagos",
+      },
+      {
+        capturedAt: "2026-07-28T12:04:00Z",
+        x: 3_000,
+        y: 0,
+        coordinateSpaceId: "palpagos",
+      },
+    ],
+    palpagosProjection,
+    {
+      pollingIntervalSeconds: 30,
+      coordinateSpaceId: "palpagos",
+      coordinateSpacesAuthoritative: true,
+    },
+  );
+  assert.equal(trail.coordinateSpaceId, "palpagos");
+  assert.equal(trail.segments.length, 2);
+  assert.equal(trail.exclusions.coordinateSpace, 1);
+  assert.equal(trail.approximateDistance, 2_000);
+});
+
+test("standard REST trails retain unknown history while authoritative trails split spaces", () => {
+  const points = [
+    {
+      capturedAt: "2026-07-28T12:00:00Z",
+      x: 0,
+      y: 0,
+      coordinateSpaceId: "unknown",
+    },
+    {
+      capturedAt: "2026-07-28T12:01:00Z",
+      x: 1_000,
+      y: 0,
+      coordinateSpaceId: "unknown",
+    },
+    {
+      capturedAt: "2026-07-28T12:02:00Z",
+      x: 2_000,
+      y: 0,
+      coordinateSpaceId: "palpagos",
+    },
+  ];
+  const standard = processMovementTrail(points, palpagosProjection, {
+    pollingIntervalSeconds: 30,
+    coordinateSpaceId: "palpagos",
+  });
+  const exact = processMovementTrail(points, palpagosProjection, {
+    pollingIntervalSeconds: 30,
+    coordinateSpaceId: "palpagos",
+    coordinateSpacesAuthoritative: true,
+  });
+  assert.equal(standard.pointCount, 3);
+  assert.equal(standard.approximateDistance, 2_000);
+  assert.equal(exact.pointCount, 1);
+  assert.equal(exact.exclusions.coordinateSpace, 2);
+});
+
 test("marks out-of-bounds current players as unavailable", () => {
   const model = buildLivePlayerMapModel(
     [connectedPlayer("uid-1", "pid-1", "Foxparks")],
@@ -843,11 +993,9 @@ test("keeps the marker initial and floating label decorative", async () => {
     new URL("../components/ServerWorldMap.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(
-    source,
-    /<span aria-hidden="true">\{presentation\.initial\}<\/span>/,
-  );
-  assert.match(source, /aria-label=\{presentation\.accessibleName\}/);
+  assert.match(source, /<span aria-hidden="true">/);
+  assert.match(source, /presentation\.initial/);
+  assert.match(source, /presentation\.accessibleName/);
   assert.match(source, /className="pc-world-map-marker-position"/);
   assert.match(source, /className="pc-world-map-marker-visual"/);
   assert.match(
@@ -860,8 +1008,8 @@ test("keeps the marker initial and floating label decorative", async () => {
   );
   assert.equal(
     source.match(/\{presentation\.displayName\}/g)?.length,
-    1,
-    "the floating visual label renders the display name exactly once",
+    2,
+    "the display name appears once in the visual label and once in the conditional accessible name",
   );
 
   const denalb = playerMarkerPresentation("Denalb");
@@ -944,7 +1092,8 @@ function connectedPlayer(
 }
 
 function snapshot(
-  overrides: Pick<PlayerPositionSnapshot, "userId" | "playerId" | "x" | "y">,
+  overrides: Pick<PlayerPositionSnapshot, "userId" | "playerId" | "x" | "y"> &
+    Partial<Pick<PlayerPositionSnapshot, "coordinateSpaceId">>,
 ): PlayerPositionSnapshot {
   return {
     id: 1,
@@ -962,6 +1111,7 @@ function snapshot(
     buildingCount: 3,
     guildId: null,
     guildName: null,
+    coordinateSpaceId: overrides.coordinateSpaceId ?? "palpagos",
     createdAt: "2026-07-28T12:00:00.000Z",
   };
 }

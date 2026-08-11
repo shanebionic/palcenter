@@ -3,6 +3,9 @@ export interface StoredConnection {
   name: string;
   baseUrl: string;
   adminPassword: string;
+  palDefenderEnabled?: boolean;
+  palDefenderEndpoint?: string | null;
+  palDefenderToken?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -13,6 +16,11 @@ export interface PublicConnection {
   baseUrl: string;
   createdAt: string;
   updatedAt: string;
+  palDefender: {
+    enabled: boolean;
+    endpoint: string | null;
+    tokenConfigured: boolean;
+  };
 }
 
 export interface ConnectionFile {

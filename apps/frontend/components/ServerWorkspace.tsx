@@ -13,18 +13,26 @@ import { ServerSettings } from "./ServerSettings";
 import { ServerDangerZone } from "./ServerDangerZone";
 import { ServerConnectionSettings } from "./ServerConnectionSettings";
 import { ServerWorldMap } from "./ServerWorldMap";
+import { ServerGuilds } from "./ServerGuilds";
+import { ServerBases } from "./ServerBases";
+import { ServerAuditLog } from "./ServerAuditLog";
 
 interface ServerWorkspaceProps {
   serverId: string;
+  initialTab?: string;
 }
 
-export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
+export function ServerWorkspace({
+  serverId,
+  initialTab = "overview",
+}: ServerWorkspaceProps) {
   const [server, setServer] = useState<ServerWorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [canOperate, setCanOperate] = useState(false);
   const [canManage, setCanManage] = useState(false);
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   const loadServer = useCallback(
     async (background = false) => {
@@ -108,13 +116,17 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
 
           <Tabs
             className="pc-workspace-tabs"
-            defaultValue="overview"
+            value={activeTab}
+            onChange={(value) => setActiveTab(value ?? "overview")}
             keepMounted={false}
           >
             <Tabs.List>
               <Tabs.Tab value="overview">Overview</Tabs.Tab>
               {canOperate && <Tabs.Tab value="players">Players</Tabs.Tab>}
+              {canOperate && <Tabs.Tab value="guilds">Guilds</Tabs.Tab>}
+              {canOperate && <Tabs.Tab value="bases">Bases</Tabs.Tab>}
               {canOperate && <Tabs.Tab value="map">Map</Tabs.Tab>}
+              {canOperate && <Tabs.Tab value="audit">Audit Log</Tabs.Tab>}
               {canOperate && (
                 <Tabs.Tab value="administration">Administration</Tabs.Tab>
               )}
@@ -134,12 +146,27 @@ export function ServerWorkspace({ serverId }: ServerWorkspaceProps) {
               </Tabs.Panel>
             )}
             {canOperate && (
+              <Tabs.Panel value="guilds">
+                <ServerGuilds serverId={server.connection.id} />
+              </Tabs.Panel>
+            )}
+            {canOperate && (
+              <Tabs.Panel value="bases">
+                <ServerBases serverId={server.connection.id} />
+              </Tabs.Panel>
+            )}
+            {canOperate && (
               <Tabs.Panel value="map">
                 <ServerWorldMap
                   serverId={server.connection.id}
                   serverOnline={server.status.status === "online"}
                   canCalibrate={canManage}
                 />
+              </Tabs.Panel>
+            )}
+            {canOperate && (
+              <Tabs.Panel value="audit">
+                <ServerAuditLog serverId={server.connection.id} />
               </Tabs.Panel>
             )}
             {canOperate && (

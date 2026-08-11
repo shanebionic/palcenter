@@ -3,18 +3,35 @@ import type {
   PlayerPositionSnapshot,
   UserRole,
 } from "../../types/servers";
-import {
-  isWorldCoordinateWithinBounds,
-  worldToNormalizedMapPosition,
-  type MapProjectionConfiguration,
-  type NormalizedMapPosition,
+import type {
+  MapProjectionConfiguration,
+  NormalizedMapPosition,
 } from "./projection";
+import {
+  palpagosMapDefinition,
+  projectOnMap,
+  type WorldMapDefinition,
+} from "./map-definitions";
 
 export type TelemetryFreshness = "live" | "delayed" | "stale";
+export type PlayerLocationAuthority = "standard";
 export type UnmappedPlayerReason =
   | "missing_telemetry"
   | "invalid_coordinates"
-  | "outside_bounds";
+  | "outside_bounds"
+  | "world_tree"
+  | "instanced_area"
+  | "unsupported_space"
+  | "unknown_space"
+  | "stale_position";
+export type PlayerSpatialState =
+  | "palpagos_live"
+  | "world_tree_live"
+  | "confirmed_instance"
+  | "unsupported_space"
+  | "unknown_space"
+  | "stale_position"
+  | "offline";
 
 export interface LivePlayerMapMarker {
   userId: string;
@@ -29,6 +46,12 @@ export interface LivePlayerMapMarker {
   position: NormalizedMapPosition;
   freshness: TelemetryFreshness;
   telemetryAt: string;
+  coordinateSpaceId: string;
+  spatialState: PlayerSpatialState;
+  displayKind: "live" | "last_trusted_instance";
+  reportedWorldX: number;
+  reportedWorldY: number;
+  locationAuthority: PlayerLocationAuthority;
 }
 
 export interface UnmappedPlayer {
@@ -36,6 +59,9 @@ export interface UnmappedPlayer {
   playerName: string;
   reason: UnmappedPlayerReason;
   snapshot: PlayerPositionSnapshot | null;
+  coordinateSpaceId: string;
+  spatialState: PlayerSpatialState;
+  lastTrustedPosition: PlayerPositionSnapshot | null;
 }
 
 export interface LivePlayerMapModel {
@@ -163,16 +189,27 @@ export function formatTelemetryAge(
 export function buildLivePlayerMapModel(
   connectedPlayers: ConnectedPlayer[],
   telemetry: PlayerPositionSnapshot[],
-  configuration: MapProjectionConfiguration,
+  _configuration: MapProjectionConfiguration,
   pollingIntervalSeconds: number,
   verifiedAt: string | null,
   now = new Date(),
+  trustedPositions: PlayerPositionSnapshot[] = [],
+  mapDefinition: WorldMapDefinition = palpagosMapDefinition,
+  locationAuthority: PlayerLocationAuthority = "standard",
 ): LivePlayerMapModel {
   const telemetryByUserId = new Map(
     telemetry.map((snapshot) => [snapshot.userId, snapshot]),
   );
   const markers: LivePlayerMapMarker[] = [];
   const unmappedPlayers: UnmappedPlayer[] = [];
+  const trustedByUserId = new Map(
+    trustedPositions
+      .filter(
+        (snapshot) =>
+          snapshot.coordinateSpaceId === mapDefinition.coordinateSpaceId,
+      )
+      .map((snapshot) => [snapshot.userId, snapshot]),
+  );
 
   for (const player of connectedPlayers) {
     const snapshot = telemetryByUserId.get(player.userId) ?? null;
@@ -182,7 +219,86 @@ export function buildLivePlayerMapModel(
         playerName: player.name,
         reason: "missing_telemetry",
         snapshot: null,
+        coordinateSpaceId: "unknown",
+        spatialState: "unknown_space",
+        lastTrustedPosition: trustedByUserId.get(player.userId) ?? null,
       });
+      continue;
+    }
+
+    const coordinateSpaceId = snapshot.coordinateSpaceId || "unknown";
+    const freshness = classifyTelemetryFreshness(
+      snapshot.capturedAt,
+      pollingIntervalSeconds,
+      now,
+    );
+    const isInstance =
+      coordinateSpaceId === "special_area" ||
+      coordinateSpaceId.startsWith("instance:");
+    const hasAuthoritativeSpace = false;
+    const spatialState: PlayerSpatialState =
+      freshness === "stale"
+        ? "stale_position"
+        : coordinateSpaceId === "palpagos"
+          ? "palpagos_live"
+          : coordinateSpaceId === "world_tree"
+            ? "world_tree_live"
+            : isInstance
+              ? "confirmed_instance"
+              : coordinateSpaceId === "unknown"
+                ? "unknown_space"
+                : "unsupported_space";
+    if (
+      hasAuthoritativeSpace &&
+      coordinateSpaceId !== mapDefinition.coordinateSpaceId
+    ) {
+      const lastTrustedPosition = trustedByUserId.get(player.userId) ?? null;
+      unmappedPlayers.push({
+        userId: player.userId,
+        playerName: player.name,
+        reason: isInstance
+          ? "instanced_area"
+          : coordinateSpaceId === "world_tree"
+            ? "world_tree"
+            : coordinateSpaceId === "unknown"
+              ? "unknown_space"
+              : "unsupported_space",
+        snapshot,
+        coordinateSpaceId,
+        spatialState,
+        lastTrustedPosition,
+      });
+      if (isInstance && lastTrustedPosition) {
+        const trustedCoordinate =
+          lastTrustedPosition.x === null || lastTrustedPosition.y === null
+            ? null
+            : { x: lastTrustedPosition.x, y: lastTrustedPosition.y };
+        const trustedMapPosition = trustedCoordinate
+          ? projectOnMap(mapDefinition, trustedCoordinate)
+          : null;
+        if (trustedCoordinate && trustedMapPosition) {
+          markers.push({
+            userId: snapshot.userId,
+            playerId: snapshot.playerId,
+            playerName: player.name,
+            accountName: snapshot.accountName,
+            level: snapshot.level,
+            ping: snapshot.ping,
+            buildingCount: snapshot.buildingCount,
+            worldX: trustedCoordinate.x,
+            worldY: trustedCoordinate.y,
+            reportedWorldX: snapshot.x ?? 0,
+            reportedWorldY: snapshot.y ?? 0,
+            position: trustedMapPosition,
+            freshness,
+            telemetryAt: snapshot.capturedAt,
+            coordinateSpaceId,
+            spatialState,
+            displayKind: "last_trusted_instance",
+            locationAuthority,
+          });
+        }
+      }
       continue;
     }
 
@@ -200,20 +316,23 @@ export function buildLivePlayerMapModel(
         playerName: player.name,
         reason: "invalid_coordinates",
         snapshot,
+        coordinateSpaceId,
+        spatialState,
+        lastTrustedPosition: trustedByUserId.get(player.userId) ?? null,
       });
       continue;
     }
 
-    const position = worldToNormalizedMapPosition(coordinate, configuration);
-    if (
-      !isWorldCoordinateWithinBounds(coordinate, configuration) ||
-      !position
-    ) {
+    const position = projectOnMap(mapDefinition, coordinate);
+    if (!position) {
       unmappedPlayers.push({
         userId: player.userId,
         playerName: player.name,
         reason: "outside_bounds",
         snapshot,
+        coordinateSpaceId,
+        spatialState,
+        lastTrustedPosition: trustedByUserId.get(player.userId) ?? null,
       });
       continue;
     }
@@ -236,6 +355,8 @@ export function buildLivePlayerMapModel(
       buildingCount: snapshot.buildingCount,
       worldX: coordinate.x,
       worldY: coordinate.y,
+      reportedWorldX: coordinate.x,
+      reportedWorldY: coordinate.y,
       position,
       freshness: classifyTelemetryFreshness(
         telemetryAt,
@@ -243,6 +364,10 @@ export function buildLivePlayerMapModel(
         now,
       ),
       telemetryAt,
+      coordinateSpaceId,
+      spatialState,
+      displayKind: "live",
+      locationAuthority,
     });
   }
 

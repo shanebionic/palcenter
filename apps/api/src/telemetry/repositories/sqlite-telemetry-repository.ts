@@ -28,6 +28,7 @@ interface SnapshotRow {
   building_count: number | null;
   guild_id: string | null;
   guild_name: string | null;
+  coordinate_space_id: string;
   created_at: string;
 }
 
@@ -98,8 +99,8 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
       `INSERT INTO player_position_snapshots (
         server_id, user_id, player_id, player_name, account_name, captured_at,
         x, y, z, level, ping, building_count,
-        guild_id, guild_name, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        guild_id, guild_name, coordinate_space_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const createdAt = new Date().toISOString();
 
@@ -121,6 +122,7 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
           snapshot.buildingCount,
           snapshot.guildId,
           snapshot.guildName,
+          snapshot.coordinateSpaceId ?? "unknown",
           createdAt,
         );
       }
@@ -149,6 +151,29 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
       )
       .all(serverId) as unknown as SnapshotRow[];
 
+    return rows.map((row) => this.snapshot(row));
+  }
+
+  latestPlayerSnapshotsInSpace(
+    serverId: string,
+    coordinateSpaceId: string,
+  ): PlayerPositionSnapshot[] {
+    const rows = this.requireDatabase()
+      .prepare(
+        `SELECT snapshot.*
+         FROM player_position_snapshots snapshot
+         WHERE snapshot.server_id = ?
+           AND snapshot.coordinate_space_id = ?
+           AND snapshot.id = (
+             SELECT latest.id FROM player_position_snapshots latest
+             WHERE latest.server_id = snapshot.server_id
+               AND latest.user_id = snapshot.user_id
+               AND latest.coordinate_space_id = snapshot.coordinate_space_id
+             ORDER BY latest.captured_at DESC, latest.id DESC LIMIT 1
+           )
+         ORDER BY snapshot.player_name COLLATE NOCASE, snapshot.user_id`,
+      )
+      .all(serverId, coordinateSpaceId) as unknown as SnapshotRow[];
     return rows.map((row) => this.snapshot(row));
   }
 
@@ -221,6 +246,7 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
       buildingCount: row.building_count,
       guildId: row.guild_id,
       guildName: row.guild_name,
+      coordinateSpaceId: row.coordinate_space_id,
       createdAt: row.created_at,
     };
   }

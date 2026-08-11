@@ -1,85 +1,77 @@
-# PalCenter v1.4.0
+# PalCenter v1.5.0
 
 ## Overview
 
-PalCenter v1.4.0 introduces World Intelligence: a live Palpagos map, player
-movement trails, and activity summaries built from the Palworld REST API. This
-release also improves the interface, documentation, container builds, and
-long-term telemetry reliability.
+PalCenter v1.5.0 adds PalDefender integration, enabling detailed player, guild,
+and base camp administration. Through PalDefender's REST API, PalCenter can now
+grant items, Pals, eggs, technology, and progression; manage learned tech; kick,
+ban, and unban players; and send targeted messages. This release also improves
+player level display, catalog selection, and administration workflows.
 
 ## Highlights
 
-### World Intelligence
+### PalDefender integration
 
-- View connected players on a bundled, responsive Palpagos map.
-- Select players and inspect current coordinates, level, ping, structures, and
-  telemetry freshness.
-- Display 15-minute, 1-hour, 6-hour, or 24-hour movement trails.
-- Use Fit Map, zoom, pan, Center Player, and expanded map controls on desktop
-  and mobile layouts.
+PalCenter can now connect to PalDefender's REST API on a per-server basis.
+Configure the PalDefender URL and token in a server's Connection Settings. When
+connected, PalCenter unlocks enhanced administration features:
 
-### Player Activity Summary
+- **Player workspace:** View each player's inventory, Pals, technology, and
+  progression. Grant items, Pals, Pal templates, Pal eggs, and progression
+  levels and points. Learn or forget technology.
+- **Moderation:** Kick or ban players with optional messages and IP bans. Unban
+  players and lift IP bans from the Administration panel.
+- **Guilds:** Browse guilds and inspect administrators, members, levels, and
+  associated base camps.
+- **Base camps:** View base camp details, member rosters, and delete bases
+  with confirmation.
+- **Messaging:** Send server-wide alerts, targeted player messages, and
+  PalDefender broadcasts from the Administration panel.
+- **Configuration reload:** Reload PalDefender's plugin configuration without
+  restarting the Palworld server.
 
-- See observed activity, moving and stationary time, travel distance, average
-  and maximum movement speed, and current online state.
-- Review operational flags and a timeline without confusing the selected range
-  with the telemetry actually observed.
-- Keep movement paths separated across disconnects and excluded teleports.
+PalDefender is optional. PalCenter continues to manage standard Palworld server
+functionality through the native REST API without it.
 
-### Reliability and performance
+For PalDefender installation and configuration, see the official project at
+[github.com/Ultimeit/PalDefender](https://github.com/Ultimeit/PalDefender).
 
-- Store player and account identities separately while preserving player
-  renames in history.
-- Limit raw telemetry retention to a configurable period, defaulting to 30
-  days.
-- Reduce database growth by recording meaningful movement or state changes and
-  periodic heartbeat snapshots instead of unchanged data every poll.
-- Keep long trails responsive with continuous, bounded rendering and
-  screen-stable markers.
-- Build AMD64 and ARM64 images in parallel on native GitHub runners.
+### Player management improvements
 
-### Interface and documentation
+- Player levels are enriched from PalDefender's progression data and displayed
+  in the Players table.
+- Friendly Palworld catalog selectors with search replace raw IDs for items,
+  Pals, eggs, and technology.
+- Manual Players refresh correctly resets player level data.
+- Successful player actions are kept separate from background refresh failures.
 
-- Apply consistent panels, headers, status cards, empty states, focus
-  indicators, and responsive behavior across PalCenter.
-- Keep calibration and diagnostic map controls behind the Administrator-only
-  advanced section.
-- Add complete installation, first-run, feature, reverse proxy, Unraid, upgrade,
-  FAQ, and troubleshooting guides.
-- Document Docker Compose settings for trusted proxies and automation polling.
+### What's unchanged
 
-### Backup, automation, and deployment
-
-- Keep existing format-v3 backups compatible with server connections, users,
-  notifications, automation, history, and system configuration.
-- Preserve existing automation tasks, schedules, and execution history through
-  the v1.4 database migration.
-- Improve the Backup & Restore and Automation screens with the shared
-  responsive interface.
-- Keep standard Docker and Unraid deployments non-root, with documented
-  `1000:1000` and `99:100` ownership models.
+PalCenter continues to use the existing `/app/data` volume, user accounts,
+server connections, notifications, automation tasks, and backup format. World
+Intelligence, player activity summaries, telemetry, and all native REST
+operations work as before.
 
 ## Breaking changes
 
-There are no intentional breaking changes in v1.4.0.
+There are no intentional breaking changes in v1.5.0.
 
-PalCenter continues to use the existing `/app/data` volume, user accounts,
-server connections, notifications, automation tasks, and backup format.
+The discontinued PalCenter Companion integration has been removed. PalCenter
+Companion was not included in any released version.
 
 ## Upgrade notes
 
 1. Sign in as an Administrator and download a current backup.
 2. Record the current image tag and `/app/data` volume or bind mount.
-3. Pull `ghcr.io/shanebionic/palcenter:v1.4.0`.
+3. Pull `ghcr.io/shanebionic/palcenter:v1.5.0`.
 4. Recreate the container without deleting or replacing `/app/data`.
-5. Confirm health, login, server connections, notifications, automation, and
-   historical data.
-6. Open a server's **Map** tab and allow new telemetry samples to accumulate.
+5. Confirm health, login, server connections, and existing features.
+6. To use PalDefender features, open a server's **Connection Settings** and
+   enter the PalDefender URL and Bearer token.
 
-PalCenter upgrades `history.sqlite` from schema version 3 to version 4 during
-startup. Existing metrics, events, automation, and server configuration remain
-compatible. The new World Intelligence history begins filling as connected
-players are observed after the upgrade.
+PalCenter does not change `history.sqlite` schema version in this release.
+Existing metrics, events, automation, and server configuration remain
+compatible.
 
 Unraid users should keep `/mnt/user/appdata/palcenter:/app/data` and the
 template's non-root UID `99` / GID `100` mapping. Standard Docker Compose
@@ -87,13 +79,27 @@ deployments continue to default to UID/GID `1000:1000`.
 
 Do not use `docker compose down -v`; that removes the persistent named volume.
 
+## New configuration
+
+### PalDefender per server
+
+When editing a server's Connection Settings, two optional fields appear:
+
+- **PalDefender URL:** The PalDefender REST API address
+  (e.g. `http://PALWORLD-HOST:17993`). The URL must be reachable from the
+  PalCenter container — when PalCenter runs in Docker, `127.0.0.1` refers
+  to the container itself.
+- **PalDefender Bearer Token:** A PalDefender Bearer token.
+
+These are stored per server and are not required for standard PalCenter
+operation. PalDefender features are unavailable until configured.
+
 ## Installation and documentation
 
 - [Quick start and installation](README.md#quick-start)
 - [Complete installation guide](docs/INSTALLATION.md)
 - [First-run walkthrough](docs/FIRST-RUN.md)
-- [World Map and Player Activity Summary](docs/WORLD-MAP.md)
-- [Feature and permission guide](docs/FEATURES.md)
+- [Features and permissions](docs/FEATURES.md)
 - [Unraid installation and upgrades](docs/UNRAID.md)
 - [Backup, upgrade, and rollback](docs/UPGRADING.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)

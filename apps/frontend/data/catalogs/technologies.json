@@ -1,0 +1,5118 @@
+{
+  "schemaVersion": 1,
+  "catalog": "technologies",
+  "count": 588,
+  "items": [
+    {
+      "id": "Workbench",
+      "name": "Primitive Workbench",
+      "level": 1,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Workbench"]
+    },
+    {
+      "id": "Product_Axe_Grade_01",
+      "name": "Stone Axe",
+      "level": 1,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Axe_Tier_00"]
+    },
+    {
+      "id": "Product_Pickaxe_Grade_01",
+      "name": "Stone Pickaxe",
+      "level": 1,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Pickaxe_Tier_00"]
+    },
+    {
+      "id": "HandTorch",
+      "name": "Hand-Held Torch",
+      "level": 1,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Torch"]
+    },
+    {
+      "id": "Battle_MeleeWeapon_Bat",
+      "name": "Wooden Club",
+      "level": 1,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Bat"]
+    },
+    {
+      "id": "PALBOX",
+      "name": "Palbox",
+      "level": 2,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["PalBoxV2"]
+    },
+    {
+      "id": "Special_PalSphere_Grade_01",
+      "name": "Pal Sphere",
+      "level": 2,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["PalSphere"]
+    },
+    {
+      "id": "Product_Cooking_Grade_01",
+      "name": "Campfire",
+      "level": 2,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["CampFire"]
+    },
+    {
+      "id": "Infra_ItemChest_Grade_01",
+      "name": "Wooden Chest",
+      "level": 2,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["ItemChest"]
+    },
+    {
+      "id": "RepairBench",
+      "name": "Repair Bench",
+      "level": 2,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["RepairBench"]
+    },
+    {
+      "id": "Wooden_houseset",
+      "name": "Wooden Structure Set",
+      "level": 2,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Wooden_foundation",
+        "Wooden_wall",
+        "Wooden_roof",
+        "Wooden_stair",
+        "Wood_WindowWall",
+        "Wood_TriangleWall",
+        "Wood_SlantedRoof",
+        "Wooden_DoorWall",
+        "Wooden_pillar",
+        "Wood_Fence",
+        "Wooden_TriangleFoundation",
+        "Wooden_DiagonalWall",
+        "Wooden_TriangleRoof",
+        "Wooden_TriangleStairsCorner",
+        "Wood_TriangleWallReverse",
+        "Wooden_WallGate",
+        "Wooden_SlopedRoofCorner",
+        "Wooden_PyramidRoof",
+        "Wooden_SlopedRoofCornerReverse"
+      ]
+    },
+    {
+      "id": "SkinChange",
+      "name": "Pal Dressing Facility",
+      "level": 2,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["SkinChange"]
+    },
+    {
+      "id": "Battle_RangeWeapon_Bow1",
+      "name": "Old Bow",
+      "level": 3,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["WeakerBow"]
+    },
+    {
+      "id": "Arrow",
+      "name": "Arrow",
+      "level": 3,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Arrow"]
+    },
+    {
+      "id": "Spear",
+      "name": "Stone Spear",
+      "level": 3,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Spear"]
+    },
+    {
+      "id": "Infra_PlayerBed_Grade_01",
+      "name": "Shoddy Bed",
+      "level": 3,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["PlayerBed_02"]
+    },
+    {
+      "id": "Infra_PalBed_Grade_01",
+      "name": "Straw Pal Bed",
+      "level": 3,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["MedicalPalBed_02"]
+    },
+    {
+      "id": "GlobalPalStorage",
+      "name": "Global Palbox",
+      "level": 3,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["GlobalPalStorage"]
+    },
+    {
+      "id": "Shield_01",
+      "name": "Common Shield",
+      "level": 4,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Shield_01"]
+    },
+    {
+      "id": "Battle_Armor_Grade_01_Cloth",
+      "name": "Cloth Outfit",
+      "level": 4,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["ClothArmor"]
+    },
+    {
+      "id": "Battle_Cloth",
+      "name": "Cloth",
+      "level": 4,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Cloth"]
+    },
+    {
+      "id": "PalFoodBox",
+      "name": "Feed Box",
+      "level": 4,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["PalFoodBox"]
+    },
+    {
+      "id": "Product_Farm_Berries",
+      "name": "Berry Plantation",
+      "level": 5,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["FarmBlockV2_Berries"]
+    },
+    {
+      "id": "MonsterFarm",
+      "name": "Ranch",
+      "level": 5,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["MonsterFarm"]
+    },
+    {
+      "id": "Battle_Glider_Grade_01",
+      "name": "Normal Parachute",
+      "level": 5,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Glider_Old"]
+    },
+    {
+      "id": "FurnitureSet_1",
+      "name": "Wooden Living Room Furniture Set",
+      "level": 5,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "TableSquare_Wood",
+        "TableCircular_Wood",
+        "Bench_Wood",
+        "Stool_Wood",
+        "Stool_High_Wood",
+        "Chair01_Wood"
+      ]
+    },
+    {
+      "id": "FurnitureSet_3",
+      "name": "Wooden Tavern Furniture Set",
+      "level": 5,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Counter_Wood", "Shelf_Hang02_Wood"]
+    },
+    {
+      "id": "FurnitureSet_2",
+      "name": "Wooden Tavern Cabinet Furniture Set",
+      "level": 5,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Barrel_Wood",
+        "Box_Wood",
+        "Shelf_Wood",
+        "Shelf_Hang01_Wood",
+        "Shelf_Cask_Wood"
+      ]
+    },
+    {
+      "id": "Product_WorkBench_SkillUnlock",
+      "name": "Pal Gear Workbench",
+      "level": 6,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["WorkBench_SkillUnlock"]
+    },
+    {
+      "id": "Arrow_Fire",
+      "name": "Fire Arrow",
+      "level": 6,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Arrow_Fire"]
+    },
+    {
+      "id": "Torch",
+      "name": "Mounted Torch",
+      "level": 6,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Torch"]
+    },
+    {
+      "id": "Signboard",
+      "name": "Sign",
+      "level": 6,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Signboard"]
+    },
+    {
+      "id": "WallSignboard",
+      "name": "Wall-Mounted Sign",
+      "level": 6,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["WallSignboard"]
+    },
+    {
+      "id": "SkillUnlock_Boar",
+      "name": "Rushoar Saddle",
+      "level": 6,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Boar"]
+    },
+    {
+      "id": "SkillUnlock_Kitsunebi",
+      "name": "Foxparks' Harness",
+      "level": 6,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Kitsunebi"]
+    },
+    {
+      "id": "FurnitureSet_9",
+      "name": "Houseplant Set",
+      "level": 6,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Plant01_Plant",
+        "Plant02_Plant",
+        "Plant03_Plant",
+        "Plant04_Plant"
+      ]
+    },
+    {
+      "id": "BaseCampWorkHard",
+      "name": "Monitoring Stand",
+      "level": 7,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["BaseCampWorkHard"]
+    },
+    {
+      "id": "Battle_MeleeWeapon_Bat2",
+      "name": "Bat",
+      "level": 7,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Bat2"]
+    },
+    {
+      "id": "Product_StationDeforest",
+      "name": "Logging Site",
+      "level": 7,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["StationDeforest2"]
+    },
+    {
+      "id": "Product_StonePit",
+      "name": "Stone Pit",
+      "level": 7,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["StonePit"]
+    },
+    {
+      "id": "DefenseWait",
+      "name": "Sandbag",
+      "level": 7,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["DefenseWait"]
+    },
+    {
+      "id": "BaseCampBattleDirector",
+      "name": "Alarm Bell",
+      "level": 7,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["BaseCampBattleDirector"]
+    },
+    {
+      "id": "SkillUnlock_Alpaca",
+      "name": "Melpaca Saddle",
+      "level": 7,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Alpaca"]
+    },
+    {
+      "id": "FurnitureSet_4",
+      "name": "Wall-Mounted Houseplant Set",
+      "level": 7,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Ivy01", "Ivy02", "Ivy03"]
+    },
+    {
+      "id": "Crusher",
+      "name": "Crusher",
+      "level": 8,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Crusher"]
+    },
+    {
+      "id": "Arrow_Poison",
+      "name": "Poison Arrow",
+      "level": 8,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Arrow_Poison"]
+    },
+    {
+      "id": "DefenseWall_Wood",
+      "name": "Wooden Defensive Wall",
+      "level": 8,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["DefenseWall_Wood"]
+    },
+    {
+      "id": "Wood_Gate",
+      "name": "Wooden Gate",
+      "level": 8,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Wood_Gate"]
+    },
+    {
+      "id": "Trap_Noose",
+      "name": "Hanging Trap",
+      "level": 8,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Trap_Noose"]
+    },
+    {
+      "id": "FurnitureSet_28",
+      "name": "Fireplace Set",
+      "level": 8,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Light_FirePlace01", "Light_FirePlace02"]
+    },
+    {
+      "id": "BuildableGoddessStatue",
+      "name": "Statue of Power",
+      "level": 9,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["BuildableGoddessStatue"]
+    },
+    {
+      "id": "AutoMealPouch_Tier1",
+      "name": "Small Feed Bag",
+      "level": 9,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["AutoMealPouch_Tier1"]
+    },
+    {
+      "id": "Battle_Armor_Grade_01_Cloth_Heat",
+      "name": "Tropical Outfit",
+      "level": 9,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["ClothArmorHeat"]
+    },
+    {
+      "id": "Battle_Armor_Grade_01_Cloth_Cold",
+      "name": "Tundra Outfit",
+      "level": 9,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["ClothArmorCold"]
+    },
+    {
+      "id": "Spa",
+      "name": "Hot Spring",
+      "level": 9,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Spa"]
+    },
+    {
+      "id": "SkillUnlock_Garm",
+      "name": "Direhowl's Saddled Harness",
+      "level": 9,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Garm"]
+    },
+    {
+      "id": "FurnitureSet_17",
+      "name": "Carpet Set",
+      "level": 9,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Rug01_Stone",
+        "Rug02_Stone",
+        "Rug03_Stone",
+        "Rug04_Stone"
+      ]
+    },
+    {
+      "id": "Product_Ingot_Grade_01_Copper",
+      "name": "Primitive Furnace",
+      "level": 10,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["BlastFurnace"]
+    },
+    {
+      "id": "Battle_RangeWeapon_Bow3",
+      "name": "Three Shot Bow",
+      "level": 10,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Bow_triple"]
+    },
+    {
+      "id": "Battle_Helm_Grade_02_Fur",
+      "name": "Feathered Hair Band",
+      "level": 10,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FurHelmet"]
+    },
+    {
+      "id": "Infra_MachineParts",
+      "name": "Nail",
+      "level": 10,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["MachineParts"]
+    },
+    {
+      "id": "Wooden_ladder",
+      "name": "Ladder",
+      "level": 10,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Wooden_ladder"]
+    },
+    {
+      "id": "Trap_LegHold",
+      "name": "Bear Trap (Small)",
+      "level": 10,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Trap_LegHold"]
+    },
+    {
+      "id": "FurnitureSet_21",
+      "name": "Antique Storage Set",
+      "level": 10,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Shelf01_Stone",
+        "Shelf02_Stone",
+        "Shelf03_Stone",
+        "Shelf04_Stone",
+        "Shelf01_Wall_Iron"
+      ]
+    },
+    {
+      "id": "Special_HatchingPalEgg",
+      "name": "Egg Incubator",
+      "level": 10,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["HatchingPalEgg"],
+      "requiredTowerBoss": "GrassBoss",
+      "bossTechnology": true
+    },
+    {
+      "id": "Product_Axe_Grade_02",
+      "name": "Metal Axe",
+      "level": 11,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Axe_Tier_01"]
+    },
+    {
+      "id": "Product_Pickaxe_Grade_02",
+      "name": "Metal Pickaxe",
+      "level": 11,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Pickaxe_Tier_01"]
+    },
+    {
+      "id": "Product_Factory_Hard_Grade_01",
+      "name": "High-Quality Workbench",
+      "level": 11,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["Factory_Hard_01"]
+    },
+    {
+      "id": "HunterFlagSet",
+      "name": "Rayne Syndicate Flag Set",
+      "level": 11,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Hunter_Flag", "Hunter_Banner"],
+      "requiredTowerBoss": "GrassBoss"
+    },
+    {
+      "id": "SkillUnlock_WeaselDragon",
+      "name": "Chillet Saddle",
+      "level": 11,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_WeaselDragon"]
+    },
+    {
+      "id": "SkillUnlock_Carbunclo",
+      "name": "Lifmunk's Submachine Gun",
+      "level": 11,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Carbunclo"]
+    },
+    {
+      "id": "FurnitureSet_19",
+      "name": "Antique Chair Set",
+      "level": 11,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Chair01_Stone", "Chair02_Stone", "Stool01_Stone"]
+    },
+    {
+      "id": "Battle_Armor_Grade_02_Fur",
+      "name": "Pelt Armor",
+      "level": 12,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FurArmor"]
+    },
+    {
+      "id": "MeatCutterKnife",
+      "name": "Meat Cleaver",
+      "level": 12,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["MeatCutterKnife"]
+    },
+    {
+      "id": "Product_Medicine_Grade_01",
+      "name": "Medieval Medicine Workbench",
+      "level": 12,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["MedicineFacility_01"]
+    },
+    {
+      "id": "SkillUnlock_Monkey",
+      "name": "Tanzee's Assault Rifle",
+      "level": 12,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Monkey"]
+    },
+    {
+      "id": "SkillUnlock_Deer",
+      "name": "Eikthyrdeer Saddle",
+      "level": 12,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Deer"]
+    },
+    {
+      "id": "FurnitureTree_Green",
+      "name": "Faux Greenery Set",
+      "level": 12,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "FurnitureTree01_Green",
+        "FurnitureTree02_Green",
+        "FurnitureTree03_Green",
+        "FurnitureBush01_Green"
+      ]
+    },
+    {
+      "id": "TableCircular",
+      "name": "Tidy Table Set",
+      "level": 12,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["TableCircular_Wood_None", "TableSquare_Wood_None"]
+    },
+    {
+      "id": "GrapplingGun",
+      "name": "GrapplingGun",
+      "level": 12,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["GrapplingGun"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_RangeWeapon_BowGun",
+      "name": "Crossbow",
+      "level": 13,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["BowGun"]
+    },
+    {
+      "id": "Spear_2",
+      "name": "Metal Spear",
+      "level": 13,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Spear_2"]
+    },
+    {
+      "id": "Infra_ItemChest_Grade_02",
+      "name": "Metal Chest",
+      "level": 13,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["ItemChest_02"]
+    },
+    {
+      "id": "CoolerBox",
+      "name": "Cooler Box",
+      "level": 13,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["CoolerBox"]
+    },
+    {
+      "id": "DamagedScarecrow",
+      "name": "Training Dummy",
+      "level": 13,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["DamagedScarecrow"]
+    },
+    {
+      "id": "SkillUnlock_Monkey_Fire",
+      "name": "Tanzee Ignis's Assault Rifle",
+      "level": 13,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Monkey_Fire"]
+    },
+    {
+      "id": "FurnitureSet_22",
+      "name": "Antique Storage Cabinet Set",
+      "level": 13,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Shelf05_Stone",
+        "Shelf06_Stone",
+        "Shelf07_Stone",
+        "Shelf01_Wall_Stone"
+      ]
+    },
+    {
+      "id": "Special_PalSphere_Grade_02",
+      "name": "Mega Sphere",
+      "level": 14,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["PalSphere_Mega"]
+    },
+    {
+      "id": "Special_SphereFactory_Black_Grade_01",
+      "name": "Sphere Workbench",
+      "level": 14,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["SphereFactory_Black_01"]
+    },
+    {
+      "id": "AutoMealPouch_Tier2",
+      "name": "Average Feed Bag",
+      "level": 14,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["AutoMealPouch_Tier2"],
+      "requiredTechnology": "AutoMealPouch_Tier1"
+    },
+    {
+      "id": "WallTorch",
+      "name": "Wall Torch",
+      "level": 14,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["WallTorch"]
+    },
+    {
+      "id": "SkillUnlock_Kirin",
+      "name": "Univolt Saddle",
+      "level": 14,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Kirin"]
+    },
+    {
+      "id": "FurnitureTree_Red",
+      "name": "Faux Crimson Foliage Set",
+      "level": 14,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "FurnitureTree01_Red",
+        "FurnitureTree02_Red",
+        "FurnitureTree03_Red",
+        "FurnitureStone01"
+      ]
+    },
+    {
+      "id": "FurnitureSet_24",
+      "name": "Antique Desk Set",
+      "level": 14,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Desk01_Stone", "TableCircular01_Stone"]
+    },
+    {
+      "id": "Special_PalRankUp",
+      "name": "Pal Essence Condenser",
+      "level": 14,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["CharacterRankUp"],
+      "bossTechnology": true
+    },
+    {
+      "id": "FishingSet1",
+      "name": "Beginner Fishing Set",
+      "level": 15,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FishingRod_01_1", "FishingBait_1"]
+    },
+    {
+      "id": "Product_Farm_wheat",
+      "name": "Wheat Plantation",
+      "level": 15,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["FarmBlockV2_wheet"]
+    },
+    {
+      "id": "FlourMill",
+      "name": "Mill",
+      "level": 15,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["FlourMill"]
+    },
+    {
+      "id": "Processed_Wood",
+      "name": "Wooden Board",
+      "level": 15,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Processed_Wood"]
+    },
+    {
+      "id": "DisplayCharacter",
+      "name": "Viewing Cage",
+      "level": 15,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["DisplayCharacter"]
+    },
+    {
+      "id": "SkillUnlock_FlameBuffalo",
+      "name": "Arsox Saddle",
+      "level": 15,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_FlameBuffalo"]
+    },
+    {
+      "id": "SkillUnlock_HawkBird",
+      "name": "Nitewing Saddle",
+      "level": 15,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_HawkBird"]
+    },
+    {
+      "id": "Lantern",
+      "name": "Hip Lantern",
+      "level": 15,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Lantern"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Shield_02",
+      "name": "Mega Shield",
+      "level": 16,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Shield_02"]
+    },
+    {
+      "id": "Battle_Armor_Grade_02_Fur_Heat",
+      "name": "Heat Resistant Pelt Armor",
+      "level": 16,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["FurArmorHeat"]
+    },
+    {
+      "id": "SkillUnlock_Serpent",
+      "name": "Surfent Saddle",
+      "level": 16,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Serpent"]
+    },
+    {
+      "id": "FurnitureTree_Yellow",
+      "name": "Faux Golden Foliage Set",
+      "level": 16,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "FurnitureTree01_Yellow",
+        "FurnitureTree02_Yellow",
+        "FurnitureTree03_Yellow",
+        "FurnitureBush01_Yellow"
+      ]
+    },
+    {
+      "id": "FurnitureSet_20",
+      "name": "Antique Bath Set",
+      "level": 16,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "BathTub_Stone",
+        "Box01_Stone",
+        "Partition_Stone",
+        "TowlRack01_Stone"
+      ]
+    },
+    {
+      "id": "FurnitureSet_16",
+      "name": "Antique Mirror Set",
+      "level": 16,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Mirror01_Stone",
+        "Mirror02_Stone",
+        "Mirror01_Wall_Stone"
+      ]
+    },
+    {
+      "id": "Unlock_Picking_Tier1",
+      "name": "Lockpicking Tool v1",
+      "level": 16,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Unlock_Picking_Tier1"],
+      "bossTechnology": true
+    },
+    {
+      "id": "BronzeSword",
+      "name": "Primitive Sword",
+      "level": 17,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["BronzeSword"]
+    },
+    {
+      "id": "Product_Cooking_Grade_02",
+      "name": "Cooking Pot",
+      "level": 17,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["CookingStove"]
+    },
+    {
+      "id": "Heater",
+      "name": "Heater",
+      "level": 17,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Heater"]
+    },
+    {
+      "id": "Headstone",
+      "name": "Tombstone",
+      "level": 17,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Headstone"]
+    },
+    {
+      "id": "SkillUnlock_Penguin",
+      "name": "Pengullet Rocket Launcher",
+      "level": 17,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Penguin"]
+    },
+    {
+      "id": "FurnitureSet_15",
+      "name": "Piano Furniture Set",
+      "level": 17,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Piano01_Stone", "Piano02_Stone"]
+    },
+    {
+      "id": "FurnitureSet_30",
+      "name": "Metal Shelf Set",
+      "level": 17,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Shelf01_Iron",
+        "Shelf02_Iron",
+        "Shelf03_Iron",
+        "Shelf04_Iron"
+      ]
+    },
+    {
+      "id": "GrapplingGun2",
+      "name": "GrapplingGun2",
+      "level": 17,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["GrapplingGun2"],
+      "requiredTechnology": "GrapplingGun",
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_Glider_Grade_02",
+      "name": "Mega Glider",
+      "level": 18,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Glider_Good"]
+    },
+    {
+      "id": "Battle_Armor_Grade_02_Fur_Cold",
+      "name": "Cold Resistant Pelt Armor",
+      "level": 18,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["FurArmorCold"]
+    },
+    {
+      "id": "Cooler",
+      "name": "Cooler",
+      "level": 18,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Cooler"]
+    },
+    {
+      "id": "SkillUnlock_ColorfulBird",
+      "name": "Tocotoco's Gloves",
+      "level": 18,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_ColorfulBird"]
+    },
+    {
+      "id": "SkillUnlock_Penguin_Electric",
+      "name": "Pengullet Lux's Rocket Launcher",
+      "level": 18,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Penguin_Electric"]
+    },
+    {
+      "id": "FurnitureSet_25",
+      "name": "Bathroom Set",
+      "level": 18,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Toilet01_Stone",
+        "ToiletHolder01_Stone",
+        "TableSink01_Stone"
+      ]
+    },
+    {
+      "id": "FurnitureSet_32",
+      "name": "Antique High Quality Furniture Set",
+      "level": 18,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Curtain01_Wall_Stone",
+        "Globe01_Stone",
+        "Stove01_Stone"
+      ]
+    },
+    {
+      "id": "Accessory_Nonkilling",
+      "name": "Ring of Mercy",
+      "level": 18,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Accessory_Nonkilling"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Lab",
+      "name": "Pal Labor Research Lab",
+      "level": 19,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Lab"]
+    },
+    {
+      "id": "SphereModule_Heavy",
+      "name": "Heavy Weight Module",
+      "level": 19,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SphereModule_Heavy"]
+    },
+    {
+      "id": "Cement",
+      "name": "Cement",
+      "level": 19,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["Cement"]
+    },
+    {
+      "id": "Stone_houseset",
+      "name": "Stone Structure Set",
+      "level": 19,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Stone_foundation",
+        "Stone_wall",
+        "Stone_roof",
+        "Stone_stair",
+        "Stone_WindowWall",
+        "Stone_TriangleWall",
+        "Stone_SlantedRoof",
+        "Stone_DoorWall",
+        "Stone_pillar",
+        "Stone_Fence",
+        "Stone_TriangleFoundation",
+        "Stone_DiagonalWall",
+        "Stone_TriangleRoof",
+        "Stone_TriangleStairsCorner",
+        "Stone_TriangleWallReverse",
+        "Stone_WallGate",
+        "Stone_SlopedRoofCorner",
+        "Stone_PyramidRoof",
+        "Stone_SlopedRoofCornerReverse"
+      ]
+    },
+    {
+      "id": "DefenseWall",
+      "name": "Stone Defensive Wall",
+      "level": 19,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["DefenseWall"]
+    },
+    {
+      "id": "Stone_Gate",
+      "name": "Stone Gate",
+      "level": 19,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Stone_Gate"]
+    },
+    {
+      "id": "SkillUnlock_NaughtyCat",
+      "name": "Grintale Saddle",
+      "level": 19,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_NaughtyCat"]
+    },
+    {
+      "id": "BreedFarm",
+      "name": "Breeding Farm",
+      "level": 19,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["BreedFarm"],
+      "requiredTowerBoss": "ForestBoss",
+      "bossTechnology": true
+    },
+    {
+      "id": "Special_PalSphere_Grade_03",
+      "name": "Giga Sphere",
+      "level": 20,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["PalSphere_Giga"]
+    },
+    {
+      "id": "Product_WeaponFactory_Dirty_Grade_01",
+      "name": "Weapon Workbench",
+      "level": 20,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["WeaponFactory_Dirty_01"]
+    },
+    {
+      "id": "ToolBoxV1",
+      "name": "Large Toolbox",
+      "level": 20,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["ToolBoxV1"],
+      "requiredResearchId": "Handcraft5"
+    },
+    {
+      "id": "BelieverFlagSet",
+      "name": "Free Pal Alliance Flag Set",
+      "level": 20,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Believer_Flag", "Believer_Banner"],
+      "requiredTowerBoss": "ForestBoss"
+    },
+    {
+      "id": "SkillUnlock_FairyDragon",
+      "name": "Elphidran Saddle",
+      "level": 20,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_FairyDragon"]
+    },
+    {
+      "id": "SkillUnlock_PurpleSpider",
+      "name": "Tarantriss Saddle",
+      "level": 20,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_PurpleSpider"]
+    },
+    {
+      "id": "SkillUnlock_MopKing",
+      "name": "Sweepa Saddle",
+      "level": 20,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_MopKing"]
+    },
+    {
+      "id": "FurnitureSet_18",
+      "name": "Antique Couch Set",
+      "level": 20,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Sofa01_Stone", "Sofa02_Stone", "Sofa03_Stone"]
+    },
+    {
+      "id": "DimensionPalStorage",
+      "name": "Dimensional Pal Storage",
+      "level": 20,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["DimensionPalStorage"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Musket",
+      "name": "Musket",
+      "level": 21,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Musket"]
+    },
+    {
+      "id": "Battle_GunPowder_Grade_02",
+      "name": "Gunpowder",
+      "level": 21,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Gunpowder2"]
+    },
+    {
+      "id": "RoughBullet",
+      "name": "Coarse Ammo",
+      "level": 21,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["RoughBullet"]
+    },
+    {
+      "id": "Product_Farm_tomato",
+      "name": "Tomato Plantation",
+      "level": 21,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["FarmBlockV2_tomato"]
+    },
+    {
+      "id": "OlympicCauldron",
+      "name": "Flame Cauldron",
+      "level": 21,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["OlympicCauldron"],
+      "requiredResearchId": "EmitFlame5"
+    },
+    {
+      "id": "Trap_LegHold_Big",
+      "name": "Bear Trap (Large)",
+      "level": 21,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Trap_LegHold_Big"]
+    },
+    {
+      "id": "SkillUnlock_BirdDragon",
+      "name": "Vanwyrm Saddle",
+      "level": 21,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BirdDragon"]
+    },
+    {
+      "id": "SkillUnlock_Deer_Ground",
+      "name": "Eikthyrdeer Terra Saddle",
+      "level": 21,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Deer_Ground"]
+    },
+    {
+      "id": "TableDresser01_Stone",
+      "name": "Antique Dresser",
+      "level": 21,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["TableDresser01_Stone"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Expedition",
+      "name": "Pal Expedition Station",
+      "level": 22,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Expedition"]
+    },
+    {
+      "id": "ElecBaton",
+      "name": "Stun Baton",
+      "level": 22,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["ElecBaton"]
+    },
+    {
+      "id": "FishingBait_2",
+      "name": "High Quality Bait",
+      "level": 22,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["FishingBait_2"]
+    },
+    {
+      "id": "ItemBooth",
+      "name": "Flea Market (Items)",
+      "level": 22,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["ItemBooth"]
+    },
+    {
+      "id": "PalBooth",
+      "name": "Flea Market (Pals)",
+      "level": 22,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["PalBooth"]
+    },
+    {
+      "id": "SkillUnlock_BirdDragon_Ice",
+      "name": "Vanwyrm Cryst Saddle",
+      "level": 22,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BirdDragon_Ice"]
+    },
+    {
+      "id": "FurnitureSet_23",
+      "name": "Clock Set",
+      "level": 22,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Clock01_Wall_Iron", "Clock01_Stone"]
+    },
+    {
+      "id": "FurnitureSet_13",
+      "name": "Metal Chair and Desk Set",
+      "level": 22,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Stool01_Iron",
+        "TableCircular01_Iron",
+        "Chair02_Iron",
+        "Desk01_Iron"
+      ]
+    },
+    {
+      "id": "Homeward",
+      "name": "Homeward Thundercloud",
+      "level": 22,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Homeward"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_Armor_Grade_03_Copper",
+      "name": "Metal Armor",
+      "level": 23,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["CopperArmor"]
+    },
+    {
+      "id": "Battle_Helm_Grade_03_Copper",
+      "name": "Metal Helm",
+      "level": 23,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["CopperHelmet"]
+    },
+    {
+      "id": "SphereModule_Curve",
+      "name": "Curve Module",
+      "level": 23,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SphereModule_Curve"]
+    },
+    {
+      "id": "AutoMealPouch_Tier3",
+      "name": "Large Feed Bag",
+      "level": 23,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["AutoMealPouch_Tier3"],
+      "requiredTechnology": "AutoMealPouch_Tier2"
+    },
+    {
+      "id": "Fountain",
+      "name": "Water Fountain",
+      "level": 23,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Fountain"],
+      "requiredResearchId": "Watering5"
+    },
+    {
+      "id": "SkillUnlock_KingAlpaca",
+      "name": "Kingpaca Saddle",
+      "level": 23,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_KingAlpaca"]
+    },
+    {
+      "id": "FurnitureTree_Bamboo",
+      "name": "Faux Bamboo Set",
+      "level": 23,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "FurnitureTree01_Bamboo",
+        "FurnitureTree02_Bamboo",
+        "FurnitureTree03_Bamboo",
+        "FurnitureBush01_Flower",
+        "FurnitureBush02_Flower"
+      ]
+    },
+    {
+      "id": "FurnitureSet_6",
+      "name": "Storage Container Set",
+      "level": 23,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Container01_Iron", "Box01_Iron", "Box02_Iron"]
+    },
+    {
+      "id": "MakeshiftHandgun",
+      "name": "Makeshift Handgun",
+      "level": 24,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["MakeshiftHandgun"]
+    },
+    {
+      "id": "Infra_PalBed_Grade_02",
+      "name": "Fluffy Pal Bed",
+      "level": 24,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["MedicalPalBed_03"]
+    },
+    {
+      "id": "PalMedicineBox",
+      "name": "Medicine Rack",
+      "level": 24,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["PalMedicineBox"]
+    },
+    {
+      "id": "Clinic",
+      "name": "Clinic",
+      "level": 24,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Clinic"]
+    },
+    {
+      "id": "FlowerBed",
+      "name": "Flower Bed",
+      "level": 24,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["FlowerBed"],
+      "requiredResearchId": "Seeding4"
+    },
+    {
+      "id": "SkillUnlock_Kitsunebi_Ice",
+      "name": "Foxparks Cryst's Harness",
+      "level": 24,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Kitsunebi_Ice"]
+    },
+    {
+      "id": "SkillUnlock_BlueDragon",
+      "name": "Azurobe Saddle",
+      "level": 24,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BlueDragon"]
+    },
+    {
+      "id": "SkillUnlock_FlowerDinosaur",
+      "name": "Dinossom Saddle",
+      "level": 24,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_FlowerDinosaur"]
+    },
+    {
+      "id": "Product_CopperPit",
+      "name": "Ore Mining Site",
+      "level": 24,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["CopperPit"],
+      "bossTechnology": true
+    },
+    {
+      "id": "PalDopingShot",
+      "name": "Boost Gun",
+      "level": 25,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["PalDopingShot"]
+    },
+    {
+      "id": "PalDopingShotBullet",
+      "name": "Boost Gun Ammo",
+      "level": 25,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["PalDopingShotBullet"]
+    },
+    {
+      "id": "Battle_Armor_Grade_03_Copper_Heat",
+      "name": "Heat Resistant Metal Armor",
+      "level": 25,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["CopperArmorHeat"]
+    },
+    {
+      "id": "Product_Farm_Lettuce",
+      "name": "Lettuce Plantation",
+      "level": 25,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["FarmBlockV2_Lettuce"]
+    },
+    {
+      "id": "Silo",
+      "name": "Silo",
+      "level": 25,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Silo"],
+      "requiredResearchId": "Seeding5"
+    },
+    {
+      "id": "FragGrenade",
+      "name": "Frag Grenade",
+      "level": 25,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FragGrenade"]
+    },
+    {
+      "id": "SkillUnlock_Serpent_Ground",
+      "name": "Surfent Terra Saddle",
+      "level": 25,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Serpent_Ground"]
+    },
+    {
+      "id": "SkillUnlock_HadesBird",
+      "name": "Helzephyr Saddle",
+      "level": 25,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_HadesBird"]
+    },
+    {
+      "id": "Unlock_Picking_Tier2",
+      "name": "Lockpicking Tool v2",
+      "level": 25,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Unlock_Picking_Tier2"],
+      "requiredTechnology": "Unlock_Picking_Tier1",
+      "bossTechnology": true
+    },
+    {
+      "id": "MakeshiftSubmachineGun",
+      "name": "Makeshift SMG",
+      "level": 26,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["MakeshiftSubmachineGun"]
+    },
+    {
+      "id": "Infra_ElectricGenerator_Grade_01",
+      "name": "Power Generator",
+      "level": 26,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["ElectricGenerator"]
+    },
+    {
+      "id": "Lamp",
+      "name": "Lamp",
+      "level": 26,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Lamp"]
+    },
+    {
+      "id": "ManualElectricGenerator",
+      "name": "Human-Powered Generator",
+      "level": 26,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["ManualElectricGenerator"]
+    },
+    {
+      "id": "Battle_Defense_BowGun",
+      "name": "Mounted Crossbow",
+      "level": 26,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["DefenseBowGun"]
+    },
+    {
+      "id": "SkillUnlock_FengyunDeeper",
+      "name": "Fenglope Saddle",
+      "level": 26,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_FengyunDeeper"]
+    },
+    {
+      "id": "SkillUnlock_IceSeal",
+      "name": "Polapup Saddle",
+      "level": 26,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_IceSeal"]
+    },
+    {
+      "id": "FurnitureSet_29",
+      "name": "Antique Lamp Set",
+      "level": 26,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Light_FloorLamp01",
+        "Light_FloorLamp02",
+        "Light_CandleSticks_Top",
+        "Light_CandleSticks_Wall"
+      ]
+    },
+    {
+      "id": "Battle_RangeWeapon_SphereLauncher_Once",
+      "name": "Single-Shot Sphere Launcher",
+      "level": 26,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SphereLauncher_Once"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Special_PalSphere_Grade_04",
+      "name": "Hyper Sphere",
+      "level": 27,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["PalSphere_Tera"]
+    },
+    {
+      "id": "Special_SphereFactory_Black_Grade_02",
+      "name": "Sphere Assembly Line",
+      "level": 27,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["SphereFactory_Black_02"]
+    },
+    {
+      "id": "Battle_Armor_Grade_03_Copper_Cold",
+      "name": "Cold Resistant Metal Armor",
+      "level": 27,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["CopperArmorCold"]
+    },
+    {
+      "id": "AdditionalInventory_001",
+      "name": "Small Pouch",
+      "level": 27,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["AdditionalInventory_001"]
+    },
+    {
+      "id": "CeilingLamp",
+      "name": "Ceiling Lamp",
+      "level": 27,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["CeilingLamp"]
+    },
+    {
+      "id": "FragGrenade_Elec",
+      "name": "Shock Grenade",
+      "level": 27,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FragGrenade_Elec"]
+    },
+    {
+      "id": "SkillUnlock_BlueDragon_Ice",
+      "name": "Azurobe Cryst Saddle",
+      "level": 27,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BlueDragon_Ice"]
+    },
+    {
+      "id": "FurnitureTree_Tropical",
+      "name": "Faux Tropical Greenery Set",
+      "level": 27,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "FurnitureTree01_Tropical",
+        "FurnitureTree02_Tropical",
+        "FurnitureTree03_Tropical",
+        "FurnitureBush01_Tropical"
+      ]
+    },
+    {
+      "id": "UnlockEquipmentSlot_Weapon_01",
+      "name": "Extra Weapon Holster",
+      "level": 27,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["UnlockEquipmentSlot_Weapon_01"],
+      "requiredTowerBoss": "ElectricBoss",
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_RangeWeapon_HandGun",
+      "name": "Handgun",
+      "level": 28,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["HandGun_Default"]
+    },
+    {
+      "id": "HandgunBullet",
+      "name": "Handgun Ammo",
+      "level": 28,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["HandgunBullet"]
+    },
+    {
+      "id": "Infra_PlayerBed_Grade_02",
+      "name": "Fine Bed",
+      "level": 28,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["PlayerBed_03"]
+    },
+    {
+      "id": "BaseCampWorkHard02",
+      "name": "High Quality Monitoring Stand",
+      "level": 28,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["BaseCampWorkHard02"]
+    },
+    {
+      "id": "Stump",
+      "name": "Stump and Axe",
+      "level": 28,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Stump"],
+      "requiredResearchId": "Deforest4"
+    },
+    {
+      "id": "FireCultFlagSet",
+      "name": "Brothers of the Eternal Pyre Flag Set",
+      "level": 28,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["FireCult_Flag", "FireCult_Banner"],
+      "requiredTowerBoss": "ElectricBoss"
+    },
+    {
+      "id": "SkillUnlock_FeatherOstrich",
+      "name": "Dazemu Saddle",
+      "level": 28,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_FeatherOstrich"]
+    },
+    {
+      "id": "SkillUnlock_GrassMammoth",
+      "name": "Mammorest Saddle",
+      "level": 28,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GrassMammoth"]
+    },
+    {
+      "id": "Accessory_JumpPower_Increase",
+      "name": "Anti-Gravity Belt",
+      "level": 28,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Accessory_JumpPower_Increase"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Shield_03",
+      "name": "Giga Shield",
+      "level": 29,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Shield_03"]
+    },
+    {
+      "id": "Battle_MeleeWeapon_Sword",
+      "name": "Sword",
+      "level": 29,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Sword"]
+    },
+    {
+      "id": "FishingRod_02_1",
+      "name": "Intermediate Fishing Rod (Cattiva)",
+      "level": 29,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FishingRod_02_1", "FishingBait_1"]
+    },
+    {
+      "id": "Product_Factory_Hard_Grade_02",
+      "name": "Production Assembly Line",
+      "level": 29,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["Factory_Hard_02"]
+    },
+    {
+      "id": "Product_Farm_Potato",
+      "name": "Potato Plantation",
+      "level": 29,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["FarmBlockV2_Potato"]
+    },
+    {
+      "id": "FragGrenade_Ice",
+      "name": "Ice Grenade",
+      "level": 29,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FragGrenade_Ice"]
+    },
+    {
+      "id": "SkillUnlock_FireKirin",
+      "name": "Pyrin Saddle",
+      "level": 29,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_FireKirin"]
+    },
+    {
+      "id": "SkillUnlock_ThunderBird",
+      "name": "Beakon Saddle",
+      "level": 29,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_ThunderBird"]
+    },
+    {
+      "id": "Lantern_High",
+      "name": "Enhanced Hip Lantern",
+      "level": 29,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Lantern_High"],
+      "requiredTechnology": "Lantern",
+      "bossTechnology": true
+    },
+    {
+      "id": "MakeshiftShotgun",
+      "name": "Makeshift Shotgun",
+      "level": 30,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["MakeshiftShotgun"]
+    },
+    {
+      "id": "Trap_MineAttack",
+      "name": "Mine",
+      "level": 30,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Trap_MineAttack"]
+    },
+    {
+      "id": "Metal_houseset",
+      "name": "Metal Structure Set",
+      "level": 30,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Metal_foundation",
+        "Metal_wall",
+        "Metal_roof",
+        "Metal_stair",
+        "Metal_WindowWall",
+        "Metal_TriangleWall",
+        "Metal_SlantedRoof",
+        "Metal_DoorWall",
+        "Metal_pillars",
+        "Iron_Fence",
+        "Iron_TriangleFoundation",
+        "Iron_DiagonalWall",
+        "Iron_TriangleRoof",
+        "Iron_TriangleStairsCorner",
+        "Iron_TriangleWallReverse",
+        "Iron_WallGate",
+        "Iron_SlopedRoofCorner",
+        "Iron_PyramidRoof",
+        "Iron_SlopedRoofCornerReverse"
+      ]
+    },
+    {
+      "id": "DefenseWall_Metal",
+      "name": "Metal Defensive Wall",
+      "level": 30,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["DefenseWall_Metal"]
+    },
+    {
+      "id": "Metal_Gate",
+      "name": "Iron Gate",
+      "level": 30,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Metal_Gate"]
+    },
+    {
+      "id": "MiningTool",
+      "name": "Mining Cart",
+      "level": 30,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["MiningTool"],
+      "requiredResearchId": "Mining5"
+    },
+    {
+      "id": "Cake02",
+      "name": "Mushroom Cake",
+      "level": 30,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["Cake02"]
+    },
+    {
+      "id": "SkillUnlock_ThunderDog",
+      "name": "Rayhound Saddle",
+      "level": 30,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_ThunderDog"]
+    },
+    {
+      "id": "YakushimaBlade",
+      "name": "Meowmere",
+      "level": 30,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["YakushimaBlade"],
+      "bossTechnology": true
+    },
+    {
+      "id": "MakeshiftAssaultRifle",
+      "name": "Makeshift Assault Rifle",
+      "level": 31,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["MakeshiftAssaultRifle"]
+    },
+    {
+      "id": "SphereModule_Sniper",
+      "name": "Sniper Module",
+      "level": 31,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SphereModule_Sniper"]
+    },
+    {
+      "id": "Bio_Coolant",
+      "name": "Cryogenic Coolant",
+      "level": 31,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Bio_Coolant"]
+    },
+    {
+      "id": "FishingPond1",
+      "name": "Fishing Pond",
+      "level": 31,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["FishingPond1"]
+    },
+    {
+      "id": "Spa2",
+      "name": "High Quality Hot Spring",
+      "level": 31,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["Spa2"]
+    },
+    {
+      "id": "FragGrenade_Fire",
+      "name": "Incendiary Grenade",
+      "level": 31,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FragGrenade_Fire"]
+    },
+    {
+      "id": "SkillUnlock_GhostAnglerfish",
+      "name": "Ghangler Saddle",
+      "level": 31,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GhostAnglerfish"]
+    },
+    {
+      "id": "SkillUnlock_IceDeer",
+      "name": "Reindrix Saddle",
+      "level": 31,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_IceDeer"]
+    },
+    {
+      "id": "GrapplingGun3",
+      "name": "GrapplingGun3",
+      "level": 31,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["GrapplingGun3"],
+      "requiredTechnology": "GrapplingGun2",
+      "bossTechnology": true
+    },
+    {
+      "id": "Product_WeaponFactory_Dirty_Grade_02",
+      "name": "Weapon Assembly Line",
+      "level": 32,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["WeaponFactory_Dirty_02"]
+    },
+    {
+      "id": "PalHealingGrenade",
+      "name": "Pal Recovery Grenade",
+      "level": 32,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["PalHealingGrenade"]
+    },
+    {
+      "id": "Product_Farm_Carrot",
+      "name": "Carrot Plantation",
+      "level": 32,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["FarmBlockV2_Carrot"]
+    },
+    {
+      "id": "Cauldron",
+      "name": "Witch Cauldron",
+      "level": 32,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Cauldron"],
+      "requiredResearchId": "Medicine4"
+    },
+    {
+      "id": "BaseCampWorkerExtraStation",
+      "name": "Palbox Control Device",
+      "level": 32,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["BaseCampWorkerExtraStation"]
+    },
+    {
+      "id": "SkillUnlock_FairyDragon_Water",
+      "name": "Elphidran Aqua Saddle",
+      "level": 32,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_FairyDragon_Water"]
+    },
+    {
+      "id": "SkillUnlock_GrassPanda",
+      "name": "Mossanda's Grenade Launcher",
+      "level": 32,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GrassPanda"]
+    },
+    {
+      "id": "SkillUnlock_Thunderdog_Ice",
+      "name": "Rayhound Cryst Saddle",
+      "level": 32,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Thunderdog_Ice"]
+    },
+    {
+      "id": "OctaviaSet01",
+      "name": "ULTRAKILL Collab Set 1",
+      "level": 32,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Octavia001_Armor", "OctaviaRevolver"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_RangeWeapon_OldRevolver",
+      "name": "Old Revolver",
+      "level": 33,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["OldRevolver"]
+    },
+    {
+      "id": "Polymer",
+      "name": "Polymer",
+      "level": 33,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Polymer"]
+    },
+    {
+      "id": "Trap_MineElecShock",
+      "name": "Electric Mine",
+      "level": 33,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Trap_MineElecShock"]
+    },
+    {
+      "id": "FragGrenade_Water",
+      "name": "Water Grenade",
+      "level": 33,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FragGrenade_Water"]
+    },
+    {
+      "id": "Snowman",
+      "name": "Snowman",
+      "level": 33,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Snowman"],
+      "requiredResearchId": "Cool5"
+    },
+    {
+      "id": "SkillUnlock_Manticore",
+      "name": "Blazehowl Saddle",
+      "level": 33,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Manticore"]
+    },
+    {
+      "id": "SkillUnlock_RedArmorBird",
+      "name": "Ragnahawk Saddle",
+      "level": 33,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_RedArmorBird"]
+    },
+    {
+      "id": "SkillUnlock_SakuraSaurus",
+      "name": "Broncherry Saddle",
+      "level": 33,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_SakuraSaurus"]
+    },
+    {
+      "id": "Altar",
+      "name": "Summoning Altar",
+      "level": 33,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["Altar"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Product_Ingot_Grade_02_Iron",
+      "name": "Improved Furnace",
+      "level": 34,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["BlastFurnace2"]
+    },
+    {
+      "id": "Product_Axe_Grade_03",
+      "name": "Refined Metal Axe",
+      "level": 34,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Axe_Tier_02"]
+    },
+    {
+      "id": "Product_Pickaxe_Grade_03",
+      "name": "Refined Metal Pickaxe",
+      "level": 34,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Pickaxe_Tier_02"]
+    },
+    {
+      "id": "Spear_3",
+      "name": "Refined Metal Spear",
+      "level": 34,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Spear_3"]
+    },
+    {
+      "id": "SkillUnlock_FireKirin_Dark",
+      "name": "Pyrin Noct Saddle",
+      "level": 34,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_FireKirin_Dark"]
+    },
+    {
+      "id": "SkillUnlock_GrassPanda_Electric",
+      "name": "Mossanda Lux's Grenade Launcher",
+      "level": 34,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GrassPanda_Electric"]
+    },
+    {
+      "id": "SkillUnlock_FlowerDinosaur_Electric",
+      "name": "Dinossom Lux Saddle",
+      "level": 34,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_FlowerDinosaur_Electric"]
+    },
+    {
+      "id": "FurnitureSet_5",
+      "name": "Metal Barrel Set",
+      "level": 34,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Barrel01_Iron", "Barrel02_Iron", "Barrel03_Iron"]
+    },
+    {
+      "id": "Accessory_TalentChecker",
+      "name": "Ability Glasses",
+      "level": 34,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["Accessory_TalentChecker"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Special_PalSphere_Grade_05",
+      "name": "Ultra Sphere",
+      "level": 35,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["PalSphere_Master"]
+    },
+    {
+      "id": "Special_SphereFactory_Black_Grade_03",
+      "name": "Sphere Assembly Line II",
+      "level": 35,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["SphereFactory_Black_03"]
+    },
+    {
+      "id": "Infra_ElectronicCircuit",
+      "name": "Circuit Board",
+      "level": 35,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["MachineParts2"]
+    },
+    {
+      "id": "CarbonFiber",
+      "name": "Carbon Fiber",
+      "level": 35,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["CarbonFiber", "CarbonFiber2"]
+    },
+    {
+      "id": "FragGrenade_Leaf",
+      "name": "Grass Grenade",
+      "level": 35,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FragGrenade_Leaf"]
+    },
+    {
+      "id": "SkillUnlock_Manticore_Dark",
+      "name": "Blazehowl Noct Saddle",
+      "level": 35,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Manticore_Dark"]
+    },
+    {
+      "id": "SkillUnlock_TropicalOstrich",
+      "name": "Palumba Saddle",
+      "level": 35,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_TropicalOstrich"]
+    },
+    {
+      "id": "FurnitureSet_14",
+      "name": "Ironwood Table Set",
+      "level": 35,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "TableSide01_Iron",
+        "TableSquare01_Iron",
+        "TableSquare02_Iron"
+      ]
+    },
+    {
+      "id": "Accessory_AirDash1",
+      "name": "Air Dash Boots",
+      "level": 35,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Accessory_AirDash1"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_RangeWeapon_Rifle",
+      "name": "Single-Shot Rifle",
+      "level": 36,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SingleShotRifle"]
+    },
+    {
+      "id": "RifleBullet",
+      "name": "Rifle Ammo",
+      "level": 36,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["RifleBullet"]
+    },
+    {
+      "id": "Product_Farm_Onion",
+      "name": "Onion Plantation",
+      "level": 36,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["FarmBlockV2_Onion"]
+    },
+    {
+      "id": "Cloth2",
+      "name": "High Quality Cloth",
+      "level": 36,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Cloth2"]
+    },
+    {
+      "id": "MedicalPalBed_04",
+      "name": "Large Pal Bed",
+      "level": 36,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["MedicalPalBed_04"]
+    },
+    {
+      "id": "AutoMealPouch_Tier4",
+      "name": "Huge Feed Bag",
+      "level": 36,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["AutoMealPouch_Tier4"],
+      "requiredTechnology": "AutoMealPouch_Tier3"
+    },
+    {
+      "id": "SkillUnlock_Plesiosaur",
+      "name": "Braloha Saddle",
+      "level": 36,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Plesiosaur"]
+    },
+    {
+      "id": "SkillUnlock_VolcanoDragon",
+      "name": "Moldron Saddle",
+      "level": 36,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_VolcanoDragon"]
+    },
+    {
+      "id": "Special_ElectricHatchingPalEgg",
+      "name": "Electric Egg Incubator",
+      "level": 36,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["ElectricHatchingPalEgg"],
+      "requiredTowerBoss": "DesertBoss",
+      "requiredTechnology": "Special_HatchingPalEgg",
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_RangeWeapon_SubmachineGun",
+      "name": "SMG",
+      "level": 37,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SubmachineGun"]
+    },
+    {
+      "id": "Battle_Armor_Grade_03_Iron",
+      "name": "Refined Metal Armor",
+      "level": 37,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["IronArmor"]
+    },
+    {
+      "id": "Battle_Helm_Grade_04_Iron",
+      "name": "Refined Metal Helm",
+      "level": 37,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["IronHelmet"]
+    },
+    {
+      "id": "Corrosive_Solvent",
+      "name": "Corrosive Solvent",
+      "level": 37,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Corrosive_Solvent"]
+    },
+    {
+      "id": "EnergyStorage_Electric",
+      "name": "Accumulator",
+      "level": 37,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["EnergyStorage_Electric"]
+    },
+    {
+      "id": "SkillUnlock_GhostBeast",
+      "name": "Maraith Saddle",
+      "level": 37,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GhostBeast"]
+    },
+    {
+      "id": "FurnitureTree_Desert",
+      "name": "Faux Desert Greenery Set",
+      "level": 37,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "FurnitureTree01_Desert",
+        "FurnitureTree02_Desert",
+        "FurnitureTree03_Desert"
+      ]
+    },
+    {
+      "id": "FurnitureSet_31",
+      "name": "Outdoor Furniture Set",
+      "level": 37,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "CableCoil01_Iron",
+        "GarbageBag_Iron",
+        "PipeClay01_Iron",
+        "Tire01_Iron"
+      ]
+    },
+    {
+      "id": "Product_CoalPit",
+      "name": "Coal Quarry",
+      "level": 37,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["CoalPit"],
+      "bossTechnology": true
+    },
+    {
+      "id": "OperatingTable",
+      "name": "Pal Surgery Table",
+      "level": 38,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["OperatingTable"]
+    },
+    {
+      "id": "Launcher_Meteor",
+      "name": "Meteor Launcher",
+      "level": 38,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Launcher_Meteor", "MeteorBullet"]
+    },
+    {
+      "id": "FishingBait_3",
+      "name": "Deluxe Bait",
+      "level": 38,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FishingBait_3"]
+    },
+    {
+      "id": "Refrigerator",
+      "name": "Refrigerator",
+      "level": 38,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Refrigerator"]
+    },
+    {
+      "id": "Trap_MineFreeze",
+      "name": "Ice Mine",
+      "level": 38,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["Trap_MineFreeze"]
+    },
+    {
+      "id": "FragGrenade_Ground",
+      "name": "Ground Grenade",
+      "level": 38,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FragGrenade_Ground"]
+    },
+    {
+      "id": "SkillUnlock_SkyDragon",
+      "name": "Quivern Saddle",
+      "level": 38,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_SkyDragon"]
+    },
+    {
+      "id": "FurnitureSet_7",
+      "name": "Leather Chair Set",
+      "level": 38,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Sofa01_Iron",
+        "Sofa02_Iron",
+        "Chair01_Iron",
+        "Chair01_Pal"
+      ]
+    },
+    {
+      "id": "Battle_RangeWeapon_SphereLauncher",
+      "name": "Scatter Sphere Launcher",
+      "level": 38,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SphereLauncher"],
+      "bossTechnology": true
+    },
+    {
+      "id": "PoliceFlagSet",
+      "name": "PIDF Flag Set",
+      "level": 39,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Police_Flag", "Police_Banner"],
+      "requiredTowerBoss": "DesertBoss"
+    },
+    {
+      "id": "Battle_RangeWeapon_ShotGun",
+      "name": "Double-Barreled Shotgun",
+      "level": 39,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["DoubleBarrelShotgun"]
+    },
+    {
+      "id": "ShotGunBullet",
+      "name": "Shotgun Shell",
+      "level": 39,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["ShotgunBullet"]
+    },
+    {
+      "id": "SphereModule_Curve2",
+      "name": "Slider Module",
+      "level": 39,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SphereModule_Curve2"]
+    },
+    {
+      "id": "Infra_ItemChest_Grade_03",
+      "name": "Refined Metal Chest",
+      "level": 39,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["ItemChest_03"]
+    },
+    {
+      "id": "SkillUnlock_BlackMetalDragon",
+      "name": "Astegon Saddle",
+      "level": 39,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BlackMetalDragon"]
+    },
+    {
+      "id": "SkillUnlock_MushroomDragon",
+      "name": "Shroomer Saddle",
+      "level": 39,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_MushroomDragon"]
+    },
+    {
+      "id": "SkillUnlock_MushroomDragon_Dark",
+      "name": "Shroomer Noct Saddle",
+      "level": 39,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_MushroomDragon_Dark"]
+    },
+    {
+      "id": "Product_CopperPit_2",
+      "name": "Ore Mining Site II",
+      "level": 39,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["CopperPit_2"],
+      "requiredTechnology": "Product_CopperPit",
+      "bossTechnology": true
+    },
+    {
+      "id": "Bat3",
+      "name": "Metal Bat",
+      "level": 40,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Bat3"]
+    },
+    {
+      "id": "Battle_Armor_Grade_03_Iron_Heat",
+      "name": "Heat Resistant Refined Metal Armor",
+      "level": 40,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["IronArmorHeat"]
+    },
+    {
+      "id": "Battle_Glider_Grade_03",
+      "name": "Giga Glider",
+      "level": 40,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Glider_Super"]
+    },
+    {
+      "id": "Battle_Defense_MachineGun",
+      "name": "Mounted Machine Gun",
+      "level": 40,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["DefenseMachinegun"]
+    },
+    {
+      "id": "FragGrenade_Dark",
+      "name": "Dark Grenade",
+      "level": 40,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FragGrenade_Dark"]
+    },
+    {
+      "id": "SkillUnlock_Umihebi",
+      "name": "Jormuntide Saddle",
+      "level": 40,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Umihebi"]
+    },
+    {
+      "id": "SkillUnlock_ElecPanda",
+      "name": "Grizzbolt's Minigun",
+      "level": 40,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_ElecPanda"]
+    },
+    {
+      "id": "SkillUnlock_WeaselDragon_Fire",
+      "name": "Chillet Ignis Saddle",
+      "level": 40,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_WeaselDragon_Fire"]
+    },
+    {
+      "id": "Accessory_JumpCount_Increase1",
+      "name": "Double Jump Boots",
+      "level": 40,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Accessory_JumpCount_Increase1"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_RangeWeapon_SemiAutoRifle",
+      "name": "Semi-Auto Rifle",
+      "level": 41,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SemiAutoRifle"]
+    },
+    {
+      "id": "Battle_Armor_Grade_03_Iron_Cold",
+      "name": "Cold Resistant Refined Metal Armor",
+      "level": 41,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["IronArmorCold"]
+    },
+    {
+      "id": "Product_Cooking_Grade_03",
+      "name": "Electric Kitchen",
+      "level": 41,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["ElectricKitchen"]
+    },
+    {
+      "id": "SanityDecrease1",
+      "name": "Alpha Wave Generator",
+      "level": 41,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["SanityDecrease1"]
+    },
+    {
+      "id": "ElectricHeater",
+      "name": "Electric Heater",
+      "level": 41,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["ElectricHeater"]
+    },
+    {
+      "id": "SkillUnlock_WhiteAlienDragon",
+      "name": "Xenogard Saddle",
+      "level": 41,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_WhiteAlienDragon"]
+    },
+    {
+      "id": "SkillUnlock_GuardianDog",
+      "name": "Yakumo Saddle",
+      "level": 41,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GuardianDog"]
+    },
+    {
+      "id": "SkillUnlock_GrassMammoth_Ice",
+      "name": "Mammorest Cryst Saddle",
+      "level": 41,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GrassMammoth_Ice"]
+    },
+    {
+      "id": "GuildChest",
+      "name": "Guild Chest",
+      "level": 41,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["GuildChest"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_RangeWeapon_CompoundBow",
+      "name": "Compound Bow",
+      "level": 42,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["CompoundBow"]
+    },
+    {
+      "id": "ReinforcedArrow",
+      "name": "Reinforced Arrow",
+      "level": 42,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["ReinforcedArrow"]
+    },
+    {
+      "id": "Product_Factory_Hard_Grade_03",
+      "name": "Production Assembly Line II",
+      "level": 42,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["Factory_Hard_03"]
+    },
+    {
+      "id": "ElectricCooler",
+      "name": "Electric Cooler",
+      "level": 42,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["ElectricCooler"]
+    },
+    {
+      "id": "FragGrenade_Dragon",
+      "name": "Dragon Grenade",
+      "level": 42,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FragGrenade_Dragon"]
+    },
+    {
+      "id": "SkillUnlock_IceNarwhal",
+      "name": "Whalaska Saddle",
+      "level": 42,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_IceNarwhal"]
+    },
+    {
+      "id": "SkillUnlock_GhostAnglerfish_Fire",
+      "name": "Ghangler Ignis Saddle",
+      "level": 42,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GhostAnglerfish_Fire"]
+    },
+    {
+      "id": "SkillUnlock_VolcanicMonster",
+      "name": "Reptyro Saddle",
+      "level": 42,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_VolcanicMonster"]
+    },
+    {
+      "id": "Battle_RangeWeapon_ShotGun_Multi",
+      "name": "Pump-Action Shotgun",
+      "level": 43,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["PumpActionShotgun"]
+    },
+    {
+      "id": "Shield_04",
+      "name": "Hyper Shield",
+      "level": 43,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Shield_04"]
+    },
+    {
+      "id": "AdditionalInventory_002",
+      "name": "Medium Pouch",
+      "level": 43,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["AdditionalInventory_002"],
+      "requiredTechnology": "AdditionalInventory_001"
+    },
+    {
+      "id": "HighGrade_Processed_Wood",
+      "name": "High Quality Wooden Board",
+      "level": 43,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["HighGrade_Processed_Wood"]
+    },
+    {
+      "id": "Product_Medicine_Grade_02",
+      "name": "Electric Medicine Workbench",
+      "level": 43,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["MedicineFacility_02"]
+    },
+    {
+      "id": "SkillUnlock_Suzaku",
+      "name": "Suzaku Saddle",
+      "level": 43,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Suzaku"]
+    },
+    {
+      "id": "SkillUnlock_VolcanicMonster_Ice",
+      "name": "Reptyro Cryst Saddle",
+      "level": 43,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_VolcanicMonster_Ice"]
+    },
+    {
+      "id": "Product_StationDeforest2",
+      "name": "Logging Site II",
+      "level": 43,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["StationDeforest3"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Special_PalSphere_Grade_06",
+      "name": "Legendary Sphere",
+      "level": 44,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["PalSphere_Legend"]
+    },
+    {
+      "id": "Product_Ingot_Grade_03_Steal",
+      "name": "Electric Furnace",
+      "level": 44,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["BlastFurnace3"]
+    },
+    {
+      "id": "Bio_Battery",
+      "name": "Bio Battery",
+      "level": 44,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Bio_Battery"]
+    },
+    {
+      "id": "Katana",
+      "name": "Katana",
+      "level": 44,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Katana"]
+    },
+    {
+      "id": "Battle_MeleeWeapon_Pickaxe_Steal",
+      "name": "Pal Metal Pickaxe",
+      "level": 44,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Pickaxe_Steal"]
+    },
+    {
+      "id": "Battle_MeleeWeapon_Axe_Steal",
+      "name": "Pal Metal Axe",
+      "level": 44,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Axe_Steal"]
+    },
+    {
+      "id": "SkillUnlock_Suzaku_Water",
+      "name": "Suzaku Aqua Saddle",
+      "level": 44,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Suzaku_Water"]
+    },
+    {
+      "id": "SkillUnlock_SakuraSaurus_Water",
+      "name": "Broncherry Aqua Saddle",
+      "level": 44,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Sakurasaurus_Water"]
+    },
+    {
+      "id": "Glass_houseset",
+      "name": "Glass Structure Set",
+      "level": 45,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Glass_foundation",
+        "Glass_wall",
+        "Glass_roof",
+        "Glass_stair",
+        "Glass_WindowWall",
+        "Glass_TriangleWall",
+        "Glass_SlantedRoof",
+        "Glass_DoorWall",
+        "Glass_pillars",
+        "Glass_Fence",
+        "Glass_TriangleFoundation",
+        "Glass_DiagonalWall",
+        "Glass_TriangleRoof",
+        "Glass_TriangleStairsCorner",
+        "Glass_TriangleWallReverse",
+        "Glass_WallGate",
+        "Glass_SlopedRoofCorner",
+        "Glass_PyramidRoof",
+        "Glass_SlopedRoofCornerReverse"
+      ]
+    },
+    {
+      "id": "Battle_RangeWeapon_AssaultRifle",
+      "name": "Assault Rifle",
+      "level": 45,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["AssaultRifle_Default1"]
+    },
+    {
+      "id": "AssaultRifleBullet",
+      "name": "Assault Rifle Ammo",
+      "level": 45,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["AssaultRifleBullet"]
+    },
+    {
+      "id": "FishingRod_03_1",
+      "name": "Advanced Fishing Rod (Pengullet)",
+      "level": 45,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["FishingRod_03_1", "FishingBait_1"]
+    },
+    {
+      "id": "CompositeDesk",
+      "name": "Drafting Table",
+      "level": 45,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["CompositeDesk"]
+    },
+    {
+      "id": "SkillUnlock_SkyDragon_Grass",
+      "name": "Quivern Botan Saddle",
+      "level": 45,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_SkyDragon_Grass"]
+    },
+    {
+      "id": "SkillUnlock_LazyDragon",
+      "name": "Relaxaurus' Missile Launcher",
+      "level": 45,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_LazyDragon"]
+    },
+    {
+      "id": "SkillUnlock_Yeti",
+      "name": "Wumpo Saddle",
+      "level": 45,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Yeti"]
+    },
+    {
+      "id": "DecalGunSet",
+      "name": "Decal Gun Set",
+      "level": 45,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": [
+        "DecalGun_1",
+        "DecalGun_2",
+        "DecalGun_3",
+        "DecalGun_4",
+        "DecalGun_5",
+        "InkBullet"
+      ],
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_Armor_Grade_04_Steal",
+      "name": "Pal Metal Armor",
+      "level": 46,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["StealArmor"]
+    },
+    {
+      "id": "Battle_Helm_Grade_05_Steal",
+      "name": "Pal Metal Helm",
+      "level": 46,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["StealHelmet"]
+    },
+    {
+      "id": "WorkSpeedIncrease1",
+      "name": "Beta Wave Generator",
+      "level": 46,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["WorkSpeedIncrease1"]
+    },
+    {
+      "id": "LargeLamp",
+      "name": "Large Mounted Lamp",
+      "level": 46,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["LargeLamp"]
+    },
+    {
+      "id": "SkillUnlock_KingBahamut",
+      "name": "Blazamut Saddle",
+      "level": 46,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_KingBahamut"]
+    },
+    {
+      "id": "SkillUnlock_KingAlpaca_Ice",
+      "name": "Kingpaca Cryst Saddle",
+      "level": 46,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_KingAlpaca_Ice"]
+    },
+    {
+      "id": "FurnitureSet_27",
+      "name": "Street Lamp Set",
+      "level": 46,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Light_LightPole01",
+        "Light_LightPole02",
+        "Light_LightPole03",
+        "Light_LightPole04"
+      ]
+    },
+    {
+      "id": "FurnitureSet_26",
+      "name": "Amusement Furniture Set",
+      "level": 46,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "GoalSoccer_Iron",
+        "MachineGame01_Iron",
+        "MachineVending01_Iron",
+        "Television01_Iron",
+        "ArcadeVideoGame"
+      ]
+    },
+    {
+      "id": "Product_SulfurPit",
+      "name": "Sulfur Quarry",
+      "level": 46,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["SulfurPit"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_RangeWeapon_SemiAutoShotgun",
+      "name": "Semi-Auto Shotgun",
+      "level": 47,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SemiAutoShotgun"]
+    },
+    {
+      "id": "Product_WeaponFactory_Dirty_Grade_03",
+      "name": "Weapon Assembly Line II",
+      "level": 47,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["WeaponFactory_Dirty_03"]
+    },
+    {
+      "id": "Cake03",
+      "name": "Vegetable Cake",
+      "level": 47,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["Cake03"]
+    },
+    {
+      "id": "AutoMealPouch_Tier5",
+      "name": "Giant Feed Bag",
+      "level": 47,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["AutoMealPouch_Tier5"],
+      "requiredTechnology": "AutoMealPouch_Tier4"
+    },
+    {
+      "id": "LargeCeilingLamp",
+      "name": "Large Ceiling Lamp",
+      "level": 47,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["LargeCeilingLamp"]
+    },
+    {
+      "id": "SkillUnlock_HadesBird_Electric",
+      "name": "Helzephyr Lux Saddle",
+      "level": 47,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_HadesBird_Electric"]
+    },
+    {
+      "id": "SkillUnlock_BlackGriffon",
+      "name": "Shadowbeak Saddle",
+      "level": 47,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BlackGriffon"]
+    },
+    {
+      "id": "FurnitureSet_8",
+      "name": "Emergency Exit Sign Set",
+      "level": 47,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["SignExit_Ceiling_Iron", "SignExit_Wall_Iron"]
+    },
+    {
+      "id": "Battle_Armor_Grade_04_Steal_Heat",
+      "name": "Heat Resistant Pal Metal Armor",
+      "level": 48,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["StealArmorHeat"]
+    },
+    {
+      "id": "SphereModule_Sniper2",
+      "name": "Sniper Module II",
+      "level": 48,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SphereModule_Sniper2"]
+    },
+    {
+      "id": "TransmissionTower",
+      "name": "Electric Pylon",
+      "level": 48,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["TransmissionTower"],
+      "requiredResearchId": "GenerateEnergy5"
+    },
+    {
+      "id": "SkillUnlock_LazyDragon_Electric",
+      "name": "Relaxaurus Lux's Missile Launcher",
+      "level": 48,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_LazyDragon_Electric"]
+    },
+    {
+      "id": "SkillUnlock_GrassGolem",
+      "name": "Dualith Saddle",
+      "level": 48,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GrassGolem"]
+    },
+    {
+      "id": "SkillUnlock_CubeTurtle",
+      "name": "Tetroise Saddle",
+      "level": 48,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_CubeTurtle"]
+    },
+    {
+      "id": "FurnitureSet_11",
+      "name": "Traffic Control Set",
+      "level": 48,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "TrafficCone01_Iron",
+        "TrafficCone02_Iron",
+        "TrafficCone03_Iron",
+        "TrafficLight01_Iron"
+      ]
+    },
+    {
+      "id": "MultiHatchingPalEgg",
+      "name": "Large Incubator",
+      "level": 48,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["MultiHatchingPalEgg"],
+      "requiredTowerBoss": "SnowBoss",
+      "bossTechnology": true
+    },
+    {
+      "id": "BaseCampItemDispenser",
+      "name": "Item Retrieval Machine",
+      "level": 49,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["BaseCampItemDispenser"]
+    },
+    {
+      "id": "HugeKitchen",
+      "name": "Large-Scale Stone Oven",
+      "level": 49,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["HugeKitchen"]
+    },
+    {
+      "id": "JapaneseStyle_houseset",
+      "name": "Japanese-Style Structure Set",
+      "level": 49,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "JapaneseStyle_wall_01",
+        "JapaneseStyle_DoorWall_01",
+        "JapaneseStyle_DoorWall_02",
+        "JapaneseStyle_roof_01",
+        "JapaneseStyle_roof_02",
+        "JapaneseStyle_SlantedRoof",
+        "JapaneseStyle_TriangleWall",
+        "JapaneseStyle_WindowWall",
+        "JapaneseStyle_foundation",
+        "JapaneseStyle_stair",
+        "JapaneseStyle_Pillar",
+        "JapaneseStyle_DoorWall_03",
+        "JapaneseStyle_Fence",
+        "JapaneseStyle_TriangleFoundation",
+        "JapaneseStyle_DiagonalWall",
+        "JapaneseStyle_TriangleRoof_01",
+        "JapaneseStyle_TriangleRoof_02",
+        "JapaneseStyle_TriangleStairsCorner_01",
+        "JapaneseStyle_TriangleWallReverse",
+        "JapaneseStyle_WallGate",
+        "JapaneseStyle_SlopedRoofCorner",
+        "JapaneseStyle_PyramidRoof",
+        "JapaneseStyle_SlopedRoofCornerReverse"
+      ]
+    },
+    {
+      "id": "FurnitureTree_Snow",
+      "name": "Faux Snowy Greenery Set",
+      "level": 49,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "FurnitureTree01_Snow",
+        "FurnitureTree02_Snow",
+        "FurnitureTree03_Snow",
+        "FurnitureBush01_Snow"
+      ]
+    },
+    {
+      "id": "FurnitureSet_12",
+      "name": "Road Sign Set",
+      "level": 49,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "TrafficSign01_Iron",
+        "TrafficSign02_Iron",
+        "TrafficSign03_Iron",
+        "TrafficSign04_Iron"
+      ]
+    },
+    {
+      "id": "FurnitureSet_10",
+      "name": "Barricade Set",
+      "level": 49,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "TrafficBarricade01_Iron",
+        "TrafficBarricade02_Iron",
+        "TrafficBarricade03_Iron",
+        "TrafficBarricade04_Iron",
+        "TrafficBarricade05_Iron"
+      ]
+    },
+    {
+      "id": "GrapplingGun4",
+      "name": "GrapplingGun4",
+      "level": 49,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["GrapplingGun4"],
+      "requiredTechnology": "GrapplingGun3",
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_Armor_Grade_04_Steal_Cold",
+      "name": "Cold Resistant Pal Metal Armor",
+      "level": 50,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["StealArmorCold"]
+    },
+    {
+      "id": "OilPump",
+      "name": "Crude Oil Extractor",
+      "level": 50,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["OilPump"]
+    },
+    {
+      "id": "Plastic",
+      "name": "Plasteel",
+      "level": 50,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Plastic"]
+    },
+    {
+      "id": "Computer",
+      "name": "Computer",
+      "level": 50,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Computer"]
+    },
+    {
+      "id": "Battle_Defense_Missile",
+      "name": "Mounted Missile Launcher",
+      "level": 50,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["DefenseMissile"]
+    },
+    {
+      "id": "ScientistFlagSet",
+      "name": "PAL Genetic Research Unit Flag Set",
+      "level": 50,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Scientist_Flag", "Scientist_Banner"],
+      "requiredTowerBoss": "SnowBoss"
+    },
+    {
+      "id": "ElectricGenerator_Large",
+      "name": "Large Power Generator",
+      "level": 50,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["ElectricGenerator_Large"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Special_PalSphere_Grade_07",
+      "name": "Ultimate Sphere",
+      "level": 51,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["PalSphere_Ultimate"]
+    },
+    {
+      "id": "Battle_Armor_Grade_05_Plastic",
+      "name": "Plasteel Armor",
+      "level": 51,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["PlasticArmor"]
+    },
+    {
+      "id": "Battle_Helm_Grade_06_Plastic",
+      "name": "Plasteel Helmet",
+      "level": 51,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["PlasticHelmet"]
+    },
+    {
+      "id": "Battle_RangeWeapon_LaserRifle",
+      "name": "Laser Rifle",
+      "level": 51,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["LaserRifle"]
+    },
+    {
+      "id": "LaserBullet",
+      "name": "Energy Cartridge",
+      "level": 51,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["LaserBullet"]
+    },
+    {
+      "id": "CoolerPalFoodBox",
+      "name": "Cold Food Box",
+      "level": 51,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["CoolerPalFoodBox"]
+    },
+    {
+      "id": "SkillUnlock_Yeti_Grass",
+      "name": "Wumpo Botan Saddle",
+      "level": 51,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Yeti_Grass"]
+    },
+    {
+      "id": "OilPump02",
+      "name": "High-Pressure Crude Oil Extractor",
+      "level": 51,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["OilPump02"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_Glider_Grade_04",
+      "name": "Glider_Tera",
+      "level": 52,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["Glider_Tera"]
+    },
+    {
+      "id": "Battle_RangeWeapon_FlameThrower",
+      "name": "Flamethrower",
+      "level": 52,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["FlameThrower"]
+    },
+    {
+      "id": "FlamethrowerBullet",
+      "name": "Flamethrower Fuel",
+      "level": 52,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["FlamethrowerBullet"]
+    },
+    {
+      "id": "FishingBait_3_A",
+      "name": "Alluring Bait",
+      "level": 52,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["FishingBait_3_A"]
+    },
+    {
+      "id": "SkillUnlock_BadCatgirl",
+      "name": "Nyafia's Shotgun",
+      "level": 52,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BadCatgirl"]
+    },
+    {
+      "id": "Product_QuartzPit",
+      "name": "Pure Quartz Quarry",
+      "level": 52,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["QuartzPit"],
+      "bossTechnology": true
+    },
+    {
+      "id": "AdditionalInventory_003",
+      "name": "Large Pouch",
+      "level": 53,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["AdditionalInventory_003"],
+      "requiredTechnology": "AdditionalInventory_002"
+    },
+    {
+      "id": "Battle_Armor_Grade_05_Plastic_Heat",
+      "name": "Heat Resistant Plasteel Armor",
+      "level": 53,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["PlasticArmorHeat"]
+    },
+    {
+      "id": "Battle_RangeWeapon_GrenadeLauncher",
+      "name": "Grenade Launcher",
+      "level": 53,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["GrenadeLauncher"]
+    },
+    {
+      "id": "GrenadeBullet",
+      "name": "Grenade Ammo",
+      "level": 53,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["GrenadeBullet"]
+    },
+    {
+      "id": "FragGrenade_Super",
+      "name": "Frag Grenade Mk2",
+      "level": 53,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["FragGrenade_Super"]
+    },
+    {
+      "id": "SkillUnlock_MoonQueen",
+      "name": "Selyne Saddle",
+      "level": 53,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_MoonQueen"]
+    },
+    {
+      "id": "SkillUnlock_SumoDog",
+      "name": "Bulldosu Saddle",
+      "level": 53,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_SumoDog"]
+    },
+    {
+      "id": "Unlock_Picking_Tier3",
+      "name": "Lockpicking Tool v3",
+      "level": 53,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Unlock_Picking_Tier3"],
+      "requiredTechnology": "Unlock_Picking_Tier2",
+      "bossTechnology": true
+    },
+    {
+      "id": "LaserMiningTool",
+      "name": "Plasma Multicutter",
+      "level": 54,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["LaserMiningTool"]
+    },
+    {
+      "id": "Battle_Armor_Grade_05_Plastic_Cold",
+      "name": "Cold Resistant Plasteel Armor",
+      "level": 54,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["PlasticArmorCold"]
+    },
+    {
+      "id": "Battle_RangeWeapon_GatlingGun",
+      "name": "Gatling Gun",
+      "level": 54,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["GatlingGun"]
+    },
+    {
+      "id": "GatlingBullet",
+      "name": "Gatling Gun Ammo",
+      "level": 54,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["GatlingBullet"]
+    },
+    {
+      "id": "IceCrusher",
+      "name": "Cryogenic Crusher",
+      "level": 54,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": ["IceCrusher"]
+    },
+    {
+      "id": "SkillUnlock_GoldenHorse",
+      "name": "Gildane Saddle",
+      "level": 54,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GoldenHorse"]
+    },
+    {
+      "id": "SkillUnlock_WhiteDeer",
+      "name": "Celesdir Saddle",
+      "level": 54,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_WhiteDeer"]
+    },
+    {
+      "id": "UnlockEquipmentSlot_Weapon_02",
+      "name": "Extra Weapon Holster 2",
+      "level": 54,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["UnlockEquipmentSlot_Weapon_02"],
+      "requiredTowerBoss": "SakurajimaBoss",
+      "bossTechnology": true
+    },
+    {
+      "id": "Spear_ForestBoss",
+      "name": "Lily's Spear",
+      "level": 55,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Spear_ForestBoss"],
+      "requiredTowerBoss": "ForestBoss"
+    },
+    {
+      "id": "Shield_05",
+      "name": "Shield_Ultra",
+      "level": 55,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["Shield_Ultra"]
+    },
+    {
+      "id": "Battle_Armor_Grade_05_Plastic_Weight",
+      "name": "Lightweight Plasteel Armor",
+      "level": 55,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["PlasticArmorWeight"]
+    },
+    {
+      "id": "SkillUnlock_IceSeal_Ground",
+      "name": "Polapup Terra Saddle",
+      "level": 55,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_IceSeal_Ground"]
+    },
+    {
+      "id": "SkillUnlock_KingBahamut_Dragon",
+      "name": "Blazamut Ryu Saddle",
+      "level": 55,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_KingBahamut_Dragon"]
+    },
+    {
+      "id": "FurnitureSet_Japanese",
+      "name": "Japanese-Style Furniture Set",
+      "level": 55,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Byobu",
+        "Kakejiku",
+        "Zaisu",
+        "Zabuton",
+        "Irori",
+        "Toro",
+        "Andon",
+        "Shishiodoshi",
+        "Bonsai",
+        "Koro",
+        "Seika",
+        "Tansu",
+        "Fudukue"
+      ]
+    },
+    {
+      "id": "NinjaFlagSet",
+      "name": "Moonflower Flag Set",
+      "level": 55,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["Ninja_Flag", "Ninja_Banner"],
+      "requiredTowerBoss": "SakurajimaBoss"
+    },
+    {
+      "id": "Battle_RangeWeapon_HomingSphereLauncher",
+      "name": "Homing Sphere Launcher",
+      "level": 55,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["HomingSphereLauncher"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Battle_RangeWeapon_GuidedMissileLauncher",
+      "name": "Guided Missile Launcher",
+      "level": 56,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["GuidedMissileLauncher"]
+    },
+    {
+      "id": "MissileBullet",
+      "name": "Missile Ammo",
+      "level": 56,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["MissileBullet"]
+    },
+    {
+      "id": "DismantlingConveyor",
+      "name": "Pal Disassembly Conveyor",
+      "level": 56,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["DismantlingConveyor"]
+    },
+    {
+      "id": "MedicalPalBed_05",
+      "name": "Pal Pod",
+      "level": 56,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["MedicalPalBed_05"]
+    },
+    {
+      "id": "FurnitureTree_Cherry",
+      "name": "Faux Cherry Blossoms Set",
+      "level": 56,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "FurnitureTree01_Cherry",
+        "FurnitureTree02_Cherry",
+        "FurnitureTree03_Cherry"
+      ]
+    },
+    {
+      "id": "OctaviaSet02",
+      "name": "ULTRAKILL Collab Set 2",
+      "level": 56,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["Octavia002_Armor", "OctaviaShotgun"],
+      "bossTechnology": true
+    },
+    {
+      "id": "SFBow",
+      "name": "Advanced Bow",
+      "level": 57,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SFBow"]
+    },
+    {
+      "id": "SFArrow",
+      "name": "Advanced Arrow",
+      "level": 57,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["SFArrow"]
+    },
+    {
+      "id": "AdditionalInventory_004",
+      "name": "Giant Pouch",
+      "level": 57,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["AdditionalInventory_004"],
+      "requiredTechnology": "AdditionalInventory_003"
+    },
+    {
+      "id": "BeamSword",
+      "name": "Beam Sword",
+      "level": 57,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["BeamSword"]
+    },
+    {
+      "id": "SkillUnlock_NightBlueHorse",
+      "name": "Starryon Saddle",
+      "level": 57,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_NightBlueHorse"]
+    },
+    {
+      "id": "SkillUnlock_FengyunDeeper_Electric",
+      "name": "Fenglope Lux Saddle",
+      "level": 57,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_FengyunDeeper_Electric"]
+    },
+    {
+      "id": "SkillUnlock_AmaterasuWolf",
+      "name": "Kitsun Saddle",
+      "level": 57,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_AmaterasuWolf"]
+    },
+    {
+      "id": "PalSphere_Exotic",
+      "name": "Exotic Sphere",
+      "level": 58,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["PalSphere_Exotic"]
+    },
+    {
+      "id": "SphereFactory_Black_04",
+      "name": "Advanced Sphere Assembly Line",
+      "level": 58,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["SphereFactory_Black_04"]
+    },
+    {
+      "id": "StainlessSteel",
+      "name": "Hexolite",
+      "level": 58,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["StainlessSteel"]
+    },
+    {
+      "id": "BlastFurnace4",
+      "name": "Gigantic Furnace",
+      "level": 58,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["BlastFurnace4"]
+    },
+    {
+      "id": "MetalDetector",
+      "name": "Metal Detector",
+      "level": 58,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["MetalDetector"]
+    },
+    {
+      "id": "SkillUnlock_BlackPuppy",
+      "name": "Smokie's Harness",
+      "level": 58,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BlackPuppy"]
+    },
+    {
+      "id": "SkillUnlock_BlueThunderHorse",
+      "name": "Azurmane Saddle",
+      "level": 58,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BlueThunderHorse"]
+    },
+    {
+      "id": "MultiElectricHatchingPalEgg",
+      "name": "Large-Scale Electric Egg Incubator",
+      "level": 58,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["MultiElectricHatchingPalEgg"],
+      "requiredTowerBoss": "VikingBoss",
+      "bossTechnology": true
+    },
+    {
+      "id": "ItemChest_04",
+      "name": "Advanced Chest",
+      "level": 59,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["ItemChest_04"]
+    },
+    {
+      "id": "LaserGatlingGun",
+      "name": "Laser Gatling Gun",
+      "level": 59,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["LaserGatlingGun"]
+    },
+    {
+      "id": "LaserGatlingBullet",
+      "name": "Laser Gatling Cartridge",
+      "level": 59,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["LaserGatlingBullet"]
+    },
+    {
+      "id": "SFArmor",
+      "name": "Hexolite Armor",
+      "level": 59,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SFArmor"]
+    },
+    {
+      "id": "Thermal_Core",
+      "name": "Thermal Core",
+      "level": 59,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Thermal_Core"]
+    },
+    {
+      "id": "SkillUnlock_Umihebi_Fire",
+      "name": "Jormuntide Ignis Saddle",
+      "level": 59,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Umihebi_Fire"]
+    },
+    {
+      "id": "SkillUnlock_AmaterasuWolf_Dark",
+      "name": "Kitsun Noct Saddle",
+      "level": 59,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_AmaterasuWolf_Dark"]
+    },
+    {
+      "id": "Shield_SF",
+      "name": "Advanced Shield",
+      "level": 60,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["Shield_SF"]
+    },
+    {
+      "id": "SFHelmet",
+      "name": "Hexolite Helmet",
+      "level": 60,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SFHelmet"]
+    },
+    {
+      "id": "Cake04",
+      "name": "Extravagant Vegetable Cake",
+      "level": 60,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["Cake04"]
+    },
+    {
+      "id": "DarkIslandFlagSet",
+      "name": "Feybreak Flag Set",
+      "level": 60,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["DarkIsland_Flag", "DarkIsland_Banner"],
+      "requiredTowerBoss": "VikingBoss"
+    },
+    {
+      "id": "SkillUnlock_Horus",
+      "name": "Faleris Saddle",
+      "level": 60,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Horus"]
+    },
+    {
+      "id": "SkillUnlock_Horus_Water",
+      "name": "Faleris Aqua Saddle",
+      "level": 60,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Horus_Water"]
+    },
+    {
+      "id": "SkillUnlock_WhiteShieldDragon",
+      "name": "Silvegis Saddle",
+      "level": 60,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_WhiteShieldDragon"]
+    },
+    {
+      "id": "EnergyRocketLauncher",
+      "name": "Plasma Cannon",
+      "level": 61,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["EnergyRocketLauncher"]
+    },
+    {
+      "id": "EnergyLauncherBullet",
+      "name": "Plasma Cartridge",
+      "level": 61,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["EnergyLauncherBullet"]
+    },
+    {
+      "id": "Potion_Extreme",
+      "name": "Advanced Recovery Meds",
+      "level": 61,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["Potion_Extreme"]
+    },
+    {
+      "id": "PalRevive",
+      "name": "Revival Potion",
+      "level": 61,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["PalRevive"]
+    },
+    {
+      "id": "MedicineFacility_03",
+      "name": "Advanced Medicine Workbench",
+      "level": 61,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["MedicineFacility_03"]
+    },
+    {
+      "id": "SkillUnlock_SaintCentaur",
+      "name": "Paladius Saddle",
+      "level": 61,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_SaintCentaur"]
+    },
+    {
+      "id": "SkillUnlock_BlackCentaur",
+      "name": "Necromus Saddle",
+      "level": 61,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BlackCentaur"]
+    },
+    {
+      "id": "Accessory_AirDash2",
+      "name": "Double Air Dash Boots",
+      "level": 61,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["Accessory_AirDash2"],
+      "bossTechnology": true
+    },
+    {
+      "id": "Salvage_TreasureBoxKey02",
+      "name": "Powerful Fishing Magnet",
+      "level": 62,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["Salvage_TreasureBoxKey02"]
+    },
+    {
+      "id": "ManganeseIngot",
+      "name": "Coralum Ingot",
+      "level": 62,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["ManganeseIngot"]
+    },
+    {
+      "id": "Factory_Hard_04",
+      "name": "Advanced Workshop",
+      "level": 62,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["Factory_Hard_04"]
+    },
+    {
+      "id": "SF_houseset",
+      "name": "Futuristic Structure Set",
+      "level": 62,
+      "cost": 2,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "SF_foundation",
+        "SF_wall",
+        "SF_roof",
+        "SF_stair",
+        "SF_WindowWall",
+        "SF_TriangleWall",
+        "SF_SlantedRoof",
+        "SF_DoorWall",
+        "SF_pillars",
+        "SF_Fence",
+        "SF_TriangleFoundation",
+        "SF_TriangleFoundation",
+        "SF_DiagonalWall",
+        "SF_TriangleRoof",
+        "SF_TriangleStairsCorner",
+        "SF_TriangleWallReverse",
+        "SF_WallGate",
+        "SF_SlopedRoofCorner",
+        "SF_PyramidRoof",
+        "SF_SlopedRoofCornerReverse"
+      ]
+    },
+    {
+      "id": "SkillUnlock_IceHorse",
+      "name": "Frostallion Saddle",
+      "level": 62,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_IceHorse"]
+    },
+    {
+      "id": "SkillUnlock_IceHorse_Dark",
+      "name": "Frostallion Noct Saddle",
+      "level": 62,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_IceHorse_Dark"]
+    },
+    {
+      "id": "CrystalPit",
+      "name": "Hexolite Quartz Mine",
+      "level": 62,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["CrystalPit"],
+      "bossTechnology": true
+    },
+    {
+      "id": "EnergyShotgun",
+      "name": "Energy Shotgun",
+      "level": 63,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["EnergyShotgun"]
+    },
+    {
+      "id": "EnergyShotgunBullet",
+      "name": "Energy Shotgun Ammo",
+      "level": 63,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["EnergyShotgunBullet"]
+    },
+    {
+      "id": "WeaponFactory_Dirty_04",
+      "name": "Advanced Weapon Assembly Line",
+      "level": 63,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["WeaponFactory_Dirty_04"]
+    },
+    {
+      "id": "SFArmorHeat",
+      "name": "Heat Resistant Hexolite Armor",
+      "level": 63,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SFArmorHeat"]
+    },
+    {
+      "id": "PalDopingShot_2",
+      "name": "Megaboost Gun",
+      "level": 63,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["PalDopingShot_2"]
+    },
+    {
+      "id": "GrapplingGun5",
+      "name": "GrapplingGun5",
+      "level": 63,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["GrapplingGun5"],
+      "requiredTechnology": "GrapplingGun4",
+      "bossTechnology": true
+    },
+    {
+      "id": "OverheatRifle",
+      "name": "Overheat Rifle",
+      "level": 64,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["OverheatRifle"]
+    },
+    {
+      "id": "OverheatRifleBullet",
+      "name": "Overheat Rifle Ammo",
+      "level": 64,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["OverheatRifleBullet"]
+    },
+    {
+      "id": "SFArmorCold",
+      "name": "Cold Resistant Hexolite Armor",
+      "level": 64,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SFArmorCold"]
+    },
+    {
+      "id": "Spa3",
+      "name": "Japanese-Style Hot Spring",
+      "level": 64,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["Spa3"]
+    },
+    {
+      "id": "SkillUnlock_Kirin_Ice",
+      "name": "Univolt Cryst Saddle",
+      "level": 64,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_Kirin_Ice"]
+    },
+    {
+      "id": "SkillUnlock_PoseidonOrca",
+      "name": "Neptilius Saddle",
+      "level": 64,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_PoseidonOrca"]
+    },
+    {
+      "id": "IceHorseStatue",
+      "name": "Frostallion Statue",
+      "level": 64,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["IceHorseStatue"]
+    },
+    {
+      "id": "Battle_RangeWeapon_RocketLauncher",
+      "name": "Rocket Launcher",
+      "level": 65,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["Launcher_Default"]
+    },
+    {
+      "id": "LauncherBullet",
+      "name": "Rocket Ammo",
+      "level": 65,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["ExplosiveBullet"]
+    },
+    {
+      "id": "ChargeLaserRifle",
+      "name": "Charge Rifle",
+      "level": 65,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["ChargeLaserRifle"]
+    },
+    {
+      "id": "ChargeLaserRifleBullet",
+      "name": "Charge Rifle Ammo",
+      "level": 65,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["ChargeLaserRifleBullet"]
+    },
+    {
+      "id": "SFArmorWeight",
+      "name": "Lightweight Hexolite Armor",
+      "level": 65,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SFArmorWeight"]
+    },
+    {
+      "id": "SkillUnlock_KingSunfish",
+      "name": "Solmora Saddle",
+      "level": 65,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_KingSunfish"]
+    },
+    {
+      "id": "Accessory_AirDash3",
+      "name": "Triple Air Dash Boots",
+      "level": 65,
+      "cost": 6,
+      "kind": "item",
+      "unlockItemRecipes": ["Accessory_AirDash3"],
+      "requiredTechnology": "Accessory_AirDash2",
+      "bossTechnology": true
+    },
+    {
+      "id": "AncientBlastFurnace",
+      "name": "Ancient Furnace",
+      "level": 66,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["AncientBlastFurnace"]
+    },
+    {
+      "id": "SkyislandIngot",
+      "name": "Soralite Ingot",
+      "level": 66,
+      "cost": 3,
+      "kind": "item",
+      "unlockItemRecipes": ["SkyislandIngot"]
+    },
+    {
+      "id": "SkillUnlock_KingSunfish_Thunder",
+      "name": "Solmora Lux Saddle",
+      "level": 66,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_KingSunfish_Thunder"]
+    },
+    {
+      "id": "SkillUnlock_ThunderFluffyBird",
+      "name": "Dynamoff Saddle",
+      "level": 66,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_ThunderFluffyBird"]
+    },
+    {
+      "id": "SkillUnlock_DarkMechaDragon",
+      "name": "Xenolord Saddle",
+      "level": 66,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_DarkMechaDragon"]
+    },
+    {
+      "id": "WaterBuildKit",
+      "name": "Aquatic Construction Kit",
+      "level": 66,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["WaterBuildKit"],
+      "bossTechnology": true
+    },
+    {
+      "id": "PalSphere_Ancient_1",
+      "name": "Sol Sphere",
+      "level": 67,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["PalSphere_Ancient_1"]
+    },
+    {
+      "id": "SkyBow",
+      "name": "Mechanical Bow",
+      "level": 67,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkyBow"]
+    },
+    {
+      "id": "SkyBowArrow",
+      "name": "Mechanical Bow Ammo",
+      "level": 67,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkyBowArrow"]
+    },
+    {
+      "id": "AIcore",
+      "name": "AI Core",
+      "level": 67,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["AIcore"]
+    },
+    {
+      "id": "AncientWorkBench",
+      "name": "Ancient Workbench",
+      "level": 67,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["AncientWorkBench"]
+    },
+    {
+      "id": "Ancient_Houseset",
+      "name": "Ancient Structure Set",
+      "level": 67,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": [
+        "Ancient_foundation",
+        "Ancient_wall",
+        "Ancient_roof",
+        "Ancient_stair",
+        "Ancient_DoorWall",
+        "Ancient_TriangleWall",
+        "Ancient_SlantedRoof",
+        "Ancient_WindowWall",
+        "Ancient_Pillars",
+        "Ancient_Fence",
+        "Ancient_TriangleFoundation",
+        "Ancient_DiagonalWall",
+        "Ancient_TriangleRoof",
+        "Ancient_TriangleStairsCorner",
+        "Ancient_TriangleWallReverse",
+        "Ancient_WallGate",
+        "Ancient_SlopedRoofCorner",
+        "Ancient_PyramidRoof",
+        "Ancient_SlopedRoofCornerReverse"
+      ]
+    },
+    {
+      "id": "Spear_ForestBoss2",
+      "name": "Enhanced Lily's Spear",
+      "level": 68,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["Spear_ForestBoss2"]
+    },
+    {
+      "id": "SkySubmachineGun",
+      "name": "Combat SMG",
+      "level": 68,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkySubmachineGun"]
+    },
+    {
+      "id": "SkySubmachineGunBullet",
+      "name": "Combat SMG Ammo",
+      "level": 68,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkySubmachineGunBullet"]
+    },
+    {
+      "id": "AncientArmor",
+      "name": "Ancient Armor",
+      "level": 68,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["AncientArmor"]
+    },
+    {
+      "id": "AncientHelmet",
+      "name": "Ancient Helm",
+      "level": 68,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["AncientHelmet"]
+    },
+    {
+      "id": "SkillUnlock_GhostDragon",
+      "name": "Eidrolon Saddle",
+      "level": 68,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GhostDragon"]
+    },
+    {
+      "id": "SkyShotgun",
+      "name": "Prototype Shotgun",
+      "level": 69,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkyShotgun"]
+    },
+    {
+      "id": "SkyShotgunBullet",
+      "name": "Prototype Shotgun Ammo",
+      "level": 69,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkyShotgunBullet"]
+    },
+    {
+      "id": "SphereModule_Homing",
+      "name": "Homing Module",
+      "level": 69,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SphereModule_Homing"]
+    },
+    {
+      "id": "FishingPond2",
+      "name": "Large Fishing Pond",
+      "level": 69,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["FishingPond2"]
+    },
+    {
+      "id": "SkillUnlock_GrassGolem_Dark",
+      "name": "Dualith Noct Saddle",
+      "level": 69,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GrassGolem_Dark"]
+    },
+    {
+      "id": "SkyAssaultRifle",
+      "name": "Heavy Assault Rifle",
+      "level": 70,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkyAssaultRifle"]
+    },
+    {
+      "id": "SkyAssaultRifleBullet",
+      "name": "Heavy Assault Rifle Ammo",
+      "level": 70,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkyAssaultRifleBullet"]
+    },
+    {
+      "id": "AncientCookingStove",
+      "name": "Ancient Kitchen",
+      "level": 70,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["AncientCookingStove"]
+    },
+    {
+      "id": "SkillUnlock_LegendDeer",
+      "name": "Hartalis Saddle",
+      "level": 70,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_LegendDeer"]
+    },
+    {
+      "id": "SkillUnlock_VolcanoDragon_Ice",
+      "name": "Moldron Cryst Saddle",
+      "level": 70,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_VolcanoDragon_Ice"]
+    },
+    {
+      "id": "Accessory_JumpCount_Increase2",
+      "name": "Triple Jump Boots",
+      "level": 70,
+      "cost": 6,
+      "kind": "item",
+      "unlockItemRecipes": ["Accessory_JumpCount_Increase2"],
+      "requiredTowerBoss": "SorajimaBoss",
+      "bossTechnology": true
+    },
+    {
+      "id": "Shield_07",
+      "name": "Ancient Shield",
+      "level": 71,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["Shield_07"]
+    },
+    {
+      "id": "BaseCampWorkHard03",
+      "name": "Ancient Monitoring Stand",
+      "level": 71,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["BaseCampWorkHard03"]
+    },
+    {
+      "id": "Farm_SkillFruits",
+      "name": "Skillfruit Orchard",
+      "level": 71,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["Farm_SkillFruits"]
+    },
+    {
+      "id": "SkyIslandFlagSet",
+      "name": "Azure Covenant Flag Set",
+      "level": 71,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["SkyIsland_Flag", "SkyIsland_Banner"],
+      "requiredTowerBoss": "SorajimaBoss"
+    },
+    {
+      "id": "SkillUnlock_ThunderBird_Ice",
+      "name": "Beakon Cryst Saddle",
+      "level": 71,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_ThunderBird_Ice"]
+    },
+    {
+      "id": "SkillUnlock_IceNarwhal_Fire",
+      "name": "Whalaska Ignis Saddle",
+      "level": 71,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_IceNarwhal_Fire"]
+    },
+    {
+      "id": "SkyGrenadeLauncher",
+      "name": "Tactical Grenade Launcher",
+      "level": 72,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkyGrenadeLauncher"]
+    },
+    {
+      "id": "SkyGrenadeLauncherBullet",
+      "name": "Tactical Grenade Launcher Ammo",
+      "level": 72,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["SkyGrenadeLauncherBullet"]
+    },
+    {
+      "id": "SkillUnlock_ThiefBird",
+      "name": "Roujay Saddle",
+      "level": 72,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_ThiefBird"]
+    },
+    {
+      "id": "SkillUnlock_LotusDragon",
+      "name": "Ophydia Saddle",
+      "level": 72,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_LotusDragon"]
+    },
+    {
+      "id": "SkyIslandOrePit",
+      "name": "Soralite Quarry",
+      "level": 72,
+      "cost": 7,
+      "kind": "structure",
+      "unlockBuildObjects": ["SkyIslandOrePit"],
+      "bossTechnology": true
+    },
+    {
+      "id": "SkyBeamSword",
+      "name": "Laser Sword",
+      "level": 73,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkyBeamSword"]
+    },
+    {
+      "id": "Factory_Money",
+      "name": "Gold Coin Assembly Line",
+      "level": 73,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["Factory_Money"]
+    },
+    {
+      "id": "Ancient_Clinic",
+      "name": "Ancient Clinic",
+      "level": 73,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["Ancient_Clinic"]
+    },
+    {
+      "id": "Ancient_MedicalPalBed",
+      "name": "Ancient Pal Bed",
+      "level": 73,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["Ancient_MedicalPalBed"]
+    },
+    {
+      "id": "SkillUnlock_SnowTigerBeastman",
+      "name": "Bastigor's Hammer",
+      "level": 73,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_SnowTigerBeastman"]
+    },
+    {
+      "id": "WorldTreeIngot",
+      "name": "Paloxite Ingot",
+      "level": 74,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["WorldTreeIngot"]
+    },
+    {
+      "id": "PalSphere_Ancient_2",
+      "name": "Ancient Sphere",
+      "level": 74,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["PalSphere_Ancient_2"]
+    },
+    {
+      "id": "AncientRelicRecycler",
+      "name": "Ancient Relic Recycler",
+      "level": 74,
+      "cost": 3,
+      "kind": "structure",
+      "unlockBuildObjects": ["AncientRelicRecycler"]
+    },
+    {
+      "id": "Cake05",
+      "name": "Special Cake",
+      "level": 74,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["Cake05"]
+    },
+    {
+      "id": "WidePenetrateShotgun",
+      "name": "Beam Scatter",
+      "level": 75,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["WidePenetrateShotgun"]
+    },
+    {
+      "id": "WidePenetrateShotgunBullet",
+      "name": "Beam Scatter Ammo",
+      "level": 75,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["WidePenetrateShotgunBullet"]
+    },
+    {
+      "id": "AncientArmorHeat",
+      "name": "Heat-Resistant Ancient Armor",
+      "level": 75,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["AncientArmorHeat"]
+    },
+    {
+      "id": "AncientElectricGenerator",
+      "name": "Ancient Power Generator",
+      "level": 75,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["AncientElectricGenerator"]
+    },
+    {
+      "id": "SkillUnlock_CubeTurtle_Neutral",
+      "name": "Tetroise Primo Saddle",
+      "level": 75,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_CubeTurtle_Neutral"]
+    },
+    {
+      "id": "Ancient_Spa",
+      "name": "Ancient Hot Spring",
+      "level": 76,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["Ancient_Spa"]
+    },
+    {
+      "id": "GasMask",
+      "name": "Corrosive Mist Mask",
+      "level": 76,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["GasMask"]
+    },
+    {
+      "id": "Accessory_ExplosionResist",
+      "name": "Explosion-Resistant Undershirt",
+      "level": 76,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["Accessory_ExplosionResist"]
+    },
+    {
+      "id": "SkillUnlock_GhostDragon_Fire",
+      "name": "Eidrolon Ignis Saddle",
+      "level": 76,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_GhostDragon_Fire"]
+    },
+    {
+      "id": "MultiElectricHatchingPalEggWithBreed",
+      "name": "Ancient Hatchery",
+      "level": 76,
+      "cost": 8,
+      "kind": "structure",
+      "unlockBuildObjects": ["MultiElectricHatchingPalEggWithBreed"],
+      "bossTechnology": true
+    },
+    {
+      "id": "DroneLauncher",
+      "name": "Drone Launcher",
+      "level": 77,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["DroneLauncher"]
+    },
+    {
+      "id": "AncientArmorCold",
+      "name": "Cold-Resistant Ancient Armor",
+      "level": 77,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["AncientArmorCold"]
+    },
+    {
+      "id": "SkillUnlock_NightBlueHorse_Neutral",
+      "name": "Starryon Primo Saddle",
+      "level": 77,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_NightBlueHorse_Neutral"]
+    },
+    {
+      "id": "SkillUnlock_BlueSkyDragon",
+      "name": "Shaolong Saddle",
+      "level": 77,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_BlueSkyDragon"]
+    },
+    {
+      "id": "ElectricArcAssaultRifle",
+      "name": "Plasma Rifle",
+      "level": 78,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["ElectricArcAssaultRifle"]
+    },
+    {
+      "id": "ElectricArcAssaultRifleBullet",
+      "name": "Plasma Rifle Ammo",
+      "level": 78,
+      "cost": 1,
+      "kind": "item",
+      "unlockItemRecipes": ["ElectricArcAssaultRifleBullet"]
+    },
+    {
+      "id": "AncientMultiProduct",
+      "name": "Ancient Material Synthesizer",
+      "level": 78,
+      "cost": 5,
+      "kind": "structure",
+      "unlockBuildObjects": ["AncientMultiProduct"]
+    },
+    {
+      "id": "AncientFarmBlock",
+      "name": "Ancient Farm",
+      "level": 78,
+      "cost": 4,
+      "kind": "structure",
+      "unlockBuildObjects": ["AncientFarmBlock"]
+    },
+    {
+      "id": "SkillUnlock_WhiteDeer_Dark",
+      "name": "Celesdir Noct Saddle",
+      "level": 78,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_WhiteDeer_Dark"]
+    },
+    {
+      "id": "AncientArmorWeight",
+      "name": "Lightweight Ancient Armor",
+      "level": 79,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["AncientArmorWeight"]
+    },
+    {
+      "id": "Supplement",
+      "name": "Nutrient Tonic",
+      "level": 79,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["Supplement"]
+    },
+    {
+      "id": "SkillUnlock_DomeArmorDragon",
+      "name": "Aegidron Saddle",
+      "level": 79,
+      "cost": 4,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_DomeArmorDragon"]
+    },
+    {
+      "id": "SkillUnlock_JetDragon",
+      "name": "Jetragon's Missile Launcher",
+      "level": 79,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["SkillUnlock_JetDragon"]
+    },
+    {
+      "id": "JetDragonStatue",
+      "name": "Jetragon Statue",
+      "level": 79,
+      "cost": 1,
+      "kind": "structure",
+      "unlockBuildObjects": ["JetDragonStatue"]
+    },
+    {
+      "id": "BeamLauncher",
+      "name": "Beam Launcher",
+      "level": 80,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["BeamLauncher"]
+    },
+    {
+      "id": "BeamLauncherBullet",
+      "name": "Beam Launcher Ammo",
+      "level": 80,
+      "cost": 2,
+      "kind": "item",
+      "unlockItemRecipes": ["BeamLauncherBullet"]
+    },
+    {
+      "id": "WingGlider_Fuel",
+      "name": "Wing Cell",
+      "level": 80,
+      "cost": 5,
+      "kind": "item",
+      "unlockItemRecipes": ["WingGlider_Fuel"]
+    },
+    {
+      "id": "WingGlider",
+      "name": "Wing Pack",
+      "level": 80,
+      "cost": 9,
+      "kind": "item",
+      "unlockItemRecipes": ["WingGlider"],
+      "bossTechnology": true
+    }
+  ]
+}

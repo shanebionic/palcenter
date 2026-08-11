@@ -13,6 +13,9 @@ const storedConnectionSchema = z.object({
   name: z.string().min(1),
   baseUrl: z.string().url(),
   adminPassword: z.string().min(1),
+  palDefenderEnabled: z.boolean().default(false),
+  palDefenderEndpoint: z.string().url().nullable().default(null),
+  palDefenderToken: z.string().max(2_048).default(""),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -40,6 +43,23 @@ export class JsonConnectionRepository implements ConnectionRepository {
     try {
       await fs.access(this.filePath);
       await tightenFilePermissions(this.filePath, this.onPermissionWarning);
+      const raw = JSON.parse(await fs.readFile(this.filePath, "utf8")) as {
+        servers?: Array<Record<string, unknown>>;
+      };
+      const legacyKeys = [
+        "companionEnabled",
+        "companionHost",
+        "companionPort",
+        "companionApiToken",
+        "administratorPlayerId",
+      ];
+      if (
+        raw.servers?.some((server) =>
+          legacyKeys.some((key) => Object.hasOwn(server, key)),
+        )
+      ) {
+        await this.write(connectionFileSchema.parse(raw));
+      }
     } catch (error) {
       if (!this.isMissing(error)) throw error;
       await this.write({

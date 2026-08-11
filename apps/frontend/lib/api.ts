@@ -39,6 +39,321 @@ interface PlayersResponse {
   players: ConnectedPlayer[];
 }
 
+export interface PalDefenderStatus {
+  state:
+    | "disabled"
+    | "configuration_required"
+    | "connected"
+    | "authentication_failed"
+    | "unreachable"
+    | "invalid_response";
+  enabled: boolean;
+  configured: boolean;
+  connected: boolean;
+  version: string;
+  responseTime: number;
+}
+
+export interface PalDefenderPlayer {
+  name: string;
+  playerId: string;
+  online: boolean;
+  guild: string | null;
+  level: number | null;
+}
+
+export interface PalDefenderPlayerDetails extends PalDefenderPlayer {
+  worldLocation: { x?: number; y?: number; z?: number } | null;
+  mapLocation: { x?: number; y?: number; z?: number } | null;
+}
+
+export interface PalDefenderInventoryItem {
+  container: string;
+  slot: number;
+  itemId: string;
+  quantity: number;
+}
+
+export interface PalDefenderProgression {
+  playerId: string;
+  requestedPlayerId: string;
+  character: { level: number; experience: number; unusedStatusPoints: number };
+  currencies: {
+    relics: Record<string, number>;
+    technologyPoints: number;
+    ancientTechnologyPoints: number;
+  };
+  bosses: {
+    towerDefeats: Record<string, number>;
+    normalDefeatFlags: Record<string, boolean>;
+    raidDefeats: Record<string, number>;
+    totalDefeats: number;
+    predatorDefeats: number;
+  };
+  captures: {
+    total: number;
+    byPal: Record<string, number>;
+    bonusesByPal: Record<string, number>;
+    butcheredByPal: Record<string, number>;
+  };
+  activities: {
+    craftedItems: Record<string, number>;
+    normalDungeonsCleared: number;
+    fixedDungeonsCleared: number;
+    oilRigsCleared: number;
+    palRankUps: Record<string, number>;
+    soloArenasCleared: Record<string, number>;
+    npcTalks: Record<string, number>;
+    fishing: Record<string, number>;
+    treasuresFound: number;
+    campsConquered: number;
+    firstFishingCompleted: boolean;
+  };
+}
+export const palDefenderRelicTypes = [
+  "CapturePower",
+  "HungerReduction",
+  "SwimSpeed",
+  "FoodDecayReduction",
+  "JumpPower",
+  "GliderSpeed",
+  "ClimbSpeed",
+  "StatusAilmentResist",
+  "StaminaReduction",
+  "SphereHoming",
+  "ExpBonus",
+  "RainbowPassiveRate",
+  "MoveSpeed",
+] as const;
+export type PalDefenderRelicType = (typeof palDefenderRelicTypes)[number];
+export type PalDefenderProgressionGrant =
+  | { type: "experience"; amount: number }
+  | { type: "technologyPoints"; amount: number }
+  | { type: "ancientTechnologyPoints"; amount: number }
+  | { type: "relic"; relicType: PalDefenderRelicType; amount: number };
+export interface PalDefenderGiveProgressionResult {
+  playerId: string;
+  grant: PalDefenderProgressionGrant;
+  totals: {
+    technologyPoints: number | null;
+    ancientTechnologyPoints: number | null;
+    relics: Partial<Record<PalDefenderRelicType, number>>;
+  };
+}
+
+export interface PalDefenderPal {
+  instanceId: string;
+  location: "Team" | "Palbox" | "Base Camp";
+  baseCampId: string | null;
+  palId: string;
+  nickname: string | null;
+  gender: string | null;
+  level: number | null;
+  experience: number | null;
+  shiny: boolean | null;
+  rank: number | null;
+  condensedPals: number | null;
+  physicalHealth: string | null;
+  workerSick: string | null;
+  imported: boolean | null;
+  hp: number | null;
+  hunger: number | null;
+  maxHunger: number | null;
+  sanity: number | null;
+  support: number | null;
+  craftSpeed: number | null;
+  palSouls: Record<string, number>;
+  ivs: Record<string, number>;
+  extraWorkSuitabilities: Record<string, number>;
+  disabledWorkPreferences: string[];
+  passiveSkills: string[];
+  activeSkills: string[];
+  learnedSkills: string[];
+}
+
+export interface PalDefenderKickResult {
+  success: boolean;
+  playerId: string;
+}
+export interface PalDefenderBanOptions {
+  reason?: string;
+  ipBan?: boolean;
+}
+export interface PalDefenderBanResult {
+  success: boolean;
+  playerId: string;
+  ipBanned: boolean;
+  bannedIp: string | null;
+  kickedPlayers: number;
+}
+export interface ModerationActor {
+  type: string;
+  name: string;
+  ip: string;
+  reason: string;
+  timestamp: string;
+}
+export interface ModerationState {
+  version: number;
+  bannedMessage: string;
+  userBans: Array<{
+    userId: string;
+    active: boolean;
+    bannedBy: ModerationActor;
+    unbannedBy: ModerationActor | null;
+  }>;
+  ipBans: Array<{
+    ip: string;
+    active: boolean;
+    bannedBy: ModerationActor;
+    unbannedBy: ModerationActor | null;
+  }>;
+}
+export interface ModerationResult {
+  success: boolean;
+  target: string;
+  kickedPlayers?: number;
+}
+export interface PalDefenderBroadcastResult {
+  success: boolean;
+}
+export interface PalDefenderReloadConfigResult {
+  success: boolean;
+}
+export interface AdministrativeAuditEntry {
+  id: number;
+  serverId: string;
+  actorUserId: string;
+  actorUsername: string;
+  occurredAt: string;
+  action: string;
+  category: "players" | "moderation" | "messaging" | "server" | "bases";
+  targetType: string | null;
+  targetId: string | null;
+  result: "success" | "failed";
+  details: Record<string, unknown>;
+}
+
+export async function getAdministrativeAuditLog(
+  serverId: string,
+): Promise<AdministrativeAuditEntry[]> {
+  const result = await request<{ entries: AdministrativeAuditEntry[] }>(
+    `/api/servers/${encodeURIComponent(serverId)}/audit-log?limit=500`,
+    { cache: "no-store" },
+  );
+  return result.entries;
+}
+export type PalDefenderPlayerMessageType =
+  | "PlayerChat"
+  | "PlayerGlobalChat"
+  | "PlayerGuildChat"
+  | "PlayerLogNormal"
+  | "PlayerLogImportant"
+  | "PlayerLogVeryImportant";
+export interface PalDefenderPlayerMessageResult {
+  success: boolean;
+  sentCount: number;
+}
+export interface PalDefenderGuildCamp {
+  id: string;
+  worldPosition: { x: number; y: number; z: number };
+  mapPosition: { x: number; y: number; z: number };
+}
+export interface PalDefenderGuild {
+  guildId: string;
+  name: string | null;
+  level: number;
+  administrator: { playerId: string; name: string | null };
+  baseCount: number;
+  camps: PalDefenderGuildCamp[];
+  memberCount: number;
+  memberIds: string[];
+}
+export interface PalDefenderBase {
+  baseId: string;
+  guildId: string;
+  guildName: string | null;
+  guildAdministrator: { playerId: string; name: string | null };
+  worldPosition: { x: number; y: number; z: number };
+  mapPosition: { x: number; y: number; z: number };
+}
+export interface PalDefenderBaseDetails extends PalDefenderBase {
+  level: number;
+  state: string | null;
+  buildings: string | null;
+  pals: PalDefenderGuildDetails["camps"][number]["pals"];
+}
+export interface PalDefenderDeleteBaseResult {
+  base: { id: string; summary: string };
+  deleted: {
+    baseCampPals: number;
+    storageContainers: number;
+    itemStacks: number;
+    itemCount: number;
+    buildings: number;
+    dropItems: number;
+    defenseModels: number;
+    otherMapObjects: number;
+    palBox: boolean;
+  };
+  archive: string;
+}
+export interface PalDefenderGuildDetails {
+  guildId: string;
+  name: string | null;
+  level: number;
+  administrator: { playerId: string; name: string | null };
+  memberCount: number;
+  members: Array<{
+    playerId: string;
+    name: string | null;
+    status: string | null;
+  }>;
+  baseCount: number;
+  camps: Array<{
+    id: string;
+    level: number;
+    state: string | null;
+    worldPosition: { x: number; y: number; z: number };
+    mapPosition: { x: number; y: number; z: number };
+    buildings: string | null;
+    pals: Array<{
+      instanceId: string;
+      palId: string;
+      nickname: string | null;
+      npcId: string | null;
+      skinId: string | null;
+      gender: string | null;
+      level: number;
+      shiny: boolean;
+      physicalHealth: string | null;
+      workerSick: string | null;
+      sanity: number;
+      imported: boolean;
+      friendship: number;
+      activeSkills: string[];
+      learnedSkills: string[];
+      passiveSkills: string[];
+    }>;
+  }>;
+  storage: {
+    containerId: string | null;
+    occupiedSlots: number;
+    maximumSlots: number;
+    items: Array<{ slot: number; itemId: string; quantity: number }>;
+  };
+  expeditions: { finishedCount: number; missions: Record<string, boolean> };
+  laboratory: {
+    currentResearch: string | null;
+    researches: Array<{
+      researchId: string;
+      workAmount: number;
+      requiredWorkAmount: number;
+      percentage: number;
+    }>;
+  };
+}
+
 interface HistoryResponse {
   metrics: ServerMetric[];
 }
@@ -69,12 +384,19 @@ export interface ServerConnectionInput {
   name: string;
   baseUrl: string;
   adminPassword: string;
+  palDefenderEnabled?: boolean;
+  palDefenderEndpoint?: string | null;
+  palDefenderToken?: string;
 }
 
 export interface ServerConnectionUpdate {
   name: string;
   baseUrl: string;
   adminPassword?: string;
+  palDefenderEnabled?: boolean;
+  palDefenderEndpoint?: string | null;
+  palDefenderToken?: string;
+  clearPalDefenderToken?: boolean;
 }
 
 export interface ServerTestInput {
@@ -93,6 +415,12 @@ export interface ConnectionTestResult {
     serverfps: number;
   };
   latencyMs: number;
+}
+
+export interface PalDefenderConnectionTestResult {
+  connected: true;
+  version: string;
+  responseTime: number;
 }
 
 function errorMessage(value: unknown): string | undefined {
@@ -299,6 +627,16 @@ export function testServerUpdate(
   );
 }
 
+export function testPalDefenderConnection(
+  serverId: string,
+  input: { endpoint: string; token?: string },
+): Promise<PalDefenderConnectionTestResult> {
+  return jsonRequest<PalDefenderConnectionTestResult>(
+    `/api/servers/${encodeURIComponent(serverId)}/paldefender/test`,
+    input,
+  );
+}
+
 export function updateServer(
   id: string,
   input: ServerConnectionUpdate,
@@ -319,11 +657,10 @@ export function deleteServer(id: string): Promise<void> {
 export function announce(
   serverId: string,
   message: string,
-): Promise<AdminActionResponse> {
-  return jsonRequest<AdminActionResponse>(
-    `/api/servers/${encodeURIComponent(serverId)}/admin/announce`,
-    { message },
-  );
+): Promise<AdminActionResponse & { provider?: "paldefender" | "native" }> {
+  return jsonRequest<
+    AdminActionResponse & { provider?: "paldefender" | "native" }
+  >(`/api/servers/${encodeURIComponent(serverId)}/admin/announce`, { message });
 }
 
 export function saveWorld(serverId: string): Promise<AdminActionResponse> {
@@ -361,6 +698,370 @@ export async function getPlayers(serverId: string): Promise<ConnectedPlayer[]> {
   );
 
   return result.players;
+}
+
+function palDefenderPath(serverId: string): string {
+  return `/api/servers/${encodeURIComponent(serverId)}/paldefender`;
+}
+
+export function getPalDefenderStatus(
+  serverId: string,
+): Promise<PalDefenderStatus> {
+  return request<PalDefenderStatus>(`${palDefenderPath(serverId)}/status`, {
+    cache: "no-store",
+  });
+}
+
+export async function getPalDefenderPlayers(
+  serverId: string,
+): Promise<PalDefenderPlayer[]> {
+  const result = await request<{ players: PalDefenderPlayer[] }>(
+    `${palDefenderPath(serverId)}/players`,
+    { cache: "no-store" },
+  );
+  return result.players;
+}
+
+export async function getPalDefenderGuilds(
+  serverId: string,
+): Promise<PalDefenderGuild[]> {
+  const result = await request<{ guilds: PalDefenderGuild[] }>(
+    `${palDefenderPath(serverId)}/guilds`,
+    { cache: "no-store" },
+  );
+  return result.guilds;
+}
+
+export async function getPalDefenderBases(
+  serverId: string,
+): Promise<PalDefenderBase[]> {
+  const result = await request<{ bases: PalDefenderBase[] }>(
+    `${palDefenderPath(serverId)}/bases`,
+    { cache: "no-store" },
+  );
+  return result.bases;
+}
+
+export function getPalDefenderBase(
+  serverId: string,
+  baseId: string,
+): Promise<PalDefenderBaseDetails> {
+  return request<PalDefenderBaseDetails>(
+    `${palDefenderPath(serverId)}/bases/${encodeURIComponent(baseId)}`,
+    { cache: "no-store" },
+  );
+}
+
+export function deletePalDefenderBase(
+  serverId: string,
+  baseId: string,
+): Promise<PalDefenderDeleteBaseResult> {
+  return jsonRequest<PalDefenderDeleteBaseResult>(
+    `${palDefenderPath(serverId)}/bases/${encodeURIComponent(baseId)}/delete`,
+    {},
+  );
+}
+
+export function getPalDefenderGuild(
+  serverId: string,
+  guildId: string,
+): Promise<PalDefenderGuildDetails> {
+  return request<PalDefenderGuildDetails>(
+    `${palDefenderPath(serverId)}/guilds/${encodeURIComponent(guildId)}`,
+    { cache: "no-store" },
+  );
+}
+
+function palDefenderPlayerPath(serverId: string, playerId: string): string {
+  return `${palDefenderPath(serverId)}/players/${encodeURIComponent(playerId)}`;
+}
+
+export function getPalDefenderPlayer(
+  serverId: string,
+  playerId: string,
+): Promise<PalDefenderPlayerDetails> {
+  return request<PalDefenderPlayerDetails>(
+    palDefenderPlayerPath(serverId, playerId),
+    {
+      cache: "no-store",
+    },
+  );
+}
+
+export async function getPalDefenderInventory(
+  serverId: string,
+  playerId: string,
+): Promise<PalDefenderInventoryItem[]> {
+  const result = await request<{ items: PalDefenderInventoryItem[] }>(
+    `${palDefenderPlayerPath(serverId, playerId)}/inventory`,
+    { cache: "no-store" },
+  );
+  return result.items;
+}
+
+export async function getPalDefenderPals(
+  serverId: string,
+  playerId: string,
+): Promise<PalDefenderPal[]> {
+  const result = await request<{ pals: PalDefenderPal[] }>(
+    `${palDefenderPlayerPath(serverId, playerId)}/pals`,
+    { cache: "no-store" },
+  );
+  return result.pals;
+}
+
+export async function getPalDefenderTechnology(
+  serverId: string,
+  playerId: string,
+): Promise<string[]> {
+  const result = await request<{ technologies: string[] }>(
+    `${palDefenderPlayerPath(serverId, playerId)}/technology`,
+    { cache: "no-store" },
+  );
+  return result.technologies;
+}
+
+export type PalDefenderTechnologyMutation =
+  | { scope: "selected"; technologyIds: string[] }
+  | { scope: "all" };
+export interface PalDefenderTechnologyMutationResult {
+  changedCount: number;
+  changed: string[] | "All";
+  skipped: string[];
+}
+
+export function learnPalDefenderTechnology(
+  serverId: string,
+  playerId: string,
+  mutation: PalDefenderTechnologyMutation,
+): Promise<PalDefenderTechnologyMutationResult> {
+  return jsonRequest(
+    `${palDefenderPlayerPath(serverId, playerId)}/technology/learn`,
+    mutation,
+  );
+}
+
+export function forgetPalDefenderTechnology(
+  serverId: string,
+  playerId: string,
+  mutation: PalDefenderTechnologyMutation,
+): Promise<PalDefenderTechnologyMutationResult> {
+  return jsonRequest(
+    `${palDefenderPlayerPath(serverId, playerId)}/technology/forget`,
+    mutation,
+  );
+}
+
+export function getPalDefenderProgression(
+  serverId: string,
+  playerId: string,
+): Promise<PalDefenderProgression> {
+  return request<PalDefenderProgression>(
+    `${palDefenderPlayerPath(serverId, playerId)}/progression`,
+    { cache: "no-store" },
+  );
+}
+
+export function givePalDefenderProgression(
+  serverId: string,
+  playerId: string,
+  grant: PalDefenderProgressionGrant,
+): Promise<PalDefenderGiveProgressionResult> {
+  return jsonRequest<PalDefenderGiveProgressionResult>(
+    `${palDefenderPlayerPath(serverId, playerId)}/progression`,
+    grant,
+  );
+}
+
+export function kickPalDefenderPlayer(
+  serverId: string,
+  playerId: string,
+  message?: string,
+): Promise<PalDefenderKickResult> {
+  return jsonRequest<PalDefenderKickResult>(
+    `${palDefenderPlayerPath(serverId, playerId)}/kick`,
+    { ...(message?.trim() ? { message: message.trim() } : {}) },
+  );
+}
+
+export function banPalDefenderPlayer(
+  serverId: string,
+  playerId: string,
+  options: PalDefenderBanOptions = {},
+): Promise<PalDefenderBanResult> {
+  return jsonRequest<PalDefenderBanResult>(
+    `${palDefenderPlayerPath(serverId, playerId)}/ban`,
+    {
+      ...(options.reason?.trim() ? { reason: options.reason.trim() } : {}),
+      ...(options.ipBan ? { ipBan: true } : {}),
+    },
+  );
+}
+
+const moderationPath = (serverId: string) =>
+  `/api/servers/${encodeURIComponent(serverId)}/moderation`;
+
+export function getModerationState(serverId: string): Promise<ModerationState> {
+  return request<ModerationState>(moderationPath(serverId), {
+    cache: "no-store",
+  });
+}
+
+export function unbanModerationUser(
+  serverId: string,
+  userId: string,
+  reason?: string,
+): Promise<ModerationResult> {
+  return jsonRequest<ModerationResult>(
+    `${moderationPath(serverId)}/users/${encodeURIComponent(userId)}/unban`,
+    reason?.trim() ? { reason: reason.trim() } : {},
+  );
+}
+
+export function banModerationIp(
+  serverId: string,
+  ip: string,
+  reason?: string,
+): Promise<ModerationResult> {
+  return jsonRequest<ModerationResult>(`${moderationPath(serverId)}/ip/ban`, {
+    ip,
+    ...(reason?.trim() ? { reason: reason.trim() } : {}),
+  });
+}
+
+export function unbanModerationIp(
+  serverId: string,
+  ip: string,
+  reason?: string,
+): Promise<ModerationResult> {
+  return jsonRequest<ModerationResult>(`${moderationPath(serverId)}/ip/unban`, {
+    ip,
+    ...(reason?.trim() ? { reason: reason.trim() } : {}),
+  });
+}
+
+export interface PalDefenderItemGrant {
+  itemId: string;
+  count: number;
+}
+
+export interface PalDefenderGiveItemsResult {
+  playerId: string;
+  grantedItems: number;
+}
+
+export function givePalDefenderItems(
+  serverId: string,
+  playerId: string,
+  items: PalDefenderItemGrant[],
+): Promise<PalDefenderGiveItemsResult> {
+  return jsonRequest<PalDefenderGiveItemsResult>(
+    `${palDefenderPlayerPath(serverId, playerId)}/items`,
+    { items },
+  );
+}
+
+export interface PalDefenderPalGrant {
+  palId: string;
+  level: number;
+}
+
+export interface PalDefenderGivePalsResult {
+  playerId: string;
+  grantedPals: number;
+}
+
+export function givePalDefenderPals(
+  serverId: string,
+  playerId: string,
+  pals: PalDefenderPalGrant[],
+): Promise<PalDefenderGivePalsResult> {
+  return jsonRequest<PalDefenderGivePalsResult>(
+    `${palDefenderPlayerPath(serverId, playerId)}/pals`,
+    { pals },
+  );
+}
+
+export interface PalDefenderGivePalTemplatesResult {
+  playerId: string;
+  grantedPalTemplates: number;
+}
+
+export function givePalDefenderPalTemplates(
+  serverId: string,
+  playerId: string,
+  palTemplates: string[],
+): Promise<PalDefenderGivePalTemplatesResult> {
+  return jsonRequest<PalDefenderGivePalTemplatesResult>(
+    `${palDefenderPlayerPath(serverId, playerId)}/pal-templates`,
+    { palTemplates },
+  );
+}
+
+export type PalDefenderPalEggGrant =
+  | { mode: "pal-id"; eggId: string; palId: string; level?: number }
+  | {
+      mode: "template";
+      eggId: string;
+      palTemplate: string;
+      level?: number;
+    };
+
+export interface PalDefenderGivePalEggsResult {
+  playerId: string;
+  grantedPalEggs: number;
+}
+
+export function givePalDefenderPalEggs(
+  serverId: string,
+  playerId: string,
+  palEggs: PalDefenderPalEggGrant[],
+): Promise<PalDefenderGivePalEggsResult> {
+  return jsonRequest<PalDefenderGivePalEggsResult>(
+    `${palDefenderPlayerPath(serverId, playerId)}/pal-eggs`,
+    { palEggs },
+  );
+}
+
+export function broadcastPalDefenderMessage(
+  serverId: string,
+  message: string,
+): Promise<PalDefenderBroadcastResult> {
+  return jsonRequest<PalDefenderBroadcastResult>(
+    `${palDefenderPath(serverId)}/broadcast`,
+    { message },
+  );
+}
+
+export function sendPalDefenderAlert(
+  serverId: string,
+  message: string,
+): Promise<PalDefenderBroadcastResult> {
+  return jsonRequest<PalDefenderBroadcastResult>(
+    `${palDefenderPath(serverId)}/alert`,
+    { message },
+  );
+}
+
+export function sendPalDefenderPlayerMessage(
+  serverId: string,
+  playerIds: string[],
+  sendType: PalDefenderPlayerMessageType,
+  message: string,
+): Promise<PalDefenderPlayerMessageResult> {
+  return jsonRequest<PalDefenderPlayerMessageResult>(
+    `${palDefenderPath(serverId)}/player-message`,
+    { playerIds, sendType, message },
+  );
+}
+
+export function reloadPalDefenderConfiguration(
+  serverId: string,
+): Promise<PalDefenderReloadConfigResult> {
+  return jsonRequest<PalDefenderReloadConfigResult>(
+    `${palDefenderPath(serverId)}/reload-config`,
+    {},
+  );
 }
 
 export async function getLatestPlayerTelemetry(

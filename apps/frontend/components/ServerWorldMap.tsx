@@ -27,11 +27,13 @@ import {
   IconFocusCentered,
   IconMinus,
   IconPlus,
+  IconDoorEnter,
+  IconPlayerPlay,
+  IconUsers,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { BrandedLoader } from "./BrandedLoader";
-import { PlayerActivitySummary } from "./PlayerActivitySummary";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
 import {
@@ -42,6 +44,7 @@ import {
 import {
   buildLivePlayerMapModel,
   calibrationRecord,
+  formatTelemetryAge,
   mapContentState,
   playerMapDetailValues,
   playerMarkerPresentation,
@@ -70,15 +73,11 @@ import {
 import { palpagosProjection } from "../lib/world-map/projection";
 import { playerColor } from "../lib/world-map/player-color";
 import {
-  buildPlayerActivitySummary,
-  type ActivitySummary,
-} from "../lib/world-map/activity-summary";
-import {
   buildRenderedTrailSegments,
   processMovementTrail,
   type ProcessedTrail,
-  type TrailHistoryPoint,
 } from "../lib/world-map/trail";
+import { palpagosMapDefinition } from "../lib/world-map/map-definitions";
 import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
 
 interface ServerWorldMapProps {
@@ -89,6 +88,8 @@ interface ServerWorldMapProps {
 
 const defaultTelemetry: LatestPlayerTelemetry = {
   players: [],
+  trustedPositions: [],
+  coordinateSpacesAuthoritative: false,
   pollingIntervalSeconds: 30,
   lastCollectedAt: null,
 };
@@ -120,13 +121,12 @@ export function ServerWorldMap({
   const [pan, setPan] = useState<MapPan>({ x: 0, y: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [expanded, setExpanded] = useState(false);
+  const [mapView, setMapView] = useState<"palpagos" | "world_tree">("palpagos");
+  const [followPlayer, setFollowPlayer] = useState(false);
   const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
   const [trailEnabled, setTrailEnabled] = useState(false);
   const [trailRange, setTrailRange] = useState<TrailRange>("1h");
   const [trail, setTrail] = useState<ProcessedTrail | null>(null);
-  const [trailHistoryPoints, setTrailHistoryPoints] = useState<
-    TrailHistoryPoint[]
-  >([]);
   const [trailLoading, setTrailLoading] = useState(false);
   const [trailError, setTrailError] = useState<string | null>(null);
   const [trailTruncated, setTrailTruncated] = useState(false);
@@ -277,11 +277,22 @@ export function ServerWorldMap({
         palpagosProjection,
         telemetry.pollingIntervalSeconds,
         telemetry.lastCollectedAt,
+        undefined,
+        telemetry.trustedPositions,
+        palpagosMapDefinition,
       ),
     [players, telemetry],
   );
   const selected =
     model.markers.find((marker) => marker.userId === selectedId) ?? null;
+  const selectedUnavailable =
+    model.unmappedPlayers.find((player) => player.userId === selectedId) ??
+    null;
+  const activeView = selectedUnavailable
+    ? selectedUnavailable.reason === "world_tree"
+      ? "world_tree"
+      : "special_area"
+    : mapView;
   const selectedTelemetry =
     telemetry.players.find((snapshot) => snapshot.userId === selectedId) ??
     null;
@@ -291,29 +302,6 @@ export function ServerWorldMap({
   const renderedTrailSegments = useMemo(
     () => (trail ? buildRenderedTrailSegments(trail) : []),
     [trail],
-  );
-  const activitySummary = useMemo(
-    () =>
-      trail && trail.pointCount > 0
-        ? buildPlayerActivitySummary({
-            points: trailHistoryPoints,
-            selectedRangeMs: trailRangeMilliseconds[trailRange],
-            renderedTrailSegments: renderedTrailSegments.length,
-            currentlyOnline: selected !== null,
-            currentPositionCapturedAt:
-              selectedTelemetry?.capturedAt ?? trail.lastTimestamp,
-            pollingIntervalSeconds: telemetry.pollingIntervalSeconds,
-          })
-        : null,
-    [
-      renderedTrailSegments.length,
-      selected,
-      selectedTelemetry?.capturedAt,
-      telemetry.pollingIntervalSeconds,
-      trail,
-      trailHistoryPoints,
-      trailRange,
-    ],
   );
   const contentState = mapContentState({
     loading,
@@ -336,7 +324,6 @@ export function ServerWorldMap({
       setTrailLoading(true);
       setTrailError(null);
       setTrail(null);
-      setTrailHistoryPoints([]);
       const end = new Date();
       const start = new Date(end.getTime() - trailRangeMilliseconds[range]);
       try {
@@ -348,17 +335,17 @@ export function ServerWorldMap({
           controller.signal,
         );
         if (controller.signal.aborted) return;
-        setTrailHistoryPoints(history.points);
         setTrail(
           processMovementTrail(history.points, palpagosProjection, {
             pollingIntervalSeconds: telemetry.pollingIntervalSeconds,
+            coordinateSpaceId: palpagosMapDefinition.coordinateSpaceId,
+            coordinateSpacesAuthoritative: false,
           }),
         );
         setTrailTruncated(history.truncated);
       } catch (trailLoadError) {
         if (controller.signal.aborted) return;
         setTrail(null);
-        setTrailHistoryPoints([]);
         setTrailError(
           trailLoadError instanceof Error
             ? trailLoadError.message
@@ -374,7 +361,6 @@ export function ServerWorldMap({
   useEffect(() => {
     setTrailEnabled(false);
     setTrail(null);
-    setTrailHistoryPoints([]);
     setTrailError(null);
     trailRequest.current?.abort();
   }, [serverId, selectedId]);
@@ -411,6 +397,17 @@ export function ServerWorldMap({
     setFocusedPlayerId(selected.userId);
     window.setTimeout(() => setFocusedPlayerId(null), 1_200);
   };
+
+  useEffect(() => {
+    if (!followPlayer || !selected || activeView !== "palpagos") return;
+    const view = centerMapOnPosition(
+      selected.position,
+      viewportSize,
+      surfaceSize,
+    );
+    setZoom(view.zoom);
+    setPan(view.pan);
+  }, [activeView, followPlayer, selected, surfaceSize, viewportSize]);
 
   useEffect(() => {
     applyFitMap();
@@ -561,12 +558,11 @@ export function ServerWorldMap({
       });
     }
   };
-
   return (
     <Stack gap="lg" pt="lg">
       <SectionHeader
-        title="World Map"
-        description="Current connected players with recent position telemetry."
+        title="Living World Map"
+        description="See who is online, where they are, and what is happening in your world right now."
         action={
           <Button
             variant="light"
@@ -578,6 +574,11 @@ export function ServerWorldMap({
           </Button>
         }
       />
+
+      <Alert color="blue" title="Special-area positions are approximate">
+        Native Palworld REST coordinates do not identify dungeons, towers, or
+        other instanced areas, so those positions may appear on the main map.
+      </Alert>
 
       {canCalibrate && (
         <Accordion
@@ -718,6 +719,19 @@ export function ServerWorldMap({
                 )}
               </Group>
               <Group gap={4}>
+                <SegmentedControl
+                  size="xs"
+                  aria-label="Choose world map"
+                  value={mapView}
+                  onChange={(value) => {
+                    setMapView(value as "palpagos" | "world_tree");
+                    setFollowPlayer(false);
+                  }}
+                  data={[
+                    { value: "palpagos", label: "Palpagos" },
+                    { value: "world_tree", label: "World Tree" },
+                  ]}
+                />
                 <Button
                   size="compact-xs"
                   variant="subtle"
@@ -732,6 +746,16 @@ export function ServerWorldMap({
                   disabled={!selected}
                 >
                   Center Player
+                </Button>
+                <Button
+                  size="compact-xs"
+                  variant={followPlayer ? "filled" : "subtle"}
+                  leftSection={<IconPlayerPlay size={14} />}
+                  onClick={() => setFollowPlayer((current) => !current)}
+                  disabled={!selected || activeView !== "palpagos"}
+                  aria-pressed={followPlayer}
+                >
+                  Follow Player
                 </Button>
                 <ActionIcon
                   variant="subtle"
@@ -813,141 +837,182 @@ export function ServerWorldMap({
                 drag.current = null;
               }}
             >
-              <div
-                ref={surface}
-                className={worldMapLayerClasses(mapLayer)}
-                style={{
-                  width: surfaceSize,
-                  height: surfaceSize,
-                  transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${zoom})`,
-                }}
-              >
-                {mapLayer !== "grid" && (
-                  <picture>
-                    <source
-                      type="image/webp"
-                      srcSet={worldMapAssetSrcSet}
-                      sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
-                    />
-                    {/* These pre-generated responsive assets intentionally bypass Next's image optimizer. */}
-                    <img
-                      className="pc-world-map-image"
-                      src={worldMapAssetPath}
-                      srcSet={worldMapAssetSrcSet}
-                      sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
-                      width={2048}
-                      height={2048}
-                      alt=""
-                      draggable={false}
-                    />
-                  </picture>
-                )}
-                {mapLayer !== "map" && (
-                  <>
-                    <div className="pc-world-map-grid" aria-hidden="true" />
-                    <div className="pc-world-map-label">
-                      PALPAGOS CALIBRATION GRID
-                    </div>
-                  </>
-                )}
-                {trailEnabled && trail && (
-                  <svg
-                    className="pc-world-map-trail"
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    aria-label={`Movement trail for ${selectedPlayerName ?? "selected player"}`}
-                    role="img"
-                  >
-                    {renderedTrailSegments.map((segment, index) => (
-                      <line
-                        key={`${segment.end.capturedAt}-${index}`}
-                        className="pc-world-map-trail-segment"
-                        data-age-ratio={segment.ageRatio}
-                        x1={segment.start.x * 100}
-                        y1={segment.start.y * 100}
-                        x2={segment.end.x * 100}
-                        y2={segment.end.y * 100}
-                        vectorEffect="non-scaling-stroke"
-                        stroke={selectedPlayerColor}
-                        opacity={segment.style.opacity}
-                        strokeWidth={segment.style.strokeWidth}
-                        style={{
-                          filter: `brightness(${segment.style.brightness}) drop-shadow(0 0 2px rgba(6, 16, 25, 0.95))`,
-                        }}
-                      />
-                    ))}
-                    {trail.segments[0]?.[0] && (
-                      <circle
-                        className="pc-world-map-trail-start"
-                        cx={trail.segments[0][0].x * 100}
-                        cy={trail.segments[0][0].y * 100}
-                        r="0.7"
-                        vectorEffect="non-scaling-stroke"
-                        style={{ fill: selectedPlayerColor }}
-                      >
-                        <title>Trail start</title>
-                      </circle>
-                    )}
-                    {trail.segments.at(-1)?.at(-1) && (
-                      <circle
-                        className="pc-world-map-trail-end"
-                        cx={trail.segments.at(-1)!.at(-1)!.x * 100}
-                        cy={trail.segments.at(-1)!.at(-1)!.y * 100}
-                        r="0.7"
-                        vectorEffect="non-scaling-stroke"
-                        style={{ fill: selectedPlayerColor }}
-                      >
-                        <title>Trail end</title>
-                      </circle>
-                    )}
-                  </svg>
-                )}
-                {model.markers.map((marker) => {
-                  const presentation = playerMarkerPresentation(
-                    marker.playerName,
-                  );
-                  return (
-                    <div
-                      key={marker.userId}
-                      className="pc-world-map-marker-position"
-                      style={{
-                        left: `${marker.position.x * 100}%`,
-                        top: `${marker.position.y * 100}%`,
+              {activeView !== "palpagos" ? (
+                <Center className="pc-world-map-unavailable-view">
+                  <Stack align="center" gap="sm" maw={520} px="lg">
+                    <IconDoorEnter size={42} aria-hidden="true" />
+                    <Title order={3} ta="center">
+                      {activeView === "world_tree"
+                        ? "World Tree map coming later"
+                        : "Player is inside a special area"}
+                    </Title>
+                    <Text c="dimmed" ta="center">
+                      {activeView === "world_tree"
+                        ? "PalCenter can identify the World Tree view when authoritative location information is available, but does not have a verified map image yet."
+                        : "This position belongs to a different coordinate space and is intentionally not plotted on Palpagos."}
+                    </Text>
+                    <Button
+                      variant="light"
+                      onClick={() => {
+                        setSelectedId(null);
+                        setMapView("palpagos");
                       }}
                     >
+                      Return to Palpagos
+                    </Button>
+                  </Stack>
+                </Center>
+              ) : (
+                <div
+                  ref={surface}
+                  className={worldMapLayerClasses(mapLayer)}
+                  style={{
+                    width: surfaceSize,
+                    height: surfaceSize,
+                    transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${zoom})`,
+                  }}
+                >
+                  {mapLayer !== "grid" && (
+                    <picture>
+                      <source
+                        type="image/webp"
+                        srcSet={worldMapAssetSrcSet}
+                        sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
+                      />
+                      {/* These pre-generated responsive assets intentionally bypass Next's image optimizer. */}
+                      <img
+                        className="pc-world-map-image"
+                        src={worldMapAssetPath}
+                        srcSet={worldMapAssetSrcSet}
+                        sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
+                        width={2048}
+                        height={2048}
+                        alt=""
+                        draggable={false}
+                      />
+                    </picture>
+                  )}
+                  {mapLayer !== "map" && (
+                    <>
+                      <div className="pc-world-map-grid" aria-hidden="true" />
+                      <div className="pc-world-map-label">
+                        PALPAGOS CALIBRATION GRID
+                      </div>
+                    </>
+                  )}
+                  {trailEnabled && trail && (
+                    <svg
+                      className="pc-world-map-trail"
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                      aria-label={`Movement trail for ${selectedPlayerName ?? "selected player"}`}
+                      role="img"
+                    >
+                      {renderedTrailSegments.map((segment, index) => (
+                        <line
+                          key={`${segment.end.capturedAt}-${index}`}
+                          className="pc-world-map-trail-segment"
+                          data-age-ratio={segment.ageRatio}
+                          x1={segment.start.x * 100}
+                          y1={segment.start.y * 100}
+                          x2={segment.end.x * 100}
+                          y2={segment.end.y * 100}
+                          vectorEffect="non-scaling-stroke"
+                          stroke={selectedPlayerColor}
+                          opacity={segment.style.opacity}
+                          strokeWidth={segment.style.strokeWidth}
+                          style={{
+                            filter: `brightness(${segment.style.brightness}) drop-shadow(0 0 2px rgba(6, 16, 25, 0.95))`,
+                          }}
+                        />
+                      ))}
+                      {trail.segments[0]?.[0] && (
+                        <circle
+                          className="pc-world-map-trail-start"
+                          cx={trail.segments[0][0].x * 100}
+                          cy={trail.segments[0][0].y * 100}
+                          r="0.7"
+                          vectorEffect="non-scaling-stroke"
+                          style={{ fill: selectedPlayerColor }}
+                        >
+                          <title>Trail start</title>
+                        </circle>
+                      )}
+                      {trail.segments.at(-1)?.at(-1) && (
+                        <circle
+                          className="pc-world-map-trail-end"
+                          cx={trail.segments.at(-1)!.at(-1)!.x * 100}
+                          cy={trail.segments.at(-1)!.at(-1)!.y * 100}
+                          r="0.7"
+                          vectorEffect="non-scaling-stroke"
+                          style={{ fill: selectedPlayerColor }}
+                        >
+                          <title>Trail end</title>
+                        </circle>
+                      )}
+                    </svg>
+                  )}
+                  {model.markers.map((marker) => {
+                    const presentation = playerMarkerPresentation(
+                      marker.playerName,
+                    );
+                    return (
                       <div
-                        className="pc-world-map-marker-visual"
+                        key={marker.userId}
+                        className="pc-world-map-marker-position"
                         style={{
-                          transform: `scale(${markerInverseScale(zoom)})`,
+                          left: `${marker.position.x * 100}%`,
+                          top: `${marker.position.y * 100}%`,
                         }}
                       >
-                        <button
-                          type="button"
-                          data-player-id={marker.userId}
-                          className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                        <div
+                          className="pc-world-map-marker-visual"
                           style={{
-                            backgroundColor: playerColor(marker.userId),
+                            transform: `scale(${markerInverseScale(zoom)})`,
                           }}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedId(marker.userId);
-                          }}
-                          aria-label={presentation.accessibleName}
-                          aria-pressed={selected?.userId === marker.userId}
                         >
-                          <span aria-hidden="true">{presentation.initial}</span>
-                        </button>
-                        <span
-                          className="pc-world-map-marker-label"
-                          aria-hidden="true"
-                        >
-                          {presentation.displayName}
-                        </span>
+                          <button
+                            type="button"
+                            data-player-id={marker.userId}
+                            className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${marker.displayKind === "last_trusted_instance" ? " pc-world-map-marker-portal" : ""}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                            style={{
+                              backgroundColor: playerColor(marker.userId),
+                            }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedId(marker.userId);
+                            }}
+                            aria-label={
+                              marker.displayKind === "last_trusted_instance"
+                                ? `View ${presentation.displayName}'s last trusted Palpagos location; currently inside an instance`
+                                : presentation.accessibleName
+                            }
+                            aria-pressed={selected?.userId === marker.userId}
+                          >
+                            <span aria-hidden="true">
+                              {marker.displayKind ===
+                              "last_trusted_instance" ? (
+                                <IconDoorEnter size={17} />
+                              ) : (
+                                presentation.initial
+                              )}
+                            </span>
+                          </button>
+                          <span
+                            className="pc-world-map-marker-label"
+                            aria-hidden="true"
+                          >
+                            {presentation.displayName}
+                            {marker.displayKind === "last_trusted_instance"
+                              ? " · Inside instance"
+                              : ""}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <Text size="xs" c="dimmed" mt="xs">
               Scroll to zoom. Drag while zoomed to pan. Use marker buttons for
@@ -960,6 +1025,36 @@ export function ServerWorldMap({
           </Card>
 
           <Stack gap="md" className="pc-world-map-details">
+            <OnlinePlayersPanel
+              players={players}
+              markers={model.markers}
+              selectedId={selectedId}
+              onSelect={(userId) => {
+                setSelectedId(userId);
+                if (model.markers.some((marker) => marker.userId === userId)) {
+                  setMapView("palpagos");
+                }
+                setFollowPlayer(false);
+              }}
+            />
+            <OffMapPlayersPanel
+              players={model.unmappedPlayers}
+              onSelect={(userId) => {
+                const marker = model.markers.find(
+                  (candidate) => candidate.userId === userId,
+                );
+                setSelectedId(userId);
+                if (marker) {
+                  const view = centerMapOnPosition(
+                    marker.position,
+                    viewportSize,
+                    surfaceSize,
+                  );
+                  setZoom(view.zoom);
+                  setPan(view.pan);
+                }
+              }}
+            />
             {selected && diagnostics && !diagnostics.visible && (
               <Alert color="orange">
                 <Group justify="space-between">
@@ -987,7 +1082,6 @@ export function ServerWorldMap({
               enabled={trailEnabled}
               range={trailRange}
               trail={trail}
-              activitySummary={activitySummary}
               playerColor={selectedPlayerColor}
               renderedSegmentCount={renderedTrailSegments.length}
               loading={trailLoading}
@@ -1004,7 +1098,6 @@ export function ServerWorldMap({
                 trailRequest.current?.abort();
                 setTrailEnabled(false);
                 setTrail(null);
-                setTrailHistoryPoints([]);
                 setTrailError(null);
               }}
             />
@@ -1026,6 +1119,147 @@ export function ServerWorldMap({
   );
 }
 
+function OnlinePlayersPanel({
+  players,
+  markers,
+  selectedId,
+  onSelect,
+}: {
+  players: ConnectedPlayer[];
+  markers: LivePlayerMapMarker[];
+  selectedId: string | null;
+  onSelect: (userId: string) => void;
+}) {
+  return (
+    <Card withBorder radius="md" padding="lg" className="pc-panel">
+      <Stack gap="sm">
+        <Group justify="space-between">
+          <Group gap="xs">
+            <IconUsers size={20} aria-hidden="true" />
+            <Title order={4}>Online now</Title>
+          </Group>
+          <Badge color="cyan" variant="light">
+            {players.length}
+          </Badge>
+        </Group>
+        <Text size="sm" c="dimmed">
+          Choose a player to see their location and recent activity.
+        </Text>
+        <Stack gap={6} aria-label="Online players">
+          {players.map((player) => {
+            const marker = markers.find(
+              (candidate) =>
+                candidate.userId === player.userId ||
+                candidate.playerId === player.playerId,
+            );
+            const name = player.name || player.userId;
+            return (
+              <Button
+                key={player.userId}
+                variant={selectedId === player.userId ? "light" : "subtle"}
+                color={marker ? "cyan" : "gray"}
+                justify="space-between"
+                fullWidth
+                onClick={() => onSelect(player.userId)}
+                aria-label={`View ${name} on the living world map`}
+              >
+                <span className="pc-world-map-player-row">
+                  <Text span truncate="end">
+                    {name}
+                  </Text>
+                  <Text span size="xs" c="dimmed">
+                    {marker ? "On Palpagos" : "Special area or locating"}
+                  </Text>
+                </span>
+              </Button>
+            );
+          })}
+        </Stack>
+      </Stack>
+    </Card>
+  );
+}
+
+function OffMapPlayersPanel({
+  players,
+  onSelect,
+}: {
+  players: ReturnType<typeof buildLivePlayerMapModel>["unmappedPlayers"];
+  onSelect: (userId: string) => void;
+}) {
+  if (players.length === 0) return null;
+  const status = (reason: (typeof players)[number]["reason"]) => {
+    switch (reason) {
+      case "world_tree":
+        return "In World Tree — destination map unavailable";
+      case "instanced_area":
+        return "Inside an instanced area";
+      case "stale_position":
+        return "Position stale";
+      case "unknown_space":
+        return "Map area unavailable";
+      case "unsupported_space":
+        return "Unsupported location";
+      case "missing_telemetry":
+        return "Waiting for position telemetry";
+      case "invalid_coordinates":
+        return "Position unavailable";
+      case "outside_bounds":
+        return "Outside verified map bounds";
+    }
+  };
+  return (
+    <Card withBorder radius="md" padding="lg" className="pc-panel">
+      <Stack gap="sm">
+        <div>
+          <Title order={4}>Off-map players</Title>
+          <Text size="sm" c="dimmed">
+            These players are not plotted because PalCenter does not have a
+            usable position for the active map.
+          </Text>
+        </div>
+        {players.map((player) => (
+          <Paper key={`${player.userId}-${player.reason}`} withBorder p="sm">
+            <Group justify="space-between" align="flex-start" wrap="nowrap">
+              <div className="pc-world-map-off-map-copy">
+                <Text fw={700}>{player.playerName}</Text>
+                <Text size="sm">{status(player.reason)}</Text>
+                <Text size="xs" c="dimmed">
+                  {player.lastTrustedPosition
+                    ? `Last trusted Palpagos position updated ${formatTelemetryAge(player.lastTrustedPosition.capturedAt)}`
+                    : "No trusted Palpagos position is available."}
+                </Text>
+                <Accordion variant="contained">
+                  <Accordion.Item value="raw-location">
+                    <Accordion.Control>
+                      Advanced location details
+                    </Accordion.Control>
+                    <Accordion.Panel>
+                      <Code className="pc-map-detail-value">
+                        {`Space: ${player.coordinateSpaceId}\nRaw: X ${player.snapshot?.x ?? "—"}, Y ${player.snapshot?.y ?? "—"}`}
+                      </Code>
+                    </Accordion.Panel>
+                  </Accordion.Item>
+                </Accordion>
+              </div>
+              <Button
+                size="compact-xs"
+                variant="light"
+                onClick={() => onSelect(player.userId)}
+              >
+                {player.reason === "instanced_area" &&
+                player.lastTrustedPosition
+                  ? "View entrance"
+                  : "View details"}
+              </Button>
+            </Group>
+          </Paper>
+        ))}
+      </Stack>
+    </Card>
+  );
+}
+
 function TrailControls({
   players,
   selectedPlayerId,
@@ -1033,7 +1267,6 @@ function TrailControls({
   enabled,
   range,
   trail,
-  activitySummary,
   playerColor,
   renderedSegmentCount,
   loading,
@@ -1052,7 +1285,6 @@ function TrailControls({
   enabled: boolean;
   range: TrailRange;
   trail: ProcessedTrail | null;
-  activitySummary: ActivitySummary | null;
   playerColor: string;
   renderedSegmentCount: number;
   loading: boolean;
@@ -1142,9 +1374,6 @@ function TrailControls({
             selected range. Keep telemetry collection running and check again
             after the player has been active.
           </Alert>
-        )}
-        {enabled && activitySummary && (
-          <PlayerActivitySummary summary={activitySummary} />
         )}
         {enabled && trail && trail.pointCount > 0 && (
           <Stack gap={4} role="status" aria-label="Movement trail summary">
@@ -1270,6 +1499,13 @@ function PlayerMapDetails({
               This position is more than five minutes old.
             </Alert>
           )}
+          {marker.displayKind === "last_trusted_instance" && (
+            <Alert color="violet" title="Inside an instanced area">
+              The marker shows this player&apos;s last trusted Palpagos
+              location. Their current internal coordinates are not plotted on
+              the overworld map.
+            </Alert>
+          )}
           <SimpleGrid cols={2}>
             <Detail label="Level" value={details.level} />
             <Detail label="Ping" value={details.ping} />
@@ -1279,7 +1515,11 @@ function PlayerMapDetails({
           <Detail label="Player ID" value={details.playerId} mono />
           <Detail label="User ID" value={details.userId} mono />
           <Detail
-            label="World coordinates"
+            label={
+              marker.displayKind === "last_trusted_instance"
+                ? "Last trusted Palpagos coordinates"
+                : "World coordinates"
+            }
             value={details.worldCoordinates}
             mono
           />

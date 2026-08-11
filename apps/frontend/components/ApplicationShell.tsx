@@ -16,7 +16,6 @@ import {
   IconLayoutDashboard,
   IconServer,
   IconTools,
-  IconUsers,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,10 +29,14 @@ interface ApplicationShellProps {
   children: ReactNode;
 }
 
-const primaryLinks = [
+const primaryLinks: Array<{
+  href: string;
+  label: string;
+  icon: typeof IconLayoutDashboard;
+  children?: Array<{ href: string; label: string }>;
+}> = [
   { href: "/", label: "Dashboard", icon: IconLayoutDashboard },
   { href: "/servers", label: "Servers", icon: IconServer },
-  { href: "/players", label: "Players", icon: IconUsers },
   { href: "/automation", label: "Automation", icon: IconAutomation },
   { href: "/tools", label: "Tools", icon: IconTools },
   { href: "/settings", label: "Settings", icon: IconAdjustments },
@@ -92,7 +95,7 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
             >
               Command Center
             </Text>
-            {links.map(({ href, label, icon: Icon }) => (
+            {links.map(({ href, label, icon: Icon, children }) => (
               <NavLink
                 key={href}
                 component={Link}
@@ -103,7 +106,19 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
                   href === "/" ? pathname === href : pathname.startsWith(href)
                 }
                 onClick={navigation.close}
-              />
+                defaultOpened={Boolean(children && pathname.startsWith(href))}
+              >
+                {children?.map((child) => (
+                  <NavLink
+                    key={child.href}
+                    component={Link}
+                    href={child.href}
+                    label={child.label}
+                    active={pathname === child.href}
+                    onClick={navigation.close}
+                  />
+                ))}
+              </NavLink>
             ))}
           </Stack>
         </AppShell.Section>

@@ -7,6 +7,16 @@ export function serverConnectionPayload(
     name: values.name,
     baseUrl: values.baseUrl,
     ...(values.adminPassword ? { adminPassword: values.adminPassword } : {}),
+    ...(values.palDefenderEnabled !== undefined
+      ? { palDefenderEnabled: values.palDefenderEnabled }
+      : {}),
+    ...(values.palDefenderEndpoint !== undefined
+      ? { palDefenderEndpoint: values.palDefenderEndpoint?.trim() || null }
+      : {}),
+    ...(values.palDefenderToken
+      ? { palDefenderToken: values.palDefenderToken }
+      : {}),
+    ...(values.clearPalDefenderToken ? { clearPalDefenderToken: true } : {}),
   };
 }
 
