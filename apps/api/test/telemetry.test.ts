@@ -6,7 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import type { ConnectionRepository } from "../src/repositories/connection-repository.js";
 import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
-import { PlayerTelemetryCollector } from "../src/telemetry/collectors/player-telemetry-collector.js";
+import { ProviderAwarePlayerTelemetryCollector } from "../src/telemetry/collectors/player-telemetry-collector.js";
 import { SqliteTelemetryRepository } from "../src/telemetry/repositories/sqlite-telemetry-repository.js";
 import { TelemetryService } from "../src/telemetry/services/telemetry-service.js";
 import {
@@ -15,6 +15,7 @@ import {
   minimumTelemetryRetentionDays,
   telemetryRetentionDaysSchema,
 } from "../src/telemetry/telemetry-configuration.js";
+import type { PlayerTelemetryProvider } from "../src/telemetry/providers/player-telemetry-provider.js";
 import type { NewPlayerPositionSnapshot } from "../src/telemetry/types/player-telemetry.js";
 import type {
   PalworldPlayersResponse,
@@ -22,6 +23,34 @@ import type {
 } from "../src/types/connections.js";
 
 const timestamp = "2026-07-28T12:00:00.000Z";
+
+function mockProvider(
+  fetchFn: (server: StoredConnection) => Promise<PalworldPlayersResponse>,
+): PlayerTelemetryProvider {
+  return {
+    collect: async (server, _now) => {
+      const resp = await fetchFn(server);
+      return resp.players
+        .filter((p) => p.userId)
+        .map((p) => ({
+          serverId: server.id,
+          userId: p.userId || null,
+          playerId: p.playerId || null,
+          playerName: p.name?.trim() || null,
+          accountName: p.accountName || null,
+          capturedAt: _now,
+          x: Number.isFinite(p.location_x) ? p.location_x : null,
+          y: Number.isFinite(p.location_y) ? p.location_y : null,
+          z: null,
+          level: p.level || null,
+          ping: p.ping || null,
+          buildingCount: p.building_count || null,
+          guildId: null,
+          guildName: null,
+        }));
+    },
+  };
+}
 
 function connection(id: string): StoredConnection {
   return {
@@ -93,9 +122,11 @@ class MemoryConnections implements ConnectionRepository {
 }
 
 test("collector normalizes player state and location without persisting credentials", async () => {
-  const collector = new PlayerTelemetryCollector(() => ({
-    getPlayers: async () => response({ name: "  Renamed Bob  " }),
-  }));
+  const collector = new ProviderAwarePlayerTelemetryCollector(
+    mockProvider(() => response({ name: "  Renamed Bob  " })),
+    mockProvider(() => response({ name: "  Renamed Bob  " })),
+    false,
+  );
 
   const snapshots = await collector.collect(connection("srv_one"), timestamp);
 
@@ -123,9 +154,11 @@ test("collector safely handles malformed players and missing coordinates", async
     location_y: Number.POSITIVE_INFINITY,
   });
 
-  const collector = new PlayerTelemetryCollector(() => ({
-    getPlayers: async () => malformed,
-  }));
+  const collector = new ProviderAwarePlayerTelemetryCollector(
+    mockProvider(() => malformed),
+    mockProvider(() => malformed),
+    false,
+  );
   const snapshots = await collector.collect(connection("srv_one"), timestamp);
 
   assert.equal(snapshots.length, 1);
@@ -324,7 +357,11 @@ test("service runs retention cleanup periodically with the bounded batch size", 
   const service = new TelemetryService(
     new MemoryConnections([]),
     repository,
-    new PlayerTelemetryCollector(),
+    new ProviderAwarePlayerTelemetryCollector(
+      mockProvider(() => Promise.resolve({ players: [] })),
+      mockProvider(() => Promise.resolve({ players: [] })),
+      false,
+    ),
     30_000,
     30,
     () => undefined,
@@ -355,10 +392,15 @@ test("service skips unchanged snapshots but records movement, state, and heartbe
   let currentTime = new Date("2026-07-28T12:00:00.000Z");
   let currentX = 1_000;
   let buildingCount = 3;
-  const collector = new PlayerTelemetryCollector(() => ({
-    getPlayers: async () =>
+  const collector = new ProviderAwarePlayerTelemetryCollector(
+    mockProvider(() =>
       response({ location_x: currentX, building_count: buildingCount }),
-  }));
+    ),
+    mockProvider(() =>
+      response({ location_x: currentX, building_count: buildingCount }),
+    ),
+    false,
+  );
   const service = new TelemetryService(
     new MemoryConnections([connection("srv_one")]),
     repository,
@@ -438,14 +480,17 @@ test("service collects configured servers concurrently and isolates offline fail
     },
     deleteServerData() {},
   };
-  const collector = new PlayerTelemetryCollector((server) => ({
-    getPlayers: async () => {
-      if (server.id === "srv_offline") {
-        throw new Error("offline");
-      }
+  const collector = new ProviderAwarePlayerTelemetryCollector(
+    mockProvider((server) => {
+      if (server.id === "srv_offline") throw new Error("offline");
       return response({ userId: `${server.id}-user` });
-    },
-  }));
+    }),
+    mockProvider((server) => {
+      if (server.id === "srv_offline") throw new Error("offline");
+      return response({ userId: `${server.id}-user` });
+    }),
+    false,
+  );
   const service = new TelemetryService(
     connections,
     repository,

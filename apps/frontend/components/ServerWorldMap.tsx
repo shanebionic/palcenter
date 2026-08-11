@@ -79,7 +79,10 @@ import {
   type ProcessedTrail,
 } from "../lib/world-map/trail";
 import { palpagosMapDefinition } from "../lib/world-map/map-definitions";
-import { palDefenderGuildHref, palDefenderPlayerHref } from "../lib/paldefender";
+import {
+  palDefenderGuildHref,
+  palDefenderPlayerHref,
+} from "../lib/paldefender";
 import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
 
 interface ServerWorldMapProps {
@@ -1585,9 +1588,7 @@ function PlayerMapDetails({
                 variant="light"
                 size="compact-sm"
                 onClick={() =>
-                  router.push(
-                    palDefenderPlayerHref(serverId, marker.playerId!),
-                  )
+                  router.push(palDefenderPlayerHref(serverId, marker.playerId!))
                 }
               >
                 Player workspace
@@ -1597,9 +1598,7 @@ function PlayerMapDetails({
                   variant="light"
                   size="compact-sm"
                   onClick={() =>
-                    router.push(
-                      palDefenderGuildHref(serverId, marker.guildId!),
-                    )
+                    router.push(palDefenderGuildHref(serverId, marker.guildId!))
                   }
                 >
                   Guild details
