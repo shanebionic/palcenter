@@ -1,5 +1,5 @@
 import type { ConnectionRepository } from "../../repositories/connection-repository.js";
-import type { PlayerTelemetryCollector } from "../collectors/player-telemetry-collector.js";
+import type { ProviderAwarePlayerTelemetryCollector } from "../collectors/player-telemetry-collector.js";
 import type { TelemetryRepository } from "../repositories/telemetry-repository.js";
 import type {
   NewPlayerPositionSnapshot,
@@ -40,7 +40,7 @@ export class TelemetryService {
   constructor(
     private readonly connections: ConnectionRepository,
     private readonly repository: TelemetryRepository,
-    private readonly collector: PlayerTelemetryCollector,
+    private readonly collector: ProviderAwarePlayerTelemetryCollector,
     private readonly intervalMs: number,
     private readonly retentionDays: number,
     private readonly onError: TelemetryCollectionErrorHandler,

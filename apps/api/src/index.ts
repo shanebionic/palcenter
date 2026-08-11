@@ -89,7 +89,9 @@ import { TaskDispatcher } from "./services/task-dispatcher.js";
 import { automationTaskTypes } from "./types/automation.js";
 import { auditCategories } from "./types/audit.js";
 import { administrativeAuditEntry } from "./services/administrative-audit-service.js";
-import { PlayerTelemetryCollector } from "./telemetry/collectors/player-telemetry-collector.js";
+import { ProviderAwarePlayerTelemetryCollector } from "./telemetry/collectors/player-telemetry-collector.js";
+import { NativeRestPlayerTelemetryProvider } from "./telemetry/providers/native-rest-provider.js";
+import { PalDefenderPlayerTelemetryProvider } from "./telemetry/providers/paldefender-provider.js";
 import { SqliteTelemetryRepository } from "./telemetry/repositories/sqlite-telemetry-repository.js";
 import {
   TelemetryServerNotFoundError,
@@ -388,7 +390,10 @@ const serverHistoryService = new ServerHistoryService(
 const telemetryService = new TelemetryService(
   repository,
   telemetryRepository,
-  new PlayerTelemetryCollector(),
+  new ProviderAwarePlayerTelemetryCollector(
+    new NativeRestPlayerTelemetryProvider(),
+    new PalDefenderPlayerTelemetryProvider(),
+  ),
   environment.TELEMETRY_INTERVAL_SECONDS * 1_000,
   environment.TELEMETRY_RETENTION_DAYS,
   (serverId, error) => {
