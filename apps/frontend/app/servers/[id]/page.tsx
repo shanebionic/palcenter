@@ -28,7 +28,9 @@ export default async function ServerPage({
               ? "guilds"
               : tab === "bases"
                 ? "bases"
-                : "overview"
+                : tab === "map"
+                  ? "map"
+                  : "overview"
         }
       />
     </ApplicationShell>
