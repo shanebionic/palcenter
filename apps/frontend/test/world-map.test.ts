@@ -1040,6 +1040,13 @@ test("movement trail controls and layer preserve accessible map ordering", async
     css,
     /\.pc-world-map-marker-position\s*\{[\s\S]*?z-index:\s*3;[\s\S]*?\}/,
   );
+
+  // Layers menu must use withinPortal so it renders inside the fullscreen element
+  assert.match(
+    source,
+    /Menu[\s\S]*?withinPortal/,
+    "Layers Menu must use withinPortal to render inside fullscreen element",
+  );
 });
 
 test("keeps the connected display name and telemetry account name distinct", () => {
