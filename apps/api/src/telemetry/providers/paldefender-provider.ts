@@ -10,6 +10,14 @@ const PALDEFENDER_DETAIL_CONCURRENCY = 10;
 const PALDEFENDER_DETAIL_TIMEOUT_MS = 3_000;
 
 export class PalDefenderPlayerTelemetryProvider implements PlayerTelemetryProvider {
+  constructor(
+    private readonly clientFactory: (
+      endpoint: string,
+      token: string,
+    ) => PalDefenderClient = (endpoint: string, token: string) =>
+      new PalDefenderClient(endpoint, token),
+  ) {}
+
   async collect(
     connection: StoredConnection,
     capturedAt: string,
@@ -22,7 +30,7 @@ export class PalDefenderPlayerTelemetryProvider implements PlayerTelemetryProvid
       throw new Error("PalDefender is not configured for this server.");
     }
 
-    const client = new PalDefenderClient(
+    const client = this.clientFactory(
       connection.palDefenderEndpoint,
       connection.palDefenderToken,
     );
@@ -33,7 +41,13 @@ export class PalDefenderPlayerTelemetryProvider implements PlayerTelemetryProvid
       return [];
     }
 
-    const details = await fetchPlayerDetails(client, players);
+    const onlinePlayers = players.filter((p) => p.online);
+
+    if (onlinePlayers.length === 0) {
+      return [];
+    }
+
+    const details = await fetchPlayerDetails(client, onlinePlayers);
 
     return details.map((detail) =>
       normalizeSnapshot(connection.id, detail, capturedAt),
@@ -57,29 +71,16 @@ async function fetchPlayerDetails(
     const batch = players.slice(i, i + PALDEFENDER_DETAIL_CONCURRENCY);
     const batchResults = await Promise.allSettled(
       batch.map(async (player) => {
-        const timeoutController = new AbortController();
-        const timeoutId = setTimeout(
-          () => timeoutController.abort(),
-          PALDEFENDER_DETAIL_TIMEOUT_MS,
-        );
-
-        const timedFetch: typeof fetch = (url, init) =>
-          fetch(url, {
-            ...init,
-            signal: AbortSignal.timeout(PALDEFENDER_DETAIL_TIMEOUT_MS),
-          });
-
-        const detailClient = new PalDefenderClient(
-          client["baseUrl"],
-          client["token"],
-          timedFetch,
-        );
-
-        try {
-          return await detailClient.getPlayer(player.playerId);
-        } finally {
-          clearTimeout(timeoutId);
-        }
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(
+            () => reject(new Error("Player detail fetch timed out")),
+            PALDEFENDER_DETAIL_TIMEOUT_MS,
+          );
+        });
+        return await Promise.race([
+          client.getPlayer(player.playerId),
+          timeoutPromise,
+        ]);
       }),
     );
 
