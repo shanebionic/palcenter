@@ -128,6 +128,7 @@ export default function PalDefenderBasesPage() {
                             href={palDefenderBaseHref(
                               selection.selectedServerId!,
                               base.baseId,
+                              "paldefender-bases",
                             )}
                             ff="monospace"
                             size="sm"

@@ -87,7 +87,7 @@ export function ServerBases({ serverId }: { serverId: string }) {
                   <Table.Td>
                     <Text
                       component={Link}
-                      href={palDefenderBaseHref(serverId, base.baseId)}
+                      href={palDefenderBaseHref(serverId, base.baseId, "bases")}
                       c="cyan.4"
                       ff="monospace"
                     >
@@ -97,7 +97,11 @@ export function ServerBases({ serverId }: { serverId: string }) {
                   <Table.Td>
                     <Text
                       component={Link}
-                      href={palDefenderGuildHref(serverId, base.guildId)}
+                      href={palDefenderGuildHref(
+                        serverId,
+                        base.guildId,
+                        "guilds",
+                      )}
                       c="cyan.4"
                     >
                       {base.guildName ?? base.guildId}

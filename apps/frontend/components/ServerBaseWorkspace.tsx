@@ -17,7 +17,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconRefresh, IconTrash } from "@tabler/icons-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { PageHeader } from "./PageHeader";
 import {
@@ -33,6 +33,7 @@ import {
   deleteBaseWarning,
 } from "../lib/paldefender-bases";
 import { palDefenderGuildHref } from "../lib/paldefender";
+import { detailBackTarget } from "../lib/navigation";
 import { SectionCard } from "./ui/SectionCard";
 
 const coordinateFormatter = new Intl.NumberFormat(undefined, {
@@ -64,6 +65,8 @@ export function ServerBaseWorkspace({
   baseId: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const back = detailBackTarget(serverId, "base", searchParams.get("from"));
   const [base, setBase] = useState<PalDefenderBaseDetails | null>(null);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -146,12 +149,12 @@ export function ServerBaseWorkspace({
     <Stack gap="xl">
       <Button
         component={Link}
-        href={`/servers/${encodeURIComponent(serverId)}?tab=bases`}
+        href={back.href}
         variant="subtle"
         leftSection={<IconArrowLeft size={18} />}
         w="fit-content"
       >
-        Back to Bases
+        {back.label}
       </Button>
       <PageHeader
         eyebrow="Server · Base Details"
@@ -196,7 +199,11 @@ export function ServerBaseWorkspace({
                 <Value label="Guild">
                   <Text
                     component={Link}
-                    href={palDefenderGuildHref(serverId, base.guildId)}
+                    href={palDefenderGuildHref(
+                      serverId,
+                      base.guildId,
+                      "guilds",
+                    )}
                     c="cyan.4"
                   >
                     {base.guildName ?? "—"}

@@ -114,10 +114,12 @@ export function PalDefenderPlayerWorkspace({
   serverId,
   playerId,
   backHref,
+  backLabel,
 }: {
   serverId: string;
   playerId: string;
   backHref: string;
+  backLabel: string;
 }) {
   const [activeTab, setActiveTab] = useState<TabName>("overview");
   const [player, setPlayer] =
@@ -534,7 +536,7 @@ export function PalDefenderPlayerWorkspace({
               w="fit-content"
               px={0}
             >
-              Back to Players
+              {backLabel}
             </Button>
             <Text size="xs" tt="uppercase" fw={700} c="cyan.4" lts={1.4}>
               Player Workspace

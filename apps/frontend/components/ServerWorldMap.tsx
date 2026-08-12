@@ -1455,7 +1455,7 @@ function OffMapPlayersPanel({
                       variant="subtle"
                       onClick={() =>
                         router.push(
-                          palDefenderPlayerHref(serverId, snapPlayerId),
+                          palDefenderPlayerHref(serverId, snapPlayerId, "map"),
                         )
                       }
                     >
@@ -1771,7 +1771,9 @@ function PlayerMapDetails({
                 variant="light"
                 size="compact-sm"
                 onClick={() =>
-                  router.push(palDefenderPlayerHref(serverId, marker.playerId!))
+                  router.push(
+                    palDefenderPlayerHref(serverId, marker.playerId!, "map"),
+                  )
                 }
               >
                 Player workspace
@@ -1781,7 +1783,9 @@ function PlayerMapDetails({
                   variant="light"
                   size="compact-sm"
                   onClick={() =>
-                    router.push(palDefenderGuildHref(serverId, marker.guildId!))
+                    router.push(
+                      palDefenderGuildHref(serverId, marker.guildId!, "map"),
+                    )
                   }
                 >
                   Guild details
@@ -1836,7 +1840,7 @@ function BaseMapDetails({
             variant="light"
             size="compact-sm"
             onClick={() =>
-              router.push(palDefenderBaseHref(serverId, marker.baseId))
+              router.push(palDefenderBaseHref(serverId, marker.baseId, "map"))
             }
           >
             View Base Details
@@ -1845,7 +1849,7 @@ function BaseMapDetails({
             variant="light"
             size="compact-sm"
             onClick={() =>
-              router.push(palDefenderGuildHref(serverId, marker.guildId))
+              router.push(palDefenderGuildHref(serverId, marker.guildId, "map"))
             }
           >
             View Guild

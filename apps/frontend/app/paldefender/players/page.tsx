@@ -78,6 +78,7 @@ export default function PalDefenderPlayersPage() {
                           palDefenderPlayerHref(
                             selection.selectedServerId,
                             player.playerId,
+                            "paldefender-players",
                           ),
                         )
                       }
@@ -88,6 +89,7 @@ export default function PalDefenderPlayersPage() {
                             palDefenderPlayerHref(
                               selection.selectedServerId,
                               player.playerId,
+                              "paldefender-players",
                             ),
                           );
                         }
