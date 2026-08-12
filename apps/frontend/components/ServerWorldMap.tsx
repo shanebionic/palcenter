@@ -679,6 +679,7 @@ export function ServerWorldMap({
                   width={180}
                   position="bottom-start"
                   withArrow
+                  withinPortal
                   transitionProps={{ transition: "pop" }}
                 >
                   <Menu.Target>
