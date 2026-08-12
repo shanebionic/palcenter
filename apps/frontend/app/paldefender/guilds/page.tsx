@@ -127,6 +127,7 @@ export default function PalDefenderGuildsPage() {
                             palDefenderGuildHref(
                               selection.selectedServerId!,
                               guild.guildId,
+                              "paldefender-guilds",
                             ),
                           )
                         }
@@ -137,6 +138,7 @@ export default function PalDefenderGuildsPage() {
                               palDefenderGuildHref(
                                 selection.selectedServerId!,
                                 guild.guildId,
+                                "paldefender-guilds",
                               ),
                             );
                           }

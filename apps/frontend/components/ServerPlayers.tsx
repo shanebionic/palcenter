@@ -301,7 +301,7 @@ export function ServerPlayers({ serverId }: ServerPlayersProps) {
                         <Table.Td>
                           <Text
                             component={Link}
-                            href={`/servers/${encodeURIComponent(serverId)}/players/${encodeURIComponent(player.playerId)}`}
+                            href={`/servers/${encodeURIComponent(serverId)}/players/${encodeURIComponent(player.playerId)}?from=players`}
                             c="cyan.4"
                             fw={600}
                           >
