@@ -34,7 +34,7 @@ interface ApplicationShellProps {
 
 const NAVBAR_STORAGE_KEY = "pc-navbar-collapsed";
 const NAVBAR_WIDTH_EXPANDED = 250;
-const NAVBAR_WIDTH_COLLAPSED = 60;
+const NAVBAR_WIDTH_COLLAPSED = 72;
 
 const primaryLinks: Array<{
   href: string;
@@ -110,27 +110,23 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
               hiddenFrom="md"
               size="sm"
             />
-            <Brand compact={collapsed} />
+            <Brand />
           </Group>
           <AccountActions />
         </Group>
       </AppShell.Header>
 
       <AppShell.Navbar className="pc-shell-navbar" p="md">
-        <AppShell.Section grow mb="md">
-          <Group justify="space-between" mb="xs">
-            <Brand compact />
-            <ActionIcon
-              variant="subtle"
-              aria-label={
-                collapsed ? "Expand navigation" : "Collapse navigation"
-              }
-              onClick={handleToggleDesktop}
-              visibleFrom="md"
-            >
-              <IconMenu2 size={18} />
-            </ActionIcon>
-          </Group>
+        <AppShell.Section mb="md">
+          <ActionIcon
+            variant="subtle"
+            aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+            onClick={handleToggleDesktop}
+            visibleFrom="md"
+            style={{ display: "block", margin: "0 auto" }}
+          >
+            <IconMenu2 size={18} />
+          </ActionIcon>
         </AppShell.Section>
 
         <AppShell.Section component={ScrollArea} grow>
@@ -159,7 +155,6 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
                   label={collapsed ? undefined : label}
                   leftSection={<Icon size={19} stroke={1.8} />}
                   active={isActive}
-                  onClick={navigation.close}
                   defaultOpened={Boolean(children && pathname.startsWith(href))}
                 >
                   {children?.map((child) => (
@@ -169,7 +164,6 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
                       href={child.href}
                       label={child.label}
                       active={pathname === child.href}
-                      onClick={navigation.close}
                     />
                   ))}
                 </NavLink>
