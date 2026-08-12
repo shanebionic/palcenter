@@ -1,3 +1,4 @@
+import type { PalDefenderBase } from "../../lib/api";
 import type {
   ConnectedPlayer,
   PlayerPositionSnapshot,
@@ -387,4 +388,46 @@ export function calibrationRecord(marker: LivePlayerMapMarker): string {
     `Normalized: ${marker.position.x.toFixed(4)}, ${marker.position.y.toFixed(4)}`,
     `Map: ${(marker.position.x * 100).toFixed(2)}%, ${(marker.position.y * 100).toFixed(2)}%`,
   ].join("\n");
+}
+
+export interface BaseMapMarker {
+  baseId: string;
+  guildId: string;
+  guildName: string | null;
+  worldX: number;
+  worldY: number;
+  position: NormalizedMapPosition;
+}
+
+export function buildBaseMapMarkers(
+  bases: PalDefenderBase[],
+  projection: MapProjectionConfiguration,
+  mapDefinition: WorldMapDefinition = palpagosMapDefinition,
+): BaseMapMarker[] {
+  const markers: BaseMapMarker[] = [];
+
+  for (const base of bases) {
+    const { worldPosition } = base;
+    if (
+      !Number.isFinite(worldPosition.x) ||
+      !Number.isFinite(worldPosition.y)
+    ) {
+      continue;
+    }
+
+    const coordinate = { x: worldPosition.x, y: worldPosition.y };
+    const position = projectOnMap(mapDefinition, coordinate);
+    if (!position) continue;
+
+    markers.push({
+      baseId: base.baseId,
+      guildId: base.guildId,
+      guildName: base.guildName,
+      worldX: worldPosition.x,
+      worldY: worldPosition.y,
+      position,
+    });
+  }
+
+  return markers;
 }

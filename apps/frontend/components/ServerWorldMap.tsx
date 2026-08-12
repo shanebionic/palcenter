@@ -38,11 +38,15 @@ import { BrandedLoader } from "./BrandedLoader";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
 import {
+  getPalDefenderBases,
+  getPalDefenderStatus,
   getPlayers,
   getPlayerTelemetry,
   getPlayerTrailHistory,
+  type PalDefenderBase,
 } from "../lib/api";
 import {
+  buildBaseMapMarkers,
   buildLivePlayerMapModel,
   calibrationRecord,
   formatTelemetryAge,
@@ -50,6 +54,7 @@ import {
   playerMapDetailValues,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
+  type BaseMapMarker,
   type LivePlayerMapMarker,
 } from "../lib/world-map/model";
 import {
@@ -80,6 +85,7 @@ import {
 } from "../lib/world-map/trail";
 import { palpagosMapDefinition } from "../lib/world-map/map-definitions";
 import {
+  palDefenderBaseHref,
   palDefenderGuildHref,
   palDefenderPlayerHref,
 } from "../lib/paldefender";
@@ -154,6 +160,9 @@ export function ServerWorldMap({
     expanded: boolean;
     visible: boolean;
   } | null>(null);
+  const [bases, setBases] = useState<PalDefenderBase[]>([]);
+  const [basesLoading, setBasesLoading] = useState(true);
+  const [basesError, setBasesError] = useState<string | null>(null);
   const viewport = useRef<HTMLDivElement | null>(null);
   const surface = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{
@@ -236,6 +245,43 @@ export function ServerWorldMap({
     };
   }, [loadMap, serverOnline, telemetry.pollingIntervalSeconds]);
 
+  const loadBases = useCallback(async () => {
+    if (!serverOnline) {
+      setBasesLoading(false);
+      return;
+    }
+
+    try {
+      const status = await getPalDefenderStatus(serverId);
+      if (!status.configured) {
+        setBases([]);
+        setBasesError(null);
+        setBasesLoading(false);
+        return;
+      }
+    } catch {
+      setBasesLoading(false);
+      return;
+    }
+
+    try {
+      const result = await getPalDefenderBases(serverId);
+      setBases(result);
+      setBasesError(null);
+    } catch (value) {
+      setBases([]);
+      setBasesError(
+        value instanceof Error ? value.message : "Unable to load bases.",
+      );
+    } finally {
+      setBasesLoading(false);
+    }
+  }, [serverId, serverOnline]);
+
+  useEffect(() => {
+    void loadBases();
+  }, [loadBases]);
+
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;
@@ -288,8 +334,14 @@ export function ServerWorldMap({
       ),
     [players, telemetry],
   );
+  const baseMarkers = useMemo(
+    () => buildBaseMapMarkers(bases, palpagosProjection, palpagosMapDefinition),
+    [bases],
+  );
   const selected =
     model.markers.find((marker) => marker.userId === selectedId) ?? null;
+  const selectedBase =
+    baseMarkers.find((marker) => marker.baseId === selectedId) ?? null;
   const selectedUnavailable =
     model.unmappedPlayers.find((player) => player.userId === selectedId) ??
     null;
@@ -651,6 +703,13 @@ export function ServerWorldMap({
         </Alert>
       )}
 
+      {basesError && (
+        <Alert color="red" title="Base layer unavailable">
+          PalCenter could not load base data from PalDefender. Player markers
+          and trails are unaffected.
+        </Alert>
+      )}
+
       {displayedContentState === "loading" ? (
         <SectionCard>
           <BrandedLoader message="Loading the Palpagos player map" />
@@ -717,6 +776,16 @@ export function ServerWorldMap({
                 <Badge color="cyan" variant="light">
                   {model.markers.length} mapped
                 </Badge>
+                {baseMarkers.length > 0 && (
+                  <Badge color="violet" variant="light">
+                    {baseMarkers.length} bases
+                  </Badge>
+                )}
+                {basesLoading && (
+                  <Badge color="gray" variant="light">
+                    bases loading
+                  </Badge>
+                )}
                 {model.unmappedPlayers.length > 0 && (
                   <Badge color="orange" variant="light">
                     {model.unmappedPlayers.length} unavailable
@@ -1016,12 +1085,54 @@ export function ServerWorldMap({
                       </div>
                     );
                   })}
+                  {baseMarkers.map((marker) => {
+                    const displayName = marker.guildName ?? "Unnamed Guild";
+                    return (
+                      <div
+                        key={marker.baseId}
+                        className="pc-world-map-base-position"
+                        style={{
+                          left: `${marker.position.x * 100}%`,
+                          top: `${marker.position.y * 100}%`,
+                        }}
+                      >
+                        <div
+                          className="pc-world-map-base-visual"
+                          style={{
+                            transform: `scale(${markerInverseScale(zoom)})`,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            data-base-id={marker.baseId}
+                            className={`pc-world-map-base-marker${selectedBase?.baseId === marker.baseId ? " pc-world-map-base-marker-selected" : ""}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedId(marker.baseId);
+                            }}
+                            aria-label={`View ${displayName} at base ${marker.baseId}`}
+                            aria-pressed={
+                              selectedBase?.baseId === marker.baseId
+                            }
+                          >
+                            <span aria-hidden="true">&#9670;</span>
+                          </button>
+                          <span
+                            className="pc-world-map-base-label"
+                            aria-hidden="true"
+                          >
+                            {displayName}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
             <Text size="xs" c="dimmed" mt="xs">
               Scroll to zoom. Drag while zoomed to pan. Use marker buttons for
-              player details.
+              player and base details.
             </Text>
             <Text size="xs" c="dimmed" mt="xs">
               Palworld and the Palpagos map are copyright Pocketpair, Inc.
@@ -1074,11 +1185,17 @@ export function ServerWorldMap({
                 </Group>
               </Alert>
             )}
-            <PlayerMapDetails
-              marker={selected}
-              serverId={serverId}
-              onCopy={canCalibrate && calibrating ? copyCalibration : undefined}
-            />
+            {selectedBase ? (
+              <BaseMapDetails marker={selectedBase} serverId={serverId} />
+            ) : (
+              <PlayerMapDetails
+                marker={selected}
+                serverId={serverId}
+                onCopy={
+                  canCalibrate && calibrating ? copyCalibration : undefined
+                }
+              />
+            )}
             <TrailControls
               players={telemetry.players.map((snapshot) => ({
                 value: snapshot.userId,
@@ -1608,6 +1725,67 @@ function PlayerMapDetails({
           )}
         </Stack>
       ) : null}
+    </Card>
+  );
+}
+
+function BaseMapDetails({
+  marker,
+  serverId,
+}: {
+  marker: BaseMapMarker;
+  serverId: string;
+}) {
+  const router = useRouter();
+  const displayName = marker.guildName ?? "Unnamed Guild";
+
+  return (
+    <Card withBorder radius="md" padding="lg" className="pc-panel">
+      <Stack gap="md">
+        <Group justify="space-between">
+          <div>
+            <Title order={3}>{displayName}</Title>
+            <Text c="dimmed">Base camp</Text>
+          </div>
+          <Badge color="violet" variant="light">
+            Base
+          </Badge>
+        </Group>
+        <SimpleGrid cols={2}>
+          <Detail label="Guild" value={displayName} />
+          <Detail
+            label="Updated"
+            value={formatTelemetryAge(new Date().toISOString())}
+          />
+        </SimpleGrid>
+        <Detail label="Base ID" value={marker.baseId} mono />
+        <Detail label="Guild ID" value={marker.guildId} mono />
+        <Detail
+          label="World coordinates"
+          value={`X ${marker.worldX.toFixed(1)} · Y ${marker.worldY.toFixed(1)}`}
+          mono
+        />
+        <Group gap="sm">
+          <Button
+            variant="light"
+            size="compact-sm"
+            onClick={() =>
+              router.push(palDefenderBaseHref(serverId, marker.baseId))
+            }
+          >
+            View Base Details
+          </Button>
+          <Button
+            variant="light"
+            size="compact-sm"
+            onClick={() =>
+              router.push(palDefenderGuildHref(serverId, marker.guildId))
+            }
+          >
+            View Guild
+          </Button>
+        </Group>
+      </Stack>
     </Card>
   );
 }

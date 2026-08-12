@@ -9,6 +9,7 @@ import {
   worldMapLayerClasses,
 } from "../lib/world-map/layers";
 import {
+  buildBaseMapMarkers,
   buildLivePlayerMapModel,
   calibrationRecord,
   classifyTelemetryFreshness,
@@ -55,6 +56,7 @@ import {
   worldTreeMapDefinition,
 } from "../lib/world-map/map-definitions";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
+import type { PalDefenderBase } from "../lib/api";
 
 test("assigns stable readable player colors from userId", () => {
   assert.equal(playerColor("user-a"), playerColor("user-a"));
@@ -1149,3 +1151,135 @@ function snapshot(
     createdAt: "2026-07-28T12:00:00.000Z",
   };
 }
+
+// ---------- Base map markers ----------
+
+function makeBase(overrides: Partial<PalDefenderBase> = {}): PalDefenderBase {
+  return {
+    baseId: overrides.baseId ?? "base-1",
+    guildId: overrides.guildId ?? "guild-1",
+    guildName: overrides.guildName ?? "Test Guild",
+    guildAdministrator: overrides.guildAdministrator ?? {
+      playerId: "p1",
+      name: "Admin",
+    },
+    worldPosition: overrides.worldPosition ?? { x: 0, y: 0, z: 0 },
+    mapPosition: overrides.mapPosition ?? { x: 0.5, y: 0.5, z: 0 },
+  };
+}
+
+test("buildBaseMapMarkers: projects valid bases", () => {
+  const bases = [makeBase({ worldPosition: { x: 0, y: 0, z: 0 } })];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 1);
+  const marker = markers[0]!;
+  assert.equal(marker.baseId, "base-1");
+  assert.ok(Number.isFinite(marker.position.x));
+  assert.ok(Number.isFinite(marker.position.y));
+});
+
+test("buildBaseMapMarkers: skips out-of-bounds coordinates", () => {
+  const bases = [
+    makeBase({
+      baseId: "oob",
+      worldPosition: { x: 9999999, y: 9999999, z: 0 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 0);
+});
+
+test("buildBaseMapMarkers: skips invalid coordinates", () => {
+  const bases = [
+    makeBase({
+      baseId: "nan",
+      worldPosition: { x: NaN, y: 0, z: 0 },
+    }),
+    makeBase({
+      baseId: "inf",
+      worldPosition: { x: Infinity, y: 0, z: 0 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 0);
+});
+
+test("buildBaseMapMarkers: multiple bases from one guild produce separate markers", () => {
+  const bases = [
+    makeBase({
+      baseId: "b1",
+      guildId: "guild-a",
+      worldPosition: { x: 0, y: 0, z: 0 },
+    }),
+    makeBase({
+      baseId: "b2",
+      guildId: "guild-a",
+      worldPosition: { x: 1000, y: 1000, z: 0 },
+    }),
+    makeBase({
+      baseId: "b3",
+      guildId: "guild-a",
+      worldPosition: { x: -1000, y: -1000, z: 0 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.ok(markers.length >= 1);
+  const guildIds = new Set(markers.map((m) => m.guildId));
+  assert.equal(guildIds.size, 1);
+});
+
+test("buildBaseMapMarkers: preserves null guild name", () => {
+  const bases: PalDefenderBase[] = [
+    {
+      baseId: "no-guild",
+      guildId: "guild-null",
+      guildName: null,
+      guildAdministrator: { playerId: "p1", name: "Admin" },
+      worldPosition: { x: 0, y: 0, z: 0 },
+      mapPosition: { x: 0.5, y: 0.5, z: 0 },
+    },
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.ok(markers.length >= 1);
+  const marker = markers.find((m) => m.baseId === "no-guild");
+  assert.equal(marker?.guildName, null);
+});
+
+test("buildBaseMapMarkers: uses worldPosition not mapPosition", () => {
+  const base = makeBase({
+    baseId: "pos-test",
+    worldPosition: { x: 0, y: 0, z: 0 },
+    mapPosition: { x: 999, y: 999, z: 0 },
+  });
+  const markers = buildBaseMapMarkers([base], palpagosProjection);
+  assert.ok(markers.length >= 1);
+  const marker = markers[0]!;
+  const expectedPos = worldToNormalizedMapPosition(
+    { x: 0, y: 0 },
+    palpagosProjection,
+  );
+  assert.deepEqual(marker.position, expectedPos);
+  assert.equal(marker.worldX, 0);
+  assert.equal(marker.worldY, 0);
+});
+
+test("buildBaseMapMarkers: empty input produces empty output", () => {
+  const markers = buildBaseMapMarkers([], palpagosProjection);
+  assert.equal(markers.length, 0);
+});
+
+test("buildBaseMapMarkers: preserves baseId for navigation", () => {
+  const bases = [
+    makeBase({
+      baseId: "camp-abc123",
+      guildId: "guild-xyz",
+      worldPosition: { x: 0, y: 0, z: 0 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.ok(markers.length >= 1);
+  const marker = markers[0]!;
+  assert.equal(marker.baseId, "camp-abc123");
+  assert.equal(marker.guildId, "guild-xyz");
+  assert.notEqual(marker.baseId, marker.guildId);
+});
