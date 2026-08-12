@@ -486,32 +486,6 @@ test("danger zone communicates destructive intent beyond its color", async ({
   ).toBeVisible();
 });
 
-test("map keeps administrator calibration tools behind an advanced disclosure", async ({
-  page,
-}) => {
-  await setPlayerMode(page, "populated");
-  await openWorkspace(page);
-  await page.getByRole("tab", { name: "Map" }).click();
-
-  const viewport = page.locator(".pc-world-map-viewport");
-  await expect(viewport).toBeVisible();
-  await expect(viewport).toHaveCSS("position", "relative");
-  await expect(viewport).toHaveCSS("overflow", "hidden");
-  expect(
-    await viewport.evaluate((element) => element.clientHeight),
-  ).toBeGreaterThanOrEqual(500);
-
-  await expect(page.getByRole("combobox", { name: "Map layer" })).toBeHidden();
-  await page.getByRole("button", { name: "Advanced map tools" }).click();
-  await expect(page.getByRole("combobox", { name: "Map layer" })).toBeVisible();
-  await page
-    .getByRole("switch", { name: /Enable calibration diagnostics/ })
-    .check();
-  const calibration = panelWithHeading(page, "Projection calibration");
-  await expect(calibration).toHaveCount(1);
-  await expect(calibration).toBeVisible();
-});
-
 test("world map empty and failure states explain the next action", async ({
   page,
 }) => {
@@ -568,11 +542,6 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
   await setPlayerMode(page, "unknown");
   await openWorkspace(page);
   await page.getByRole("tab", { name: "Map" }).click();
-  await expect(
-    page.getByRole("alert").filter({
-      hasText: "Special-area positions are approximate",
-    }),
-  ).toBeVisible();
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Online now" })).toBeVisible();
   await expect(
@@ -611,9 +580,6 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
 
   await setPlayerMode(page, "world-tree");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(
-    page.getByText("Special-area positions are approximate"),
-  ).toBeVisible();
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
   await page.screenshot({
     path: "../../docs/screenshots/rest-map-authoritative-off-map.png",

@@ -381,15 +381,13 @@ a {
 }
 
 .pc-activity-details .mantine-Accordion-item,
-.pc-trail-technical-details .mantine-Accordion-item,
-.pc-world-map-advanced .mantine-Accordion-item {
+.pc-trail-technical-details .mantine-Accordion-item {
   border-color: rgba(148, 163, 184, 0.14);
   background: rgba(8, 18, 29, 0.58);
 }
 
 .pc-activity-details .mantine-Accordion-control:focus-visible,
-.pc-trail-technical-details .mantine-Accordion-control:focus-visible,
-.pc-world-map-advanced .mantine-Accordion-control:focus-visible {
+.pc-trail-technical-details .mantine-Accordion-control:focus-visible {
   outline: 2px solid var(--mantine-color-cyan-4);
   outline-offset: -2px;
 }
@@ -425,55 +423,6 @@ a {
 
 .pc-map-detail-value {
   overflow-wrap: anywhere;
-}
-
-.pc-world-map-grid {
-  z-index: 1;
-  background:
-    linear-gradient(rgba(34, 211, 238, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 211, 238, 0.08) 1px, transparent 1px),
-    linear-gradient(rgba(34, 211, 238, 0.15) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 211, 238, 0.15) 1px, transparent 1px),
-    radial-gradient(circle at 50% 45%, rgba(8, 184, 245, 0.14), transparent 52%);
-  background-size:
-    5% 5%,
-    5% 5%,
-    25% 25%,
-    25% 25%,
-    auto;
-}
-
-.pc-world-map-grid::before,
-.pc-world-map-grid::after {
-  content: "";
-  position: absolute;
-  background: rgba(34, 211, 238, 0.38);
-  pointer-events: none;
-}
-
-.pc-world-map-grid::before {
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-}
-
-.pc-world-map-grid::after {
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-}
-
-.pc-world-map-label {
-  position: absolute;
-  inset: 1rem auto auto 1rem;
-  color: rgba(165, 243, 252, 0.38);
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  pointer-events: none;
-  z-index: 2;
 }
 
 .pc-world-map-marker-position {
