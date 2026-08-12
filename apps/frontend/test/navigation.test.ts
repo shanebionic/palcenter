@@ -122,6 +122,20 @@ test("palDefender*Href helpers produce correct return query string", () => {
   );
 });
 
+test("map source produces ?tab=map recognized by ServerWorkspace", () => {
+  const baseTarget = detailBackTarget("server-1", "base", "map");
+  assert.equal(baseTarget.href, "/servers/server-1?tab=map");
+  assert.equal(baseTarget.label, "Back to Map");
+
+  const playerTarget = detailBackTarget("server-1", "player", "map");
+  assert.equal(playerTarget.href, "/servers/server-1?tab=map");
+  assert.equal(playerTarget.label, "Back to Map");
+
+  const guildTarget = detailBackTarget("server-1", "guild", "map");
+  assert.equal(guildTarget.href, "/servers/server-1?tab=map");
+  assert.equal(guildTarget.label, "Back to Map");
+});
+
 test("palDefender*Href helpers omit query string when no source", () => {
   assert.equal(
     palDefenderBaseHref("server-1", "base-1"),
