@@ -50,6 +50,7 @@ const primaryLinks: Array<{
 ];
 
 // SSR-safe synchronous localStorage read
+// Canonical: true = collapsed, false = expanded
 function getSavedCollapsed(): boolean {
   if (typeof localStorage === "undefined") return false;
   return localStorage.getItem(NAVBAR_STORAGE_KEY) === "true";
@@ -57,8 +58,8 @@ function getSavedCollapsed(): boolean {
 
 export function ApplicationShell({ children }: ApplicationShellProps) {
   const [opened, navigation] = useDisclosure(false);
-  const [desktopOpened, { toggle: toggleDesktop }] =
-    useDisclosure(!getSavedCollapsed());
+  // Single canonical boolean: collapsed
+  const [collapsed, setCollapsed] = useState(getSavedCollapsed);
   const [session, setSession] = useState<AuthSession | null>(null);
   const pathname = usePathname();
 
@@ -69,19 +70,22 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
   }, []);
 
   const handleToggleDesktop = useCallback(() => {
-    toggleDesktop();
-    try {
-      localStorage.setItem(NAVBAR_STORAGE_KEY, String(!desktopOpened));
-    } catch {
-      // localStorage unavailable; persistence is optional
-    }
-  }, [desktopOpened, toggleDesktop]);
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(NAVBAR_STORAGE_KEY, String(next));
+      } catch {
+        // localStorage unavailable; persistence is optional
+      }
+      return next;
+    });
+  }, []);
 
-  const links = session?.user.mustChangePassword ? [] : primaryLinks;
-  const collapsed = !desktopOpened;
   const navbarWidth = collapsed
     ? NAVBAR_WIDTH_COLLAPSED
     : NAVBAR_WIDTH_EXPANDED;
+
+  const links = session?.user.mustChangePassword ? [] : primaryLinks;
 
   return (
     <AppShell
