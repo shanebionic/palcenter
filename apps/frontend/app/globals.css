@@ -44,6 +44,7 @@ a {
 .pc-shell-navbar {
   background: rgba(11, 15, 24, 0.94);
   border-right: 1px solid rgba(148, 163, 184, 0.1);
+  transition: width 150ms ease;
 }
 
 .pc-content {
