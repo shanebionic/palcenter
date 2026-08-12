@@ -22,9 +22,7 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
 import {
-  IconCopy,
   IconArrowsMaximize,
   IconFocusCentered,
   IconLayersIntersect,
@@ -51,7 +49,6 @@ import {
 import {
   buildBaseMapMarkers,
   buildLivePlayerMapModel,
-  calibrationRecord,
   formatTelemetryAge,
   mapContentState,
   playerMapDetailValues,
@@ -73,11 +70,8 @@ import {
   type MapRect,
 } from "../lib/world-map/navigation";
 import {
-  defaultWorldMapLayer,
   worldMapAssetPath,
   worldMapAssetSrcSet,
-  worldMapLayerClasses,
-  type WorldMapLayer,
 } from "../lib/world-map/layers";
 import { palpagosProjection } from "../lib/world-map/projection";
 import { playerColor } from "../lib/world-map/player-color";
@@ -97,7 +91,6 @@ import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
 interface ServerWorldMapProps {
   serverId: string;
   serverOnline: boolean;
-  canCalibrate: boolean;
 }
 
 const defaultTelemetry: LatestPlayerTelemetry = {
@@ -119,7 +112,6 @@ const trailRangeMilliseconds: Record<TrailRange, number> = {
 export function ServerWorldMap({
   serverId,
   serverOnline,
-  canCalibrate,
 }: ServerWorldMapProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [telemetry, setTelemetry] =
@@ -129,8 +121,6 @@ export function ServerWorldMap({
   const [error, setError] = useState<string | null>(null);
   const [playerRequestFailed, setPlayerRequestFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [calibrating, setCalibrating] = useState(false);
-  const [mapLayer, setMapLayer] = useState<WorldMapLayer>(defaultWorldMapLayer);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<MapPan>({ x: 0, y: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
@@ -563,77 +553,8 @@ export function ServerWorldMap({
     };
     const frame = window.requestAnimationFrame(update);
     return () => window.cancelAnimationFrame(frame);
-  }, [expanded, mapLayer, pan, selected, surfaceSize, zoom]);
+  }, [expanded, pan, selected, surfaceSize, zoom]);
 
-  const copyCalibration = async (marker: LivePlayerMapMarker) => {
-    try {
-      await navigator.clipboard.writeText(calibrationRecord(marker));
-      notifications.show({
-        color: "green",
-        title: "Calibration point copied",
-        message: "The world and normalized coordinates are on your clipboard.",
-      });
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Copy failed",
-        message: "Your browser did not allow clipboard access.",
-      });
-    }
-  };
-
-  const copyDiagnostics = async () => {
-    if (!selected || !diagnostics) return;
-    const rect = (value: MapRect | null) =>
-      value
-        ? {
-            left: Math.round(value.left),
-            top: Math.round(value.top),
-            right: Math.round(value.right),
-            bottom: Math.round(value.bottom),
-          }
-        : null;
-    const output = {
-      viewport: {
-        width: Math.round(
-          diagnostics.viewport.right - diagnostics.viewport.left,
-        ),
-        height: Math.round(
-          diagnostics.viewport.bottom - diagnostics.viewport.top,
-        ),
-      },
-      viewportCss: diagnostics.viewportCss,
-      viewportClient: diagnostics.viewportClient,
-      expanded: diagnostics.expanded,
-      untransformedSurface: diagnostics.untransformedSurface,
-      transformedSurface: rect(diagnostics.surface),
-      image: rect(diagnostics.image),
-      markerPlane: diagnostics.markerPlane,
-      zoom,
-      pan,
-      player: {
-        normalized: selected.position,
-        renderedPercent: {
-          x: Number((selected.position.x * 100).toFixed(2)),
-          y: Number((selected.position.y * 100).toFixed(2)),
-        },
-        screenRect: rect(diagnostics.marker),
-        intersectsViewport: diagnostics.visible,
-      },
-    };
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(output, null, 2));
-      notifications.show({
-        color: "green",
-        message: "Safe map diagnostics copied.",
-      });
-    } catch {
-      notifications.show({
-        color: "red",
-        message: "Your browser did not allow clipboard access.",
-      });
-    }
-  };
   return (
     <Stack gap="lg" pt="lg">
       <SectionHeader
@@ -650,64 +571,6 @@ export function ServerWorldMap({
           </Button>
         }
       />
-
-      <Alert color="blue" title="Special-area positions are approximate">
-        Native Palworld REST coordinates do not identify dungeons, towers, or
-        other instanced areas, so those positions may appear on the main map.
-      </Alert>
-
-      {canCalibrate && (
-        <Accordion
-          variant="separated"
-          radius="md"
-          className="pc-world-map-advanced"
-        >
-          <Accordion.Item value="advanced-map-tools">
-            <Accordion.Control>Advanced map tools</Accordion.Control>
-            <Accordion.Panel>
-              <Stack gap="md">
-                <Text size="sm" c="dimmed">
-                  Administrator-only calibration and projection tools. Most
-                  server management does not require these settings.
-                </Text>
-                <Group
-                  align="flex-end"
-                  gap="lg"
-                  className="pc-world-map-advanced-controls"
-                >
-                  <Select
-                    label="Map layer"
-                    description="Use the grid only when validating map alignment."
-                    aria-label="Map layer"
-                    value={mapLayer}
-                    onChange={(value) =>
-                      setMapLayer((value as WorldMapLayer | null) ?? "map")
-                    }
-                    allowDeselect={false}
-                    w={240}
-                    data={[
-                      { value: "map", label: "Palpagos map" },
-                      { value: "grid", label: "Calibration grid" },
-                      {
-                        value: "map-with-grid",
-                        label: "Map with grid overlay",
-                      },
-                    ]}
-                  />
-                  <Switch
-                    label="Enable calibration diagnostics"
-                    description="Shows projection details and safe diagnostic tools."
-                    checked={calibrating}
-                    onChange={(event) =>
-                      setCalibrating(event.currentTarget.checked)
-                    }
-                  />
-                </Group>
-              </Stack>
-            </Accordion.Panel>
-          </Accordion.Item>
-        </Accordion>
-      )}
 
       {displayedContentState === "offline" && (
         <Alert color="orange" title="Server is offline">
@@ -1003,41 +866,31 @@ export function ServerWorldMap({
               ) : (
                 <div
                   ref={surface}
-                  className={worldMapLayerClasses(mapLayer)}
+                  className="pc-world-map-surface pc-world-map-surface-map"
                   style={{
                     width: surfaceSize,
                     height: surfaceSize,
                     transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${zoom})`,
                   }}
                 >
-                  {mapLayer !== "grid" && (
-                    <picture>
-                      <source
-                        type="image/webp"
-                        srcSet={worldMapAssetSrcSet}
-                        sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
-                      />
-                      {/* These pre-generated responsive assets intentionally bypass Next's image optimizer. */}
-                      <img
-                        className="pc-world-map-image"
-                        src={worldMapAssetPath}
-                        srcSet={worldMapAssetSrcSet}
-                        sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
-                        width={2048}
-                        height={2048}
-                        alt=""
-                        draggable={false}
-                      />
-                    </picture>
-                  )}
-                  {mapLayer !== "map" && (
-                    <>
-                      <div className="pc-world-map-grid" aria-hidden="true" />
-                      <div className="pc-world-map-label">
-                        PALPAGOS CALIBRATION GRID
-                      </div>
-                    </>
-                  )}
+                  <picture>
+                    <source
+                      type="image/webp"
+                      srcSet={worldMapAssetSrcSet}
+                      sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
+                    />
+                    {/* These pre-generated responsive assets intentionally bypass Next's image optimizer. */}
+                    <img
+                      className="pc-world-map-image"
+                      src={worldMapAssetPath}
+                      srcSet={worldMapAssetSrcSet}
+                      sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
+                      width={2048}
+                      height={2048}
+                      alt=""
+                      draggable={false}
+                    />
+                  </picture>
                   {trailEnabled && trail && (
                     <svg
                       className="pc-world-map-trail"
@@ -1254,13 +1107,7 @@ export function ServerWorldMap({
             {selectedBase ? (
               <BaseMapDetails marker={selectedBase} serverId={serverId} />
             ) : (
-              <PlayerMapDetails
-                marker={selected}
-                serverId={serverId}
-                onCopy={
-                  canCalibrate && calibrating ? copyCalibration : undefined
-                }
-              />
+              <PlayerMapDetails marker={selected} serverId={serverId} />
             )}
             <TrailControls
               players={telemetry.players.map((snapshot) => ({
@@ -1291,17 +1138,6 @@ export function ServerWorldMap({
                 setTrailError(null);
               }}
             />
-            {canCalibrate && calibrating && (
-              <CalibrationPanel
-                unmapped={model.unmappedPlayers}
-                pollingIntervalSeconds={telemetry.pollingIntervalSeconds}
-                viewportSize={viewportSize}
-                zoom={zoom}
-                pan={pan}
-                diagnostics={diagnostics}
-                onCopyDiagnostics={copyDiagnostics}
-              />
-            )}
           </Stack>
         </div>
       ) : null}
@@ -1670,11 +1506,9 @@ function TrailControls({
 function PlayerMapDetails({
   marker,
   serverId,
-  onCopy,
 }: {
   marker: LivePlayerMapMarker | null;
   serverId: string;
-  onCopy?: (marker: LivePlayerMapMarker) => void;
 }) {
   const router = useRouter();
   const details = marker ? playerMapDetailValues(marker) : null;
@@ -1742,29 +1576,6 @@ function PlayerMapDetails({
             value={details.worldCoordinates}
             mono
           />
-          {onCopy && (
-            <>
-              <Detail
-                label="Normalized coordinates"
-                value={`${marker.position.x.toFixed(4)}, ${marker.position.y.toFixed(4)}`}
-                mono
-              />
-              <Detail
-                label="Rendered position"
-                value={`${(marker.position.x * 100).toFixed(2)}%, ${(marker.position.y * 100).toFixed(2)}%`}
-                mono
-              />
-            </>
-          )}
-          {onCopy && (
-            <Button
-              variant="light"
-              leftSection={<IconCopy size={16} />}
-              onClick={() => onCopy(marker)}
-            >
-              Copy calibration point
-            </Button>
-          )}
           {marker.playerId && (
             <Group gap="sm">
               <Button
@@ -1882,90 +1693,5 @@ function Detail({
         {value}
       </Text>
     </div>
-  );
-}
-
-function CalibrationPanel({
-  unmapped,
-  pollingIntervalSeconds,
-  viewportSize,
-  zoom,
-  pan,
-  diagnostics,
-  onCopyDiagnostics,
-}: {
-  unmapped: ReturnType<typeof buildLivePlayerMapModel>["unmappedPlayers"];
-  pollingIntervalSeconds: number;
-  viewportSize: { width: number; height: number };
-  zoom: number;
-  pan: MapPan;
-  diagnostics: {
-    viewport: MapRect;
-    surface: MapRect;
-    image: MapRect | null;
-    marker: MapRect | null;
-    untransformedSurface: { width: number; height: number };
-    markerPlane: { width: number; height: number };
-    viewportClient: { width: number; height: number };
-    viewportCss: {
-      width: string;
-      height: string;
-      minHeight: string;
-      maxHeight: string;
-      aspectRatio: string;
-    };
-    expanded: boolean;
-    visible: boolean;
-  } | null;
-  onCopyDiagnostics: () => void;
-}) {
-  return (
-    <Paper className="pc-panel" withBorder radius="lg" p="lg">
-      <Stack gap="sm">
-        <Title order={4}>Projection calibration</Title>
-        <Text size="sm" c="dimmed">
-          Administrator-only diagnostics for validating the prototype
-          projection. No player IP addresses are included.
-        </Text>
-        <Code block>
-          {`X: ${palpagosProjection.worldMinX} … ${palpagosProjection.worldMaxX}
-Y: ${palpagosProjection.worldMinY} … ${palpagosProjection.worldMaxY}
-Rotation: ${palpagosProjection.rotationDegrees}°
-Polling interval: ${pollingIntervalSeconds}s
-Viewport: ${viewportSize.width} × ${viewportSize.height}px
-Viewport CSS: ${diagnostics?.viewportCss.width ?? "0px"} × ${diagnostics?.viewportCss.height ?? "0px"}
-Viewport min/max: ${diagnostics?.viewportCss.minHeight ?? "0px"} / ${diagnostics?.viewportCss.maxHeight ?? "none"}
-Viewport aspect-ratio: ${diagnostics?.viewportCss.aspectRatio ?? "auto"}
-Viewport client: ${diagnostics?.viewportClient.width ?? 0} × ${diagnostics?.viewportClient.height ?? 0}px
-Surface (untransformed): ${diagnostics?.untransformedSurface.width ?? 0} × ${diagnostics?.untransformedSurface.height ?? 0}px
-Surface (transformed): ${diagnostics ? Math.round(diagnostics.surface.right - diagnostics.surface.left) : 0} × ${diagnostics ? Math.round(diagnostics.surface.bottom - diagnostics.surface.top) : 0}px
-Image: ${diagnostics?.image ? `${Math.round(diagnostics.image.right - diagnostics.image.left)} × ${Math.round(diagnostics.image.bottom - diagnostics.image.top)}px` : "not rendered"}
-Marker plane: ${diagnostics?.markerPlane.width ?? 0} × ${diagnostics?.markerPlane.height ?? 0}px
-Scale: ${zoom.toFixed(2)}×
-Offset: ${Math.round(pan.x)}px, ${Math.round(pan.y)}px
-Expanded: ${diagnostics?.expanded ? "yes" : "no"}`}
-        </Code>
-        <Button
-          variant="light"
-          leftSection={<IconCopy size={16} />}
-          onClick={onCopyDiagnostics}
-          disabled={!diagnostics?.marker}
-        >
-          Copy safe diagnostics
-        </Button>
-        {unmapped.length > 0 && (
-          <Stack gap={4}>
-            <Text size="sm" fw={700}>
-              Unmapped connected players
-            </Text>
-            {unmapped.map((player) => (
-              <Text key={player.userId} size="xs" c="dimmed">
-                {player.playerName}: {player.reason.replaceAll("_", " ")}
-              </Text>
-            ))}
-          </Stack>
-        )}
-      </Stack>
-    </Paper>
   );
 }

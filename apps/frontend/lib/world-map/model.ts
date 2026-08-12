@@ -2,7 +2,6 @@ import type { PalDefenderBase } from "../../lib/api";
 import type {
   ConnectedPlayer,
   PlayerPositionSnapshot,
-  UserRole,
 } from "../../types/servers";
 import type {
   MapProjectionConfiguration,
@@ -72,11 +71,6 @@ export interface LivePlayerMapModel {
   unmappedPlayers: UnmappedPlayer[];
 }
 
-export interface MapAccess {
-  canView: boolean;
-  canCalibrate: boolean;
-}
-
 export type MapContentState =
   | "loading"
   | "offline"
@@ -110,13 +104,6 @@ export function playerMarkerPresentation(
     displayName,
     initial: Array.from(displayName)[0] ?? "?",
     accessibleName: `View ${displayName} on map`,
-  };
-}
-
-export function mapAccessForRole(role: UserRole): MapAccess {
-  return {
-    canView: role === "administrator" || role === "moderator",
-    canCalibrate: role === "administrator",
   };
 }
 
@@ -379,15 +366,6 @@ export function buildLivePlayerMapModel(
   }
 
   return { markers, unmappedPlayers };
-}
-
-export function calibrationRecord(marker: LivePlayerMapMarker): string {
-  return [
-    `Player: ${marker.playerName}`,
-    `World: ${marker.worldX}, ${marker.worldY}`,
-    `Normalized: ${marker.position.x.toFixed(4)}, ${marker.position.y.toFixed(4)}`,
-    `Map: ${(marker.position.x * 100).toFixed(2)}%, ${(marker.position.y * 100).toFixed(2)}%`,
-  ].join("\n");
 }
 
 export interface BaseMapMarker {

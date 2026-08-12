@@ -3,18 +3,14 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
-  defaultWorldMapLayer,
   worldMapAssetPath,
   worldMapAssetSrcSet,
-  worldMapLayerClasses,
 } from "../lib/world-map/layers";
 import {
   buildBaseMapMarkers,
   buildLivePlayerMapModel,
-  calibrationRecord,
   classifyTelemetryFreshness,
   mapContentState,
-  mapAccessForRole,
   playerMapDetailValues,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
@@ -418,22 +414,6 @@ test("serves bundled world maps without an authentication redirect", async () =>
   assert.match(proxySource, /\(\?!api\|assets\|world-maps\|/);
 });
 
-test("selects map and calibration grid layers without changing projection", () => {
-  assert.equal(defaultWorldMapLayer, "map");
-  assert.equal(
-    worldMapLayerClasses("map"),
-    "pc-world-map-surface pc-world-map-surface-map",
-  );
-  assert.equal(
-    worldMapLayerClasses("grid"),
-    "pc-world-map-surface pc-world-map-surface-grid",
-  );
-  assert.equal(
-    worldMapLayerClasses("map-with-grid"),
-    "pc-world-map-surface pc-world-map-surface-map pc-world-map-surface-grid",
-  );
-});
-
 function readWebpDimensions(asset: Buffer): {
   width: number;
   height: number;
@@ -814,21 +794,6 @@ test("marks out-of-bounds current players as unavailable", () => {
   assert.equal(model.unmappedPlayers[0]?.reason, "outside_bounds");
 });
 
-test("keeps map access aligned with the existing Players tab", () => {
-  assert.deepEqual(mapAccessForRole("administrator"), {
-    canView: true,
-    canCalibrate: true,
-  });
-  assert.deepEqual(mapAccessForRole("moderator"), {
-    canView: true,
-    canCalibrate: false,
-  });
-  assert.deepEqual(mapAccessForRole("visitor"), {
-    canView: false,
-    canCalibrate: false,
-  });
-});
-
 test("distinguishes loading, offline, empty, API failure, and ready states", () => {
   assert.equal(
     mapContentState({
@@ -875,19 +840,6 @@ test("distinguishes loading, offline, empty, API failure, and ready states", () 
     }),
     "ready",
   );
-});
-
-test("calibration output contains coordinates but no network address", () => {
-  const model = buildLivePlayerMapModel(
-    [connectedPlayer("uid-1", "pid-1", "Mozzarina")],
-    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 0, y: 0 })],
-    palpagosProjection,
-    30,
-    null,
-  );
-  const output = calibrationRecord(model.markers[0]!);
-  assert.match(output, /World: 0, 0/);
-  assert.doesNotMatch(output, /192\.0\.2\.10/);
 });
 
 test("starts fitted and computes a square surface from the available viewport", () => {
