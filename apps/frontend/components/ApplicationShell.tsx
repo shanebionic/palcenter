@@ -23,7 +23,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getSession, type AuthSession } from "../lib/api";
 import { AccountActions } from "./AccountActions";
 import { Brand } from "./Brand";
@@ -49,31 +49,24 @@ const primaryLinks: Array<{
   { href: "/settings", label: "Settings", icon: IconAdjustments },
 ];
 
+// SSR-safe synchronous localStorage read
+function getSavedCollapsed(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  return localStorage.getItem(NAVBAR_STORAGE_KEY) === "true";
+}
+
 export function ApplicationShell({ children }: ApplicationShellProps) {
   const [opened, navigation] = useDisclosure(false);
-  const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
+  const [desktopOpened, { toggle: toggleDesktop }] =
+    useDisclosure(!getSavedCollapsed());
   const [session, setSession] = useState<AuthSession | null>(null);
   const pathname = usePathname();
-  const initialized = useRef(false);
 
   useEffect(() => {
     void getSession()
       .then(setSession)
       .catch(() => setSession(null));
   }, []);
-
-  // SSR-safe: read localStorage only after hydration
-  useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-    const stored =
-      typeof localStorage !== "undefined"
-        ? localStorage.getItem(NAVBAR_STORAGE_KEY)
-        : null;
-    if (stored === "true") {
-      toggleDesktop();
-    }
-  }, [toggleDesktop]);
 
   const handleToggleDesktop = useCallback(() => {
     toggleDesktop();
@@ -118,15 +111,18 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
 
       <AppShell.Navbar className="pc-shell-navbar" p="md">
         <AppShell.Section mb="md">
-          <ActionIcon
-            variant="subtle"
-            aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-            onClick={handleToggleDesktop}
-            visibleFrom="md"
-            style={{ display: "block", margin: "0 auto" }}
-          >
-            <IconMenu2 size={18} />
-          </ActionIcon>
+          <Group justify={collapsed ? "center" : "flex-end"} w="100%">
+            <ActionIcon
+              variant="subtle"
+              aria-label={
+                collapsed ? "Expand navigation" : "Collapse navigation"
+              }
+              onClick={handleToggleDesktop}
+              visibleFrom="md"
+            >
+              <IconMenu2 size={18} />
+            </ActionIcon>
+          </Group>
         </AppShell.Section>
 
         <AppShell.Section component={ScrollArea} grow>
