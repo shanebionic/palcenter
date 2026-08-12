@@ -8,9 +8,11 @@ import {
   Button,
   Card,
   Center,
+  Checkbox,
   Code,
   Group,
   Loader,
+  Menu,
   Paper,
   SegmentedControl,
   Select,
@@ -25,6 +27,7 @@ import {
   IconCopy,
   IconArrowsMaximize,
   IconFocusCentered,
+  IconLayersIntersect,
   IconMinus,
   IconPlus,
   IconDoorEnter,
@@ -136,6 +139,8 @@ export function ServerWorldMap({
   const [followPlayer, setFollowPlayer] = useState(false);
   const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
   const [trailEnabled, setTrailEnabled] = useState(false);
+  const [showPlayers, setShowPlayers] = useState(true);
+  const [showBases, setShowBases] = useState(true);
   const [trailRange, setTrailRange] = useState<TrailRange>("1h");
   const [trail, setTrail] = useState<ProcessedTrail | null>(null);
   const [trailLoading, setTrailLoading] = useState(false);
@@ -428,6 +433,20 @@ export function ServerWorldMap({
     }
     return () => trailRequest.current?.abort();
   }, [loadTrail, selectedId, trailEnabled, trailRange]);
+
+  // Clear player selection when players layer is hidden
+  useEffect(() => {
+    if (!showPlayers && selected) {
+      setSelectedId(null);
+    }
+  }, [showPlayers, selected]);
+
+  // Clear base selection when bases layer is hidden
+  useEffect(() => {
+    if (!showBases && selectedBase) {
+      setSelectedId(null);
+    }
+  }, [showBases, selectedBase]);
   const applyFitMap = useCallback(() => {
     const fit = fitMapView();
     setZoom(fit.zoom);
@@ -793,6 +812,51 @@ export function ServerWorldMap({
                 )}
               </Group>
               <Group gap={4}>
+                <Menu
+                  width={180}
+                  position="bottom-start"
+                  withArrow
+                  transitionProps={{ transition: "pop" }}
+                >
+                  <Menu.Target>
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      leftSection={<IconLayersIntersect size={14} />}
+                    >
+                      Layers
+                    </Button>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item>
+                      <Checkbox
+                        label="Players"
+                        checked={showPlayers}
+                        onChange={(event) =>
+                          setShowPlayers(event.currentTarget.checked)
+                        }
+                      />
+                    </Menu.Item>
+                    <Menu.Item>
+                      <Checkbox
+                        label="Bases"
+                        checked={showBases}
+                        onChange={(event) =>
+                          setShowBases(event.currentTarget.checked)
+                        }
+                      />
+                    </Menu.Item>
+                    <Menu.Item>
+                      <Checkbox
+                        label="Trails"
+                        checked={trailEnabled}
+                        onChange={(event) =>
+                          setTrailEnabled(event.currentTarget.checked)
+                        }
+                      />
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
                 <SegmentedControl
                   size="xs"
                   aria-label="Choose world map"
@@ -1026,107 +1090,109 @@ export function ServerWorldMap({
                       )}
                     </svg>
                   )}
-                  {model.markers.map((marker) => {
-                    const presentation = playerMarkerPresentation(
-                      marker.playerName,
-                    );
-                    return (
-                      <div
-                        key={marker.userId}
-                        className="pc-world-map-marker-position"
-                        style={{
-                          left: `${marker.position.x * 100}%`,
-                          top: `${marker.position.y * 100}%`,
-                        }}
-                      >
+                  {showPlayers &&
+                    model.markers.map((marker) => {
+                      const presentation = playerMarkerPresentation(
+                        marker.playerName,
+                      );
+                      return (
                         <div
-                          className="pc-world-map-marker-visual"
+                          key={marker.userId}
+                          className="pc-world-map-marker-position"
                           style={{
-                            transform: `scale(${markerInverseScale(zoom)})`,
+                            left: `${marker.position.x * 100}%`,
+                            top: `${marker.position.y * 100}%`,
                           }}
                         >
-                          <button
-                            type="button"
-                            data-player-id={marker.userId}
-                            className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${marker.displayKind === "last_trusted_instance" ? " pc-world-map-marker-portal" : ""}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                          <div
+                            className="pc-world-map-marker-visual"
                             style={{
-                              backgroundColor: playerColor(marker.userId),
+                              transform: `scale(${markerInverseScale(zoom)})`,
                             }}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelectedId(marker.userId);
-                            }}
-                            aria-label={
-                              marker.displayKind === "last_trusted_instance"
-                                ? `View ${presentation.displayName}'s last trusted Palpagos location; currently inside an instance`
-                                : presentation.accessibleName
-                            }
-                            aria-pressed={selected?.userId === marker.userId}
                           >
-                            <span aria-hidden="true">
-                              {marker.displayKind ===
-                              "last_trusted_instance" ? (
-                                <IconDoorEnter size={17} />
-                              ) : (
-                                presentation.initial
-                              )}
+                            <button
+                              type="button"
+                              data-player-id={marker.userId}
+                              className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${marker.displayKind === "last_trusted_instance" ? " pc-world-map-marker-portal" : ""}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                              style={{
+                                backgroundColor: playerColor(marker.userId),
+                              }}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedId(marker.userId);
+                              }}
+                              aria-label={
+                                marker.displayKind === "last_trusted_instance"
+                                  ? `View ${presentation.displayName}'s last trusted Palpagos location; currently inside an instance`
+                                  : presentation.accessibleName
+                              }
+                              aria-pressed={selected?.userId === marker.userId}
+                            >
+                              <span aria-hidden="true">
+                                {marker.displayKind ===
+                                "last_trusted_instance" ? (
+                                  <IconDoorEnter size={17} />
+                                ) : (
+                                  presentation.initial
+                                )}
+                              </span>
+                            </button>
+                            <span
+                              className="pc-world-map-marker-label"
+                              aria-hidden="true"
+                            >
+                              {presentation.displayName}
+                              {marker.displayKind === "last_trusted_instance"
+                                ? " · Inside instance"
+                                : ""}
                             </span>
-                          </button>
-                          <span
-                            className="pc-world-map-marker-label"
-                            aria-hidden="true"
-                          >
-                            {presentation.displayName}
-                            {marker.displayKind === "last_trusted_instance"
-                              ? " · Inside instance"
-                              : ""}
-                          </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                  {baseMarkers.map((marker) => {
-                    const displayName = marker.guildName ?? "Unnamed Guild";
-                    return (
-                      <div
-                        key={marker.baseId}
-                        className="pc-world-map-base-position"
-                        style={{
-                          left: `${marker.position.x * 100}%`,
-                          top: `${marker.position.y * 100}%`,
-                        }}
-                      >
+                      );
+                    })}
+                  {showBases &&
+                    baseMarkers.map((marker) => {
+                      const displayName = marker.guildName ?? "Unnamed Guild";
+                      return (
                         <div
-                          className="pc-world-map-base-visual"
+                          key={marker.baseId}
+                          className="pc-world-map-base-position"
                           style={{
-                            transform: `scale(${markerInverseScale(zoom)})`,
+                            left: `${marker.position.x * 100}%`,
+                            top: `${marker.position.y * 100}%`,
                           }}
                         >
-                          <button
-                            type="button"
-                            data-base-id={marker.baseId}
-                            className={`pc-world-map-base-marker${selectedBase?.baseId === marker.baseId ? " pc-world-map-base-marker-selected" : ""}`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelectedId(marker.baseId);
+                          <div
+                            className="pc-world-map-base-visual"
+                            style={{
+                              transform: `scale(${markerInverseScale(zoom)})`,
                             }}
-                            aria-label={`View ${displayName} at base ${marker.baseId}`}
-                            aria-pressed={
-                              selectedBase?.baseId === marker.baseId
-                            }
                           >
-                            <span aria-hidden="true">&#9670;</span>
-                          </button>
-                          <span
-                            className="pc-world-map-base-label"
-                            aria-hidden="true"
-                          >
-                            {displayName}
-                          </span>
+                            <button
+                              type="button"
+                              data-base-id={marker.baseId}
+                              className={`pc-world-map-base-marker${selectedBase?.baseId === marker.baseId ? " pc-world-map-base-marker-selected" : ""}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedId(marker.baseId);
+                              }}
+                              aria-label={`View ${displayName} at base ${marker.baseId}`}
+                              aria-pressed={
+                                selectedBase?.baseId === marker.baseId
+                              }
+                            >
+                              <span aria-hidden="true">&#9670;</span>
+                            </button>
+                            <span
+                              className="pc-world-map-base-label"
+                              aria-hidden="true"
+                            >
+                              {displayName}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
             </div>
