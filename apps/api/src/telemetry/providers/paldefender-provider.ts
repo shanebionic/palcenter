@@ -77,7 +77,10 @@ async function fetchPlayerDetails(
             PALDEFENDER_DETAIL_TIMEOUT_MS,
           );
         });
-        return await Promise.race([client.getPlayer(player.playerId), timeoutPromise]);
+        return await Promise.race([
+          client.getPlayer(player.playerId),
+          timeoutPromise,
+        ]);
       }),
     );
 
