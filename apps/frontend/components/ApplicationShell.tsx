@@ -15,9 +15,8 @@ import { useDisclosure } from "@mantine/hooks";
 import {
   IconAutomation,
   IconAdjustments,
-  IconChevronCompactLeft,
-  IconChevronCompactRight,
   IconLayoutDashboard,
+  IconMenu2,
   IconServer,
   IconTools,
 } from "@tabler/icons-react";
@@ -34,6 +33,8 @@ interface ApplicationShellProps {
 }
 
 const NAVBAR_STORAGE_KEY = "pc-navbar-collapsed";
+const NAVBAR_WIDTH_EXPANDED = 250;
+const NAVBAR_WIDTH_COLLAPSED = 60;
 
 const primaryLinks: Array<{
   href: string;
@@ -85,14 +86,17 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
 
   const links = session?.user.mustChangePassword ? [] : primaryLinks;
   const collapsed = !desktopOpened;
+  const navbarWidth = collapsed
+    ? NAVBAR_WIDTH_COLLAPSED
+    : NAVBAR_WIDTH_EXPANDED;
 
   return (
     <AppShell
       header={{ height: 72 }}
       navbar={{
-        width: 250,
+        width: navbarWidth,
         breakpoint: "md",
-        collapsed: { mobile: !opened, desktop: collapsed },
+        collapsed: { mobile: !opened },
       }}
       padding={{ base: "md", sm: "xl" }}
     >
@@ -113,6 +117,22 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
       </AppShell.Header>
 
       <AppShell.Navbar className="pc-shell-navbar" p="md">
+        <AppShell.Section grow mb="md">
+          <Group justify="space-between" mb="xs">
+            <Brand compact />
+            <ActionIcon
+              variant="subtle"
+              aria-label={
+                collapsed ? "Expand navigation" : "Collapse navigation"
+              }
+              onClick={handleToggleDesktop}
+              visibleFrom="md"
+            >
+              <IconMenu2 size={18} />
+            </ActionIcon>
+          </Group>
+        </AppShell.Section>
+
         <AppShell.Section component={ScrollArea} grow>
           <Stack gap={6}>
             {!collapsed && (
@@ -136,7 +156,7 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
                   key={href}
                   component={Link}
                   href={href}
-                  label={label}
+                  label={collapsed ? undefined : label}
                   leftSection={<Icon size={19} stroke={1.8} />}
                   active={isActive}
                   onClick={navigation.close}
@@ -173,36 +193,13 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
             })}
           </Stack>
         </AppShell.Section>
+
         <AppShell.Section>
-          {!collapsed ? (
-            <Group gap="xs" p="sm" c="dimmed" justify="space-between" w="100%">
-              <Group gap="xs">
-                <IconServer size={16} />
-                <Text size="xs">Remote Palworld management</Text>
-              </Group>
-              <Tooltip
-                label="Collapse navigation"
-                position="right"
-                withArrow
-                events={{ hover: true, focus: true, touch: false }}
-              >
-                <ActionIcon
-                  variant="subtle"
-                  aria-label="Collapse navigation"
-                  onClick={handleToggleDesktop}
-                >
-                  <IconChevronCompactLeft size={20} />
-                </ActionIcon>
-              </Tooltip>
+          {!collapsed && (
+            <Group gap="xs" p="sm" c="dimmed">
+              <IconServer size={16} />
+              <Text size="xs">Remote Palworld management</Text>
             </Group>
-          ) : (
-            <ActionIcon
-              variant="subtle"
-              aria-label="Expand navigation"
-              onClick={handleToggleDesktop}
-            >
-              <IconChevronCompactRight size={20} />
-            </ActionIcon>
           )}
         </AppShell.Section>
       </AppShell.Navbar>
