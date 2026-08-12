@@ -136,7 +136,6 @@ test("map source produces ?tab=map recognized by ServerWorkspace", () => {
   assert.equal(guildTarget.label, "Back to Map");
 });
 
-
 test("palDefender*Href helpers omit query string when no source", () => {
   assert.equal(
     palDefenderBaseHref("server-1", "base-1"),
