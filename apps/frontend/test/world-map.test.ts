@@ -603,14 +603,22 @@ test("two-key join: falls back to canonical playerId when userId does not match"
     null,
     new Date("2026-07-28T12:00:30.000Z"),
   );
-  assert.equal(model.markers.length, 1, "should find via canonical playerId fallback");
+  assert.equal(
+    model.markers.length,
+    1,
+    "should find via canonical playerId fallback",
+  );
   assert.equal(model.markers[0]?.playerName, "PlayerA");
   assert.equal(model.unmappedPlayers.length, 0);
 });
 
 test("two-key join: canonicalPlayerId strips hyphens and lowercases", () => {
   const players: ConnectedPlayer[] = [
-    connectedPlayer("steam:456", "E:12345678-ABCD-1234-ABCD-123456789ABC", "PlayerB"),
+    connectedPlayer(
+      "steam:456",
+      "E:12345678-ABCD-1234-ABCD-123456789ABC",
+      "PlayerB",
+    ),
   ];
   const telemetry = [
     snapshot({
@@ -641,7 +649,11 @@ test("freshness uses snapshot.capturedAt only — stale snapshot not labeled Liv
     "2026-07-28T12:00:30.000Z",
     new Date("2026-07-28T12:10:00.000Z"),
   );
-  assert.equal(model.markers[0]?.freshness, "stale", "capturedAt is 10m old — must be stale regardless of verifiedAt");
+  assert.equal(
+    model.markers[0]?.freshness,
+    "stale",
+    "capturedAt is 10m old — must be stale regardless of verifiedAt",
+  );
 });
 
 test("represents online marker details without exposing the player IP", () => {
@@ -653,10 +665,9 @@ test("represents online marker details without exposing the player IP", () => {
     null,
     new Date("2026-07-28T12:00:30.000Z"),
   );
-  const details = playerMapDetailValues(
-    model.markers[0]!,
-    { now: new Date("2026-07-28T12:00:30.000Z") },
-  );
+  const details = playerMapDetailValues(model.markers[0]!, {
+    now: new Date("2026-07-28T12:00:30.000Z"),
+  });
 
   assert.deepEqual(details, {
     playerName: "Lifmunk",

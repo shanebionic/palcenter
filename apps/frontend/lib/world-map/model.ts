@@ -134,9 +134,14 @@ export function playerMapDetailValues(
   const now = options.now ?? new Date();
   const enrichment = options.enrichment;
   const mapLocation = enrichment?.mapLocation ?? null;
-  const mapCoordinates = mapLocation && mapLocation.x != null && mapLocation.y != null && Number.isFinite(mapLocation.x) && Number.isFinite(mapLocation.y)
-    ? `X ${mapLocation.x.toFixed(1)} · Y ${mapLocation.y.toFixed(1)}${mapLocation.z != null && Number.isFinite(mapLocation.z) ? ` · Z ${mapLocation.z.toFixed(1)}` : ""}`
-    : "Unavailable";
+  const mapCoordinates =
+    mapLocation &&
+    mapLocation.x != null &&
+    mapLocation.y != null &&
+    Number.isFinite(mapLocation.x) &&
+    Number.isFinite(mapLocation.y)
+      ? `X ${mapLocation.x.toFixed(1)} · Y ${mapLocation.y.toFixed(1)}${mapLocation.z != null && Number.isFinite(mapLocation.z) ? ` · Z ${mapLocation.z.toFixed(1)}` : ""}`
+      : "Unavailable";
   const level = enrichment?.level ?? marker.level ?? "Unavailable";
   return {
     playerName: marker.playerName,

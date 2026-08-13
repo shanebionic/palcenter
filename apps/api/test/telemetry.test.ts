@@ -556,7 +556,11 @@ test("reconcileUserId moves legacy PlayerUID-as-userId rows to canonical UserId"
     const byCanonical = repository.playerHistory("srv_one", "steam-user-id", {
       limit: 100,
     });
-    assert.equal(byCanonical.length, 2, "canonical userId should have both rows");
+    assert.equal(
+      byCanonical.length,
+      2,
+      "canonical userId should have both rows",
+    );
     assert.equal(byCanonical[0]?.x, 10, "original row preserved");
     assert.equal(byCanonical[1]?.x, 20, "updated row preserved");
   } finally {
@@ -614,9 +618,7 @@ test("reconcileUserId is no-op when legacyUserId === canonicalUserId", async () 
   repository.initialize();
 
   try {
-    repository.insertPlayerSnapshots([
-      snapshot("2026-07-28T12:00:00.000Z"),
-    ]);
+    repository.insertPlayerSnapshots([snapshot("2026-07-28T12:00:00.000Z")]);
 
     const moved = repository.reconcileUserId(
       "srv_one",

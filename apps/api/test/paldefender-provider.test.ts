@@ -323,7 +323,11 @@ test("uses UserId as userId and PlayerUID as playerId when UserId is present", a
 
   assert.equal(results.length, 1);
   assert.equal(results[0].userId, "steam:12345", "userId should be the UserId");
-  assert.equal(results[0].playerId, "playeruid-abc123", "playerId should be the PlayerUID");
+  assert.equal(
+    results[0].playerId,
+    "playeruid-abc123",
+    "playerId should be the PlayerUID",
+  );
 });
 
 test("falls back to PlayerUID as userId when UserId is empty", async () => {
@@ -356,7 +360,11 @@ test("falls back to PlayerUID as userId when UserId is empty", async () => {
   const results = await provider.collect(conn, capturedAt);
 
   assert.equal(results.length, 1);
-  assert.equal(results[0].userId, "playeruid-def456", "userId should fall back to PlayerUID");
+  assert.equal(
+    results[0].userId,
+    "playeruid-def456",
+    "userId should fall back to PlayerUID",
+  );
   assert.equal(results[0].playerId, "playeruid-def456");
 });
 
@@ -390,6 +398,10 @@ test("raw UserId from PalDefender is preserved through normalizePlayer", async (
   const results = await provider.collect(conn, capturedAt);
 
   assert.equal(results.length, 1);
-  assert.equal(results[0].userId, "epic:789012", "raw UserId must be preserved");
+  assert.equal(
+    results[0].userId,
+    "epic:789012",
+    "raw UserId must be preserved",
+  );
   assert.equal(results[0].playerId, "playeruid-xyz");
 });

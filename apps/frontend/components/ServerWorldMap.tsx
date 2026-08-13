@@ -163,8 +163,10 @@ export function ServerWorldMap({
   const [bases, setBases] = useState<PalDefenderBase[]>([]);
   const [basesLoading, setBasesLoading] = useState(true);
   const [basesError, setBasesError] = useState<string | null>(null);
-  const [enrichedPlayer, setEnrichedPlayer] = useState<PalDefenderPlayerDetails | null>(null);
-  const [enrichedProgression, setEnrichedProgression] = useState<PalDefenderProgression | null>(null);
+  const [enrichedPlayer, setEnrichedPlayer] =
+    useState<PalDefenderPlayerDetails | null>(null);
+  const [enrichedProgression, setEnrichedProgression] =
+    useState<PalDefenderProgression | null>(null);
   const [enrichmentLoading, setEnrichmentLoading] = useState(false);
   const enrichmentRequest = useRef<AbortController | null>(null);
   const viewport = useRef<HTMLDivElement | null>(null);
@@ -360,12 +362,16 @@ export function ServerWorldMap({
   const selectedPlayerName =
     selected?.playerName ?? selectedTelemetry?.playerName ?? null;
   const selectedPlayerColor = playerColor(selectedId ?? "");
-  const selectedEnrichment = enrichedPlayer || enrichedProgression
-    ? {
-        mapLocation: enrichedPlayer?.mapLocation ?? null,
-        level: enrichedProgression?.character.level ?? enrichedPlayer?.level ?? null,
-      }
-    : null;
+  const selectedEnrichment =
+    enrichedPlayer || enrichedProgression
+      ? {
+          mapLocation: enrichedPlayer?.mapLocation ?? null,
+          level:
+            enrichedProgression?.character.level ??
+            enrichedPlayer?.level ??
+            null,
+        }
+      : null;
   const renderedTrailSegments = useMemo(
     () => (trail ? buildRenderedTrailSegments(trail) : []),
     [trail],
@@ -1166,7 +1172,12 @@ export function ServerWorldMap({
             {selectedBase ? (
               <BaseMapDetails marker={selectedBase} serverId={serverId} />
             ) : (
-              <PlayerMapDetails marker={selected} serverId={serverId} enrichment={selectedEnrichment} enrichmentLoading={enrichmentLoading} />
+              <PlayerMapDetails
+                marker={selected}
+                serverId={serverId}
+                enrichment={selectedEnrichment}
+                enrichmentLoading={enrichmentLoading}
+              />
             )}
             <TrailControls
               players={telemetry.players.map((snapshot) => ({
@@ -1641,7 +1652,9 @@ function PlayerMapDetails({
           {enrichmentLoading && (
             <Group gap="xs" role="status">
               <Loader size="xs" />
-              <Text size="sm" c="dimmed">Loading player details…</Text>
+              <Text size="sm" c="dimmed">
+                Loading player details…
+              </Text>
             </Group>
           )}
           {marker.playerId && (

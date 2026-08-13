@@ -70,7 +70,8 @@ export class NativeRestPlayerTelemetryProvider implements PlayerTelemetryProvide
   }
 
   private text(value: unknown): string | null {
-    const result = typeof value === "string" && value.trim() ? value.trim() : null;
+    const result =
+      typeof value === "string" && value.trim() ? value.trim() : null;
     return result === "None" ? null : result;
   }
 
