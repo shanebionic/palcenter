@@ -1235,3 +1235,63 @@ test("buildBaseMapMarkers: preserves baseId for navigation", () => {
   assert.equal(marker.guildId, "guild-xyz");
   assert.notEqual(marker.baseId, marker.guildId);
 });
+
+// ---------- Layers Menu z-index regression (PR #193) ----------
+
+test("Layers Menu z-index exceeds expanded map overlay", async () => {
+  const source = await readFile(
+    new URL("../components/ServerWorldMap.tsx", import.meta.url),
+    "utf8",
+  );
+  const css = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  const expandedOverlay = css.match(
+    /\.pc-world-map-layout\.pc-world-map-expanded\s*\{(?<rules>[\s\S]*?)\}/,
+  )?.groups?.rules;
+  assert.ok(expandedOverlay, "expanded overlay CSS not found");
+  const overlayMatch = expandedOverlay.match(/z-index:\s*(\d+)/);
+  assert.ok(overlayMatch, "expanded overlay z-index not found");
+  const overlayZIndex = Number(overlayMatch[1]);
+
+  const menuZIndexMatch = source.match(/<Menu[\s\S]*?zIndex=\{(\d+)\}/);
+  assert.ok(menuZIndexMatch, "Layers Menu zIndex prop not found");
+  const menuZIndex = Number(menuZIndexMatch[1]);
+
+  assert.ok(
+    menuZIndex > overlayZIndex,
+    `Layers Menu z-index (${menuZIndex}) must exceed expanded overlay (${overlayZIndex})`,
+  );
+});
+
+test("toolbar Group renders inside Card element", async () => {
+  const source = await readFile(
+    new URL("../components/ServerWorldMap.tsx", import.meta.url),
+    "utf8",
+  );
+
+  const cardMatch = source.match(
+    /<Card[\s\S]*?className="pc-panel pc-world-map-card"/,
+  );
+  assert.ok(cardMatch, "Card element not found");
+  const cardIndex = source.indexOf(cardMatch[0]);
+
+  const toolbarMatch = source.match(
+    /className="pc-world-map-toolbar"/,
+  );
+  assert.ok(toolbarMatch, "toolbar class not found");
+  const toolbarIndex = source.indexOf(toolbarMatch[0]);
+
+  const cardCloseMatch = source.match(
+    /<\/Card>(?=\s*<Stack gap="md" className="pc-world-map-details")/,
+  );
+  assert.ok(cardCloseMatch, "Card close tag not found");
+  const cardCloseIndex = source.indexOf(cardCloseMatch[0]);
+
+  assert.ok(
+    toolbarIndex > cardIndex && toolbarIndex < cardCloseIndex,
+    "toolbar must be inside Card element to avoid oversized hit area in expanded mode",
+  );
+});
