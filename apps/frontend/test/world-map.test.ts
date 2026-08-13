@@ -1285,9 +1285,7 @@ test("toolbar Group renders inside Card element", async () => {
   assert.ok(cardMatch, "Card element not found");
   const cardIndex = source.indexOf(cardMatch[0]);
 
-  const toolbarMatch = source.match(
-    /className="pc-world-map-toolbar"/,
-  );
+  const toolbarMatch = source.match(/className="pc-world-map-toolbar"/);
   assert.ok(toolbarMatch, "toolbar class not found");
   const toolbarIndex = source.indexOf(toolbarMatch[0]);
 
