@@ -68,21 +68,12 @@ The map projection uses these sources:
   for the documented `location_x` and `location_y` fields;
 - the [official Unreal Engine coordinate-system documentation](https://dev.epicgames.com/documentation/en-us/unreal-engine/coordinate-system-and-spaces-in-unreal-engine)
   for Unreal's left-handed, Z-up world-coordinate convention;
-- the community-derived projection constants, validated against live REST
-  telemetry.
+- the authoritative `DT_WorldMapUIData` bounds extracted from the owner's
+  installed Palworld Xbox build (version 1.10.1283.0).
 
-DT_WorldMapUIData was extracted directly from an installed Palworld build and
-supplies the game's authoritative terrain/map bounds. The current PalCenter
-projection retains its existing live-validated telemetry bounds because REST
-telemetry coordinates have not yet been proven to use the same reference frame
-as DT_WorldMapUIData. The existing projection constants are not authoritative
-game terrain bounds.
-
-The REST API coordinate space and DT_WorldMapUIData bounds differ by a
-measurable offset. Establishing the complete relationship requires further
-validation with multiple geographically separated calibration points. The
-constants and orientation must therefore be treated as calibration assumptions,
-not guaranteed game metadata.
+Owner geographic validation confirmed that REST API WorldLocation coordinates
+are directly in the DT_WorldMapUIData terrain coordinate space — no translation
+is required. The projection uses DT bounds directly.
 
 ## Standard and exact locations
 
@@ -103,12 +94,12 @@ schema-v9 `unknown` samples remain usable at display time.
 
 ## Projection
 
-The configured raw world bounds are:
+The configured raw world bounds are from DT_WorldMapUIData:
 
-| Axis |  Minimum | Maximum |      Span |
-| ---- | -------: | ------: | --------: |
-| X    | -999,940 | 447,900 | 1,447,840 |
-| Y    | -738,920 | 708,920 | 1,447,840 |
+| Axis |    Minimum | Maximum |      Span |
+| ---- | ---------: | ------: | --------: |
+| X    | -1,099,400 | 349,400 | 1,448,800 |
+| Y    |   -724,400 | 724,400 | 1,448,800 |
 
 PalCenter first normalizes both axes:
 
@@ -344,12 +335,14 @@ tokens, passwords, and player IP addresses.
 
 ### Field calibration record
 
-Live UAT on July 29, 2026 confirmed that the existing conversion and projection
-place a player at world position `X -211552.453125, Y 262807.65625` at
-`69.19%, 45.55%`, matching the observed in-game map position of approximately
-`230, -191`. This validates the telemetry join and that observation, but the
-projection constants still require three geographically separated landmarks
-before PalCenter claims full-map calibration accuracy:
+Live UAT confirmed that the DT_WorldMapUIData projection correctly aligns
+known base locations against the first-party T_WorldMap asset. Owner geographic
+validation verified that WorldLocation coordinates are directly in the
+DT_WorldMapUIData terrain coordinate space.
+
+The calibration landmark at world position `X -211552.453125, Y 262807.65625`
+projects to `68.14%, 38.72%` under the DT bounds, matching its expected
+position on the first-party T_WorldMap.
 
 | World X/Y | Projected X/Y | Expected landmark | Observed alignment error |
 | --------- | ------------- | ----------------- | ------------------------ |
@@ -377,7 +370,7 @@ Before release, verify in Chromium:
 - Escape closes expanded mode and restores the original normal dimensions;
 - Fit Map recovers from extreme zoom and pan;
 - the untransformed surface, image, grid, and marker plane remain square;
-- the known `69.19%, 45.55%` observation appears in the expected area;
+- the known `68.14%, 38.72%` calibration landmark appears in the expected area;
 - the laptop, 1920×1080, and narrow/mobile layouts have no horizontal page
   overflow;
 - copied diagnostics contain no server address, token, credential, password, or
