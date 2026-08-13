@@ -19,19 +19,19 @@ export interface MapProjectionConfiguration {
 }
 
 /**
- * Palpagos bounds derived from community calibration and validated against
- * live REST telemetry. These are not the authoritative DT_WorldMapUIData
- * terrain bounds.
+ * Palpagos bounds from DT_WorldMapUIData (T_WorldMap, game build 1.10.1283.0).
+ * Owner geographic validation confirmed WorldLocation coordinates are directly
+ * in this authoritative terrain coordinate space — no translation required.
  *
  * The conversion swaps the raw world axes. A 90-degree clockwise rotation
  * produces map X from world Y and CSS map Y from inverted world X without
  * scattering axis compensation through UI code.
  */
 export const palpagosProjection: MapProjectionConfiguration = {
-  worldMinX: -999_940,
-  worldMaxX: 447_900,
-  worldMinY: -738_920,
-  worldMaxY: 708_920,
+  worldMinX: -1_099_400,
+  worldMaxX: 349_400,
+  worldMinY: -724_400,
+  worldMaxY: 724_400,
   invertX: false,
   invertY: false,
   rotationDegrees: -90,
