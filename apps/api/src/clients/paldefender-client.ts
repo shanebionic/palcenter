@@ -354,6 +354,7 @@ const givePalEggsResponseSchema = z.object({
 export interface PalDefenderPlayer {
   name: string;
   playerId: string;
+  userId: string;
   online: boolean;
   guild: string | null;
   level: number | null;
@@ -1388,6 +1389,7 @@ function normalizePlayer(
   return {
     name: player.Name.trim() || "Unknown player",
     playerId: player.PlayerUID,
+    userId: player.UserId.trim() || "",
     online: player.Status.trim().toLowerCase() === "online",
     guild: player.GuildName.trim() || null,
     level: null,

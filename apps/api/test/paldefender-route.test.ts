@@ -1168,6 +1168,7 @@ test("PalDefender player workspace routes return normalized models", async () =>
   assert.deepEqual(detail.json(), {
     name: "Player",
     playerId: "player-1",
+    userId: "",
     online: true,
     guild: null,
     level: null,

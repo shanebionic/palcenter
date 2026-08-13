@@ -9,6 +9,11 @@ export interface TelemetryRepository {
   close(): void;
   reopen(): void;
   insertPlayerSnapshots(snapshots: NewPlayerPositionSnapshot[]): void;
+  reconcileUserId(
+    serverId: string,
+    legacyUserId: string,
+    canonicalUserId: string,
+  ): number;
   latestPlayerSnapshots(serverId: string): PlayerPositionSnapshot[];
   latestPlayerSnapshotsInSpace(
     serverId: string,

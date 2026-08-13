@@ -567,8 +567,8 @@ test("maps only currently connected players with valid telemetry by userId", () 
     telemetry,
     palpagosProjection,
     30,
-    "2026-07-28T12:09:45.000Z",
-    new Date("2026-07-28T12:10:00.000Z"),
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
   );
 
   assert.equal(model.markers.length, 1);
@@ -583,6 +583,67 @@ test("maps only currently connected players with valid telemetry by userId", () 
   assert.equal(JSON.stringify(model).includes("192.0.2.10"), false);
 });
 
+test("two-key join: falls back to canonical playerId when userId does not match", () => {
+  const players: ConnectedPlayer[] = [
+    connectedPlayer("steam:123", "00000000000000000000000000000001", "PlayerA"),
+  ];
+  const telemetry = [
+    snapshot({
+      userId: "00000000000000000000000000000001",
+      playerId: "0000-0000-0000-0000-0000-000000000001",
+      x: 100,
+      y: 200,
+    }),
+  ];
+  const model = buildLivePlayerMapModel(
+    players,
+    telemetry,
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  assert.equal(model.markers.length, 1, "should find via canonical playerId fallback");
+  assert.equal(model.markers[0]?.playerName, "PlayerA");
+  assert.equal(model.unmappedPlayers.length, 0);
+});
+
+test("two-key join: canonicalPlayerId strips hyphens and lowercases", () => {
+  const players: ConnectedPlayer[] = [
+    connectedPlayer("steam:456", "E:12345678-ABCD-1234-ABCD-123456789ABC", "PlayerB"),
+  ];
+  const telemetry = [
+    snapshot({
+      userId: "E12345678ABCD1234ABCD123456789ABC",
+      playerId: "e:12345678-abcd-1234-abcd-123456789abc",
+      x: 50,
+      y: 60,
+    }),
+  ];
+  const model = buildLivePlayerMapModel(
+    players,
+    telemetry,
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  assert.equal(model.markers.length, 1, "canonical normalization should match");
+  assert.equal(model.markers[0]?.playerName, "PlayerB");
+});
+
+test("freshness uses snapshot.capturedAt only — stale snapshot not labeled Live", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "StalePlayer")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    "2026-07-28T12:00:30.000Z",
+    new Date("2026-07-28T12:10:00.000Z"),
+  );
+  assert.equal(model.markers[0]?.freshness, "stale", "capturedAt is 10m old — must be stale regardless of verifiedAt");
+});
+
 test("represents online marker details without exposing the player IP", () => {
   const model = buildLivePlayerMapModel(
     [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
@@ -594,7 +655,7 @@ test("represents online marker details without exposing the player IP", () => {
   );
   const details = playerMapDetailValues(
     model.markers[0]!,
-    new Date("2026-07-28T12:00:30.000Z"),
+    { now: new Date("2026-07-28T12:00:30.000Z") },
   );
 
   assert.deepEqual(details, {
@@ -606,9 +667,86 @@ test("represents online marker details without exposing the player IP", () => {
     ping: "42 ms",
     buildingCount: 3,
     worldCoordinates: "X 10.0 · Y 20.0",
+    mapCoordinates: "Unavailable",
     telemetryAge: "30s ago",
   });
   assert.equal(JSON.stringify(details).includes("192.0.2.10"), false);
+});
+
+test("playerMapDetailValues shows map coordinates from enrichment", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  const details = playerMapDetailValues(model.markers[0]!, {
+    now: new Date("2026-07-28T12:00:30.000Z"),
+    enrichment: {
+      mapLocation: { x: 150, y: 200, z: 50 },
+      level: 42,
+    },
+  });
+
+  assert.equal(details.mapCoordinates, "X 150.0 · Y 200.0 · Z 50.0");
+  assert.equal(details.level, 42);
+});
+
+test("playerMapDetailValues shows map coordinates without Z when absent", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  const details = playerMapDetailValues(model.markers[0]!, {
+    now: new Date("2026-07-28T12:00:30.000Z"),
+    enrichment: {
+      mapLocation: { x: 150, y: 200 },
+      level: null,
+    },
+  });
+
+  assert.equal(details.mapCoordinates, "X 150.0 · Y 200.0");
+  assert.equal(details.level, 20);
+});
+
+test("playerMapDetailValues falls back to marker level when enrichment has no level", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  const details = playerMapDetailValues(model.markers[0]!, {
+    now: new Date("2026-07-28T12:00:30.000Z"),
+    enrichment: { mapLocation: null, level: null },
+  });
+
+  assert.equal(details.level, 20);
+  assert.equal(details.mapCoordinates, "Unavailable");
+});
+
+test("playerMapDetailValues shows Unavailable map coordinates when enrichment is null", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  const details = playerMapDetailValues(model.markers[0]!, {
+    now: new Date("2026-07-28T12:00:30.000Z"),
+  });
+
+  assert.equal(details.mapCoordinates, "Unavailable");
 });
 
 test("carries guild identity from telemetry through to the marker", () => {

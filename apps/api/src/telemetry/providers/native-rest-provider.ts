@@ -7,11 +7,19 @@ import type { NewPlayerPositionSnapshot } from "../types/player-telemetry.js";
 import type { PlayerTelemetryProvider } from "./player-telemetry-provider.js";
 
 export class NativeRestPlayerTelemetryProvider implements PlayerTelemetryProvider {
+  constructor(
+    private readonly clientFactory: (
+      baseUrl: string,
+      password: string,
+    ) => PalworldRestClient = (baseUrl: string, password: string) =>
+      new PalworldRestClient(baseUrl, password),
+  ) {}
+
   async collect(
     connection: StoredConnection,
     capturedAt: string,
   ): Promise<NewPlayerPositionSnapshot[]> {
-    const client = new PalworldRestClient(
+    const client = this.clientFactory(
       connection.baseUrl,
       connection.adminPassword,
     );
@@ -62,7 +70,8 @@ export class NativeRestPlayerTelemetryProvider implements PlayerTelemetryProvide
   }
 
   private text(value: unknown): string | null {
-    return typeof value === "string" && value.trim() ? value.trim() : null;
+    const result = typeof value === "string" && value.trim() ? value.trim() : null;
+    return result === "None" ? null : result;
   }
 
   private number(value: unknown): number | null {

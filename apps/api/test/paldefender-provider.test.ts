@@ -289,3 +289,107 @@ test("normalizes player name and trims whitespace", async () => {
   assert.equal(results[0].playerName, "Alice");
   assert.equal(results[0].guildName, "GuildA");
 });
+
+// ---------- Identity repair: PalDefender userId semantics ----------
+
+test("uses UserId as userId and PlayerUID as playerId when UserId is present", async () => {
+  const conn = connection();
+  const provider = new PalDefenderPlayerTelemetryProvider(() =>
+    mockClient(
+      [
+        {
+          name: "Alice",
+          playerId: "playeruid-abc123",
+          userId: "steam:12345",
+          online: true,
+          guild: null,
+          level: null,
+        },
+      ],
+      async () => ({
+        name: "Alice",
+        playerId: "playeruid-abc123",
+        userId: "steam:12345",
+        online: true,
+        guild: null,
+        level: null,
+        worldLocation: { x: 100, y: 200, z: 0 },
+        mapLocation: null,
+      }),
+    ),
+  );
+
+  const results = await provider.collect(conn, capturedAt);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].userId, "steam:12345", "userId should be the UserId");
+  assert.equal(results[0].playerId, "playeruid-abc123", "playerId should be the PlayerUID");
+});
+
+test("falls back to PlayerUID as userId when UserId is empty", async () => {
+  const conn = connection();
+  const provider = new PalDefenderPlayerTelemetryProvider(() =>
+    mockClient(
+      [
+        {
+          name: "Bob",
+          playerId: "playeruid-def456",
+          userId: "",
+          online: true,
+          guild: null,
+          level: null,
+        },
+      ],
+      async () => ({
+        name: "Bob",
+        playerId: "playeruid-def456",
+        userId: "",
+        online: true,
+        guild: null,
+        level: null,
+        worldLocation: { x: 300, y: 400, z: 0 },
+        mapLocation: null,
+      }),
+    ),
+  );
+
+  const results = await provider.collect(conn, capturedAt);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].userId, "playeruid-def456", "userId should fall back to PlayerUID");
+  assert.equal(results[0].playerId, "playeruid-def456");
+});
+
+test("raw UserId from PalDefender is preserved through normalizePlayer", async () => {
+  const conn = connection();
+  const provider = new PalDefenderPlayerTelemetryProvider(() =>
+    mockClient(
+      [
+        {
+          name: "Eve",
+          playerId: "playeruid-xyz",
+          userId: "epic:789012",
+          online: true,
+          guild: null,
+          level: null,
+        },
+      ],
+      async () => ({
+        name: "Eve",
+        playerId: "playeruid-xyz",
+        userId: "epic:789012",
+        online: true,
+        guild: null,
+        level: null,
+        worldLocation: { x: 50, y: 60, z: 70 },
+        mapLocation: { x: 0.25, y: 0.75, z: 0 },
+      }),
+    ),
+  );
+
+  const results = await provider.collect(conn, capturedAt);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].userId, "epic:789012", "raw UserId must be preserved");
+  assert.equal(results[0].playerId, "playeruid-xyz");
+});
