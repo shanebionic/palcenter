@@ -681,6 +681,7 @@ export function ServerWorldMap({
                   withArrow
                   withinPortal
                   transitionProps={{ transition: "pop" }}
+                  zIndex={410}
                 >
                   <Menu.Target>
                     <Button
@@ -791,7 +792,6 @@ export function ServerWorldMap({
                 </ActionIcon>
               </Group>
             </Group>
-
             <div
               ref={viewport}
               className="pc-world-map-viewport"
