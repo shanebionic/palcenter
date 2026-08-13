@@ -24,12 +24,10 @@ the bundled image layer.
 ## Asset and licensing decision
 
 The repository bundles 2048×2048 and 4096×4096 WebP derivatives of the
-8192×8192 Palpagos world map published by The Palworld Wiki. The
-[source file page](https://palworld.wiki.gg/wiki/File:World_Map.webp)
-identifies the image as originating from Palworld or a Pocketpair-owned website,
-states that Pocketpair holds the copyright, and describes the wiki's
-illustrative use as fair use under United States copyright law. The image was
-retrieved on July 28, 2026.
+8192×8192 Palpagos world map texture (T_WorldMap) extracted from the owner's
+installed Palworld Xbox build (version 1.10.1283.0). The extraction also
+yielded DT_WorldMapUIData, which supplies the game's authoritative terrain/map
+bounds.
 
 The image remains copyright Pocketpair, Inc. It is not covered by PalCenter's
 MIT license. PalCenter is unofficial, unaffiliated, free, open source, and
@@ -49,13 +47,13 @@ direct full-frame scale with no crop, rotation, padding, or boundary change.
 
 | Bundled derivative    | Compressed size | Approximate RGBA decode |
 | --------------------- | --------------: | ----------------------: |
-| `world-map-2048.webp` |   381,772 bytes |                  16 MiB |
-| `world-map-4096.webp` | 1,346,542 bytes |                  64 MiB |
+| `world-map-2048.webp` |   412,816 bytes |                  16 MiB |
+| `world-map-4096.webp` | 1,410,000 bytes |                  64 MiB |
 
-The original file was 4,876,386 bytes and could require approximately 256 MiB
-when decoded as RGBA. The default derivative reduces transfer size by 92.2% and
+The original file was 27,458,010 bytes and could require approximately 256 MiB
+when decoded as RGBA. The default derivative reduces transfer size by 98.5% and
 decoded pixel memory by approximately 93.8%; the larger derivative reduces
-transfer size by 72.4% and decoded pixel memory by approximately 75%.
+transfer size by 94.8% and decoded pixel memory by approximately 75%.
 
 The derivatives are bundled in the application and are never hotlinked at
 runtime. The PalCenter-owned CSS calibration grid remains available to
@@ -70,13 +68,21 @@ The map projection uses these sources:
   for the documented `location_x` and `location_y` fields;
 - the [official Unreal Engine coordinate-system documentation](https://dev.epicgames.com/documentation/en-us/unreal-engine/coordinate-system-and-spaces-in-unreal-engine)
   for Unreal's left-handed, Z-up world-coordinate convention;
-- the community-documented
-  [`DT_WorldMapUIData` bounds](https://palworld.wiki.gg/wiki/MapTest) for the
-  current Palpagos projection constants.
+- the community-derived projection constants, validated against live REST
+  telemetry.
 
-The last source is community research rather than an official Palworld API
-contract. The constants and orientation must therefore be treated as
-calibration assumptions, not guaranteed game metadata.
+DT_WorldMapUIData was extracted directly from an installed Palworld build and
+supplies the game's authoritative terrain/map bounds. The current PalCenter
+projection retains its existing live-validated telemetry bounds because REST
+telemetry coordinates have not yet been proven to use the same reference frame
+as DT_WorldMapUIData. The existing projection constants are not authoritative
+game terrain bounds.
+
+The REST API coordinate space and DT_WorldMapUIData bounds differ by a
+measurable offset. Establishing the complete relationship requires further
+validation with multiple geographically separated calibration points. The
+constants and orientation must therefore be treated as calibration assumptions,
+not guaranteed game metadata.
 
 ## Standard and exact locations
 

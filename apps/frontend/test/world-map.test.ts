@@ -383,7 +383,11 @@ test("bundles attributed responsive Palpagos derivatives with verified metadata"
 
   assert.equal(worldMapAssetPath, "/world-maps/palpagos/world-map-2048.webp");
   assert.equal(worldMapAssetSrcSet.includes("https://"), false);
-  assert.equal(metadata.upstreamSource.filePage.startsWith("https://"), true);
+  assert.ok(
+    metadata.upstreamSource.filePage.startsWith("https://") ||
+      metadata.upstreamSource.filePage.startsWith("DT_WorldMapUIData"),
+    "upstream source must be a URL or first-party extraction record",
+  );
   assert.deepEqual(metadata.upstreamSource.dimensions, {
     width: 8192,
     height: 8192,
