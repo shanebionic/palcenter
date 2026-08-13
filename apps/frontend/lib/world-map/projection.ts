@@ -19,12 +19,13 @@ export interface MapProjectionConfiguration {
 }
 
 /**
- * Prototype Palpagos bounds reported from DT_WorldMapUIData.
- * Source: https://palworld.wiki.gg/wiki/MapTest
+ * Palpagos bounds derived from community calibration and validated against
+ * live REST telemetry. These are not the authoritative DT_WorldMapUIData
+ * terrain bounds.
  *
- * The community-documented conversion swaps the raw world axes. A 90-degree
- * clockwise rotation produces map X from world Y and CSS map Y from inverted
- * world X without scattering axis compensation through UI code.
+ * The conversion swaps the raw world axes. A 90-degree clockwise rotation
+ * produces map X from world Y and CSS map Y from inverted world X without
+ * scattering axis compensation through UI code.
  */
 export const palpagosProjection: MapProjectionConfiguration = {
   worldMinX: -999_940,
