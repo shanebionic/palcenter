@@ -727,11 +727,7 @@ export function ServerWorldMap({
                   { value: "world_tree", label: "World Tree" },
                 ]}
               />
-              <Button
-                size="compact-xs"
-                variant="subtle"
-                onClick={applyFitMap}
-              >
+              <Button size="compact-xs" variant="subtle" onClick={applyFitMap}>
                 Fit Map
               </Button>
               <Button
