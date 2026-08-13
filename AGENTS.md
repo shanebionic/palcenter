@@ -192,6 +192,33 @@ After owner action, the agent may:
 
 Ask the owner for in-game confirmation when the result is meaningfully observable only in the game client.
 
+### Existing UAT Environment
+
+A reusable local UAT environment already exists at:
+
+`C:\Development\uat-tools\uat`
+
+Use this environment for runtime UI validation instead of creating a new
+Palworld/PalDefender test environment from scratch.
+
+It contains the established UAT tooling for:
+
+- the Palworld test server;
+- PalDefender;
+- the PalCenter UAT container/runtime.
+
+Before creating new test infrastructure, inspect and use the existing UAT
+environment and its documented configuration.
+
+The UAT environment may not have a live connected player. This limits only
+player-dependent validation. It does not prevent validation of map rendering,
+bases, navigation, Layers controls, fullscreen/expanded behavior, PalDefender
+data that does not require an online player, or other available workflows.
+
+Temporary PalCenter containers/images created while validating a branch may be
+recreated as needed. Do not destroy or reset the reusable Palworld/PalDefender
+UAT environment unless explicitly authorized by the owner.
+
 ### State-changing diagnostics
 
 For diagnostic actions that modify live state:

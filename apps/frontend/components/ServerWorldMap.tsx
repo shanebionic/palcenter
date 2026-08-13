@@ -642,150 +642,155 @@ export function ServerWorldMap({
             expanded ? "Expanded Palpagos live player map" : undefined
           }
         >
-          <Group
-            justify="space-between"
-            mb="sm"
-            gap="xs"
-            className="pc-world-map-toolbar"
-          >
-            <Group gap="xs">
-              <Badge color="cyan" variant="light">
-                {model.markers.length} mapped
-              </Badge>
-              {baseMarkers.length > 0 && (
-                <Badge color="violet" variant="light">
-                  {baseMarkers.length} bases
-                </Badge>
-              )}
-              {basesLoading && (
-                <Badge color="gray" variant="light">
-                  bases loading
-                </Badge>
-              )}
-              {model.unmappedPlayers.length > 0 && (
-                <Badge color="orange" variant="light">
-                  {model.unmappedPlayers.length} unavailable
-                </Badge>
-              )}
-            </Group>
-            <Group gap={4}>
-              <Menu
-                width={180}
-                position="bottom-start"
-                withArrow
-                transitionProps={{ transition: "pop" }}
-              >
-                <Menu.Target>
-                  <Button
-                    size="compact-xs"
-                    variant="subtle"
-                    leftSection={<IconLayersIntersect size={14} />}
-                  >
-                    Layers
-                  </Button>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item>
-                    <Checkbox
-                      label="Players"
-                      checked={showPlayers}
-                      onChange={(event) =>
-                        setShowPlayers(event.currentTarget.checked)
-                      }
-                    />
-                  </Menu.Item>
-                  <Menu.Item>
-                    <Checkbox
-                      label="Bases"
-                      checked={showBases}
-                      onChange={(event) =>
-                        setShowBases(event.currentTarget.checked)
-                      }
-                    />
-                  </Menu.Item>
-                  <Menu.Item>
-                    <Checkbox
-                      label="Trails"
-                      checked={trailEnabled}
-                      onChange={(event) =>
-                        setTrailEnabled(event.currentTarget.checked)
-                      }
-                    />
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-              <SegmentedControl
-                size="xs"
-                aria-label="Choose world map"
-                value={mapView}
-                onChange={(value) => {
-                  setMapView(value as "palpagos" | "world_tree");
-                  setFollowPlayer(false);
-                }}
-                data={[
-                  { value: "palpagos", label: "Palpagos" },
-                  { value: "world_tree", label: "World Tree" },
-                ]}
-              />
-              <Button size="compact-xs" variant="subtle" onClick={applyFitMap}>
-                Fit Map
-              </Button>
-              <Button
-                size="compact-xs"
-                variant="subtle"
-                onClick={centerSelectedPlayer}
-                disabled={!selected}
-              >
-                Center Player
-              </Button>
-              <Button
-                size="compact-xs"
-                variant={followPlayer ? "filled" : "subtle"}
-                leftSection={<IconPlayerPlay size={14} />}
-                onClick={() => setFollowPlayer((current) => !current)}
-                disabled={!selected || activeView !== "palpagos"}
-                aria-pressed={followPlayer}
-              >
-                Follow Player
-              </Button>
-              <ActionIcon
-                variant="subtle"
-                aria-label="Zoom out"
-                onClick={() => changeZoom(zoom - 0.5)}
-                disabled={zoom <= 1}
-              >
-                <IconMinus size={18} />
-              </ActionIcon>
-              <ActionIcon
-                variant="subtle"
-                aria-label="Reset map view to fit map"
-                onClick={applyFitMap}
-              >
-                <IconFocusCentered size={18} />
-              </ActionIcon>
-              <ActionIcon
-                variant="subtle"
-                aria-label="Zoom in"
-                onClick={() => changeZoom(zoom + 0.5)}
-                disabled={zoom >= 4}
-              >
-                <IconPlus size={18} />
-              </ActionIcon>
-              <ActionIcon
-                variant="subtle"
-                aria-label={expanded ? "Close expanded map" : "Expand map"}
-                onClick={() => setExpanded((current) => !current)}
-              >
-                <IconArrowsMaximize size={18} />
-              </ActionIcon>
-            </Group>
-          </Group>
           <Card
             withBorder
             radius="md"
             padding="sm"
             className="pc-panel pc-world-map-card"
           >
+            <Group
+              justify="space-between"
+              mb="sm"
+              gap="xs"
+              className="pc-world-map-toolbar"
+            >
+              <Group gap="xs">
+                <Badge color="cyan" variant="light">
+                  {model.markers.length} mapped
+                </Badge>
+                {baseMarkers.length > 0 && (
+                  <Badge color="violet" variant="light">
+                    {baseMarkers.length} bases
+                  </Badge>
+                )}
+                {basesLoading && (
+                  <Badge color="gray" variant="light">
+                    bases loading
+                  </Badge>
+                )}
+                {model.unmappedPlayers.length > 0 && (
+                  <Badge color="orange" variant="light">
+                    {model.unmappedPlayers.length} unavailable
+                  </Badge>
+                )}
+              </Group>
+              <Group gap={4}>
+                <Menu
+                  width={180}
+                  position="bottom-start"
+                  withArrow
+                  transitionProps={{ transition: "pop" }}
+                  zIndex={410}
+                >
+                  <Menu.Target>
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      leftSection={<IconLayersIntersect size={14} />}
+                    >
+                      Layers
+                    </Button>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item>
+                      <Checkbox
+                        label="Players"
+                        checked={showPlayers}
+                        onChange={(event) =>
+                          setShowPlayers(event.currentTarget.checked)
+                        }
+                      />
+                    </Menu.Item>
+                    <Menu.Item>
+                      <Checkbox
+                        label="Bases"
+                        checked={showBases}
+                        onChange={(event) =>
+                          setShowBases(event.currentTarget.checked)
+                        }
+                      />
+                    </Menu.Item>
+                    <Menu.Item>
+                      <Checkbox
+                        label="Trails"
+                        checked={trailEnabled}
+                        onChange={(event) =>
+                          setTrailEnabled(event.currentTarget.checked)
+                        }
+                      />
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+                <SegmentedControl
+                  size="xs"
+                  aria-label="Choose world map"
+                  value={mapView}
+                  onChange={(value) => {
+                    setMapView(value as "palpagos" | "world_tree");
+                    setFollowPlayer(false);
+                  }}
+                  data={[
+                    { value: "palpagos", label: "Palpagos" },
+                    { value: "world_tree", label: "World Tree" },
+                  ]}
+                />
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  onClick={applyFitMap}
+                >
+                  Fit Map
+                </Button>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  onClick={centerSelectedPlayer}
+                  disabled={!selected}
+                >
+                  Center Player
+                </Button>
+                <Button
+                  size="compact-xs"
+                  variant={followPlayer ? "filled" : "subtle"}
+                  leftSection={<IconPlayerPlay size={14} />}
+                  onClick={() => setFollowPlayer((current) => !current)}
+                  disabled={!selected || activeView !== "palpagos"}
+                  aria-pressed={followPlayer}
+                >
+                  Follow Player
+                </Button>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Zoom out"
+                  onClick={() => changeZoom(zoom - 0.5)}
+                  disabled={zoom <= 1}
+                >
+                  <IconMinus size={18} />
+                </ActionIcon>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Reset map view to fit map"
+                  onClick={applyFitMap}
+                >
+                  <IconFocusCentered size={18} />
+                </ActionIcon>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Zoom in"
+                  onClick={() => changeZoom(zoom + 0.5)}
+                  disabled={zoom >= 4}
+                >
+                  <IconPlus size={18} />
+                </ActionIcon>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={expanded ? "Close expanded map" : "Expand map"}
+                  onClick={() => setExpanded((current) => !current)}
+                >
+                  <IconArrowsMaximize size={18} />
+                </ActionIcon>
+              </Group>
+            </Group>
             <div
               ref={viewport}
               className="pc-world-map-viewport"
