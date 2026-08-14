@@ -37,7 +37,7 @@ access. Put port `3000` behind a reverse proxy and set
 
 ## Are WebSockets required through a reverse proxy?
 
-No. PalCenter v1.4 uses normal HTTP requests and polling.
+No. PalCenter uses normal HTTP requests and polling.
 
 ## Is there a default administrator password?
 
