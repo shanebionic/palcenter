@@ -1396,6 +1396,101 @@ test("buildBaseMapMarkers: preserves baseId for navigation", () => {
   assert.notEqual(marker.baseId, marker.guildId);
 });
 
+test("buildBaseMapMarkers preserves authoritative mapPosition", () => {
+  const bases = [
+    makeBase({
+      baseId: "map-pos-test",
+      worldPosition: { x: 0, y: 0, z: 0 },
+      mapPosition: { x: 150, y: 200, z: 50 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 1);
+  const marker = markers[0]!;
+  assert.ok(marker.mapPosition !== null);
+  assert.equal(marker.mapPosition!.x, 150);
+  assert.equal(marker.mapPosition!.y, 200);
+  assert.equal(marker.mapPosition!.z, 50);
+});
+
+test("buildBaseMapMarkers handles null mapPosition safely", () => {
+  const bases = [
+    {
+      baseId: "no-map-pos",
+      guildId: "guild-1",
+      guildName: "Test Guild",
+      guildAdministrator: { playerId: "p1", name: "Admin" },
+      worldPosition: { x: 0, y: 0, z: 0 },
+      mapPosition: null,
+    },
+  ] as unknown as PalDefenderBase[];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 1);
+  assert.equal(markers[0]?.mapPosition, null);
+});
+
+test("buildBaseMapMarkers marker position is derived from worldPosition not mapPosition", () => {
+  const bases = [
+    makeBase({
+      baseId: "pos-source",
+      worldPosition: { x: 0, y: 0, z: 0 },
+      mapPosition: { x: 999, y: 999, z: 0 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 1);
+  const marker = markers[0]!;
+  const expected = worldToNormalizedMapPosition(
+    { x: 0, y: 0 },
+    palpagosProjection,
+  );
+  assert.deepEqual(marker.position, expected);
+  assert.notDeepEqual(marker.position, { x: 999, y: 999 });
+});
+
+test("buildBaseMapMarkers WORLD COORDINATES fields remain present and correct", () => {
+  const bases = [
+    makeBase({
+      baseId: "world-coords",
+      worldPosition: { x: 1234, y: 5678, z: 99 },
+      mapPosition: { x: 150, y: 200, z: 50 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 1);
+  const marker = markers[0]!;
+  assert.equal(marker.worldX, 1234);
+  assert.equal(marker.worldY, 5678);
+});
+
+test("BaseMapDetails displays MAP COORDINATES from mapPosition", async () => {
+  const source = await readFile(
+    new URL("../components/ServerWorldMap.tsx", import.meta.url),
+    "utf8",
+  );
+  const baseDetailsSection = source.match(
+    /function BaseMapDetails[\s\S]*?<\/Card>\s*\)\s*;?\s*\}\s*\n/,
+  );
+  assert.ok(baseDetailsSection, "BaseMapDetails component not found");
+  const section = baseDetailsSection[0];
+  assert.ok(
+    section.includes('label="Map coordinates"'),
+    "BaseMapDetails must contain a Map coordinates detail row",
+  );
+  assert.ok(
+    section.includes("marker.mapPosition"),
+    "Map coordinates must be derived from marker.mapPosition",
+  );
+  assert.ok(
+    section.includes("Unavailable"),
+    "Map coordinates must show Unavailable fallback",
+  );
+  assert.ok(
+    section.includes('label="World coordinates"'),
+    "BaseMapDetails must still contain World coordinates row",
+  );
+});
+
 // ---------- Layers Menu z-index regression (PR #193) ----------
 
 test("Layers Menu z-index exceeds expanded map overlay", async () => {

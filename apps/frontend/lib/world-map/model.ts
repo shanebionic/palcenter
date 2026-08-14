@@ -400,6 +400,7 @@ export interface BaseMapMarker {
   worldX: number;
   worldY: number;
   position: NormalizedMapPosition;
+  mapPosition: { x: number; y: number; z: number } | null;
 }
 
 export function buildBaseMapMarkers(
@@ -429,6 +430,13 @@ export function buildBaseMapMarkers(
       worldX: worldPosition.x,
       worldY: worldPosition.y,
       position,
+      mapPosition: base.mapPosition
+        ? {
+            x: base.mapPosition.x,
+            y: base.mapPosition.y,
+            z: base.mapPosition.z,
+          }
+        : null,
     });
   }
 

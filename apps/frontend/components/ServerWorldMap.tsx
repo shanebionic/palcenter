@@ -1727,6 +1727,17 @@ function BaseMapDetails({
           value={`X ${marker.worldX.toFixed(1)} · Y ${marker.worldY.toFixed(1)}`}
           mono
         />
+        <Detail
+          label="Map coordinates"
+          value={
+            marker.mapPosition &&
+            Number.isFinite(marker.mapPosition.x) &&
+            Number.isFinite(marker.mapPosition.y)
+              ? `X ${marker.mapPosition.x.toFixed(1)} · Y ${marker.mapPosition.y.toFixed(1)}${marker.mapPosition.z != null && Number.isFinite(marker.mapPosition.z) ? ` · Z ${marker.mapPosition.z.toFixed(1)}` : ""}`
+              : "Unavailable"
+          }
+          mono
+        />
         <Group gap="sm">
           <Button
             variant="light"
