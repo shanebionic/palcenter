@@ -2,6 +2,19 @@
 
 All notable PalCenter changes are documented here.
 
+## Unreleased
+
+### Fixed
+
+- Repaired the history.sqlite schema migration for databases upgraded from
+  1.4.0 or earlier. The `coordinate_space_id` column repairs no longer depend
+  on the recorded schema version, so databases that 1.5.0 advanced to schema
+  10 without `player_position_snapshots.coordinate_space_id` (and, for some
+  dev builds, without `world_player_activity_state.coordinate_space_id`) are
+  repaired on startup. Existing rows are preserved and backfilled with
+  `coordinate_space_id = 'unknown'`. This resolves the Map/telemetry
+  "no such column: snapshot.coordinate_space_id" 500 errors reported in #199.
+
 ## 1.5.0
 
 ### Added
