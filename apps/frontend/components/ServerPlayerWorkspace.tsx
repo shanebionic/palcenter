@@ -13,6 +13,7 @@ import {
 } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   getPalDefenderPlayers,
@@ -24,6 +25,7 @@ import {
   canonicalPlayerId,
   matchPalDefenderPlayer,
 } from "../lib/player-identity";
+import { detailBackTarget } from "../lib/navigation";
 import type { ConnectedPlayer } from "../types/servers";
 import { ApplicationShell } from "./ApplicationShell";
 import { PalDefenderPlayerWorkspace } from "./PalDefenderPlayerWorkspace";
@@ -36,6 +38,7 @@ export function ServerPlayerWorkspace({
   serverId: string;
   playerId: string;
 }) {
+  const searchParams = useSearchParams();
   const [nativePlayer, setNativePlayer] = useState<ConnectedPlayer | null>(
     null,
   );
@@ -91,13 +94,14 @@ export function ServerPlayerWorkspace({
     };
   }, [playerId, serverId]);
 
-  const backHref = `/servers/${encodeURIComponent(serverId)}?tab=players`;
+  const back = detailBackTarget(serverId, "player", searchParams.get("from"));
   if (!loading && status?.connected && palDefenderPlayerId) {
     return (
       <PalDefenderPlayerWorkspace
         serverId={serverId}
         playerId={palDefenderPlayerId}
-        backHref={backHref}
+        backHref={back.href}
+        backLabel={back.label}
       />
     );
   }
@@ -120,12 +124,12 @@ export function ServerPlayerWorkspace({
       <Stack gap="xl">
         <Button
           component={Link}
-          href={backHref}
+          href={back.href}
           variant="subtle"
           leftSection={<IconArrowLeft size={18} />}
           w="fit-content"
         >
-          Back to Players
+          {back.label}
         </Button>
         {loading ? (
           <Center mih={320}>

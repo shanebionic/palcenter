@@ -58,6 +58,21 @@ const connectedPlayers = [
   },
 ];
 
+const baseServerStatus = {
+  id: connection.id,
+  name: connection.name,
+  status: "online",
+  serverName: "Palpagos Dedicated Server",
+  players: 1,
+  maxPlayers: 32,
+  fps: 60,
+  version: "v0.6.5.81234",
+  responseTimeMs: 42,
+  uptimeSeconds: 86400,
+  passwordProtected: false,
+  lastUpdated: now,
+};
+
 const telemetryPlayer = {
   id: 1,
   serverId: connection.id,
@@ -87,6 +102,8 @@ let moderationIpBanned = true;
 let progressionExperience = 1371;
 let unlockedTechnologies = ["Arrow"];
 let grantedPals = [];
+let serverStatusMode = "populated";
+let addedServers = [];
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
   const joined = index % 2 === 0;
@@ -242,6 +259,11 @@ export function startMockUiApi(port = 3198) {
       if (url.searchParams.get("reset") === "true") broadcasts = [];
       return json(response, { broadcasts });
     }
+    if (url.pathname === "/__test/servers") {
+      if (url.searchParams.get("reset") === "true") addedServers = [];
+      serverStatusMode = url.searchParams.get("mode") ?? "populated";
+      return json(response, { serverStatusMode });
+    }
 
     if (url.pathname === "/api/auth/session") {
       return json(response, {
@@ -253,8 +275,51 @@ export function startMockUiApi(port = 3198) {
       return json(response, { setupRequired: false });
     }
     if (url.pathname === "/api/users/me") return json(response, user);
+    if (request.method === "POST" && url.pathname === "/api/servers/test") {
+      return json(response, {
+        info: {
+          servername: "Mock Palworld Server",
+          version: "v0.6.5.81234",
+        },
+        metrics: {
+          currentplayernum: 1,
+          maxplayernum: 32,
+          serverfps: 60,
+        },
+        latencyMs: 42,
+      });
+    }
+    if (request.method === "POST" && url.pathname === "/api/servers") {
+      const input = await readJson(request);
+      const created = {
+        id: `srv-added-${addedServers.length + 1}`,
+        name: input.name,
+        baseUrl: input.baseUrl,
+        createdAt: now,
+        updatedAt: now,
+        palDefender: {
+          enabled: false,
+          endpoint: null,
+          tokenConfigured: false,
+        },
+      };
+      addedServers.push({
+        ...baseServerStatus,
+        id: created.id,
+        name: created.name,
+        serverName: "Mock Palworld Server",
+      });
+      return json(response, created);
+    }
     if (url.pathname === "/api/servers") {
       return json(response, { servers: [connection] });
+    }
+    if (url.pathname === "/api/servers/status") {
+      const servers =
+        serverStatusMode === "empty"
+          ? [...addedServers]
+          : [baseServerStatus, ...addedServers];
+      return json(response, { servers });
     }
     if (url.pathname === `/api/servers/${connection.id}`) {
       return json(response, {

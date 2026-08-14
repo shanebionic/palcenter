@@ -78,13 +78,8 @@ jobs:
         id: build
         shell: bash
         run: |
-          release_version="$(git tag --list 'v*.*.*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)"
-          if [[ -z "$release_version" ]]; then
-            release_version="v$(node -p "require('./package.json').version")"
-          fi
-          version="${release_version#v}"
-          IFS=. read -r major minor _patch <<< "$version"
-          development_version="v${major}.$((minor + 1)).0-DEV"
+          pkg_version="$(node -p "require('./package.json').version")"
+          development_version="v${pkg_version}-DEV"
           echo "version=${development_version}" >> "$GITHUB_OUTPUT"
           echo "commit=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 

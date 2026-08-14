@@ -108,7 +108,7 @@ container variable:
 PALCENTER_SESSION_COOKIE_SECURE=true
 ```
 
-PalCenter v1.4 does not require WebSocket forwarding. Ensure the proxy upload
+PalCenter does not require WebSocket forwarding. Ensure the proxy upload
 limit accommodates backup restore archives. See the complete
 [reverse proxy guide](REVERSE-PROXY.md).
 

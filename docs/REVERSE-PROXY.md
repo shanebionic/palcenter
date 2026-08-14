@@ -4,7 +4,7 @@ Proxy only PalCenter's web interface on container port `3000`. The frontend
 provides a same-origin `/api` proxy to the internal API, so port `3001` should
 normally remain private.
 
-PalCenter v1.4 uses standard HTTP requests and does not require WebSocket
+PalCenter uses standard HTTP requests and does not require WebSocket
 upgrade forwarding.
 
 ## Production settings

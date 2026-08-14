@@ -1,7 +1,11 @@
 # Features and administration
 
-This guide describes the current v1.5.0 interface. Availability depends on the
+This guide describes the current v1.5.1 interface. Availability depends on the
 signed-in user's role.
+
+The desktop navigation sidebar can be collapsed to an icon rail using the
+toggle at the top of the sidebar; the collapsed state is remembered per
+browser.
 
 ## Dashboard
 
@@ -11,12 +15,13 @@ online/offline state, players, FPS, version, response time, and last update.
 Health widgets summarize live operational information without persisting that
 state to `servers.json`.
 
-Use **Add Server** to test and save another remote REST connection. One
-unreachable server does not prevent other cards from updating.
+One unreachable server does not prevent other cards from updating.
 
 ## Servers and workspaces
 
-**Servers** lists saved connections. **Manage** opens one workspace with:
+**Servers** lists saved connections. Administrators use **Add Server** to
+test and save another remote REST connection. **Manage** opens one workspace
+with:
 
 - **Overview** for status, configuration, networking, uptime, and health;
 - **Players** for the live player table with level enrichment;
@@ -70,12 +75,20 @@ confirmation dialog.
 
 ## World Map
 
-The Map plots currently connected players using position telemetry from the
-official `/players` response. Select a marker for player details. Use Fit Map,
-zoom, pan, Center Player, and expanded mode to navigate.
+The Map plots currently connected players using position telemetry. Select a
+player marker for details, including PalDefender map coordinates and level
+when available. When PalDefender is configured for a server, its base camps
+also appear as interactive markers; select a base for its guild, IDs, world
+and map coordinates, and links to the base and guild workspaces.
 
-Administrators and Moderators can view map/history data. Administrator-only
-calibration controls are collapsed under **Advanced map tools**.
+Use the **Layers** menu to show or hide the Players, Bases, and Trails
+layers (Players and Bases are on by default; Trails follows the selected
+movement trail). Use Fit Map, zoom, pan, Center Player, and expanded mode to
+navigate. The world map selector offers Palpagos and World Tree; World Tree
+is a placeholder until a verified map asset is available, and players
+located there are listed in the off-map panel.
+
+Administrators and Moderators can view map/history data.
 
 ## Player Activity Summary
 

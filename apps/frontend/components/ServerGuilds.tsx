@@ -86,7 +86,11 @@ export function ServerGuilds({ serverId }: { serverId: string }) {
                   <Table.Td>
                     <Text
                       component={Link}
-                      href={palDefenderGuildHref(serverId, guild.guildId)}
+                      href={palDefenderGuildHref(
+                        serverId,
+                        guild.guildId,
+                        "guilds",
+                      )}
                       c="cyan.4"
                       fw={600}
                     >

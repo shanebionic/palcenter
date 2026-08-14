@@ -1,7 +1,8 @@
+import type { PalDefenderBase } from "../../lib/api";
+import { canonicalPlayerId } from "../../lib/player-identity";
 import type {
   ConnectedPlayer,
   PlayerPositionSnapshot,
-  UserRole,
 } from "../../types/servers";
 import type {
   MapProjectionConfiguration,
@@ -51,6 +52,8 @@ export interface LivePlayerMapMarker {
   displayKind: "live" | "last_trusted_instance";
   reportedWorldX: number;
   reportedWorldY: number;
+  guildId: string | null;
+  guildName: string | null;
   locationAuthority: PlayerLocationAuthority;
 }
 
@@ -69,11 +72,6 @@ export interface LivePlayerMapModel {
   unmappedPlayers: UnmappedPlayer[];
 }
 
-export interface MapAccess {
-  canView: boolean;
-  canCalibrate: boolean;
-}
-
 export type MapContentState =
   | "loading"
   | "offline"
@@ -90,6 +88,7 @@ export interface PlayerMapDetailValues {
   ping: string;
   buildingCount: number | string;
   worldCoordinates: string;
+  mapCoordinates: string;
   telemetryAge: string;
 }
 
@@ -110,13 +109,6 @@ export function playerMarkerPresentation(
   };
 }
 
-export function mapAccessForRole(role: UserRole): MapAccess {
-  return {
-    canView: role === "administrator" || role === "moderator",
-    canCalibrate: role === "administrator",
-  };
-}
-
 export function mapContentState(input: {
   loading: boolean;
   serverOnline: boolean;
@@ -130,19 +122,37 @@ export function mapContentState(input: {
   return "ready";
 }
 
+export interface PlayerEnrichment {
+  mapLocation: { x?: number; y?: number; z?: number } | null;
+  level: number | null;
+}
+
 export function playerMapDetailValues(
   marker: LivePlayerMapMarker,
-  now = new Date(),
+  options: { now?: Date; enrichment?: PlayerEnrichment | null } = {},
 ): PlayerMapDetailValues {
+  const now = options.now ?? new Date();
+  const enrichment = options.enrichment;
+  const mapLocation = enrichment?.mapLocation ?? null;
+  const mapCoordinates =
+    mapLocation &&
+    mapLocation.x != null &&
+    mapLocation.y != null &&
+    Number.isFinite(mapLocation.x) &&
+    Number.isFinite(mapLocation.y)
+      ? `X ${mapLocation.x.toFixed(1)} · Y ${mapLocation.y.toFixed(1)}${mapLocation.z != null && Number.isFinite(mapLocation.z) ? ` · Z ${mapLocation.z.toFixed(1)}` : ""}`
+      : "Unavailable";
+  const level = enrichment?.level ?? marker.level ?? "Unavailable";
   return {
     playerName: marker.playerName,
     accountName: marker.accountName ?? "Account unavailable",
     playerId: marker.playerId ?? "Unavailable",
     userId: marker.userId,
-    level: marker.level ?? "Unavailable",
+    level,
     ping: marker.ping === null ? "Unavailable" : `${marker.ping} ms`,
     buildingCount: marker.buildingCount ?? "Unavailable",
     worldCoordinates: `X ${marker.worldX.toFixed(1)} · Y ${marker.worldY.toFixed(1)}`,
+    mapCoordinates,
     telemetryAge: formatTelemetryAge(marker.telemetryAt, now),
   };
 }
@@ -200,6 +210,12 @@ export function buildLivePlayerMapModel(
   const telemetryByUserId = new Map(
     telemetry.map((snapshot) => [snapshot.userId, snapshot]),
   );
+  const telemetryByCanonicalPlayerId = new Map(
+    telemetry.map((snapshot) => [
+      canonicalPlayerId(snapshot.playerId || ""),
+      snapshot,
+    ]),
+  );
   const markers: LivePlayerMapMarker[] = [];
   const unmappedPlayers: UnmappedPlayer[] = [];
   const trustedByUserId = new Map(
@@ -212,7 +228,13 @@ export function buildLivePlayerMapModel(
   );
 
   for (const player of connectedPlayers) {
-    const snapshot = telemetryByUserId.get(player.userId) ?? null;
+    let snapshot = telemetryByUserId.get(player.userId) ?? null;
+    if (!snapshot && player.playerId) {
+      const canonicalId = canonicalPlayerId(player.playerId);
+      if (canonicalId && canonicalId !== "none") {
+        snapshot = telemetryByCanonicalPlayerId.get(canonicalId) ?? null;
+      }
+    }
     if (!snapshot) {
       unmappedPlayers.push({
         userId: player.userId,
@@ -295,6 +317,8 @@ export function buildLivePlayerMapModel(
             coordinateSpaceId,
             spatialState,
             displayKind: "last_trusted_instance",
+            guildId: snapshot.guildId,
+            guildName: snapshot.guildName,
             locationAuthority,
           });
         }
@@ -337,14 +361,7 @@ export function buildLivePlayerMapModel(
       continue;
     }
 
-    const verifiedTimestamp = verifiedAt ? Date.parse(verifiedAt) : Number.NaN;
-    const snapshotTimestamp = Date.parse(snapshot.capturedAt);
-    const telemetryAt =
-      Number.isFinite(verifiedTimestamp) &&
-      (!Number.isFinite(snapshotTimestamp) ||
-        verifiedTimestamp >= snapshotTimestamp)
-        ? (verifiedAt as string)
-        : snapshot.capturedAt;
+    const telemetryAt = snapshot.capturedAt;
     markers.push({
       userId: snapshot.userId,
       playerId: snapshot.playerId,
@@ -367,6 +384,8 @@ export function buildLivePlayerMapModel(
       coordinateSpaceId,
       spatialState,
       displayKind: "live",
+      guildId: snapshot.guildId,
+      guildName: snapshot.guildName,
       locationAuthority,
     });
   }
@@ -374,11 +393,52 @@ export function buildLivePlayerMapModel(
   return { markers, unmappedPlayers };
 }
 
-export function calibrationRecord(marker: LivePlayerMapMarker): string {
-  return [
-    `Player: ${marker.playerName}`,
-    `World: ${marker.worldX}, ${marker.worldY}`,
-    `Normalized: ${marker.position.x.toFixed(4)}, ${marker.position.y.toFixed(4)}`,
-    `Map: ${(marker.position.x * 100).toFixed(2)}%, ${(marker.position.y * 100).toFixed(2)}%`,
-  ].join("\n");
+export interface BaseMapMarker {
+  baseId: string;
+  guildId: string;
+  guildName: string | null;
+  worldX: number;
+  worldY: number;
+  position: NormalizedMapPosition;
+  mapPosition: { x: number; y: number; z: number } | null;
+}
+
+export function buildBaseMapMarkers(
+  bases: PalDefenderBase[],
+  projection: MapProjectionConfiguration,
+  mapDefinition: WorldMapDefinition = palpagosMapDefinition,
+): BaseMapMarker[] {
+  const markers: BaseMapMarker[] = [];
+
+  for (const base of bases) {
+    const { worldPosition } = base;
+    if (
+      !Number.isFinite(worldPosition.x) ||
+      !Number.isFinite(worldPosition.y)
+    ) {
+      continue;
+    }
+
+    const coordinate = { x: worldPosition.x, y: worldPosition.y };
+    const position = projectOnMap(mapDefinition, coordinate);
+    if (!position) continue;
+
+    markers.push({
+      baseId: base.baseId,
+      guildId: base.guildId,
+      guildName: base.guildName,
+      worldX: worldPosition.x,
+      worldY: worldPosition.y,
+      position,
+      mapPosition: base.mapPosition
+        ? {
+            x: base.mapPosition.x,
+            y: base.mapPosition.y,
+            z: base.mapPosition.z,
+          }
+        : null,
+    });
+  }
+
+  return markers;
 }

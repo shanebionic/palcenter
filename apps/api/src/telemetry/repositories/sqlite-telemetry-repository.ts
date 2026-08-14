@@ -133,6 +133,38 @@ export class SqliteTelemetryRepository implements TelemetryRepository {
     }
   }
 
+  reconcileUserId(
+    serverId: string,
+    legacyUserId: string,
+    canonicalUserId: string,
+  ): number {
+    if (legacyUserId === canonicalUserId) {
+      return 0;
+    }
+    const database = this.requireDatabase();
+    const count = database
+      .prepare(
+        "SELECT COUNT(*) as cnt FROM player_position_snapshots WHERE server_id = ? AND user_id = ?",
+      )
+      .get(serverId, legacyUserId) as { cnt: number };
+    if (!count || count.cnt === 0) {
+      return 0;
+    }
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      database
+        .prepare(
+          "UPDATE player_position_snapshots SET user_id = ? WHERE server_id = ? AND user_id = ?",
+        )
+        .run(canonicalUserId, serverId, legacyUserId);
+      database.exec("COMMIT");
+      return count.cnt;
+    } catch (error) {
+      database.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
   latestPlayerSnapshots(serverId: string): PlayerPositionSnapshot[] {
     const rows = this.requireDatabase()
       .prepare(

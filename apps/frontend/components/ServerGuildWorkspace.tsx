@@ -13,8 +13,10 @@ import {
 } from "@mantine/core";
 import { IconArrowLeft, IconRefresh } from "@tabler/icons-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { PageHeader } from "./PageHeader";
+import { detailBackTarget } from "../lib/navigation";
 import { getPalDefenderGuild, type PalDefenderGuildDetails } from "../lib/api";
 import { SectionCard } from "./ui/SectionCard";
 
@@ -36,6 +38,8 @@ export function ServerGuildWorkspace({
   serverId: string;
   guildId: string;
 }) {
+  const searchParams = useSearchParams();
+  const back = detailBackTarget(serverId, "guild", searchParams.get("from"));
   const [guild, setGuild] = useState<PalDefenderGuildDetails | null>(null);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -67,12 +71,12 @@ export function ServerGuildWorkspace({
     <Stack gap="xl">
       <Button
         component={Link}
-        href={`/servers/${encodeURIComponent(serverId)}?tab=guilds`}
+        href={back.href}
         variant="subtle"
         leftSection={<IconArrowLeft size={18} />}
         w="fit-content"
       >
-        Back to Guilds
+        {back.label}
       </Button>
       <PageHeader
         eyebrow="Server · Guild Details"

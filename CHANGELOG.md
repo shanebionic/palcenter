@@ -2,6 +2,66 @@
 
 All notable PalCenter changes are documented here.
 
+## 1.5.1
+
+### Added
+
+- Provider-aware player telemetry: servers with PalDefender configured
+  collect player telemetry from PalDefender (world location including Z,
+  level, and guild name); all other servers continue to use the native
+  Palworld REST API. A configured server does not silently fall back to the
+  native source.
+- Interactive PalDefender base camp markers on the Palpagos map with a base
+  detail card showing guild, base and guild IDs, world coordinates, and map
+  coordinates, plus links to the base and guild workspaces.
+- Map **Layers** menu to show or hide Players, Bases, and Trails layers.
+- Collapsible desktop navigation sidebar; the collapsed state is remembered
+  per browser.
+- MAP COORDINATES on map player and base detail cards from PalDefender's
+  authoritative map position.
+- Selected-player enrichment in the map player detail card: level from
+  PalDefender progression and PalDefender map coordinates.
+- Context-aware return navigation from player, guild, and base detail views
+  back to the workspace the administrator entered from.
+- First-party Palpagos map asset (T_WorldMap derivative) with the map
+  projection aligned to the authoritative DT_WorldMapUIData terrain bounds.
+
+### Changed
+
+- The Add Server action moved from the Dashboard to the Servers page
+  (Administrators only).
+- Removed the obsolete map calibration and debug UI ("Advanced map tools",
+  calibration grid, and diagnostics). Map alignment is now fixed to the
+  validated DT_WorldMapUIData bounds with regression-tested projection
+  transforms.
+
+### Fixed
+
+- Repaired the history.sqlite schema migration for databases upgraded from
+  1.4.0 or earlier. The `coordinate_space_id` column repairs no longer depend
+  on the recorded schema version, so databases that 1.5.0 advanced to schema
+  10 without `player_position_snapshots.coordinate_space_id` (and, for some
+  dev builds, without `world_player_activity_state.coordinate_space_id`) are
+  repaired automatically on startup. Existing rows are preserved and
+  backfilled with the default coordinate space value. This resolves the
+  Map/telemetry "no such column: snapshot.coordinate_space_id" 500 errors
+  reported in #199.
+- Repaired telemetry identity compatibility so a player no longer appears
+  under two identities when PalDefender reports a PlayerUID separate from
+  the platform UserId. Affected legacy telemetry rows are reconciled in
+  place on the next collection.
+- PalDefender telemetry polling no longer issues per-player detail requests
+  for offline players.
+- The Layers menu now opens correctly in expanded (full-viewport) map mode
+  and stays above the expanded overlay.
+- Corrected the sidebar collapse state on the first toggle, navigation-click
+  collapse behavior, duplicate brand rendering, and hamburger alignment.
+- Detail workspace return navigation accepts the Map tab as an entry point.
+
+### Security
+
+- Updated nanoid to 3.3.18 to remediate the dependency-chain advisory.
+
 ## 1.5.0
 
 ### Added

@@ -160,7 +160,6 @@ export function ServerWorkspace({
                 <ServerWorldMap
                   serverId={server.connection.id}
                   serverOnline={server.status.status === "online"}
-                  canCalibrate={canManage}
                 />
               </Tabs.Panel>
             )}

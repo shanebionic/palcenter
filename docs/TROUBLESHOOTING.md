@@ -120,7 +120,7 @@ Telemetry requires:
 
 No players online is not an error. No movement history may mean the player was
 absent, unchanged, outside the selected range, or older than the configured
-retention. Calibration controls do not repair missing telemetry.
+retention.
 
 ## Login problems
 

@@ -1,39 +1,26 @@
 "use client";
 
-import {
-  Alert,
-  Badge,
-  Button,
-  Group,
-  SimpleGrid,
-  Stack,
-  Text,
-} from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { Alert, Badge, Group, SimpleGrid, Stack, Text } from "@mantine/core";
 import {
   IconActivityHeartbeat,
-  IconPlus,
   IconServer,
   IconUsers,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AddServerDialog } from "../components/AddServerDialog";
 import { ApplicationShell } from "../components/ApplicationShell";
 import { BrandedLoader } from "../components/BrandedLoader";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { ServerCard } from "../components/ServerCard";
 import { StatCard } from "../components/ui/StatCard";
-import { getServerStatus, getSession, type AuthSession } from "../lib/api";
+import { getServerStatus } from "../lib/api";
 import type { ServerStatus } from "../types/servers";
 
 export default function HomePage() {
-  const [dialogOpened, dialog] = useDisclosure(false);
   const [servers, setServers] = useState<ServerStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [session, setSession] = useState<AuthSession | null>(null);
 
   const loadServers = useCallback(async (background = false) => {
     if (background) setRefreshing(true);
@@ -53,9 +40,6 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    void getSession()
-      .then(setSession)
-      .catch(() => undefined);
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const poll = async () => {
@@ -92,8 +76,6 @@ export default function HomePage() {
           summary.responseTimes.reduce((total, value) => total + value, 0) /
             summary.responseTimes.length,
         )} ms`;
-  const isAdministrator = session?.user.role === "administrator";
-
   return (
     <ApplicationShell>
       <Stack gap="xl">
@@ -101,16 +83,6 @@ export default function HomePage() {
           eyebrow="Fleet Overview"
           title="Server Command Center"
           description="Monitor every connected Palworld world and jump into operations from one place."
-          action={
-            isAdministrator ? (
-              <Button
-                leftSection={<IconPlus size={18} />}
-                onClick={dialog.open}
-              >
-                Add Server
-              </Button>
-            ) : null
-          }
         />
 
         {error && <Alert color="red">{error}</Alert>}
@@ -118,7 +90,7 @@ export default function HomePage() {
         {loading ? (
           <BrandedLoader message="Scanning your Palworld fleet" />
         ) : servers.length === 0 ? (
-          <EmptyState onAddServer={isAdministrator ? dialog.open : undefined} />
+          <EmptyState />
         ) : (
           <>
             <SimpleGrid cols={{ base: 2, lg: 4 }}>
@@ -175,12 +147,6 @@ export default function HomePage() {
           </>
         )}
       </Stack>
-
-      <AddServerDialog
-        opened={dialogOpened}
-        onClose={dialog.close}
-        onSaved={() => loadServers()}
-      />
     </ApplicationShell>
   );
 }

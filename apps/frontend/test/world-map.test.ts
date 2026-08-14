@@ -3,17 +3,14 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
-  defaultWorldMapLayer,
   worldMapAssetPath,
   worldMapAssetSrcSet,
-  worldMapLayerClasses,
 } from "../lib/world-map/layers";
 import {
+  buildBaseMapMarkers,
   buildLivePlayerMapModel,
-  calibrationRecord,
   classifyTelemetryFreshness,
   mapContentState,
-  mapAccessForRole,
   playerMapDetailValues,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
@@ -55,6 +52,7 @@ import {
   worldTreeMapDefinition,
 } from "../lib/world-map/map-definitions";
 import type { ConnectedPlayer, PlayerPositionSnapshot } from "../types/servers";
+import type { PalDefenderBase } from "../lib/api";
 
 test("assigns stable readable player colors from userId", () => {
   assert.equal(playerColor("user-a"), playerColor("user-a"));
@@ -385,7 +383,11 @@ test("bundles attributed responsive Palpagos derivatives with verified metadata"
 
   assert.equal(worldMapAssetPath, "/world-maps/palpagos/world-map-2048.webp");
   assert.equal(worldMapAssetSrcSet.includes("https://"), false);
-  assert.equal(metadata.upstreamSource.filePage.startsWith("https://"), true);
+  assert.ok(
+    metadata.upstreamSource.filePage.startsWith("https://") ||
+      metadata.upstreamSource.filePage.startsWith("DT_WorldMapUIData"),
+    "upstream source must be a URL or first-party extraction record",
+  );
   assert.deepEqual(metadata.upstreamSource.dimensions, {
     width: 8192,
     height: 8192,
@@ -414,22 +416,6 @@ test("serves bundled world maps without an authentication redirect", async () =>
     "utf8",
   );
   assert.match(proxySource, /\(\?!api\|assets\|world-maps\|/);
-});
-
-test("selects map and calibration grid layers without changing projection", () => {
-  assert.equal(defaultWorldMapLayer, "map");
-  assert.equal(
-    worldMapLayerClasses("map"),
-    "pc-world-map-surface pc-world-map-surface-map",
-  );
-  assert.equal(
-    worldMapLayerClasses("grid"),
-    "pc-world-map-surface pc-world-map-surface-grid",
-  );
-  assert.equal(
-    worldMapLayerClasses("map-with-grid"),
-    "pc-world-map-surface pc-world-map-surface-map pc-world-map-surface-grid",
-  );
 });
 
 function readWebpDimensions(asset: Buffer): {
@@ -581,8 +567,8 @@ test("maps only currently connected players with valid telemetry by userId", () 
     telemetry,
     palpagosProjection,
     30,
-    "2026-07-28T12:09:45.000Z",
-    new Date("2026-07-28T12:10:00.000Z"),
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
   );
 
   assert.equal(model.markers.length, 1);
@@ -597,6 +583,79 @@ test("maps only currently connected players with valid telemetry by userId", () 
   assert.equal(JSON.stringify(model).includes("192.0.2.10"), false);
 });
 
+test("two-key join: falls back to canonical playerId when userId does not match", () => {
+  const players: ConnectedPlayer[] = [
+    connectedPlayer("steam:123", "00000000000000000000000000000001", "PlayerA"),
+  ];
+  const telemetry = [
+    snapshot({
+      userId: "00000000000000000000000000000001",
+      playerId: "0000-0000-0000-0000-0000-000000000001",
+      x: 100,
+      y: 200,
+    }),
+  ];
+  const model = buildLivePlayerMapModel(
+    players,
+    telemetry,
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  assert.equal(
+    model.markers.length,
+    1,
+    "should find via canonical playerId fallback",
+  );
+  assert.equal(model.markers[0]?.playerName, "PlayerA");
+  assert.equal(model.unmappedPlayers.length, 0);
+});
+
+test("two-key join: canonicalPlayerId strips hyphens and lowercases", () => {
+  const players: ConnectedPlayer[] = [
+    connectedPlayer(
+      "steam:456",
+      "E:12345678-ABCD-1234-ABCD-123456789ABC",
+      "PlayerB",
+    ),
+  ];
+  const telemetry = [
+    snapshot({
+      userId: "E12345678ABCD1234ABCD123456789ABC",
+      playerId: "e:12345678-abcd-1234-abcd-123456789abc",
+      x: 50,
+      y: 60,
+    }),
+  ];
+  const model = buildLivePlayerMapModel(
+    players,
+    telemetry,
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  assert.equal(model.markers.length, 1, "canonical normalization should match");
+  assert.equal(model.markers[0]?.playerName, "PlayerB");
+});
+
+test("freshness uses snapshot.capturedAt only — stale snapshot not labeled Live", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "StalePlayer")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    "2026-07-28T12:00:30.000Z",
+    new Date("2026-07-28T12:10:00.000Z"),
+  );
+  assert.equal(
+    model.markers[0]?.freshness,
+    "stale",
+    "capturedAt is 10m old — must be stale regardless of verifiedAt",
+  );
+});
+
 test("represents online marker details without exposing the player IP", () => {
   const model = buildLivePlayerMapModel(
     [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
@@ -606,10 +665,9 @@ test("represents online marker details without exposing the player IP", () => {
     null,
     new Date("2026-07-28T12:00:30.000Z"),
   );
-  const details = playerMapDetailValues(
-    model.markers[0]!,
-    new Date("2026-07-28T12:00:30.000Z"),
-  );
+  const details = playerMapDetailValues(model.markers[0]!, {
+    now: new Date("2026-07-28T12:00:30.000Z"),
+  });
 
   assert.deepEqual(details, {
     playerName: "Lifmunk",
@@ -620,9 +678,120 @@ test("represents online marker details without exposing the player IP", () => {
     ping: "42 ms",
     buildingCount: 3,
     worldCoordinates: "X 10.0 · Y 20.0",
+    mapCoordinates: "Unavailable",
     telemetryAge: "30s ago",
   });
   assert.equal(JSON.stringify(details).includes("192.0.2.10"), false);
+});
+
+test("playerMapDetailValues shows map coordinates from enrichment", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  const details = playerMapDetailValues(model.markers[0]!, {
+    now: new Date("2026-07-28T12:00:30.000Z"),
+    enrichment: {
+      mapLocation: { x: 150, y: 200, z: 50 },
+      level: 42,
+    },
+  });
+
+  assert.equal(details.mapCoordinates, "X 150.0 · Y 200.0 · Z 50.0");
+  assert.equal(details.level, 42);
+});
+
+test("playerMapDetailValues shows map coordinates without Z when absent", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  const details = playerMapDetailValues(model.markers[0]!, {
+    now: new Date("2026-07-28T12:00:30.000Z"),
+    enrichment: {
+      mapLocation: { x: 150, y: 200 },
+      level: null,
+    },
+  });
+
+  assert.equal(details.mapCoordinates, "X 150.0 · Y 200.0");
+  assert.equal(details.level, 20);
+});
+
+test("playerMapDetailValues falls back to marker level when enrichment has no level", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  const details = playerMapDetailValues(model.markers[0]!, {
+    now: new Date("2026-07-28T12:00:30.000Z"),
+    enrichment: { mapLocation: null, level: null },
+  });
+
+  assert.equal(details.level, 20);
+  assert.equal(details.mapCoordinates, "Unavailable");
+});
+
+test("playerMapDetailValues shows Unavailable map coordinates when enrichment is null", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+  const details = playerMapDetailValues(model.markers[0]!, {
+    now: new Date("2026-07-28T12:00:30.000Z"),
+  });
+
+  assert.equal(details.mapCoordinates, "Unavailable");
+});
+
+test("carries guild identity from telemetry through to the marker", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [
+      {
+        ...snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 }),
+        guildId: "guild-abc",
+        guildName: "Pal Rangers",
+      },
+    ],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+
+  assert.equal(model.markers[0]?.guildId, "guild-abc");
+  assert.equal(model.markers[0]?.guildName, "Pal Rangers");
+});
+
+test("marker guild fields are null when telemetry has no guild", () => {
+  const model = buildLivePlayerMapModel(
+    [connectedPlayer("uid-1", "pid-1", "Lifmunk")],
+    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 10, y: 20 })],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+  );
+
+  assert.equal(model.markers[0]?.guildId, null);
+  assert.equal(model.markers[0]?.guildName, null);
 });
 
 test("standard REST positions remain visible when their coordinate space is unknown, null, or unverified", () => {
@@ -778,21 +947,6 @@ test("marks out-of-bounds current players as unavailable", () => {
   assert.equal(model.unmappedPlayers[0]?.reason, "outside_bounds");
 });
 
-test("keeps map access aligned with the existing Players tab", () => {
-  assert.deepEqual(mapAccessForRole("administrator"), {
-    canView: true,
-    canCalibrate: true,
-  });
-  assert.deepEqual(mapAccessForRole("moderator"), {
-    canView: true,
-    canCalibrate: false,
-  });
-  assert.deepEqual(mapAccessForRole("visitor"), {
-    canView: false,
-    canCalibrate: false,
-  });
-});
-
 test("distinguishes loading, offline, empty, API failure, and ready states", () => {
   assert.equal(
     mapContentState({
@@ -839,19 +993,6 @@ test("distinguishes loading, offline, empty, API failure, and ready states", () 
     }),
     "ready",
   );
-});
-
-test("calibration output contains coordinates but no network address", () => {
-  const model = buildLivePlayerMapModel(
-    [connectedPlayer("uid-1", "pid-1", "Mozzarina")],
-    [snapshot({ userId: "uid-1", playerId: "pid-1", x: 0, y: 0 })],
-    palpagosProjection,
-    30,
-    null,
-  );
-  const output = calibrationRecord(model.markers[0]!);
-  assert.match(output, /World: 0, 0/);
-  assert.doesNotMatch(output, /192\.0\.2\.10/);
 });
 
 test("starts fitted and computes a square surface from the available viewport", () => {
@@ -1052,6 +1193,13 @@ test("movement trail controls and layer preserve accessible map ordering", async
     css,
     /\.pc-world-map-marker-position\s*\{[\s\S]*?z-index:\s*3;[\s\S]*?\}/,
   );
+
+  // Layers menu must use withinPortal so it renders inside the fullscreen element
+  assert.match(
+    source,
+    /Menu[\s\S]*?withinPortal/,
+    "Layers Menu must use withinPortal to render inside fullscreen element",
+  );
 });
 
 test("keeps the connected display name and telemetry account name distinct", () => {
@@ -1115,3 +1263,288 @@ function snapshot(
     createdAt: "2026-07-28T12:00:00.000Z",
   };
 }
+
+// ---------- Base map markers ----------
+
+function makeBase(overrides: Partial<PalDefenderBase> = {}): PalDefenderBase {
+  return {
+    baseId: overrides.baseId ?? "base-1",
+    guildId: overrides.guildId ?? "guild-1",
+    guildName: overrides.guildName ?? "Test Guild",
+    guildAdministrator: overrides.guildAdministrator ?? {
+      playerId: "p1",
+      name: "Admin",
+    },
+    worldPosition: overrides.worldPosition ?? { x: 0, y: 0, z: 0 },
+    mapPosition: overrides.mapPosition ?? { x: 0.5, y: 0.5, z: 0 },
+  };
+}
+
+test("buildBaseMapMarkers: projects valid bases", () => {
+  const bases = [makeBase({ worldPosition: { x: 0, y: 0, z: 0 } })];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 1);
+  const marker = markers[0]!;
+  assert.equal(marker.baseId, "base-1");
+  assert.ok(Number.isFinite(marker.position.x));
+  assert.ok(Number.isFinite(marker.position.y));
+});
+
+test("buildBaseMapMarkers: skips out-of-bounds coordinates", () => {
+  const bases = [
+    makeBase({
+      baseId: "oob",
+      worldPosition: { x: 9999999, y: 9999999, z: 0 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 0);
+});
+
+test("buildBaseMapMarkers: skips invalid coordinates", () => {
+  const bases = [
+    makeBase({
+      baseId: "nan",
+      worldPosition: { x: NaN, y: 0, z: 0 },
+    }),
+    makeBase({
+      baseId: "inf",
+      worldPosition: { x: Infinity, y: 0, z: 0 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 0);
+});
+
+test("buildBaseMapMarkers: multiple bases from one guild produce separate markers", () => {
+  const bases = [
+    makeBase({
+      baseId: "b1",
+      guildId: "guild-a",
+      worldPosition: { x: 0, y: 0, z: 0 },
+    }),
+    makeBase({
+      baseId: "b2",
+      guildId: "guild-a",
+      worldPosition: { x: 1000, y: 1000, z: 0 },
+    }),
+    makeBase({
+      baseId: "b3",
+      guildId: "guild-a",
+      worldPosition: { x: -1000, y: -1000, z: 0 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.ok(markers.length >= 1);
+  const guildIds = new Set(markers.map((m) => m.guildId));
+  assert.equal(guildIds.size, 1);
+});
+
+test("buildBaseMapMarkers: preserves null guild name", () => {
+  const bases: PalDefenderBase[] = [
+    {
+      baseId: "no-guild",
+      guildId: "guild-null",
+      guildName: null,
+      guildAdministrator: { playerId: "p1", name: "Admin" },
+      worldPosition: { x: 0, y: 0, z: 0 },
+      mapPosition: { x: 0.5, y: 0.5, z: 0 },
+    },
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.ok(markers.length >= 1);
+  const marker = markers.find((m) => m.baseId === "no-guild");
+  assert.equal(marker?.guildName, null);
+});
+
+test("buildBaseMapMarkers: uses worldPosition not mapPosition", () => {
+  const base = makeBase({
+    baseId: "pos-test",
+    worldPosition: { x: 0, y: 0, z: 0 },
+    mapPosition: { x: 999, y: 999, z: 0 },
+  });
+  const markers = buildBaseMapMarkers([base], palpagosProjection);
+  assert.ok(markers.length >= 1);
+  const marker = markers[0]!;
+  const expectedPos = worldToNormalizedMapPosition(
+    { x: 0, y: 0 },
+    palpagosProjection,
+  );
+  assert.deepEqual(marker.position, expectedPos);
+  assert.equal(marker.worldX, 0);
+  assert.equal(marker.worldY, 0);
+});
+
+test("buildBaseMapMarkers: empty input produces empty output", () => {
+  const markers = buildBaseMapMarkers([], palpagosProjection);
+  assert.equal(markers.length, 0);
+});
+
+test("buildBaseMapMarkers: preserves baseId for navigation", () => {
+  const bases = [
+    makeBase({
+      baseId: "camp-abc123",
+      guildId: "guild-xyz",
+      worldPosition: { x: 0, y: 0, z: 0 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.ok(markers.length >= 1);
+  const marker = markers[0]!;
+  assert.equal(marker.baseId, "camp-abc123");
+  assert.equal(marker.guildId, "guild-xyz");
+  assert.notEqual(marker.baseId, marker.guildId);
+});
+
+test("buildBaseMapMarkers preserves authoritative mapPosition", () => {
+  const bases = [
+    makeBase({
+      baseId: "map-pos-test",
+      worldPosition: { x: 0, y: 0, z: 0 },
+      mapPosition: { x: 150, y: 200, z: 50 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 1);
+  const marker = markers[0]!;
+  assert.ok(marker.mapPosition !== null);
+  assert.equal(marker.mapPosition!.x, 150);
+  assert.equal(marker.mapPosition!.y, 200);
+  assert.equal(marker.mapPosition!.z, 50);
+});
+
+test("buildBaseMapMarkers handles null mapPosition safely", () => {
+  const bases = [
+    {
+      baseId: "no-map-pos",
+      guildId: "guild-1",
+      guildName: "Test Guild",
+      guildAdministrator: { playerId: "p1", name: "Admin" },
+      worldPosition: { x: 0, y: 0, z: 0 },
+      mapPosition: null,
+    },
+  ] as unknown as PalDefenderBase[];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 1);
+  assert.equal(markers[0]?.mapPosition, null);
+});
+
+test("buildBaseMapMarkers marker position is derived from worldPosition not mapPosition", () => {
+  const bases = [
+    makeBase({
+      baseId: "pos-source",
+      worldPosition: { x: 0, y: 0, z: 0 },
+      mapPosition: { x: 999, y: 999, z: 0 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 1);
+  const marker = markers[0]!;
+  const expected = worldToNormalizedMapPosition(
+    { x: 0, y: 0 },
+    palpagosProjection,
+  );
+  assert.deepEqual(marker.position, expected);
+  assert.notDeepEqual(marker.position, { x: 999, y: 999 });
+});
+
+test("buildBaseMapMarkers WORLD COORDINATES fields remain present and correct", () => {
+  const bases = [
+    makeBase({
+      baseId: "world-coords",
+      worldPosition: { x: 1234, y: 5678, z: 99 },
+      mapPosition: { x: 150, y: 200, z: 50 },
+    }),
+  ];
+  const markers = buildBaseMapMarkers(bases, palpagosProjection);
+  assert.equal(markers.length, 1);
+  const marker = markers[0]!;
+  assert.equal(marker.worldX, 1234);
+  assert.equal(marker.worldY, 5678);
+});
+
+test("BaseMapDetails displays MAP COORDINATES from mapPosition", async () => {
+  const source = await readFile(
+    new URL("../components/ServerWorldMap.tsx", import.meta.url),
+    "utf8",
+  );
+  const baseDetailsSection = source.match(
+    /function BaseMapDetails[\s\S]*?<\/Card>\s*\)\s*;?\s*\}\s*\n/,
+  );
+  assert.ok(baseDetailsSection, "BaseMapDetails component not found");
+  const section = baseDetailsSection[0];
+  assert.ok(
+    section.includes('label="Map coordinates"'),
+    "BaseMapDetails must contain a Map coordinates detail row",
+  );
+  assert.ok(
+    section.includes("marker.mapPosition"),
+    "Map coordinates must be derived from marker.mapPosition",
+  );
+  assert.ok(
+    section.includes("Unavailable"),
+    "Map coordinates must show Unavailable fallback",
+  );
+  assert.ok(
+    section.includes('label="World coordinates"'),
+    "BaseMapDetails must still contain World coordinates row",
+  );
+});
+
+// ---------- Layers Menu z-index regression (PR #193) ----------
+
+test("Layers Menu z-index exceeds expanded map overlay", async () => {
+  const source = await readFile(
+    new URL("../components/ServerWorldMap.tsx", import.meta.url),
+    "utf8",
+  );
+  const css = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  const expandedOverlay = css.match(
+    /\.pc-world-map-layout\.pc-world-map-expanded\s*\{(?<rules>[\s\S]*?)\}/,
+  )?.groups?.rules;
+  assert.ok(expandedOverlay, "expanded overlay CSS not found");
+  const overlayMatch = expandedOverlay.match(/z-index:\s*(\d+)/);
+  assert.ok(overlayMatch, "expanded overlay z-index not found");
+  const overlayZIndex = Number(overlayMatch[1]);
+
+  const menuZIndexMatch = source.match(/<Menu[\s\S]*?zIndex=\{(\d+)\}/);
+  assert.ok(menuZIndexMatch, "Layers Menu zIndex prop not found");
+  const menuZIndex = Number(menuZIndexMatch[1]);
+
+  assert.ok(
+    menuZIndex > overlayZIndex,
+    `Layers Menu z-index (${menuZIndex}) must exceed expanded overlay (${overlayZIndex})`,
+  );
+});
+
+test("toolbar Group renders inside Card element", async () => {
+  const source = await readFile(
+    new URL("../components/ServerWorldMap.tsx", import.meta.url),
+    "utf8",
+  );
+
+  const cardMatch = source.match(
+    /<Card[\s\S]*?className="pc-panel pc-world-map-card"/,
+  );
+  assert.ok(cardMatch, "Card element not found");
+  const cardIndex = source.indexOf(cardMatch[0]);
+
+  const toolbarMatch = source.match(/className="pc-world-map-toolbar"/);
+  assert.ok(toolbarMatch, "toolbar class not found");
+  const toolbarIndex = source.indexOf(toolbarMatch[0]);
+
+  const cardCloseMatch = source.match(
+    /<\/Card>(?=\s*<Stack gap="md" className="pc-world-map-details")/,
+  );
+  assert.ok(cardCloseMatch, "Card close tag not found");
+  const cardCloseIndex = source.indexOf(cardCloseMatch[0]);
+
+  assert.ok(
+    toolbarIndex > cardIndex && toolbarIndex < cardCloseIndex,
+    "toolbar must be inside Card element to avoid oversized hit area in expanded mode",
+  );
+});

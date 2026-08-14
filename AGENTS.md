@@ -1,88 +1,65 @@
-# PalCenter Engineering Workflow
+# PalCenter Agent Rules
 
-These instructions apply to all autonomous coding agents working on this repository.
+These rules apply to all coding agents working in this repository.
 
-## Role and Authority
+## 1. Authority
 
-- The repository and current source code are authoritative for implementation state.
-- GitHub issues, pull requests, and project state are authoritative for tracked work.
-- This document is authoritative for agent workflow and repository operating rules.
-- The project owner makes product and design decisions and performs final live UAT.
-- When repository or GitHub evidence is unclear, ask the owner rather than guessing.
+- Current repository source is authoritative for implementation state.
+- GitHub issues, pull requests, Actions, and Project state are authoritative for tracked work.
+- This file is authoritative for agent workflow.
+- The project owner makes product/design decisions and performs final live UAT.
+- Do not invent requirements, identifiers, provider behavior, or repository state.
+- If evidence is ambiguous and the answer affects product behavior, ask the owner.
 
-Do not invent requirements. Do not assume stale assumptions are current when contradicting evidence exists.
+## 2. Git Workflow
 
-## Source Control Baseline
+Normal development flow:
 
-Before beginning any implementation or documentation work:
+`origin/dev -> feature/fix branch -> PR to dev -> CI -> merge to dev -> owner UAT`
 
-1. Inspect `git status` and protect existing uncommitted work if present.
+Before editing:
+
+1. Check `git status`. Do not overwrite unexpected uncommitted work.
 2. Run `git fetch origin`.
 3. Switch to local `dev`.
-4. Fast-forward local `dev` from `origin/dev` using a non-interactive `--ff-only` operation.
-5. Verify local `dev` matches current `origin/dev`.
-6. Create and switch to a fresh appropriately named feature, fix, or docs branch.
-7. Verify that the new branch is based on current `origin/dev`.
+4. Fast-forward from `origin/dev` using `--ff-only`.
+5. Verify local `dev` matches `origin/dev`.
+6. Create a fresh feature/fix/docs branch from current `dev`.
+7. Verify the branch and working tree before editing.
 
-Only then begin editing.
+Rules:
 
-If the working tree is unexpectedly dirty, stop and determine why before changing repository state.
+- Never develop directly on `dev` or `main`.
+- Never target `main` during normal development.
+- Never discard unknown work with destructive reset, restore, or stash operations.
+- Git operations must be CLI-only and non-interactive.
+- Provide commit messages with `-m`; do not launch editors.
+- Reuse an existing PR for a branch instead of creating duplicates.
+- Never merge a PR, promote `dev -> main`, tag, or release without explicit owner authorization.
 
-Never use destructive reset, restore, or stash operations to accomplish this baseline workflow. Never:
+## 3. Scope Discipline
 
-- Commit feature work directly onto local `dev`.
-- Begin editing before updating `dev` and creating the branch.
-- Assume local `dev` is current because it was current earlier in the session.
+- Implement only the requested scope.
+- Do not perform unrelated refactors or cleanup.
+- Avoid modifying already UAT-approved behavior unless required by the task.
+- If a pre-existing lint, test, build, or formatting failure blocks validation, report it instead of silently broadening scope.
+- Fix pre-existing problems only when required to complete the requested task.
+- Do not invent requirements to resolve uncertainty.
 
-## Non-Interactive Git
+## 4. Mandatory Formatting and Validation
 
-All autonomous Git operations must be CLI-only and non-interactive:
+Formatting is part of implementation, not a CI cleanup step.
 
-- Provide commit messages via `-m`.
-- Use non-interactive rebase/merge methods when appropriate.
-- Avoid commands that launch an editor (interactive rebase, `git commit` without `-m`, etc.).
-- Never leave a task waiting on a GUI or editor process it cannot control.
+### Before every commit or push
 
-## Execution Persistence
+1. Identify every modified Prettier-managed file.
+2. Run Prettier in **write mode** on those files:
 
-Once a task is approved for execution, continue through the requested workflow rather than stopping after every intermediate tool call.
+```bash
+pnpm exec prettier --write <modified files>
+```
 
-Do not end a turn merely because:
-
-- a file read completed;
-- a grep or search completed;
-- a tool returned results;
-- analysis steps produced output that requires further action to complete the task.
-
-Continue automatically until:
-
-- the requested task is fully complete;
-- a concrete blocker exists (missing credentials, permissions failure, unavailable service);
-- owner authorization is explicitly required (final live UAT, merge, release tag);
-- an ambiguous product or design decision genuinely needs owner input;
-- continuing would risk destructive irreversible action.
-
-Do not stop after planning when executable requested steps remain.
-
-## Tool Selection
-
-Use the correct tool for each operation. Avoid redundancy when built-in tools already cover the task.
-
-**GitHub MCP:** issues, pull requests, GitHub Actions status, repository metadata, and other supported GitHub reads and mutations. Prefer GitHub MCP for all operations it supports.
-
-**gh CLI / GitHub GraphQL:** use only where GitHub MCP lacks the required capability, especially PalCenter Roadmap Projects v2 field updates (Status, Priority) and adding issues to projects. Use the maintained Projects v2 helper script when available; do not rediscover schema or IDs from scratch each time.
-
-**Playwright MCP:** rendered UI inspection, browser behavior verification, navigation checks, targeted UI automation. Generated `.playwright-mcp/` artifacts must remain untracked by git.
-
-**Context7:** current version-sensitive framework and library documentation (Next.js, React, Fastify, TypeScript, etc.). Use when implementation depends on uncertain or potentially stale framework behavior. Repository and project-specific rules always come from PalCenter source code, documentation, AGENTS.md, and GitHub state—not Context7.
-
-**Native tools / shell:** repository file operations, content search, edits, Git CLI, package scripts, build/test/lint/format commands.
-
-Do not use gh CLI as a default substitute when a corresponding GitHub MCP tool is available.
-
-## Validation
-
-For normal application feature work, run only the fast local checks needed to catch obvious defects before opening a PR:
+3. Run the complete local validation gate:
 
 ```bash
 pnpm format:check
@@ -92,225 +69,294 @@ pnpm test
 git diff --check
 ```
 
-Review the final `git diff` for correctness.
+4. Review the final `git diff`.
+5. Commit or push only when all applicable checks pass.
 
-Do not routinely run local AMD64 or ARM64 production Docker builds, cross-platform Docker builds, or the complete CI-equivalent Docker validation suite. GitHub Actions is authoritative for those checks after a Draft PR is opened.
+### Formatting rules
 
-Local Docker or image validation is required only when the task modifies `Dockerfile`, Docker Compose configuration, multi-stage build steps, base image versions, CI workflow files, or runtime container dependencies. It is also required when a GitHub Actions failure specifically demands local reproduction.
+- `prettier --check` and `pnpm format:check` only detect formatting problems.
+- A check does not replace the required `prettier --write` step.
+- Do not rely on editor auto-formatting, visual inspection, or GitHub Actions to format files.
+- If the agent creates or modifies a Prettier-managed file, the agent owns the resulting formatting of that file.
+- The write step is required even for small or apparently formatting-neutral changes.
+- If files are modified after validation, format them again and rerun the applicable final validation before pushing.
+- Never knowingly push a locally failing validation result merely to see what CI reports.
+- Never claim a validation command passed unless it actually completed successfully.
 
-Do not claim validation passed unless each command actually completed without error.
+### Docker validation
 
-## Issue Lifecycle
+Do not routinely run production AMD64/ARM64 Docker builds locally. GitHub Actions is authoritative for full image validation.
 
-Every feature and fix must maintain its GitHub issue tracking throughout development.
+Run relevant local Docker/image validation when changing:
 
-### Creating a new issue
+- `Dockerfile`;
+- Docker Compose configuration;
+- container/runtime dependencies;
+- multi-stage build behavior;
+- image/base-image configuration;
+- CI/container build workflows;
 
-When creating a new implementation or stabilization issue:
+or when reproducing a relevant CI failure.
 
-1. Create the GitHub issue with clear scope.
-2. Add it to the PalCenter Roadmap project.
-3. Set the appropriate initial Status field.
-4. Set Priority according to established PalCenter conventions when applicable.
-5. Read the project item back and verify it is present with expected fields.
+## 5. Issues and Project Tracking
 
-Creating the issue alone is not complete project bookkeeping. Do not proceed with implementation until project state is verified, unless the owner explicitly authorizes proceeding due to temporary GitHub Projects or bookkeeping unavailability.
+Every feature or fix should maintain its associated GitHub tracking when applicable.
 
-### Before development
+For new tracked work:
 
-For work associated with existing issues:
+1. Create the issue with clear scope.
+2. Add it to the PalCenter Roadmap.
+3. Set appropriate Status and Priority.
+4. Read the Project item back and verify its state.
 
-1. Confirm issue numbers and scope.
-2. Branch from the latest `origin/dev` (see Source Control Baseline).
-3. Do not create duplicate issues for existing work.
+For existing work:
 
-### Partial or blocked scope
+- Confirm the existing issue and scope.
+- Do not create duplicate issues.
+- Do not close an issue merely because code exists.
+- If only part of an issue/PR scope is complete, close only completed work and preserve incomplete work accurately.
 
-If a PR contains multiple issues and only some are successfully completed:
+## 6. Pull Request Workflow
 
-- close and move to Done only the completed issues
-- leave blocked or incomplete issues open
-- preserve appropriate Project status and labels
-- document the distinction in the PR
+For normal implementation work:
 
-Never close an issue merely because code exists if required live UAT failed or the feature remains blocked.
+1. Branch from current `origin/dev`.
+2. Implement only the scoped change.
+3. Format modified files.
+4. Run local validation.
+5. Commit and push.
+6. Open a Draft PR targeting `dev`.
+7. Link completed issues using one closing keyword per line:
 
-## Pull Request Workflow
+```text
+Closes #<issue>
+```
 
-For normal feature work:
+8. Verify GitHub recognizes the closing-issue relationship.
+9. Let GitHub Actions perform full CI.
+10. Investigate actual CI failures.
+11. Complete required UAT.
+12. Update PR, issue, and Project state as appropriate.
+13. Report final status.
 
-1. Branch from current `origin/dev` (see Source Control Baseline).
-2. Implement only the scoped change (see Scope Discipline).
-3. Run local validation.
-4. Commit and push the feature branch.
-5. Open a Draft PR targeting `dev`.
-6. Link associated issues by including one closing keyword per line in the PR body:
+Do not duplicate expensive CI work locally unless required by the change or needed to diagnose a failure.
 
-   ```text
-   Closes #<issue>
-   Closes #<issue>
-   ```
+### CI failures
 
-7. Verify that GitHub recognizes the link (check `closingIssuesReferences` via the API or MCP). Mentioning an issue number in prose is not sufficient.
-8. Let GitHub Actions perform full CI validation. Investigate only actual CI failures (see CI Failure Discipline).
-9. Perform required live UAT.
-10. Update the PR evidence, set related issues to Review status when implementation and required UAT are complete, and mark the PR as ready for review.
-11. Report the final state.
+When CI fails:
 
-At the end of feature work, report:
-
-- PR number
-- target branch
-- linked issue numbers
-- issue Project status
-- UAT status
-- GitHub Actions status
-- whether the PR is ready for owner merge
-
-Do not duplicate expensive CI work locally before opening the PR. Avoid duplicate PRs; if one already exists for the branch, update it instead of creating another. Do not target `main`.
-
-## Merge Authorization
-
-Never merge a pull request or publish a release unless the project owner explicitly directs or authorizes it. This rule applies at every stage: after CI passes, after UAT succeeds, and during post-merge housekeeping.
-
-Do not create an additional PR for post-merge issue and project bookkeeping; perform those updates directly.
-
-## CI Failure Discipline
-
-When GitHub Actions fails on a change you pushed:
-
-1. Inspect the specific failing job log.
-2. Determine whether the failure was caused by your change or is pre-existing/environmental.
+1. Inspect the specific failing job/log.
+2. Determine whether the failure was caused by the current change.
 3. Do not blindly retry.
-4. Do not modify production implementation solely to satisfy a stale test.
-5. If intentional behavior changed, update the relevant test rather than reverting the feature.
-6. Keep any fix narrowly scoped to the failure cause.
-7. Re-run or verify CI passes after the fix.
+4. Fix the narrow cause.
+5. Do not change correct production behavior merely to satisfy a stale test.
+6. If intentional behavior changed, update the appropriate test.
+7. Format any newly modified files again.
+8. Rerun the applicable local validation gate.
+9. Push and verify CI again.
 
-Ask the owner only when causality or correct product behavior is genuinely ambiguous.
+## 7. Merge Authorization
 
-## Live UAT and Post-UAT Lifecycle
+Never merge a pull request without explicit owner authorization.
 
-The project owner performs final live UAT for user-visible changes that affect Palworld server state. Owner live UAT is the acceptance gate.
+This applies even when:
 
-After the owner explicitly reports successful live UAT:
+- local validation passes;
+- CI is green;
+- automated tests pass;
+- UAT passes;
+- the PR is marked ready.
 
-1. Verify the implementation is merged into `dev`.
-2. Close all linked completed GitHub issues with `state_reason` set to `"completed"`.
-3. For each completed issue, read its PalCenter Roadmap Projects v2 Status field. Closing a GitHub issue does NOT automatically update the project Status field.
-4. If any completed issue's Status is not Done (e.g., still UAT or Review), explicitly change it to Done.
-5. After changing a project item's Status, re-read that same Projects v2 item and independently verify Status equals Done. Do not assume the mutation succeeded based solely on the response.
-6. Verify any parent epic or sub-issue progress reflects the completed issue.
-7. Remove obsolete workflow or blocking labels where applicable.
-8. Verify the PR-to-issue linking relationship is correct.
-9. Report all issue and project-status changes made in the current session output.
+Likewise, never promote `dev -> main`, create a release tag, publish a release, or perform release promotion without explicit owner authorization.
 
-Do not report the post-UAT lifecycle as complete until both conditions are met:
+## 8. Live UAT
 
-- The GitHub issue is closed with `state_reason` equal to `"completed"`.
-- The corresponding PalCenter Roadmap project item has been independently verified as Status equals Done.
+The owner performs final live UAT for user-visible behavior and operations affecting live Palworld or PalDefender state.
 
-Closing an issue does NOT automatically mean the project item is Done. Updating project Status does NOT automatically close the issue. Both states must be verified independently.
+When owner-operated UAT is required, prepare the environment and provide:
 
-Do not merge unrelated PRs or publish releases as part of post-UAT housekeeping without explicit owner authorization.
+- URL/server to use;
+- page or feature to open;
+- exact action to perform;
+- expected result.
 
-## Scope Discipline
+Then stop when owner interaction is required.
 
-- Make only changes relevant to the requested task.
-- Do not perform opportunistic refactors unrelated to the scope.
-- Distinguish necessary cleanup (e.g., formatting required for CI to pass) from unrelated cleanup.
-- Avoid touching already UAT-approved surfaces unless the change requires it.
-- If pre-existing lint, test, or build errors prevent passing validation, report them rather than silently broadening scope. Fix them only if necessary to complete the requested task.
+After owner action, the agent may:
 
-## Temporary and Generated Artifacts
+- inspect logs;
+- call authoritative read endpoints;
+- verify resulting server/player state;
+- capture diagnostic evidence;
+- update PR evidence.
 
-- Generated tooling artifacts such as `.playwright-mcp/` must remain untracked and should be gitignored.
-- Use approved temporary directories for helper files or intermediate outputs rather than cluttering the repository.
-- Do not weaken external-directory permissions globally to avoid prompts.
+Ask the owner for in-game confirmation when the result is meaningfully observable only in the game client.
 
-## PalDefender Validation and Identifier Discipline
+### Existing UAT Environment
 
-A PalDefender `VALIDATION_FAILED` response does not establish that an endpoint is broken. Before classifying an endpoint as blocked or provider-defective:
+A reusable local UAT environment already exists at:
 
-1. Verify the exact documented request schema.
-2. Verify every game identifier is an internal ID rather than a friendly or display name.
-3. Check known authoritative runtime data where available.
-4. Compare with existing successful PalCenter and PalDefender conventions.
-5. If uncertainty remains, report the exact request and response and ask the owner before declaring the provider broken.
+`C:\Development\uat-tools\uat`
 
-Do not guess identifiers. Do not mark an issue blocked merely because one live request returns `VALIDATION_FAILED`. Do not move an issue to blocked or Backlog based on an uncertain provider diagnosis without strong evidence.
+Use this environment for runtime UI validation instead of creating a new
+Palworld/PalDefender test environment from scratch.
 
-PalDefender write endpoints generally require internal game identifiers. Treat display names and internal IDs as distinct. Do not substitute friendly names into provider requests unless authoritative mapping establishes that behavior. Consult live endpoint data for identifier verification, not historical examples.
+It contains the established UAT tooling for:
 
-### State-changing operations
+- the Palworld test server;
+- PalDefender;
+- the PalCenter UAT container/runtime.
 
-For UAT actions that modify live Palworld or PalDefender state:
+Before creating new test infrastructure, inspect and use the existing UAT
+environment and its documented configuration.
 
-- perform the minimum write necessary
-- do not retry ambiguous writes automatically
-- inspect the exact provider response
-- use read-after-write verification where available
-- restore reversible owner state when appropriate
+The UAT environment may not have a live connected player. This limits only
+player-dependent validation. It does not prevent validation of map rendering,
+bases, navigation, Layers controls, fullscreen/expanded behavior, PalDefender
+data that does not require an online player, or other available workflows.
 
-## Owner-Operated Live UAT
+Temporary PalCenter containers/images created while validating a branch may be
+recreated as needed. Do not destroy or reset the reusable Palworld/PalDefender
+UAT environment unless explicitly authorized by the owner.
 
-For any PalCenter feature that changes live Palworld or PalDefender state, the project owner performs the final UAT action through the PalCenter web UI. The agent must not normally perform the final state-changing action itself.
+### State-changing diagnostics
 
-The agent prepares the environment by:
+For diagnostic actions that modify live state:
 
-1. Starting or verifying the local Palworld and PalDefender test environment.
-2. Starting or verifying the PalCenter feature branch locally.
-3. Confirming the required player is connected when applicable.
-4. Providing the owner with the local URL, server to select, page to open, feature being tested, and expected result.
-5. Stopping and explicitly waiting for the owner.
+- perform the minimum write necessary;
+- do not automatically retry ambiguous writes;
+- inspect the exact provider response;
+- use read-after-write verification where available;
+- restore reversible owner state when appropriate.
 
-The owner enters actual identifiers and performs the action through PalCenter's UI. The agent does not choose or substitute identifier values on the owner's behalf during final UAT.
+Direct REST calls, PowerShell, curl, RCON, and similar tools are diagnostic tools. They do not replace final PalCenter UI UAT when UI behavior is being accepted.
 
-After the owner performs the action, the agent may inspect logs, call authoritative read endpoints, verify resulting server or player state, capture screenshots, and document the result in the PR. Ask the owner for in-game confirmation when a result is only observable or meaningfully verifiable in the game client.
+## 9. PalDefender Provider Rules
 
-## Direct Provider Testing
+When PalDefender is configured, it is authoritative for functionality and data it provides.
 
-Direct REST calls, PowerShell, curl, RCON, and similar mechanisms are diagnostic tools, not substitutes for final PalCenter UAT. Use them only to isolate whether a failure originates in PalCenter, request serialization, incorrect identifiers, PalDefender, or the game server.
+### Provider authority
 
-When PalCenter UAT fails with `VALIDATION_FAILED` or another unclear provider error:
+- If PalDefender is configured and provides the required capability, use PalDefender.
+- If configured PalDefender is unavailable or a PalDefender request fails, expose the failure.
+- Do not silently fall back to Native REST when configured PalDefender fails.
+- Native REST may still provide functionality that PalDefender does not provide.
+- When PalDefender is not configured, use supported Native REST functionality.
 
-1. Preserve the exact request and response.
-2. Do not immediately declare the provider broken.
-3. Verify identifiers and the request contract before comparing via a direct REST call.
-4. Ask the owner when input validity is uncertain.
+This behavior is intentional: silent fallback can conceal a broken or unhealthy PalDefender configuration from the server administrator.
 
-Once a cause is corrected, final UAT must still be repeated through the PalCenter UI.
+### PalDefender validation
 
-## Browser and UI Tooling
+Do not guess internal game identifiers.
 
-Use Playwright MCP for browser automation and UI inspection when automated browser verification is appropriate. Do not substitute HTTP clients (curl, Invoke-WebRequest) for browser validation when rendered UI behavior is required.
+Display/friendly names and internal IDs are distinct unless authoritative mapping proves otherwise.
 
-For live Palworld/PalDefender UAT that changes real server state, follow the Owner-Operated Live UAT rules above.
+A PalDefender `VALIDATION_FAILED` response alone does not prove that PalDefender or an endpoint is broken.
 
-## Workspace Discipline
+Before classifying a provider defect:
 
-All PalCenter development uses the canonical repository under `C:\Development`.
+1. Verify the documented/requested schema.
+2. Verify internal identifiers.
+3. Check authoritative runtime data where available.
+4. Compare against existing successful PalCenter/PalDefender conventions.
+5. Preserve the exact request and response.
+6. Ask the owner if validity remains uncertain.
 
-Do not create project clones, worktrees, build staging directories, or UAT workspaces under the root of `C:\`, the user profile, Documents, or arbitrary temporary locations. If an isolated workspace is genuinely required, place it under `C:\Development` and clean it up when the task is complete.
+Do not move work to Blocked/Backlog based solely on an uncertain provider diagnosis.
 
-Clean up processes, development servers, containers, and Playwright browser sessions created during testing unless the owner explicitly asks that they remain running for manual UAT.
+## 10. Post-UAT Completion
 
-## Release Preparation
+After the owner explicitly reports successful UAT and the implementation is merged into `dev`:
 
-Release preparation follows a gated workflow. When preparing for a release:
+1. Close completed linked GitHub issues with reason `completed`.
+2. Set each completed issue's PalCenter Roadmap Status to Done.
+3. Re-read each Project item and verify Status is actually Done.
+4. Verify PR-to-issue linkage.
+5. Verify parent/sub-issue progress when applicable.
+6. Remove obsolete workflow/blocking labels where appropriate.
+7. Report the resulting state.
 
-1. Stop feature work at the release-hardening point.
-2. Code and repository review before broad modifications.
-3. Audit findings must be reported before making changes.
-4. Reconcile `CHANGELOG.md` and `RELEASE_NOTES.md` against actual Git/GitHub history.
-5. Run the complete release validation defined by the repository's current scripts and CI workflows, including production and image validation where applicable.
-6. The owner performs final release-candidate live UAT.
-7. Do not merge to a release branch or `main`, create version tags, trigger GitHub Releases, or publish container images without explicit owner authorization.
+Issue state and Project state are independent:
 
-Do not routinely duplicate expensive Docker/image validation locally during normal development; that gate belongs to CI. Local Docker validation is only required when modifying Dockerfile, Docker Compose configuration, multi-stage build steps, base image versions, CI workflow files, or runtime container dependencies, or when a GitHub Actions failure specifically demands local reproduction.
+- GitHub issue must be closed as completed.
+- Roadmap item must independently be verified as Done.
 
-Detailed release runbook procedures follow this policy and are maintained separately during active release preparation.
+Do not merge unrelated PRs or perform release actions as part of post-UAT bookkeeping.
 
-## Terminology
+## 11. Tools and Workspace
 
-In user-facing progress reports and UAT instructions, prefer natural administrative terms such as action, operation, change, grant, ban or unban, learn or forget, send, and delete. Avoid repeatedly calling ordinary game or server administrative actions "mutations." Technical code and tests may continue using "mutation" where that is the established terminology.
+Use the simplest authoritative tool for the task.
+
+Preferred tools:
+
+- **GitHub MCP:** GitHub issues, PRs, Actions, repository metadata, and supported mutations.
+- **gh CLI / GitHub GraphQL:** only when GitHub MCP lacks the required capability, especially Projects v2 operations.
+- **Playwright MCP:** rendered UI/browser behavior and targeted UI automation.
+- **Context7:** uncertain or version-sensitive framework/library documentation.
+- **Native shell/tools:** repository files, search, Git, formatting, linting, tests, and builds.
+
+Rules:
+
+- Repository/project behavior comes from PalCenter source, documentation, this file, and GitHub state.
+- Do not substitute HTTP clients for browser validation when rendered UI behavior is what must be tested.
+- Keep generated artifacts such as `.playwright-mcp/` untracked.
+- Use the canonical repository under `C:\Development`.
+- Do not create arbitrary clones, worktrees, or project copies elsewhere.
+- Clean up development servers, processes, containers, and browser sessions created for testing unless the owner asks to keep them running.
+
+## 12. Execution Persistence
+
+Once implementation is authorized, continue through routine executable steps without stopping after individual:
+
+- searches;
+- file reads;
+- edits;
+- commands;
+- tests;
+- tool results.
+
+Stop when:
+
+- the requested task is complete;
+- a concrete blocker exists;
+- owner UAT/action is required;
+- explicit merge/release authorization is required;
+- an ambiguous product/design decision requires owner input;
+- continuing risks destructive or irreversible action.
+
+Do not stop after planning when the owner requested implementation and executable work remains.
+
+## 13. Release Workflow
+
+Release preparation is separate from normal development.
+
+At release hardening:
+
+1. Stop unrelated feature work.
+2. Reconcile `CHANGELOG.md` and `RELEASE_NOTES.md` against actual Git/GitHub history.
+3. Verify README/user documentation when release changes affect operators.
+4. Verify release version and metadata.
+5. Run the repository's release validation.
+6. Obtain owner release-candidate UAT.
+7. Promote `dev -> main` only with owner authorization.
+8. Tag/release only with owner authorization.
+
+Never merge `dev -> main`, create a release tag, trigger a GitHub Release, or publish release artifacts without explicit owner authorization.
+
+## 14. Communication
+
+Owner-facing documentation, reports, and UAT instructions should use clear Palworld server-administration language.
+
+Prefer terms such as:
+
+- action;
+- operation;
+- grant;
+- kick;
+- ban/unban;
+- send;
+- delete;
+- learn/forget;
+- server administration.
+
+Avoid unnecessary internal engineering jargon in user-facing text. Technical code/tests may retain established technical terminology.

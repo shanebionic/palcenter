@@ -8,9 +8,11 @@ import {
   Button,
   Card,
   Center,
+  Checkbox,
   Code,
   Group,
   Loader,
+  Menu,
   Paper,
   SegmentedControl,
   Select,
@@ -20,11 +22,10 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
 import {
-  IconCopy,
   IconArrowsMaximize,
   IconFocusCentered,
+  IconLayersIntersect,
   IconMinus,
   IconPlus,
   IconDoorEnter,
@@ -32,24 +33,34 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import { BrandedLoader } from "./BrandedLoader";
 import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
 import {
+  getPalDefenderBases,
+  getPalDefenderPlayer,
+  getPalDefenderProgression,
+  getPalDefenderStatus,
   getPlayers,
   getPlayerTelemetry,
   getPlayerTrailHistory,
+  type PalDefenderBase,
+  type PalDefenderPlayerDetails,
+  type PalDefenderProgression,
 } from "../lib/api";
 import {
+  buildBaseMapMarkers,
   buildLivePlayerMapModel,
-  calibrationRecord,
   formatTelemetryAge,
   mapContentState,
   playerMapDetailValues,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
+  type BaseMapMarker,
   type LivePlayerMapMarker,
+  type PlayerEnrichment,
 } from "../lib/world-map/model";
 import {
   centerMapOnPosition,
@@ -64,11 +75,8 @@ import {
   type MapRect,
 } from "../lib/world-map/navigation";
 import {
-  defaultWorldMapLayer,
   worldMapAssetPath,
   worldMapAssetSrcSet,
-  worldMapLayerClasses,
-  type WorldMapLayer,
 } from "../lib/world-map/layers";
 import { palpagosProjection } from "../lib/world-map/projection";
 import { playerColor } from "../lib/world-map/player-color";
@@ -78,12 +86,16 @@ import {
   type ProcessedTrail,
 } from "../lib/world-map/trail";
 import { palpagosMapDefinition } from "../lib/world-map/map-definitions";
+import {
+  palDefenderBaseHref,
+  palDefenderGuildHref,
+  palDefenderPlayerHref,
+} from "../lib/paldefender";
 import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
 
 interface ServerWorldMapProps {
   serverId: string;
   serverOnline: boolean;
-  canCalibrate: boolean;
 }
 
 const defaultTelemetry: LatestPlayerTelemetry = {
@@ -105,7 +117,6 @@ const trailRangeMilliseconds: Record<TrailRange, number> = {
 export function ServerWorldMap({
   serverId,
   serverOnline,
-  canCalibrate,
 }: ServerWorldMapProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [telemetry, setTelemetry] =
@@ -115,8 +126,6 @@ export function ServerWorldMap({
   const [error, setError] = useState<string | null>(null);
   const [playerRequestFailed, setPlayerRequestFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [calibrating, setCalibrating] = useState(false);
-  const [mapLayer, setMapLayer] = useState<WorldMapLayer>(defaultWorldMapLayer);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<MapPan>({ x: 0, y: 0 });
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
@@ -125,6 +134,8 @@ export function ServerWorldMap({
   const [followPlayer, setFollowPlayer] = useState(false);
   const [focusedPlayerId, setFocusedPlayerId] = useState<string | null>(null);
   const [trailEnabled, setTrailEnabled] = useState(false);
+  const [showPlayers, setShowPlayers] = useState(true);
+  const [showBases, setShowBases] = useState(true);
   const [trailRange, setTrailRange] = useState<TrailRange>("1h");
   const [trail, setTrail] = useState<ProcessedTrail | null>(null);
   const [trailLoading, setTrailLoading] = useState(false);
@@ -149,6 +160,15 @@ export function ServerWorldMap({
     expanded: boolean;
     visible: boolean;
   } | null>(null);
+  const [bases, setBases] = useState<PalDefenderBase[]>([]);
+  const [basesLoading, setBasesLoading] = useState(true);
+  const [basesError, setBasesError] = useState<string | null>(null);
+  const [enrichedPlayer, setEnrichedPlayer] =
+    useState<PalDefenderPlayerDetails | null>(null);
+  const [enrichedProgression, setEnrichedProgression] =
+    useState<PalDefenderProgression | null>(null);
+  const [enrichmentLoading, setEnrichmentLoading] = useState(false);
+  const enrichmentRequest = useRef<AbortController | null>(null);
   const viewport = useRef<HTMLDivElement | null>(null);
   const surface = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{
@@ -231,6 +251,43 @@ export function ServerWorldMap({
     };
   }, [loadMap, serverOnline, telemetry.pollingIntervalSeconds]);
 
+  const loadBases = useCallback(async () => {
+    if (!serverOnline) {
+      setBasesLoading(false);
+      return;
+    }
+
+    try {
+      const status = await getPalDefenderStatus(serverId);
+      if (!status.configured) {
+        setBases([]);
+        setBasesError(null);
+        setBasesLoading(false);
+        return;
+      }
+    } catch {
+      setBasesLoading(false);
+      return;
+    }
+
+    try {
+      const result = await getPalDefenderBases(serverId);
+      setBases(result);
+      setBasesError(null);
+    } catch (value) {
+      setBases([]);
+      setBasesError(
+        value instanceof Error ? value.message : "Unable to load bases.",
+      );
+    } finally {
+      setBasesLoading(false);
+    }
+  }, [serverId, serverOnline]);
+
+  useEffect(() => {
+    void loadBases();
+  }, [loadBases]);
+
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;
@@ -283,8 +340,14 @@ export function ServerWorldMap({
       ),
     [players, telemetry],
   );
+  const baseMarkers = useMemo(
+    () => buildBaseMapMarkers(bases, palpagosProjection, palpagosMapDefinition),
+    [bases],
+  );
   const selected =
     model.markers.find((marker) => marker.userId === selectedId) ?? null;
+  const selectedBase =
+    baseMarkers.find((marker) => marker.baseId === selectedId) ?? null;
   const selectedUnavailable =
     model.unmappedPlayers.find((player) => player.userId === selectedId) ??
     null;
@@ -299,6 +362,16 @@ export function ServerWorldMap({
   const selectedPlayerName =
     selected?.playerName ?? selectedTelemetry?.playerName ?? null;
   const selectedPlayerColor = playerColor(selectedId ?? "");
+  const selectedEnrichment =
+    enrichedPlayer || enrichedProgression
+      ? {
+          mapLocation: enrichedPlayer?.mapLocation ?? null,
+          level:
+            enrichedProgression?.character.level ??
+            enrichedPlayer?.level ??
+            null,
+        }
+      : null;
   const renderedTrailSegments = useMemo(
     () => (trail ? buildRenderedTrailSegments(trail) : []),
     [trail],
@@ -371,6 +444,63 @@ export function ServerWorldMap({
     }
     return () => trailRequest.current?.abort();
   }, [loadTrail, selectedId, trailEnabled, trailRange]);
+
+  // Clear player selection when players layer is hidden
+  useEffect(() => {
+    if (!showPlayers && selected) {
+      setSelectedId(null);
+    }
+  }, [showPlayers, selected]);
+
+  // Clear base selection when bases layer is hidden
+  useEffect(() => {
+    if (!showBases && selectedBase) {
+      setSelectedId(null);
+    }
+  }, [showBases, selectedBase]);
+
+  // Enrich selected player with PalDefender details and progression
+  useEffect(() => {
+    const marker = model.markers.find((m) => m.userId === selectedId);
+    if (!marker || !marker.playerId) {
+      setEnrichedPlayer(null);
+      setEnrichedProgression(null);
+      setEnrichmentLoading(false);
+      return;
+    }
+    const playerId = marker.playerId;
+    const controller = new AbortController();
+    enrichmentRequest.current = controller;
+    setEnrichmentLoading(true);
+    const fetchEnrichment = async () => {
+      try {
+        const [playerResult, progressionResult] = await Promise.allSettled([
+          getPalDefenderPlayer(serverId, playerId),
+          getPalDefenderProgression(serverId, playerId),
+        ]);
+        if (controller.signal.aborted) return;
+        if (playerResult.status === "fulfilled") {
+          setEnrichedPlayer(playerResult.value);
+        } else {
+          setEnrichedPlayer(null);
+        }
+        if (progressionResult.status === "fulfilled") {
+          setEnrichedProgression(progressionResult.value);
+        } else {
+          setEnrichedProgression(null);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setEnrichedPlayer(null);
+          setEnrichedProgression(null);
+        }
+      } finally {
+        if (!controller.signal.aborted) setEnrichmentLoading(false);
+      }
+    };
+    void fetchEnrichment();
+    return () => controller.abort();
+  }, [serverId, selectedId, model.markers]);
   const applyFitMap = useCallback(() => {
     const fit = fitMapView();
     setZoom(fit.zoom);
@@ -487,77 +617,8 @@ export function ServerWorldMap({
     };
     const frame = window.requestAnimationFrame(update);
     return () => window.cancelAnimationFrame(frame);
-  }, [expanded, mapLayer, pan, selected, surfaceSize, zoom]);
+  }, [expanded, pan, selected, surfaceSize, zoom]);
 
-  const copyCalibration = async (marker: LivePlayerMapMarker) => {
-    try {
-      await navigator.clipboard.writeText(calibrationRecord(marker));
-      notifications.show({
-        color: "green",
-        title: "Calibration point copied",
-        message: "The world and normalized coordinates are on your clipboard.",
-      });
-    } catch {
-      notifications.show({
-        color: "red",
-        title: "Copy failed",
-        message: "Your browser did not allow clipboard access.",
-      });
-    }
-  };
-
-  const copyDiagnostics = async () => {
-    if (!selected || !diagnostics) return;
-    const rect = (value: MapRect | null) =>
-      value
-        ? {
-            left: Math.round(value.left),
-            top: Math.round(value.top),
-            right: Math.round(value.right),
-            bottom: Math.round(value.bottom),
-          }
-        : null;
-    const output = {
-      viewport: {
-        width: Math.round(
-          diagnostics.viewport.right - diagnostics.viewport.left,
-        ),
-        height: Math.round(
-          diagnostics.viewport.bottom - diagnostics.viewport.top,
-        ),
-      },
-      viewportCss: diagnostics.viewportCss,
-      viewportClient: diagnostics.viewportClient,
-      expanded: diagnostics.expanded,
-      untransformedSurface: diagnostics.untransformedSurface,
-      transformedSurface: rect(diagnostics.surface),
-      image: rect(diagnostics.image),
-      markerPlane: diagnostics.markerPlane,
-      zoom,
-      pan,
-      player: {
-        normalized: selected.position,
-        renderedPercent: {
-          x: Number((selected.position.x * 100).toFixed(2)),
-          y: Number((selected.position.y * 100).toFixed(2)),
-        },
-        screenRect: rect(diagnostics.marker),
-        intersectsViewport: diagnostics.visible,
-      },
-    };
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(output, null, 2));
-      notifications.show({
-        color: "green",
-        message: "Safe map diagnostics copied.",
-      });
-    } catch {
-      notifications.show({
-        color: "red",
-        message: "Your browser did not allow clipboard access.",
-      });
-    }
-  };
   return (
     <Stack gap="lg" pt="lg">
       <SectionHeader
@@ -575,64 +636,6 @@ export function ServerWorldMap({
         }
       />
 
-      <Alert color="blue" title="Special-area positions are approximate">
-        Native Palworld REST coordinates do not identify dungeons, towers, or
-        other instanced areas, so those positions may appear on the main map.
-      </Alert>
-
-      {canCalibrate && (
-        <Accordion
-          variant="separated"
-          radius="md"
-          className="pc-world-map-advanced"
-        >
-          <Accordion.Item value="advanced-map-tools">
-            <Accordion.Control>Advanced map tools</Accordion.Control>
-            <Accordion.Panel>
-              <Stack gap="md">
-                <Text size="sm" c="dimmed">
-                  Administrator-only calibration and projection tools. Most
-                  server management does not require these settings.
-                </Text>
-                <Group
-                  align="flex-end"
-                  gap="lg"
-                  className="pc-world-map-advanced-controls"
-                >
-                  <Select
-                    label="Map layer"
-                    description="Use the grid only when validating map alignment."
-                    aria-label="Map layer"
-                    value={mapLayer}
-                    onChange={(value) =>
-                      setMapLayer((value as WorldMapLayer | null) ?? "map")
-                    }
-                    allowDeselect={false}
-                    w={240}
-                    data={[
-                      { value: "map", label: "Palpagos map" },
-                      { value: "grid", label: "Calibration grid" },
-                      {
-                        value: "map-with-grid",
-                        label: "Map with grid overlay",
-                      },
-                    ]}
-                  />
-                  <Switch
-                    label="Enable calibration diagnostics"
-                    description="Shows projection details and safe diagnostic tools."
-                    checked={calibrating}
-                    onChange={(event) =>
-                      setCalibrating(event.currentTarget.checked)
-                    }
-                  />
-                </Group>
-              </Stack>
-            </Accordion.Panel>
-          </Accordion.Item>
-        </Accordion>
-      )}
-
       {displayedContentState === "offline" && (
         <Alert color="orange" title="Server is offline">
           PalCenter cannot refresh player locations right now. Start the server
@@ -643,6 +646,13 @@ export function ServerWorldMap({
         <Alert color="red" title="Live map data is unavailable">
           PalCenter could not refresh player and position data. Confirm the
           server is online and its REST credentials are valid, then try again.
+        </Alert>
+      )}
+
+      {basesError && (
+        <Alert color="red" title="Base layer unavailable">
+          PalCenter could not load base data from PalDefender. Player markers
+          and trails are unaffected.
         </Alert>
       )}
 
@@ -712,6 +722,16 @@ export function ServerWorldMap({
                 <Badge color="cyan" variant="light">
                   {model.markers.length} mapped
                 </Badge>
+                {baseMarkers.length > 0 && (
+                  <Badge color="violet" variant="light">
+                    {baseMarkers.length} bases
+                  </Badge>
+                )}
+                {basesLoading && (
+                  <Badge color="gray" variant="light">
+                    bases loading
+                  </Badge>
+                )}
                 {model.unmappedPlayers.length > 0 && (
                   <Badge color="orange" variant="light">
                     {model.unmappedPlayers.length} unavailable
@@ -719,6 +739,53 @@ export function ServerWorldMap({
                 )}
               </Group>
               <Group gap={4}>
+                <Menu
+                  width={180}
+                  position="bottom-start"
+                  withArrow
+                  withinPortal
+                  transitionProps={{ transition: "pop" }}
+                  zIndex={410}
+                >
+                  <Menu.Target>
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      leftSection={<IconLayersIntersect size={14} />}
+                    >
+                      Layers
+                    </Button>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item>
+                      <Checkbox
+                        label="Players"
+                        checked={showPlayers}
+                        onChange={(event) =>
+                          setShowPlayers(event.currentTarget.checked)
+                        }
+                      />
+                    </Menu.Item>
+                    <Menu.Item>
+                      <Checkbox
+                        label="Bases"
+                        checked={showBases}
+                        onChange={(event) =>
+                          setShowBases(event.currentTarget.checked)
+                        }
+                      />
+                    </Menu.Item>
+                    <Menu.Item>
+                      <Checkbox
+                        label="Trails"
+                        checked={trailEnabled}
+                        onChange={(event) =>
+                          setTrailEnabled(event.currentTarget.checked)
+                        }
+                      />
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
                 <SegmentedControl
                   size="xs"
                   aria-label="Choose world map"
@@ -789,7 +856,6 @@ export function ServerWorldMap({
                 </ActionIcon>
               </Group>
             </Group>
-
             <div
               ref={viewport}
               className="pc-world-map-viewport"
@@ -865,41 +931,31 @@ export function ServerWorldMap({
               ) : (
                 <div
                   ref={surface}
-                  className={worldMapLayerClasses(mapLayer)}
+                  className="pc-world-map-surface pc-world-map-surface-map"
                   style={{
                     width: surfaceSize,
                     height: surfaceSize,
                     transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${zoom})`,
                   }}
                 >
-                  {mapLayer !== "grid" && (
-                    <picture>
-                      <source
-                        type="image/webp"
-                        srcSet={worldMapAssetSrcSet}
-                        sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
-                      />
-                      {/* These pre-generated responsive assets intentionally bypass Next's image optimizer. */}
-                      <img
-                        className="pc-world-map-image"
-                        src={worldMapAssetPath}
-                        srcSet={worldMapAssetSrcSet}
-                        sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
-                        width={2048}
-                        height={2048}
-                        alt=""
-                        draggable={false}
-                      />
-                    </picture>
-                  )}
-                  {mapLayer !== "map" && (
-                    <>
-                      <div className="pc-world-map-grid" aria-hidden="true" />
-                      <div className="pc-world-map-label">
-                        PALPAGOS CALIBRATION GRID
-                      </div>
-                    </>
-                  )}
+                  <picture>
+                    <source
+                      type="image/webp"
+                      srcSet={worldMapAssetSrcSet}
+                      sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
+                    />
+                    {/* These pre-generated responsive assets intentionally bypass Next's image optimizer. */}
+                    <img
+                      className="pc-world-map-image"
+                      src={worldMapAssetPath}
+                      srcSet={worldMapAssetSrcSet}
+                      sizes="(max-width: 62em) calc(100vw - 3rem), min(50vw, 760px)"
+                      width={2048}
+                      height={2048}
+                      alt=""
+                      draggable={false}
+                    />
+                  </picture>
                   {trailEnabled && trail && (
                     <svg
                       className="pc-world-map-trail"
@@ -952,71 +1008,115 @@ export function ServerWorldMap({
                       )}
                     </svg>
                   )}
-                  {model.markers.map((marker) => {
-                    const presentation = playerMarkerPresentation(
-                      marker.playerName,
-                    );
-                    return (
-                      <div
-                        key={marker.userId}
-                        className="pc-world-map-marker-position"
-                        style={{
-                          left: `${marker.position.x * 100}%`,
-                          top: `${marker.position.y * 100}%`,
-                        }}
-                      >
+                  {showPlayers &&
+                    model.markers.map((marker) => {
+                      const presentation = playerMarkerPresentation(
+                        marker.playerName,
+                      );
+                      return (
                         <div
-                          className="pc-world-map-marker-visual"
+                          key={marker.userId}
+                          className="pc-world-map-marker-position"
                           style={{
-                            transform: `scale(${markerInverseScale(zoom)})`,
+                            left: `${marker.position.x * 100}%`,
+                            top: `${marker.position.y * 100}%`,
                           }}
                         >
-                          <button
-                            type="button"
-                            data-player-id={marker.userId}
-                            className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${marker.displayKind === "last_trusted_instance" ? " pc-world-map-marker-portal" : ""}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                          <div
+                            className="pc-world-map-marker-visual"
                             style={{
-                              backgroundColor: playerColor(marker.userId),
+                              transform: `scale(${markerInverseScale(zoom)})`,
                             }}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelectedId(marker.userId);
-                            }}
-                            aria-label={
-                              marker.displayKind === "last_trusted_instance"
-                                ? `View ${presentation.displayName}'s last trusted Palpagos location; currently inside an instance`
-                                : presentation.accessibleName
-                            }
-                            aria-pressed={selected?.userId === marker.userId}
                           >
-                            <span aria-hidden="true">
-                              {marker.displayKind ===
-                              "last_trusted_instance" ? (
-                                <IconDoorEnter size={17} />
-                              ) : (
-                                presentation.initial
-                              )}
+                            <button
+                              type="button"
+                              data-player-id={marker.userId}
+                              className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${marker.displayKind === "last_trusted_instance" ? " pc-world-map-marker-portal" : ""}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
+                              style={{
+                                backgroundColor: playerColor(marker.userId),
+                              }}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedId(marker.userId);
+                              }}
+                              aria-label={
+                                marker.displayKind === "last_trusted_instance"
+                                  ? `View ${presentation.displayName}'s last trusted Palpagos location; currently inside an instance`
+                                  : presentation.accessibleName
+                              }
+                              aria-pressed={selected?.userId === marker.userId}
+                            >
+                              <span aria-hidden="true">
+                                {marker.displayKind ===
+                                "last_trusted_instance" ? (
+                                  <IconDoorEnter size={17} />
+                                ) : (
+                                  presentation.initial
+                                )}
+                              </span>
+                            </button>
+                            <span
+                              className="pc-world-map-marker-label"
+                              aria-hidden="true"
+                            >
+                              {presentation.displayName}
+                              {marker.displayKind === "last_trusted_instance"
+                                ? " · Inside instance"
+                                : ""}
                             </span>
-                          </button>
-                          <span
-                            className="pc-world-map-marker-label"
-                            aria-hidden="true"
-                          >
-                            {presentation.displayName}
-                            {marker.displayKind === "last_trusted_instance"
-                              ? " · Inside instance"
-                              : ""}
-                          </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  {showBases &&
+                    baseMarkers.map((marker) => {
+                      const displayName = marker.guildName ?? "Unnamed Guild";
+                      return (
+                        <div
+                          key={marker.baseId}
+                          className="pc-world-map-base-position"
+                          style={{
+                            left: `${marker.position.x * 100}%`,
+                            top: `${marker.position.y * 100}%`,
+                          }}
+                        >
+                          <div
+                            className="pc-world-map-base-visual"
+                            style={{
+                              transform: `scale(${markerInverseScale(zoom)})`,
+                            }}
+                          >
+                            <button
+                              type="button"
+                              data-base-id={marker.baseId}
+                              className={`pc-world-map-base-marker${selectedBase?.baseId === marker.baseId ? " pc-world-map-base-marker-selected" : ""}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedId(marker.baseId);
+                              }}
+                              aria-label={`View ${displayName} at base ${marker.baseId}`}
+                              aria-pressed={
+                                selectedBase?.baseId === marker.baseId
+                              }
+                            >
+                              <span aria-hidden="true">&#9670;</span>
+                            </button>
+                            <span
+                              className="pc-world-map-base-label"
+                              aria-hidden="true"
+                            >
+                              {displayName}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               )}
             </div>
             <Text size="xs" c="dimmed" mt="xs">
               Scroll to zoom. Drag while zoomed to pan. Use marker buttons for
-              player details.
+              player and base details.
             </Text>
             <Text size="xs" c="dimmed" mt="xs">
               Palworld and the Palpagos map are copyright Pocketpair, Inc.
@@ -1039,6 +1139,7 @@ export function ServerWorldMap({
             />
             <OffMapPlayersPanel
               players={model.unmappedPlayers}
+              serverId={serverId}
               onSelect={(userId) => {
                 const marker = model.markers.find(
                   (candidate) => candidate.userId === userId,
@@ -1068,10 +1169,16 @@ export function ServerWorldMap({
                 </Group>
               </Alert>
             )}
-            <PlayerMapDetails
-              marker={selected}
-              onCopy={canCalibrate && calibrating ? copyCalibration : undefined}
-            />
+            {selectedBase ? (
+              <BaseMapDetails marker={selectedBase} serverId={serverId} />
+            ) : (
+              <PlayerMapDetails
+                marker={selected}
+                serverId={serverId}
+                enrichment={selectedEnrichment}
+                enrichmentLoading={enrichmentLoading}
+              />
+            )}
             <TrailControls
               players={telemetry.players.map((snapshot) => ({
                 value: snapshot.userId,
@@ -1101,17 +1208,6 @@ export function ServerWorldMap({
                 setTrailError(null);
               }}
             />
-            {canCalibrate && calibrating && (
-              <CalibrationPanel
-                unmapped={model.unmappedPlayers}
-                pollingIntervalSeconds={telemetry.pollingIntervalSeconds}
-                viewportSize={viewportSize}
-                zoom={zoom}
-                pan={pan}
-                diagnostics={diagnostics}
-                onCopyDiagnostics={copyDiagnostics}
-              />
-            )}
           </Stack>
         </div>
       ) : null}
@@ -1148,9 +1244,7 @@ function OnlinePlayersPanel({
         <Stack gap={6} aria-label="Online players">
           {players.map((player) => {
             const marker = markers.find(
-              (candidate) =>
-                candidate.userId === player.userId ||
-                candidate.playerId === player.playerId,
+              (candidate) => candidate.userId === player.userId,
             );
             const name = player.name || player.userId;
             return (
@@ -1182,11 +1276,14 @@ function OnlinePlayersPanel({
 
 function OffMapPlayersPanel({
   players,
+  serverId,
   onSelect,
 }: {
   players: ReturnType<typeof buildLivePlayerMapModel>["unmappedPlayers"];
+  serverId: string;
   onSelect: (userId: string) => void;
 }) {
+  const router = useRouter();
   if (players.length === 0) return null;
   const status = (reason: (typeof players)[number]["reason"]) => {
     switch (reason) {
@@ -1242,16 +1339,35 @@ function OffMapPlayersPanel({
                   </Accordion.Item>
                 </Accordion>
               </div>
-              <Button
-                size="compact-xs"
-                variant="light"
-                onClick={() => onSelect(player.userId)}
-              >
-                {player.reason === "instanced_area" &&
-                player.lastTrustedPosition
-                  ? "View entrance"
-                  : "View details"}
-              </Button>
+              <Group gap={4}>
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  onClick={() => onSelect(player.userId)}
+                >
+                  {player.reason === "instanced_area" &&
+                  player.lastTrustedPosition
+                    ? "View entrance"
+                    : "View details"}
+                </Button>
+                {(() => {
+                  const snapPlayerId = player.snapshot?.playerId ?? null;
+                  if (!snapPlayerId) return null;
+                  return (
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      onClick={() =>
+                        router.push(
+                          palDefenderPlayerHref(serverId, snapPlayerId, "map"),
+                        )
+                      }
+                    >
+                      Workspace
+                    </Button>
+                  );
+                })()}
+              </Group>
             </Group>
           </Paper>
         ))}
@@ -1457,12 +1573,17 @@ function TrailControls({
 
 function PlayerMapDetails({
   marker,
-  onCopy,
+  serverId,
+  enrichment,
+  enrichmentLoading,
 }: {
   marker: LivePlayerMapMarker | null;
-  onCopy?: (marker: LivePlayerMapMarker) => void;
+  serverId: string;
+  enrichment: PlayerEnrichment | null;
+  enrichmentLoading: boolean;
 }) {
-  const details = marker ? playerMapDetailValues(marker) : null;
+  const router = useRouter();
+  const details = marker ? playerMapDetailValues(marker, { enrichment }) : null;
 
   return (
     <Card withBorder radius="md" padding="lg" className="pc-panel">
@@ -1480,7 +1601,11 @@ function PlayerMapDetails({
           <Group justify="space-between">
             <div>
               <Title order={3}>{details.playerName}</Title>
-              <Text c="dimmed">{details.accountName}</Text>
+              <Text c="dimmed">
+                {marker.guildName
+                  ? `${details.accountName} · ${marker.guildName}`
+                  : details.accountName}
+              </Text>
             </div>
             <Badge
               color={
@@ -1523,31 +1648,117 @@ function PlayerMapDetails({
             value={details.worldCoordinates}
             mono
           />
-          {onCopy && (
-            <>
-              <Detail
-                label="Normalized coordinates"
-                value={`${marker.position.x.toFixed(4)}, ${marker.position.y.toFixed(4)}`}
-                mono
-              />
-              <Detail
-                label="Rendered position"
-                value={`${(marker.position.x * 100).toFixed(2)}%, ${(marker.position.y * 100).toFixed(2)}%`}
-                mono
-              />
-            </>
+          <Detail label="Map coordinates" value={details.mapCoordinates} mono />
+          {enrichmentLoading && (
+            <Group gap="xs" role="status">
+              <Loader size="xs" />
+              <Text size="sm" c="dimmed">
+                Loading player details…
+              </Text>
+            </Group>
           )}
-          {onCopy && (
-            <Button
-              variant="light"
-              leftSection={<IconCopy size={16} />}
-              onClick={() => onCopy(marker)}
-            >
-              Copy calibration point
-            </Button>
+          {marker.playerId && (
+            <Group gap="sm">
+              <Button
+                variant="light"
+                size="compact-sm"
+                onClick={() =>
+                  router.push(
+                    palDefenderPlayerHref(serverId, marker.playerId!, "map"),
+                  )
+                }
+              >
+                Player workspace
+              </Button>
+              {marker.guildId && (
+                <Button
+                  variant="light"
+                  size="compact-sm"
+                  onClick={() =>
+                    router.push(
+                      palDefenderGuildHref(serverId, marker.guildId!, "map"),
+                    )
+                  }
+                >
+                  Guild details
+                </Button>
+              )}
+            </Group>
           )}
         </Stack>
       ) : null}
+    </Card>
+  );
+}
+
+function BaseMapDetails({
+  marker,
+  serverId,
+}: {
+  marker: BaseMapMarker;
+  serverId: string;
+}) {
+  const router = useRouter();
+  const displayName = marker.guildName ?? "Unnamed Guild";
+
+  return (
+    <Card withBorder radius="md" padding="lg" className="pc-panel">
+      <Stack gap="md">
+        <Group justify="space-between">
+          <div>
+            <Title order={3}>{displayName}</Title>
+            <Text c="dimmed">Base camp</Text>
+          </div>
+          <Badge color="violet" variant="light">
+            Base
+          </Badge>
+        </Group>
+        <SimpleGrid cols={2}>
+          <Detail label="Guild" value={displayName} />
+          <Detail
+            label="Updated"
+            value={formatTelemetryAge(new Date().toISOString())}
+          />
+        </SimpleGrid>
+        <Detail label="Base ID" value={marker.baseId} mono />
+        <Detail label="Guild ID" value={marker.guildId} mono />
+        <Detail
+          label="World coordinates"
+          value={`X ${marker.worldX.toFixed(1)} · Y ${marker.worldY.toFixed(1)}`}
+          mono
+        />
+        <Detail
+          label="Map coordinates"
+          value={
+            marker.mapPosition &&
+            Number.isFinite(marker.mapPosition.x) &&
+            Number.isFinite(marker.mapPosition.y)
+              ? `X ${marker.mapPosition.x.toFixed(1)} · Y ${marker.mapPosition.y.toFixed(1)}${marker.mapPosition.z != null && Number.isFinite(marker.mapPosition.z) ? ` · Z ${marker.mapPosition.z.toFixed(1)}` : ""}`
+              : "Unavailable"
+          }
+          mono
+        />
+        <Group gap="sm">
+          <Button
+            variant="light"
+            size="compact-sm"
+            onClick={() =>
+              router.push(palDefenderBaseHref(serverId, marker.baseId, "map"))
+            }
+          >
+            View Base Details
+          </Button>
+          <Button
+            variant="light"
+            size="compact-sm"
+            onClick={() =>
+              router.push(palDefenderGuildHref(serverId, marker.guildId, "map"))
+            }
+          >
+            View Guild
+          </Button>
+        </Group>
+      </Stack>
     </Card>
   );
 }
@@ -1574,90 +1785,5 @@ function Detail({
         {value}
       </Text>
     </div>
-  );
-}
-
-function CalibrationPanel({
-  unmapped,
-  pollingIntervalSeconds,
-  viewportSize,
-  zoom,
-  pan,
-  diagnostics,
-  onCopyDiagnostics,
-}: {
-  unmapped: ReturnType<typeof buildLivePlayerMapModel>["unmappedPlayers"];
-  pollingIntervalSeconds: number;
-  viewportSize: { width: number; height: number };
-  zoom: number;
-  pan: MapPan;
-  diagnostics: {
-    viewport: MapRect;
-    surface: MapRect;
-    image: MapRect | null;
-    marker: MapRect | null;
-    untransformedSurface: { width: number; height: number };
-    markerPlane: { width: number; height: number };
-    viewportClient: { width: number; height: number };
-    viewportCss: {
-      width: string;
-      height: string;
-      minHeight: string;
-      maxHeight: string;
-      aspectRatio: string;
-    };
-    expanded: boolean;
-    visible: boolean;
-  } | null;
-  onCopyDiagnostics: () => void;
-}) {
-  return (
-    <Paper className="pc-panel" withBorder radius="lg" p="lg">
-      <Stack gap="sm">
-        <Title order={4}>Projection calibration</Title>
-        <Text size="sm" c="dimmed">
-          Administrator-only diagnostics for validating the prototype
-          projection. No player IP addresses are included.
-        </Text>
-        <Code block>
-          {`X: ${palpagosProjection.worldMinX} … ${palpagosProjection.worldMaxX}
-Y: ${palpagosProjection.worldMinY} … ${palpagosProjection.worldMaxY}
-Rotation: ${palpagosProjection.rotationDegrees}°
-Polling interval: ${pollingIntervalSeconds}s
-Viewport: ${viewportSize.width} × ${viewportSize.height}px
-Viewport CSS: ${diagnostics?.viewportCss.width ?? "0px"} × ${diagnostics?.viewportCss.height ?? "0px"}
-Viewport min/max: ${diagnostics?.viewportCss.minHeight ?? "0px"} / ${diagnostics?.viewportCss.maxHeight ?? "none"}
-Viewport aspect-ratio: ${diagnostics?.viewportCss.aspectRatio ?? "auto"}
-Viewport client: ${diagnostics?.viewportClient.width ?? 0} × ${diagnostics?.viewportClient.height ?? 0}px
-Surface (untransformed): ${diagnostics?.untransformedSurface.width ?? 0} × ${diagnostics?.untransformedSurface.height ?? 0}px
-Surface (transformed): ${diagnostics ? Math.round(diagnostics.surface.right - diagnostics.surface.left) : 0} × ${diagnostics ? Math.round(diagnostics.surface.bottom - diagnostics.surface.top) : 0}px
-Image: ${diagnostics?.image ? `${Math.round(diagnostics.image.right - diagnostics.image.left)} × ${Math.round(diagnostics.image.bottom - diagnostics.image.top)}px` : "not rendered"}
-Marker plane: ${diagnostics?.markerPlane.width ?? 0} × ${diagnostics?.markerPlane.height ?? 0}px
-Scale: ${zoom.toFixed(2)}×
-Offset: ${Math.round(pan.x)}px, ${Math.round(pan.y)}px
-Expanded: ${diagnostics?.expanded ? "yes" : "no"}`}
-        </Code>
-        <Button
-          variant="light"
-          leftSection={<IconCopy size={16} />}
-          onClick={onCopyDiagnostics}
-          disabled={!diagnostics?.marker}
-        >
-          Copy safe diagnostics
-        </Button>
-        {unmapped.length > 0 && (
-          <Stack gap={4}>
-            <Text size="sm" fw={700}>
-              Unmapped connected players
-            </Text>
-            {unmapped.map((player) => (
-              <Text key={player.userId} size="xs" c="dimmed">
-                {player.playerName}: {player.reason.replaceAll("_", " ")}
-              </Text>
-            ))}
-          </Stack>
-        )}
-      </Stack>
-    </Paper>
   );
 }

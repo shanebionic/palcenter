@@ -27,7 +27,7 @@ password, and setup cannot be repeated after the first user is created.
 
 ## 3. Add a Palworld server
 
-From the Dashboard, select **Add Server** and enter:
+From the Servers page, select **Add Server** and enter:
 
 - **Display Name:** the friendly name shown by PalCenter;
 - **REST URL:** protocol, address, and REST port, for example
@@ -76,8 +76,8 @@ Open **Map**:
 5. Expand detailed movement statistics or timeline information only when
    needed.
 
-The map shows observed REST telemetry, not gameplay intent. Calibration tools
-are Administrator-only and collapsed under **Advanced map tools**.
+The map shows observed telemetry (the native REST API, or PalDefender when
+configured for the server), not gameplay intent.
 
 ![Player Activity Summary](screenshots/player-activity-summary-after.png)
 
