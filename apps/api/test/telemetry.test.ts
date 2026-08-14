@@ -339,6 +339,9 @@ test("service runs retention cleanup periodically with the bounded batch size", 
     close() {},
     reopen() {},
     insertPlayerSnapshots() {},
+    reconcileUserId() {
+      return 0;
+    },
     latestPlayerSnapshots() {
       return [];
     },
@@ -466,6 +469,9 @@ test("service collects configured servers concurrently and isolates offline fail
     insertPlayerSnapshots(items: NewPlayerPositionSnapshot[]) {
       saved.push(items);
     },
+    reconcileUserId() {
+      return 0;
+    },
     latestPlayerSnapshots() {
       return [];
     },
@@ -507,4 +513,258 @@ test("service collects configured servers concurrently and isolates offline fail
   assert.ok(service.lastCollectedAt("srv_online"));
   assert.equal(service.lastCollectedAt("srv_offline"), null);
   assert.deepEqual(failures, ["srv_offline"]);
+});
+
+// ---------- Identity repair: reconciliation ----------
+
+test("reconcileUserId moves legacy PlayerUID-as-userId rows to canonical UserId", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "palcenter-telemetry-reconcile-"),
+  );
+  const history = new SqliteHistoryRepository(directory);
+  history.initialize();
+  const repository = new SqliteTelemetryRepository(directory);
+  repository.initialize();
+
+  try {
+    repository.insertPlayerSnapshots([
+      snapshot("2026-07-28T12:00:00.000Z", {
+        userId: "playeruid-abc",
+        playerId: "playeruid-abc",
+        playerName: "PlayerA",
+      }),
+      snapshot("2026-07-28T12:00:30.000Z", {
+        userId: "playeruid-abc",
+        playerId: "playeruid-abc",
+        playerName: "PlayerA",
+        x: 20,
+      }),
+    ]);
+
+    const moved = repository.reconcileUserId(
+      "srv_one",
+      "playeruid-abc",
+      "steam-user-id",
+    );
+    assert.equal(moved, 2, "should move 2 legacy rows");
+
+    const byLegacy = repository.playerHistory("srv_one", "playeruid-abc", {
+      limit: 100,
+    });
+    assert.equal(byLegacy.length, 0, "legacy userId should have no rows");
+
+    const byCanonical = repository.playerHistory("srv_one", "steam-user-id", {
+      limit: 100,
+    });
+    assert.equal(
+      byCanonical.length,
+      2,
+      "canonical userId should have both rows",
+    );
+    assert.equal(byCanonical[0]?.x, 10, "original row preserved");
+    assert.equal(byCanonical[1]?.x, 20, "updated row preserved");
+  } finally {
+    repository.close();
+    history.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("reconcileUserId is idempotent — second call returns 0", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "palcenter-telemetry-reconcile-idem-"),
+  );
+  const history = new SqliteHistoryRepository(directory);
+  history.initialize();
+  const repository = new SqliteTelemetryRepository(directory);
+  repository.initialize();
+
+  try {
+    repository.insertPlayerSnapshots([
+      snapshot("2026-07-28T12:00:00.000Z", {
+        userId: "playeruid-abc",
+        playerId: "playeruid-abc",
+        playerName: "PlayerA",
+      }),
+    ]);
+
+    const first = repository.reconcileUserId(
+      "srv_one",
+      "playeruid-abc",
+      "steam-user-id",
+    );
+    assert.equal(first, 1, "first call moves 1 row");
+
+    const second = repository.reconcileUserId(
+      "srv_one",
+      "playeruid-abc",
+      "steam-user-id",
+    );
+    assert.equal(second, 0, "second call is no-op");
+  } finally {
+    repository.close();
+    history.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("reconcileUserId is no-op when legacyUserId === canonicalUserId", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "palcenter-telemetry-reconcile-same-"),
+  );
+  const history = new SqliteHistoryRepository(directory);
+  history.initialize();
+  const repository = new SqliteTelemetryRepository(directory);
+  repository.initialize();
+
+  try {
+    repository.insertPlayerSnapshots([snapshot("2026-07-28T12:00:00.000Z")]);
+
+    const moved = repository.reconcileUserId(
+      "srv_one",
+      "steam-user-id",
+      "steam-user-id",
+    );
+    assert.equal(moved, 0, "same userId should not update");
+  } finally {
+    repository.close();
+    history.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("reconcileUserId merges both streams when canonical already has history", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "palcenter-telemetry-reconcile-merge-"),
+  );
+  const history = new SqliteHistoryRepository(directory);
+  history.initialize();
+  const repository = new SqliteTelemetryRepository(directory);
+  repository.initialize();
+
+  try {
+    repository.insertPlayerSnapshots([
+      snapshot("2026-07-28T11:00:00.000Z", {
+        userId: "steam-user-id",
+        playerId: "playeruid-abc",
+        playerName: "PlayerA",
+        x: 100,
+      }),
+      snapshot("2026-07-28T12:00:00.000Z", {
+        userId: "playeruid-abc",
+        playerId: "playeruid-abc",
+        playerName: "PlayerA",
+        x: 200,
+      }),
+      snapshot("2026-07-28T12:30:00.000Z", {
+        userId: "playeruid-abc",
+        playerId: "playeruid-abc",
+        playerName: "PlayerA",
+        x: 300,
+      }),
+    ]);
+
+    const moved = repository.reconcileUserId(
+      "srv_one",
+      "playeruid-abc",
+      "steam-user-id",
+    );
+    assert.equal(moved, 2, "should move 2 legacy rows");
+
+    const all = repository.playerHistory("srv_one", "steam-user-id", {
+      limit: 100,
+    });
+    assert.equal(all.length, 3, "canonical stream should have all 3 rows");
+    assert.equal(all[0]?.x, 100, "original canonical row preserved");
+    assert.equal(all[1]?.x, 200, "first reconciled row");
+    assert.equal(all[2]?.x, 300, "second reconciled row");
+  } finally {
+    repository.close();
+    history.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("service reconciles legacy identity before inserting new snapshot", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "palcenter-telemetry-service-reconcile-"),
+  );
+  const history = new SqliteHistoryRepository(directory);
+  history.initialize();
+  const repository = new SqliteTelemetryRepository(directory);
+  repository.initialize();
+
+  try {
+    repository.insertPlayerSnapshots([
+      snapshot("2026-07-28T11:00:00.000Z", {
+        userId: "playeruid-abc",
+        playerId: "playeruid-abc",
+        playerName: "PlayerA",
+        x: 50,
+      }),
+    ]);
+
+    const reconciledIds = [];
+    const originalReconcile = repository.reconcileUserId.bind(repository);
+    repository.reconcileUserId = function (
+      serverId: string,
+      legacyUserId: string,
+      canonicalUserId: string,
+    ) {
+      reconciledIds.push({ legacyUserId, canonicalUserId });
+      return originalReconcile(serverId, legacyUserId, canonicalUserId);
+    };
+
+    let currentTime = new Date("2026-07-28T12:00:00.000Z");
+    const collector = new ProviderAwarePlayerTelemetryCollector(
+      mockProvider(() =>
+        response({
+          userId: "steam-user-id",
+          playerId: "playeruid-abc",
+          name: "PlayerA",
+        }),
+      ),
+      mockProvider(() =>
+        response({
+          userId: "steam-user-id",
+          playerId: "playeruid-abc",
+          name: "PlayerA",
+        }),
+      ),
+      false,
+    );
+    const service = new TelemetryService(
+      new MemoryConnections([connection("srv_one")]),
+      repository,
+      collector,
+      30_000,
+      30,
+      () => undefined,
+      () => currentTime,
+      () => new Map([["steam-user-id", "palpagos"]]),
+    );
+
+    await service.collectAll();
+
+    assert.equal(reconciledIds.length, 1, "should have called reconcile");
+    assert.equal(reconciledIds[0]?.legacyUserId, "playeruid-abc");
+    assert.equal(reconciledIds[0]?.canonicalUserId, "steam-user-id");
+
+    const byCanonical = repository.playerHistory("srv_one", "steam-user-id", {
+      limit: 100,
+    });
+    assert.ok(
+      byCanonical.length >= 2,
+      "canonical stream should have legacy + new rows",
+    );
+
+    const byLegacy = repository.playerHistory("srv_one", "playeruid-abc", {
+      limit: 100,
+    });
+    assert.equal(byLegacy.length, 0, "legacy stream should be empty");
+  } finally {
+    repository.close();
+    history.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
 });

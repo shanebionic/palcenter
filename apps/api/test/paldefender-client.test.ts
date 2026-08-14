@@ -52,6 +52,7 @@ test("normalizes PalDefender players without leaking raw DTO fields", async () =
     {
       name: "LamballFan",
       playerId: "player-1",
+      userId: "steam_1",
       online: true,
       guild: "Pal Tamers",
       level: null,
@@ -59,6 +60,7 @@ test("normalizes PalDefender players without leaking raw DTO fields", async () =
     {
       name: "CattivaFan",
       playerId: "player-2",
+      userId: "",
       online: false,
       guild: null,
       level: null,
@@ -410,6 +412,7 @@ test("normalizes player details and omits raw platform and network identifiers",
   assert.deepEqual(await client.getPlayer("player-1"), {
     name: "Explorer",
     playerId: "player-1",
+    userId: "gdk_secret",
     online: true,
     guild: "Guild",
     level: null,

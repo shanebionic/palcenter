@@ -103,7 +103,7 @@ function normalizeSnapshot(
 
   return {
     serverId,
-    userId: player.playerId,
+    userId: player.userId || player.playerId,
     playerId: text(player.playerId),
     playerName: text(player.name) ?? "Unknown",
     accountName: null,

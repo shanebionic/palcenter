@@ -103,6 +103,19 @@ export class TelemetryService {
             coordinateSpaceId:
               coordinateSpaces?.get(snapshot.userId) ?? "unknown",
           }));
+          for (const snapshot of spatialSnapshots) {
+            if (
+              snapshot.playerId &&
+              snapshot.userId !== snapshot.playerId &&
+              snapshot.userId.trim() !== ""
+            ) {
+              this.repository.reconcileUserId(
+                connection.id,
+                snapshot.playerId,
+                snapshot.userId,
+              );
+            }
+          }
           this.repository.insertPlayerSnapshots(
             spatialSnapshots.filter((snapshot) =>
               this.shouldStore(snapshot, previous.get(snapshot.userId)),

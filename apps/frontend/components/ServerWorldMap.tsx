@@ -40,11 +40,15 @@ import { SectionCard } from "./ui/SectionCard";
 import { SectionHeader } from "./ui/SectionHeader";
 import {
   getPalDefenderBases,
+  getPalDefenderPlayer,
+  getPalDefenderProgression,
   getPalDefenderStatus,
   getPlayers,
   getPlayerTelemetry,
   getPlayerTrailHistory,
   type PalDefenderBase,
+  type PalDefenderPlayerDetails,
+  type PalDefenderProgression,
 } from "../lib/api";
 import {
   buildBaseMapMarkers,
@@ -56,6 +60,7 @@ import {
   telemetryFreshnessLabel,
   type BaseMapMarker,
   type LivePlayerMapMarker,
+  type PlayerEnrichment,
 } from "../lib/world-map/model";
 import {
   centerMapOnPosition,
@@ -158,6 +163,12 @@ export function ServerWorldMap({
   const [bases, setBases] = useState<PalDefenderBase[]>([]);
   const [basesLoading, setBasesLoading] = useState(true);
   const [basesError, setBasesError] = useState<string | null>(null);
+  const [enrichedPlayer, setEnrichedPlayer] =
+    useState<PalDefenderPlayerDetails | null>(null);
+  const [enrichedProgression, setEnrichedProgression] =
+    useState<PalDefenderProgression | null>(null);
+  const [enrichmentLoading, setEnrichmentLoading] = useState(false);
+  const enrichmentRequest = useRef<AbortController | null>(null);
   const viewport = useRef<HTMLDivElement | null>(null);
   const surface = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{
@@ -351,6 +362,16 @@ export function ServerWorldMap({
   const selectedPlayerName =
     selected?.playerName ?? selectedTelemetry?.playerName ?? null;
   const selectedPlayerColor = playerColor(selectedId ?? "");
+  const selectedEnrichment =
+    enrichedPlayer || enrichedProgression
+      ? {
+          mapLocation: enrichedPlayer?.mapLocation ?? null,
+          level:
+            enrichedProgression?.character.level ??
+            enrichedPlayer?.level ??
+            null,
+        }
+      : null;
   const renderedTrailSegments = useMemo(
     () => (trail ? buildRenderedTrailSegments(trail) : []),
     [trail],
@@ -437,6 +458,49 @@ export function ServerWorldMap({
       setSelectedId(null);
     }
   }, [showBases, selectedBase]);
+
+  // Enrich selected player with PalDefender details and progression
+  useEffect(() => {
+    const marker = model.markers.find((m) => m.userId === selectedId);
+    if (!marker || !marker.playerId) {
+      setEnrichedPlayer(null);
+      setEnrichedProgression(null);
+      setEnrichmentLoading(false);
+      return;
+    }
+    const playerId = marker.playerId;
+    const controller = new AbortController();
+    enrichmentRequest.current = controller;
+    setEnrichmentLoading(true);
+    const fetchEnrichment = async () => {
+      try {
+        const [playerResult, progressionResult] = await Promise.allSettled([
+          getPalDefenderPlayer(serverId, playerId),
+          getPalDefenderProgression(serverId, playerId),
+        ]);
+        if (controller.signal.aborted) return;
+        if (playerResult.status === "fulfilled") {
+          setEnrichedPlayer(playerResult.value);
+        } else {
+          setEnrichedPlayer(null);
+        }
+        if (progressionResult.status === "fulfilled") {
+          setEnrichedProgression(progressionResult.value);
+        } else {
+          setEnrichedProgression(null);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setEnrichedPlayer(null);
+          setEnrichedProgression(null);
+        }
+      } finally {
+        if (!controller.signal.aborted) setEnrichmentLoading(false);
+      }
+    };
+    void fetchEnrichment();
+    return () => controller.abort();
+  }, [serverId, selectedId, model.markers]);
   const applyFitMap = useCallback(() => {
     const fit = fitMapView();
     setZoom(fit.zoom);
@@ -1108,7 +1172,12 @@ export function ServerWorldMap({
             {selectedBase ? (
               <BaseMapDetails marker={selectedBase} serverId={serverId} />
             ) : (
-              <PlayerMapDetails marker={selected} serverId={serverId} />
+              <PlayerMapDetails
+                marker={selected}
+                serverId={serverId}
+                enrichment={selectedEnrichment}
+                enrichmentLoading={enrichmentLoading}
+              />
             )}
             <TrailControls
               players={telemetry.players.map((snapshot) => ({
@@ -1175,9 +1244,7 @@ function OnlinePlayersPanel({
         <Stack gap={6} aria-label="Online players">
           {players.map((player) => {
             const marker = markers.find(
-              (candidate) =>
-                candidate.userId === player.userId ||
-                candidate.playerId === player.playerId,
+              (candidate) => candidate.userId === player.userId,
             );
             const name = player.name || player.userId;
             return (
@@ -1507,12 +1574,16 @@ function TrailControls({
 function PlayerMapDetails({
   marker,
   serverId,
+  enrichment,
+  enrichmentLoading,
 }: {
   marker: LivePlayerMapMarker | null;
   serverId: string;
+  enrichment: PlayerEnrichment | null;
+  enrichmentLoading: boolean;
 }) {
   const router = useRouter();
-  const details = marker ? playerMapDetailValues(marker) : null;
+  const details = marker ? playerMapDetailValues(marker, { enrichment }) : null;
 
   return (
     <Card withBorder radius="md" padding="lg" className="pc-panel">
@@ -1577,6 +1648,15 @@ function PlayerMapDetails({
             value={details.worldCoordinates}
             mono
           />
+          <Detail label="Map coordinates" value={details.mapCoordinates} mono />
+          {enrichmentLoading && (
+            <Group gap="xs" role="status">
+              <Loader size="xs" />
+              <Text size="sm" c="dimmed">
+                Loading player details…
+              </Text>
+            </Group>
+          )}
           {marker.playerId && (
             <Group gap="sm">
               <Button
