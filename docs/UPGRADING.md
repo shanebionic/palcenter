@@ -18,7 +18,7 @@ in place. Create and verify a backup before changing the image.
 6. Confirm adequate free space on the Docker host.
 
 For predictable production deployments, use a versioned tag such as
-`ghcr.io/shanebionic/palcenter:v1.4.0` rather than `latest`.
+`ghcr.io/shanebionic/palcenter:v1.5.1` rather than `latest`.
 
 ## Docker Compose upgrade
 
@@ -50,9 +50,16 @@ See [Unraid](UNRAID.md#upgrade-palcenter). Keep the
 ## Migration behavior
 
 PalCenter initializes missing files and applies supported SQLite schema
-upgrades during startup. v1.4 retains compatibility with existing connection
-JSON and v1.2/v1.3 history databases. Current automation and World Intelligence
-tables live in `history.sqlite`.
+upgrades during startup. `history.sqlite` supports schema versions 1 through
+10; upgrades run in place and preserve existing rows. Current automation and
+World Intelligence tables live in `history.sqlite`.
+
+PalCenter 1.5.1 repairs a schema gap from the 1.4.0-to-1.5.0 upgrade path
+(issue #199). Databases that 1.5.0 advanced to schema 10 without the
+`coordinate_space_id` columns are completed automatically on startup. Existing
+rows are preserved and backfilled with the default coordinate space value, so
+no manual database repair is required. Databases that already have the
+complete schema are unaffected (the repair is a no-op).
 
 The current backup format is version 3. Restore also accepts format 1 and 2:
 

@@ -21,7 +21,8 @@ REST API; it does not install Palworld, manage containers, or access save files.
 - Resource grants: items, Pals, Pal templates, Pal eggs, and progression
 - Guild and base camp browsing, inspection, and deletion
 - Server messaging: alerts, targeted messages, and broadcasts
-- World Intelligence: live Palpagos map, movement trails, and activity summaries
+- World Intelligence: live Palpagos map, interactive base camp markers, map
+  layer controls, movement trails, and activity summaries
 - Broadcast, Save World, and Graceful Shutdown operations
 - Scheduled automation with immutable execution history
 - Discord webhook and ntfy notifications
@@ -29,9 +30,9 @@ REST API; it does not install Palworld, manage containers, or access save files.
 - Portable backup and restore
 - A standalone `PalWorldSettings.ini` configuration generator
 
-Player workspace, moderation, resource grants, guild/base management, and
-enhanced messaging require PalDefender. All other features work through the
-native Palworld REST API.
+Player workspace, moderation, resource grants, guild and base management,
+map base camp markers, and enhanced messaging require PalDefender. All other
+features work through the native Palworld REST API.
 
 ## Supported environments
 
@@ -101,8 +102,8 @@ project at
 
 4. Open `http://YOUR-Docker-HOST:3000`.
 5. Create the initial Administrator when prompted.
-6. Select **Add Server**, enter the Palworld REST URL and administrator
-   password, then test and save the connection.
+6. Open the **Servers** page, select **Add Server**, enter the Palworld REST
+   URL and administrator password, then test and save the connection.
 
 The default Compose deployment uses a Docker-managed volume and runs as the
 non-root `1000:1000` user.
@@ -178,9 +179,10 @@ See [Security](SECURITY.md) and the [feature guide](docs/FEATURES.md).
 - **Server messaging:** Send alerts, targeted player messages, or broadcasts
   from the Administration panel. Requires PalDefender.
   [Feature guide](docs/FEATURES.md#administration)
-- **World Intelligence:** Select a server, open **Map**, choose a player, and
-  enable a movement trail. The summary distinguishes selected range from
-  observed telemetry. [World Map guide](docs/WORLD-MAP.md)
+- **World Intelligence:** Select a server, open **Map**, and select a player
+  or a PalDefender base camp marker. Enable a movement trail for a player;
+  the summary distinguishes selected range from observed telemetry.
+  [World Map guide](docs/WORLD-MAP.md)
 - **Automation:** Schedule Broadcast Message, Save World, or Graceful Shutdown.
   **Run Now** records history without changing the recurring schedule.
   [Automation guide](docs/AUTOMATION.md)

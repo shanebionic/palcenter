@@ -8,18 +8,22 @@ is online, selected-player details, and recent joins or departures.
 
 - Select a player to open their details.
 - Use **Follow Player** to keep the selected player centered while they move.
-- Switch between **Palpagos** and **World Tree** manually.
+- Switch between **Palpagos** and **World Tree** manually. World Tree is a
+  placeholder: it has no verified map image or projection yet, so players
+  located there are listed in the off-map panel instead of being plotted.
 - Players in a confirmed special area receive a clear off-map view instead of
   misleading Palpagos coordinates.
 
-PalCenter obtains player positions from the official Palworld REST API. That
-API does not identify special-stage instances, so positions in those areas are
+PalCenter obtains player positions from the official Palworld REST API, or
+from PalDefender when PalDefender is configured for the server. Neither
+source identifies special-stage instances, so positions in those areas are
 shown as approximate rather than presented as authoritative map locations.
 
-PalCenter v1.4 includes an interactive Palpagos reference map for current
-connected players. The position pipeline, controls, freshness indicators,
-access controls, and administrator calibration tooling remain independent from
-the bundled image layer.
+PalCenter includes an interactive Palpagos reference map for current connected
+players. When PalDefender is configured, base camp markers appear on the same
+map and can be toggled with the **Layers** menu alongside the Players and
+Trails layers. The position pipeline, controls, and freshness indicators
+remain independent from the bundled image layer.
 
 ## Asset and licensing decision
 
@@ -56,9 +60,7 @@ decoded pixel memory by approximately 93.8%; the larger derivative reduces
 transfer size by 94.8% and decoded pixel memory by approximately 75%.
 
 The derivatives are bundled in the application and are never hotlinked at
-runtime. The PalCenter-owned CSS calibration grid remains available to
-Administrators as a standalone layer or an overlay. The normal map layer is the
-default.
+runtime. The map image layer is the only bundled image layer.
 
 ## Coordinate sources
 
@@ -89,8 +91,8 @@ normal map unusable.
 
 Existing coordinate-space fields, map definitions, last trusted Palpagos
 positions, and trail segmentation remain in place for stored-data
-compatibility. No historical rows are destructively rewritten. Current
-schema-v9 `unknown` samples remain usable at display time.
+compatibility. No historical rows are destructively rewritten. Rows stored
+with the default `unknown` coordinate space remain usable at display time.
 
 ## Projection
 
@@ -118,8 +120,9 @@ mapY = 1 - rawX
 
 `mapX` and `mapY` are unit coordinates from 0 through 1 and are rendered as
 percentages. Invalid, non-finite, or out-of-bounds coordinates are never
-clamped into a misleading marker. They are reported as unavailable in the
-administrator calibration panel.
+clamped into a misleading marker. They are listed in the off-map panel with a
+clear reason (for example, "Position unavailable" or "Outside verified map
+bounds") instead of being plotted.
 
 All bounds, axis inversion, and rotation options live in one projection
 configuration in `apps/frontend/lib/world-map/projection.ts`. The forward and
@@ -128,10 +131,11 @@ negative values, orientation, invalid data, and round trips.
 
 ## Player identity and freshness
 
-Only players in the current official `/players` response are eligible for a
-marker. PalCenter joins that response to the latest stored position using
-`userId`, the stable telemetry/history key. A stored record for a disconnected
-player is not rendered.
+Only players in the current live roster are eligible for a marker — the
+official `/players` response, or the PalDefender roster when PalDefender is
+configured for the server. PalCenter joins that response to the latest stored
+position using `userId`, the stable telemetry/history key. A stored record for
+a disconnected player is not rendered.
 
 Because unchanged telemetry is intentionally stored only on the five-minute
 heartbeat, the latest database row alone is not a reliable indication that the
@@ -155,7 +159,6 @@ Map access matches the existing Players tab:
 
 - Administrators and Moderators can view the map.
 - Visitors cannot view the map.
-- Only Administrators can enable calibration diagnostics.
 
 The marker detail panel shows the player's display and account names, Palworld
 identifiers, level, ping, structure count, X/Y coordinates, age, and freshness.
@@ -309,49 +312,21 @@ the last online observation. It does not list every sample. Insights contain at
 most two concise statements derived from movement percentage and disconnected
 session count. They remain factual and do not speculate about player intent.
 
-## Administrator calibration
+## Projection validation
 
-Calibration is an advanced administrator workflow. Open **Advanced map tools**
-above the map to select the calibration grid or enable calibration diagnostics.
-These controls are collapsed by default and are not shown to Moderators.
-
-Administrators can enable **Calibration** on the Map tab to inspect:
-
-- the active raw bounds and rotation;
-- polling interval;
-- raw X/Y and normalized/map percentages for a selected player;
-- the reason a connected player could not be mapped;
-- a copyable, credential-free calibration record;
-- safe viewport diagnostics covering the square surface, image, marker plane,
-  zoom/pan, selected normalized position, screen rectangles, visibility,
-  computed CSS dimensions, client dimensions, aspect ratio, and expanded state.
-
-Administrators can select **Palpagos map**, **Calibration grid**, or **Map with
-grid overlay**. The map image, optional grid, and markers share the same square
-content box and transform, so zoom and pan remain synchronized.
-
-The safe diagnostics output deliberately excludes server addresses, credentials,
-tokens, passwords, and player IP addresses.
-
-### Field calibration record
+The interactive calibration panel, calibration grid, and diagnostics controls
+were removed in 1.5.1. The projection is fixed to the validated
+DT_WorldMapUIData bounds in `apps/frontend/lib/world-map/projection.ts`, and
+the forward and inverse transforms are covered by regression tests.
 
 Live UAT confirmed that the DT_WorldMapUIData projection correctly aligns
 known base locations against the first-party T_WorldMap asset. Owner geographic
 validation verified that WorldLocation coordinates are directly in the
 DT_WorldMapUIData terrain coordinate space.
 
-The calibration landmark at world position `X -211552.453125, Y 262807.65625`
+The validation landmark at world position `X -211552.453125, Y 262807.65625`
 projects to `68.14%, 38.72%` under the DT bounds, matching its expected
 position on the first-party T_WorldMap.
-
-| World X/Y | Projected X/Y | Expected landmark | Observed alignment error |
-| --------- | ------------- | ----------------- | ------------------------ |
-| Pending   | Pending       | Landmark 1        | Pending                  |
-| Pending   | Pending       | Landmark 2        | Pending                  |
-| Pending   | Pending       | Landmark 3        | Pending                  |
-
-Do not treat the current overlay as survey-accurate until all three rows contain
-geographically separated live observations and acceptable measured error.
 
 ## Administrator navigation checks
 
@@ -369,23 +344,27 @@ Before release, verify in Chromium:
   layer, controls, and independently scrollable details;
 - Escape closes expanded mode and restores the original normal dimensions;
 - Fit Map recovers from extreme zoom and pan;
-- the untransformed surface, image, grid, and marker plane remain square;
-- the known `68.14%, 38.72%` calibration landmark appears in the expected area;
+- the untransformed surface, image, and marker plane remain square;
+- the known `68.14%, 38.72%` validation landmark appears in the expected area;
 - the laptop, 1920×1080, and narrow/mobile layouts have no horizontal page
   overflow;
-- copied diagnostics contain no server address, token, credential, password, or
-  player IP.
+- player and base detail panels contain no server address, token, credential,
+  password, or player IP.
 
 ## Current limitations
 
 The current release does not add or claim:
 
+- a World Tree map image or projection (the World Tree view remains a
+  placeholder);
 - multiple islands or world/map variants with separate bounds;
 - heatmaps, analytics, or historical playback;
-- `/game-data` collection, Z-axis display, guild data, bases, PalBoxes, or
-  world actors;
-- new polling loops, telemetry tables, or persistence behavior.
+- `/game-data` collection, Z-axis display for native-source players, guild
+  membership data, PalBoxes, or world actors. Interactive base camp markers
+  are shown when PalDefender is configured, using a separate PalDefender
+  request rather than the telemetry collector.
 
-The coordinate source is the current `/players` telemetry foundation. If a
-future game build changes its coordinate space or map bounds, the centralized
-projection configuration and calibration tests must be updated together.
+The coordinate source is the native `/players` telemetry, or the PalDefender
+provider when PalDefender is configured for the server. If a future game build
+changes its coordinate space or map bounds, the centralized projection
+configuration and its regression tests must be updated together.
