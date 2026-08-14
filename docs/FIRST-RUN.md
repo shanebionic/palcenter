@@ -27,7 +27,7 @@ password, and setup cannot be repeated after the first user is created.
 
 ## 3. Add a Palworld server
 
-From the Dashboard, select **Add Server** and enter:
+From the Servers page, select **Add Server** and enter:
 
 - **Display Name:** the friendly name shown by PalCenter;
 - **REST URL:** protocol, address, and REST port, for example
