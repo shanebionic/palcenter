@@ -320,27 +320,39 @@ export class SqliteHistoryRepository implements HistoryRepository {
             ON world_events (server_id, user_id, occurred_at, id);
         `);
       }
-      if (version === 7) {
-        database.exec(`
-          ALTER TABLE world_player_activity_state
-            ADD COLUMN coordinate_space_id TEXT NOT NULL DEFAULT 'unknown';
-        `);
-      }
-      if (version === 7 || version === 8) {
+      if (
+        this.tableExists(database, "player_position_snapshots") &&
+        !this.columnExists(
+          database,
+          "player_position_snapshots",
+          "coordinate_space_id",
+        )
+      ) {
         database.exec(`
           ALTER TABLE player_position_snapshots
             ADD COLUMN coordinate_space_id TEXT NOT NULL DEFAULT 'unknown';
         `);
       }
-      if (version < 3) {
-        const columns = database
-          .prepare("PRAGMA table_info(task_executions)")
-          .all() as unknown as { name: string }[];
-        if (!columns.some((column) => column.name === "snapshot_json")) {
-          database.exec(
-            "ALTER TABLE task_executions ADD COLUMN snapshot_json TEXT",
-          );
-        }
+      if (
+        this.tableExists(database, "world_player_activity_state") &&
+        !this.columnExists(
+          database,
+          "world_player_activity_state",
+          "coordinate_space_id",
+        )
+      ) {
+        database.exec(`
+          ALTER TABLE world_player_activity_state
+            ADD COLUMN coordinate_space_id TEXT NOT NULL DEFAULT 'unknown';
+        `);
+      }
+      if (
+        this.tableExists(database, "task_executions") &&
+        !this.columnExists(database, "task_executions", "snapshot_json")
+      ) {
+        database.exec(
+          "ALTER TABLE task_executions ADD COLUMN snapshot_json TEXT",
+        );
       }
       database.exec(`PRAGMA user_version = ${schemaVersion}`);
       database.exec("COMMIT");
@@ -669,6 +681,27 @@ export class SqliteHistoryRepository implements HistoryRepository {
       uptimeSeconds: row.uptime_seconds,
       capturedAt: row.captured_at,
     };
+  }
+
+  private tableExists(database: DatabaseSync, table: string): boolean {
+    return Boolean(
+      database
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+        )
+        .get(table),
+    );
+  }
+
+  private columnExists(
+    database: DatabaseSync,
+    table: string,
+    column: string,
+  ): boolean {
+    const columns = database
+      .prepare(`PRAGMA table_info(${table})`)
+      .all() as unknown as Array<{ name: string }>;
+    return columns.some((entry) => entry.name === column);
   }
 
   private open(): void {
