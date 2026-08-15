@@ -1104,7 +1104,7 @@ export function ServerWorldMap({
                             }}
                             aria-label={
                               marker.displayKind === "last_trusted_instance"
-                                ? `View ${presentation.displayName}'s last trusted Palpagos location; currently inside an instance`
+                                ? `View ${presentation.displayName}'s last known Palpagos location; currently inside an instance`
                                 : presentation.accessibleName
                             }
                             aria-pressed={selected?.userId === marker.userId}
@@ -1366,7 +1366,7 @@ function OffMapPlayersPanel({
       case "invalid_coordinates":
         return "Position unavailable";
       case "outside_bounds":
-        return "Outside verified map bounds";
+        return "Outside this map";
     }
   };
   return (
@@ -1387,8 +1387,8 @@ function OffMapPlayersPanel({
                 <Text size="sm">{status(player.reason)}</Text>
                 <Text size="xs" c="dimmed">
                   {player.lastTrustedPosition
-                    ? `Last trusted Palpagos position updated ${formatTelemetryAge(player.lastTrustedPosition.capturedAt)}`
-                    : "No trusted Palpagos position is available."}
+                    ? `Last known Palpagos position updated ${formatTelemetryAge(player.lastTrustedPosition.capturedAt)}`
+                    : "No known Palpagos position is available."}
                 </Text>
                 <Accordion variant="contained">
                   <Accordion.Item value="raw-location">
@@ -1690,9 +1690,9 @@ function PlayerMapDetails({
           )}
           {marker.displayKind === "last_trusted_instance" && (
             <Alert color="violet" title="Inside an instanced area">
-              The marker shows this player&apos;s last trusted Palpagos
-              location. Their current internal coordinates are not plotted on
-              the overworld map.
+              The marker shows this player&apos;s last known Palpagos location.
+              Their current internal coordinates are not plotted on the
+              overworld map.
             </Alert>
           )}
           <SimpleGrid cols={2}>
@@ -1706,7 +1706,7 @@ function PlayerMapDetails({
           <Detail
             label={
               marker.displayKind === "last_trusted_instance"
-                ? "Last trusted Palpagos coordinates"
+                ? "Last known Palpagos coordinates"
                 : "World coordinates"
             }
             value={details.worldCoordinates}
