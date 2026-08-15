@@ -91,9 +91,7 @@ export class SqliteCredentialRepository implements CredentialRepository {
 
   listForServer(serverId: string): StoredPalDefenderCredential[] {
     const rows = this.requireDatabase()
-      .prepare(
-        "SELECT * FROM paldefender_user_credentials WHERE server_id = ?",
-      )
+      .prepare("SELECT * FROM paldefender_user_credentials WHERE server_id = ?")
       .all(serverId) as unknown as CredentialRow[];
     return rows.map((row) => this.credential(row));
   }
