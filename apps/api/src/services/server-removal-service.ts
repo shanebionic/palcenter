@@ -1,6 +1,7 @@
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
 import type { CredentialRepository } from "../repositories/credential-repository.js";
 import type { HistoryRepository } from "../repositories/history-repository.js";
+import type { StoredPalDefenderCredential } from "../types/credentials.js";
 
 export class RemovalServerNotFoundError extends Error {}
 
@@ -30,6 +31,10 @@ export class ServerRemovalService {
 
     await this.monitoring.pause();
 
+    const credentialSnapshot = this.credentials
+      ? this.credentials.listForServer(serverId)
+      : [];
+
     try {
       try {
         if (this.credentials) {
@@ -45,31 +50,63 @@ export class ServerRemovalService {
       try {
         await this.connections.delete(serverId);
       } catch (error) {
-        throw new ServerRemovalError(
+        throw this.compensate(
+          error,
+          credentialSnapshot,
           "PalCenter could not remove the saved server connection.",
-          { cause: error },
         );
       }
 
       try {
         this.history.deleteServerData(serverId);
       } catch (error) {
+        let connectionRestoreError: unknown;
         try {
           await this.connections.create(connection);
-        } catch (rollbackError) {
-          throw new ServerRemovalError(
-            "PalCenter could not remove the server and could not restore its saved connection.",
-            { cause: new AggregateError([error, rollbackError]) },
-          );
+        } catch (restoreError) {
+          connectionRestoreError = restoreError;
         }
-
-        throw new ServerRemovalError(
-          "PalCenter could not remove the server. Its saved connection was restored.",
-          { cause: error },
+        const message = connectionRestoreError
+          ? "PalCenter could not remove the server and could not restore its saved connection."
+          : "PalCenter could not remove the server. Its saved connection was restored.";
+        throw this.compensate(
+          connectionRestoreError
+            ? new AggregateError([error, connectionRestoreError])
+            : error,
+          credentialSnapshot,
+          message,
         );
       }
     } finally {
       this.monitoring.resume();
     }
+  }
+
+  private compensate(
+    cause: unknown,
+    snapshot: StoredPalDefenderCredential[],
+    message: string,
+  ): ServerRemovalError {
+    if (snapshot.length === 0 || !this.credentials) {
+      return new ServerRemovalError(message, { cause });
+    }
+    let restoreError: unknown;
+    try {
+      for (const credential of snapshot) {
+        this.credentials.restore(credential);
+      }
+    } catch (error) {
+      restoreError = error;
+    }
+    if (restoreError) {
+      return new ServerRemovalError(
+        `${message} The saved PalDefender user credentials could not be restored.`,
+        { cause: new AggregateError([cause, restoreError]) },
+      );
+    }
+    return new ServerRemovalError(
+      `${message} The saved PalDefender user credentials were restored.`,
+      { cause },
+    );
   }
 }

@@ -129,6 +129,69 @@ test("a different actor on the same server still uses the server default", async
   assert.equal(requests[0]?.token, "server-token");
 });
 
+test("credential assignments are isolated per (server, user) pair", async () => {
+  const servers = new Map<string, StoredConnection>([
+    ["server-a", connection("server-a", "token-a")],
+    ["server-b", connection("server-b", "token-b")],
+  ]);
+  const repository = {
+    get: async (id: string) => servers.get(id) ?? null,
+  } as ConnectionRepository;
+  const credentials: CredentialRepository = {
+    getForUser: (serverId, userId) => {
+      if (serverId === "server-a" && userId === "user-1") {
+        return {
+          id: "crd_a",
+          serverId,
+          userId,
+          token: "user-token-a",
+          createdAt: new Date(0).toISOString(),
+          updatedAt: new Date(0).toISOString(),
+        };
+      }
+      return null;
+    },
+    upsert: () => {
+      throw new Error("not used");
+    },
+    removeForUser: () => undefined,
+    deleteForServer: () => undefined,
+    close: () => undefined,
+    reopen: () => undefined,
+  };
+  const requests: Array<{ endpoint: string; token: string }> = [];
+  const service = new PalDefenderService(
+    repository,
+    (endpoint, token) => {
+      requests.push({ endpoint, token });
+      return {
+        getPlayers: async () => [
+          {
+            name: "Player",
+            playerId: "player-1",
+            online: true,
+            guild: null,
+            level: null,
+          },
+        ],
+      } as PalDefenderClient;
+    },
+    credentials,
+  );
+
+  await service.players("server-a", { userId: "user-1" });
+  await service.players("server-b", { userId: "user-1" });
+
+  assert.deepEqual(
+    requests,
+    [
+      { endpoint: "http://paldefender-server-a", token: "user-token-a" },
+      { endpoint: "http://paldefender-server-b", token: "token-b" },
+    ],
+    "the assignment must apply only to its own (server, user) pair",
+  );
+});
+
 test("fail-closed: an invalid user credential makes exactly one request and never falls back", async () => {
   const { service, requests } = makeService({
     assigned: new Map([["user-1", "stale-user-token"]]),

@@ -89,6 +89,37 @@ export class SqliteCredentialRepository implements CredentialRepository {
       .run(serverId);
   }
 
+  listForServer(serverId: string): StoredPalDefenderCredential[] {
+    const rows = this.requireDatabase()
+      .prepare(
+        "SELECT * FROM paldefender_user_credentials WHERE server_id = ?",
+      )
+      .all(serverId) as unknown as CredentialRow[];
+    return rows.map((row) => this.credential(row));
+  }
+
+  restore(credential: StoredPalDefenderCredential): void {
+    this.requireDatabase()
+      .prepare(
+        `INSERT INTO paldefender_user_credentials (
+          id, server_id, user_id, token, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (server_id, user_id) DO UPDATE SET
+          id = excluded.id,
+          token = excluded.token,
+          created_at = excluded.created_at,
+          updated_at = excluded.updated_at`,
+      )
+      .run(
+        credential.id,
+        credential.serverId,
+        credential.userId,
+        credential.token,
+        credential.createdAt,
+        credential.updatedAt,
+      );
+  }
+
   close(): void {
     this.database?.close();
     this.database = null;
