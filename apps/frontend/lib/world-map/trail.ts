@@ -43,6 +43,13 @@ export interface TrailProcessingOptions {
   minimumNormalizedMovement?: number;
   coordinateSpaceId?: string;
   coordinateSpacesAuthoritative?: boolean;
+  /**
+   * When true, only samples explicitly tagged with the active coordinate
+   * space are rendered. Unknown/legacy samples (null or untagged) are
+   * excluded instead of falling back to the active space, so trails never
+   * mix coordinate spaces.
+   */
+  strictCoordinateSpace?: boolean;
 }
 
 export interface TrailSegmentStyle {
@@ -101,14 +108,25 @@ export function processMovementTrail(
   };
 
   for (const point of sorted) {
-    if (
-      options.coordinateSpacesAuthoritative === true &&
-      (point.coordinateSpaceId ?? coordinateSpaceId) !== coordinateSpaceId
-    ) {
-      exclusions.coordinateSpace = (exclusions.coordinateSpace ?? 0) + 1;
-      finishSegment();
-      previous = null;
-      continue;
+    if (options.coordinateSpacesAuthoritative === true) {
+      // "unknown" is the REST sentinel for legacy/unverified spaces; like
+      // null/undefined it falls back to the active space in non-strict mode
+      // and is excluded in strict mode.
+      const legacySpace =
+        point.coordinateSpaceId === null ||
+        point.coordinateSpaceId === undefined ||
+        point.coordinateSpaceId === "unknown";
+      const spaceMismatch =
+        options.strictCoordinateSpace === true
+          ? point.coordinateSpaceId !== coordinateSpaceId
+          : (legacySpace ? coordinateSpaceId : point.coordinateSpaceId) !==
+            coordinateSpaceId;
+      if (spaceMismatch) {
+        exclusions.coordinateSpace = (exclusions.coordinateSpace ?? 0) + 1;
+        finishSegment();
+        previous = null;
+        continue;
+      }
     }
     const capturedAt = Date.parse(point.capturedAt);
     const projected =
