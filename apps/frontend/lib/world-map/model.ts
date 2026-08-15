@@ -21,6 +21,7 @@ export type UnmappedPlayerReason =
   | "invalid_coordinates"
   | "outside_bounds"
   | "world_tree"
+  | "palpagos"
   | "instanced_area"
   | "unsupported_space"
   | "unknown_space"
@@ -257,7 +258,8 @@ export function buildLivePlayerMapModel(
     const isInstance =
       coordinateSpaceId === "special_area" ||
       coordinateSpaceId.startsWith("instance:");
-    const hasAuthoritativeSpace = false;
+    const isMappableAuthoritativeSpace =
+      coordinateSpaceId === "palpagos" || coordinateSpaceId === "world_tree";
     const spatialState: PlayerSpatialState =
       freshness === "stale"
         ? "stale_position"
@@ -271,20 +273,14 @@ export function buildLivePlayerMapModel(
                 ? "unknown_space"
                 : "unsupported_space";
     if (
-      hasAuthoritativeSpace &&
+      isMappableAuthoritativeSpace &&
       coordinateSpaceId !== mapDefinition.coordinateSpaceId
     ) {
       const lastTrustedPosition = trustedByUserId.get(player.userId) ?? null;
       unmappedPlayers.push({
         userId: player.userId,
         playerName: player.name,
-        reason: isInstance
-          ? "instanced_area"
-          : coordinateSpaceId === "world_tree"
-            ? "world_tree"
-            : coordinateSpaceId === "unknown"
-              ? "unknown_space"
-              : "unsupported_space",
+        reason: coordinateSpaceId === "world_tree" ? "world_tree" : "palpagos",
         snapshot,
         coordinateSpaceId,
         spatialState,
@@ -408,6 +404,12 @@ export function buildBaseMapMarkers(
   projection: MapProjectionConfiguration,
   mapDefinition: WorldMapDefinition = palpagosMapDefinition,
 ): BaseMapMarker[] {
+  // Base DTOs carry no coordinate-space field, so base positions are only
+  // interpreted on maps whose coordinate space is verified for bases —
+  // currently Palpagos. World Tree base markers must not be guessed from
+  // Palpagos coordinates that happen to fall inside the tree bounds.
+  if (mapDefinition.coordinateSpaceId !== "palpagos") return [];
+
   const markers: BaseMapMarker[] = [];
 
   for (const base of bases) {

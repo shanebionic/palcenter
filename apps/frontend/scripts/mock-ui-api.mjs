@@ -736,11 +736,11 @@ export function startMockUiApi(port = 3198) {
               y: 67890,
               coordinateSpaceId: "instance:fixture-dungeon",
             }
-          : playerMode === "world-tree"
+           : playerMode === "world-tree"
             ? {
                 ...liveTelemetry,
-                x: -42000,
-                y: 91000,
+                x: 518250,
+                y: -647298.5,
                 coordinateSpaceId: "world_tree",
               }
             : playerMode === "unknown"

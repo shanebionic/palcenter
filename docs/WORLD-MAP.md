@@ -8,11 +8,14 @@ is online, selected-player details, and recent joins or departures.
 
 - Select a player to open their details.
 - Use **Follow Player** to keep the selected player centered while they move.
-- Switch between **Palpagos** and **World Tree** manually. World Tree is a
-  placeholder: it has no verified map image or projection yet, so players
-  located there are listed in the off-map panel instead of being plotted.
-- Players in a confirmed special area receive a clear off-map view instead of
-  misleading Palpagos coordinates.
+- Switch between **Palpagos** and **World Tree** manually. Each map plots
+  only players from its own coordinate space: a player located in the World
+  Tree is listed in the off-map panel on the Palpagos view (and vice versa),
+  while an explicit **Follow Player** or **Center Player** on an off-map
+  player intentionally switches to that player's map.
+- Players with unknown, legacy, special-area, or instance coordinate spaces
+  keep the documented bounds-based behavior on the active map instead of
+  being treated as authoritative map locations.
 
 PalCenter obtains player positions from the official Palworld REST API, or
 from PalDefender when PalDefender is configured for the server. Neither
@@ -41,6 +44,15 @@ attribution, and removal policy are in the asset's
 [`ASSET-NOTICE.md`](../apps/frontend/public/world-maps/palpagos/ASSET-NOTICE.md),
 [`source.json`](../apps/frontend/public/world-maps/palpagos/source.json), and
 the repository-level [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md).
+
+The World Tree map receives the same treatment: 2048×2048 and 4096×4096 WebP
+derivatives of the 8192×8192 T_TreeMap texture extracted from the same
+installed build, with authoritative bounds from the DT_WorldMapUIData "Tree"
+row. Its projection status is pending-geographic-validation until live World
+Tree player UAT confirms marker placement. See the asset's
+[`ASSET-NOTICE.md`](../apps/frontend/public/world-maps/world-tree/ASSET-NOTICE.md)
+and
+[`source.json`](../apps/frontend/public/world-maps/world-tree/source.json).
 
 The upstream 8192×8192 binary is not shipped in the production frontend.
 Ordinary clients default to the 2048×2048 derivative; browsers can select the
@@ -355,8 +367,9 @@ Before release, verify in Chromium:
 
 The current release does not add or claim:
 
-- a World Tree map image or projection (the World Tree view remains a
-  placeholder);
+- a verified geographic position for World Tree markers (the projection is
+  pending-geographic-validation until live World Tree player UAT);
+- World Tree base camp markers (base DTOs carry no coordinate-space field);
 - multiple islands or world/map variants with separate bounds;
 - heatmaps, analytics, or historical playback;
 - `/game-data` collection, Z-axis display for native-source players, guild

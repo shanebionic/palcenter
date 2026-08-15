@@ -565,13 +565,23 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
     fullPage: true,
   });
 
+  const mapImage = page.locator("img.pc-world-map-image").first();
+  await expect(mapImage).toHaveAttribute("src", /world-map-2048\.webp/);
+
   await page.getByLabel("Choose world map").getByText("World Tree").click();
-  await expect(page.getByText("World Tree map coming later")).toBeVisible();
+  await expect(page.getByText("World Tree map coming later")).toHaveCount(0);
+  await expect(mapImage).toHaveAttribute("src", /world-tree-2048\.webp/);
+  // Switching maps resets the viewport to fit; zoom/pan work in tree view.
+  await expect(page.getByLabel("Zoom out")).toBeDisabled();
+  await page.getByLabel("Zoom in").click();
+  await expect(page.getByLabel("Zoom out")).toBeEnabled();
   await page.screenshot({
     path: "../../docs/screenshots/living-world-map-world-tree.png",
     fullPage: true,
   });
   await page.getByLabel("Choose world map").getByText("Palpagos").click();
+  await expect(mapImage).toHaveAttribute("src", /world-map-2048\.webp/);
+  await expect(page.getByLabel("Zoom out")).toBeDisabled();
 
   await setPlayerMode(page, "instance");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
@@ -580,11 +590,27 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
 
   await setPlayerMode(page, "world-tree");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  // The authoritative world_tree sample is off-map in the Palpagos view even
+  // though its coordinates are inside the tree bounds.
+  await expect(page.getByLabel("View Denalb on map")).toHaveCount(0);
+  await expect(
+    page.getByText("In World Tree — switch to World Tree map"),
+  ).toBeVisible();
+  // Explicitly following the off-map player is an intentional transition to
+  // its authoritative map.
+  await page.getByRole("button", { name: "View details" }).first().click();
+  const treeFollow = page.getByRole("button", { name: "Follow Player" });
+  await expect(treeFollow).toBeEnabled();
+  await treeFollow.click();
+  await expect(treeFollow).toHaveAttribute("aria-pressed", "true");
+  await expect(mapImage).toHaveAttribute("src", /world-tree-2048\.webp/);
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
   await page.screenshot({
     path: "../../docs/screenshots/rest-map-authoritative-off-map.png",
     fullPage: true,
   });
+  await page.getByLabel("Choose world map").getByText("Palpagos").click();
+  await expect(mapImage).toHaveAttribute("src", /world-map-2048\.webp/);
 
   await setPlayerMode(page, "stale");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
