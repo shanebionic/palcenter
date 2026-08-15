@@ -29,7 +29,12 @@ async function setSessionRole(
 
 async function setPalDefenderMode(
   page: Page,
-  mode: "connected" | "disabled" | "unreachable" | "authentication_failed",
+  mode:
+    | "connected"
+    | "disabled"
+    | "unreachable"
+    | "authentication_failed"
+    | "permission_failed",
 ) {
   const response = await page.request.get(
     `http://127.0.0.1:3198/__test/paldefender?mode=${mode}`,
@@ -263,6 +268,14 @@ test("normal Players progressively exposes enhanced player management", async ({
     page
       .getByRole("alert", { name: "Enhanced player management unavailable" })
       .getByText("PalDefender authentication failed"),
+  ).toBeVisible();
+
+  await setPalDefenderMode(page, "permission_failed");
+  await page.reload();
+  await expect(
+    page
+      .getByRole("alert", { name: "Enhanced player management unavailable" })
+      .getByText("PalDefender rejected the bearer token"),
   ).toBeVisible();
 });
 

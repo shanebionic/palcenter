@@ -33,7 +33,9 @@ import {
   type PalDefenderTechnologySelection,
 } from "../clients/paldefender-client.js";
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
+import type { CredentialRepository } from "../repositories/credential-repository.js";
 import type { StoredConnection } from "../types/connections.js";
+import type { PalDefenderCredentialSource } from "../types/credentials.js";
 
 export interface PalDefenderStatus {
   state:
@@ -41,6 +43,7 @@ export interface PalDefenderStatus {
     | "configuration_required"
     | "connected"
     | "authentication_failed"
+    | "permission_failed"
     | "unreachable"
     | "invalid_response";
   enabled: boolean;
@@ -56,6 +59,11 @@ export interface PalDefenderConnectionTestResult {
   responseTime: number;
 }
 
+export interface PalDefenderActor {
+  userId: string;
+  onCredentialSource?: (source: PalDefenderCredentialSource) => void;
+}
+
 type ClientFactory = (endpoint: string, token: string) => PalDefenderClient;
 
 export class PalDefenderService {
@@ -68,6 +76,7 @@ export class PalDefenderService {
     private readonly repository: ConnectionRepository,
     private readonly createClient: ClientFactory = (endpoint, token) =>
       new PalDefenderClient(endpoint, token),
+    private readonly credentialRepository: CredentialRepository | null = null,
   ) {}
 
   async status(serverId: string): Promise<PalDefenderStatus> {
@@ -104,13 +113,15 @@ export class PalDefenderService {
       return { state: "connected", enabled: true, configured: true, ...result };
     } catch (error) {
       const state =
-        error instanceof PalDefenderError &&
-        (error.statusCode === 401 || error.statusCode === 403)
+        error instanceof PalDefenderError && error.statusCode === 401
           ? "authentication_failed"
-          : error instanceof PalDefenderError &&
-              (error.code === "MALFORMED_RESPONSE" || error.statusCode === 502)
-            ? "invalid_response"
-            : "unreachable";
+          : error instanceof PalDefenderError && error.statusCode === 403
+            ? "permission_failed"
+            : error instanceof PalDefenderError &&
+                (error.code === "MALFORMED_RESPONSE" ||
+                  error.statusCode === 502)
+              ? "invalid_response"
+              : "unreachable";
       return {
         state,
         enabled: true,
@@ -133,8 +144,13 @@ export class PalDefenderService {
     return this.testConnection(endpoint, selectedToken);
   }
 
-  async players(serverId: string): Promise<PalDefenderPlayer[]> {
-    const players = await (await this.clientForServer(serverId)).getPlayers();
+  async players(
+    serverId: string,
+    actor?: PalDefenderActor,
+  ): Promise<PalDefenderPlayer[]> {
+    const players = await (
+      await this.clientForServer(serverId, actor)
+    ).getPlayers();
     return players.map((player) => ({
       ...player,
       level: this.cachedLevel(serverId, player.playerId) ?? player.level,
@@ -144,8 +160,11 @@ export class PalDefenderService {
   async player(
     serverId: string,
     id: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderPlayerDetails> {
-    const player = await (await this.clientForServer(serverId)).getPlayer(id);
+    const player = await (
+      await this.clientForServer(serverId, actor)
+    ).getPlayer(id);
     return {
       ...player,
       level: this.cachedLevel(serverId, player.playerId) ?? player.level,
@@ -155,24 +174,34 @@ export class PalDefenderService {
   async inventory(
     serverId: string,
     id: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderInventoryItem[]> {
-    return (await this.clientForServer(serverId)).getInventory(id);
+    return (await this.clientForServer(serverId, actor)).getInventory(id);
   }
 
-  async pals(serverId: string, id: string): Promise<PalDefenderPal[]> {
-    return (await this.clientForServer(serverId)).getPals(id);
+  async pals(
+    serverId: string,
+    id: string,
+    actor?: PalDefenderActor,
+  ): Promise<PalDefenderPal[]> {
+    return (await this.clientForServer(serverId, actor)).getPals(id);
   }
 
-  async technology(serverId: string, id: string): Promise<string[]> {
-    return (await this.clientForServer(serverId)).getTechnology(id);
+  async technology(
+    serverId: string,
+    id: string,
+    actor?: PalDefenderActor,
+  ): Promise<string[]> {
+    return (await this.clientForServer(serverId, actor)).getTechnology(id);
   }
 
   async learnTechnology(
     serverId: string,
     id: string,
     technology: PalDefenderTechnologySelection,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderTechnologyMutationResult> {
-    return (await this.clientForServer(serverId)).learnTechnology(
+    return (await this.clientForServer(serverId, actor)).learnTechnology(
       id,
       technology,
     );
@@ -182,8 +211,9 @@ export class PalDefenderService {
     serverId: string,
     id: string,
     technology: PalDefenderTechnologySelection,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderTechnologyMutationResult> {
-    return (await this.clientForServer(serverId)).forgetTechnology(
+    return (await this.clientForServer(serverId, actor)).forgetTechnology(
       id,
       technology,
     );
@@ -192,9 +222,10 @@ export class PalDefenderService {
   async progression(
     serverId: string,
     id: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderProgression> {
     const progression = await (
-      await this.clientForServer(serverId)
+      await this.clientForServer(serverId, actor)
     ).getProgression(id);
     this.progressionLevels.set(this.levelKey(serverId, id), {
       level: progression.character.level,
@@ -211,9 +242,10 @@ export class PalDefenderService {
     serverId: string,
     id: string,
     grant: PalDefenderProgressionGrant,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderGiveProgressionResult> {
     const result = await (
-      await this.clientForServer(serverId)
+      await this.clientForServer(serverId, actor)
     ).giveProgression(id, grant);
     this.progressionLevels.delete(this.levelKey(serverId, id));
     return result;
@@ -234,89 +266,123 @@ export class PalDefenderService {
     return cached.level;
   }
 
-  async guilds(serverId: string): Promise<PalDefenderGuild[]> {
-    return (await this.clientForServer(serverId)).getGuilds();
+  async guilds(
+    serverId: string,
+    actor?: PalDefenderActor,
+  ): Promise<PalDefenderGuild[]> {
+    return (await this.clientForServer(serverId, actor)).getGuilds();
   }
 
-  async bases(serverId: string): Promise<PalDefenderBase[]> {
-    return (await this.clientForServer(serverId)).getBases();
+  async bases(
+    serverId: string,
+    actor?: PalDefenderActor,
+  ): Promise<PalDefenderBase[]> {
+    return (await this.clientForServer(serverId, actor)).getBases();
   }
 
-  async base(serverId: string, id: string): Promise<PalDefenderBaseDetails> {
-    return (await this.clientForServer(serverId)).getBase(id);
+  async base(
+    serverId: string,
+    id: string,
+    actor?: PalDefenderActor,
+  ): Promise<PalDefenderBaseDetails> {
+    return (await this.clientForServer(serverId, actor)).getBase(id);
   }
 
   async deleteBase(
     serverId: string,
     id: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderDeleteBaseResult> {
-    return (await this.clientForServer(serverId)).deleteBase(id);
+    return (await this.clientForServer(serverId, actor)).deleteBase(id);
   }
 
-  async guild(serverId: string, id: string): Promise<PalDefenderGuildDetails> {
-    return (await this.clientForServer(serverId)).getGuild(id);
+  async guild(
+    serverId: string,
+    id: string,
+    actor?: PalDefenderActor,
+  ): Promise<PalDefenderGuildDetails> {
+    return (await this.clientForServer(serverId, actor)).getGuild(id);
   }
 
   async kick(
     serverId: string,
     id: string,
     message?: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderKickResult> {
-    return (await this.clientForServer(serverId)).kickPlayer(id, message);
+    return (await this.clientForServer(serverId, actor)).kickPlayer(
+      id,
+      message,
+    );
   }
 
   async ban(
     serverId: string,
     id: string,
     options?: PalDefenderBanOptions,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderBanResult> {
-    return (await this.clientForServer(serverId)).banPlayer(id, options);
+    return (await this.clientForServer(serverId, actor)).banPlayer(id, options);
   }
 
-  async banlist(serverId: string): Promise<PalDefenderModerationState> {
-    return (await this.clientForServer(serverId)).getBanlist();
+  async banlist(
+    serverId: string,
+    actor?: PalDefenderActor,
+  ): Promise<PalDefenderModerationState> {
+    return (await this.clientForServer(serverId, actor)).getBanlist();
   }
 
   async unbanUser(
     serverId: string,
     userId: string,
     reason?: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderModerationResult> {
-    return (await this.clientForServer(serverId)).unbanUser(userId, reason);
+    return (await this.clientForServer(serverId, actor)).unbanUser(
+      userId,
+      reason,
+    );
   }
 
   async banIp(
     serverId: string,
     ip: string,
     reason?: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderModerationResult> {
-    return (await this.clientForServer(serverId)).banIp(ip, reason);
+    return (await this.clientForServer(serverId, actor)).banIp(ip, reason);
   }
 
   async unbanIp(
     serverId: string,
     ip: string,
     reason?: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderModerationResult> {
-    return (await this.clientForServer(serverId)).unbanIp(ip, reason);
+    return (await this.clientForServer(serverId, actor)).unbanIp(ip, reason);
   }
 
   async broadcast(
     serverId: string,
     message: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderBroadcastResult> {
-    return (await this.clientForServer(serverId)).broadcast(message);
+    return (await this.clientForServer(serverId, actor)).broadcast(message);
   }
 
   async alert(
     serverId: string,
     message: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderBroadcastResult> {
-    return (await this.clientForServer(serverId)).alert(message);
+    return (await this.clientForServer(serverId, actor)).alert(message);
   }
 
-  async reloadConfig(serverId: string): Promise<PalDefenderReloadConfigResult> {
-    return (await this.clientForServer(serverId)).reloadConfig();
+  async reloadConfig(
+    serverId: string,
+    actor?: PalDefenderActor,
+  ): Promise<PalDefenderReloadConfigResult> {
+    return (await this.clientForServer(serverId, actor)).reloadConfig();
   }
 
   async sendPlayerMessage(
@@ -324,8 +390,9 @@ export class PalDefenderService {
     userIds: string[],
     sendType: PalDefenderPlayerMessageType,
     message: string,
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderPlayerMessageResult> {
-    return (await this.clientForServer(serverId)).sendPlayerMessage(
+    return (await this.clientForServer(serverId, actor)).sendPlayerMessage(
       userIds,
       sendType,
       message,
@@ -336,24 +403,27 @@ export class PalDefenderService {
     serverId: string,
     id: string,
     items: PalDefenderItemGrant[],
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderGiveItemsResult> {
-    return (await this.clientForServer(serverId)).giveItems(id, items);
+    return (await this.clientForServer(serverId, actor)).giveItems(id, items);
   }
 
   async givePals(
     serverId: string,
     id: string,
     pals: PalDefenderPalGrant[],
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderGivePalsResult> {
-    return (await this.clientForServer(serverId)).givePals(id, pals);
+    return (await this.clientForServer(serverId, actor)).givePals(id, pals);
   }
 
   async givePalTemplates(
     serverId: string,
     id: string,
     palTemplates: string[],
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderGivePalTemplatesResult> {
-    return (await this.clientForServer(serverId)).givePalTemplates(
+    return (await this.clientForServer(serverId, actor)).givePalTemplates(
       id,
       palTemplates,
     );
@@ -363,8 +433,12 @@ export class PalDefenderService {
     serverId: string,
     id: string,
     palEggs: PalDefenderPalEggGrant[],
+    actor?: PalDefenderActor,
   ): Promise<PalDefenderGivePalEggsResult> {
-    return (await this.clientForServer(serverId)).givePalEggs(id, palEggs);
+    return (await this.clientForServer(serverId, actor)).givePalEggs(
+      id,
+      palEggs,
+    );
   }
 
   private async testConnection(
@@ -380,7 +454,10 @@ export class PalDefenderService {
     };
   }
 
-  private async clientForServer(serverId: string): Promise<PalDefenderClient> {
+  private async clientForServer(
+    serverId: string,
+    actor?: PalDefenderActor,
+  ): Promise<PalDefenderClient> {
     const connection = await this.requireConnection(serverId);
     if (!(connection.palDefenderEnabled ?? false)) {
       throw new PalDefenderDisabledError();
@@ -388,10 +465,22 @@ export class PalDefenderService {
     if (!connection.palDefenderEndpoint || !connection.palDefenderToken) {
       throw new PalDefenderConfigurationRequiredError();
     }
-    return this.createClient(
-      connection.palDefenderEndpoint,
-      connection.palDefenderToken,
-    );
+    let credentialSource: PalDefenderCredentialSource = "server_default";
+    let token = connection.palDefenderToken;
+    if (actor && this.credentialRepository) {
+      const assigned = this.credentialRepository.getForUser(
+        serverId,
+        actor.userId,
+      );
+      if (assigned) {
+        token = assigned.token;
+        credentialSource = "user";
+      }
+    }
+    if (actor?.onCredentialSource) {
+      actor.onCredentialSource(credentialSource);
+    }
+    return this.createClient(connection.palDefenderEndpoint, token);
   }
 
   private async requireConnection(serverId: string): Promise<StoredConnection> {

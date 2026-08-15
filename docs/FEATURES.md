@@ -188,6 +188,21 @@ The API enforces permissions; controls are not protected solely by frontend
 visibility. PalCenter protects the last enabled Administrator from deletion or
 disablement.
 
+## User Management
+
+Administrators create, edit, and delete users, reset temporary passwords, and
+assign per-user PalDefender credentials.
+
+Each PalCenter user can have one PalDefender bearer token per server. When a
+user performs a PalDefender action, PalCenter uses that user's assigned token
+for this server; users without an assignment, and background collection, use
+the server's PalDefender token. A request made with an assigned token never
+falls back to the server token: an invalid token reports
+`paldefender_credential_invalid`, and a token missing a required permission
+reports `paldefender_permission_denied` with the missing permission name.
+Tokens are write-only: assignment and list responses never return token
+material, and deleting a user or a server removes its credential rows.
+
 ## Settings and tools
 
 The application Settings area contains Administrator-facing user,

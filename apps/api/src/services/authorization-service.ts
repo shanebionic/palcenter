@@ -63,6 +63,12 @@ export class AuthorizationService {
       return "operate";
     }
     if (
+      /^\/api\/servers\/[^/]+\/users\/paldefender-credentials$/.test(path) ||
+      /^\/api\/servers\/[^/]+\/users\/[^/]+\/paldefender-credential$/.test(path)
+    ) {
+      return "manage_users";
+    }
+    if (
       (method === "POST" &&
         (path === "/api/servers" || path === "/api/servers/test")) ||
       (method === "POST" && /^\/api\/servers\/[^/]+\/test$/.test(path)) ||

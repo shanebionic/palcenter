@@ -1,4 +1,5 @@
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
+import type { CredentialRepository } from "../repositories/credential-repository.js";
 import type { HistoryRepository } from "../repositories/history-repository.js";
 
 export class RemovalServerNotFoundError extends Error {}
@@ -15,6 +16,7 @@ export class ServerRemovalService {
     private readonly connections: ConnectionRepository,
     private readonly history: HistoryRepository,
     private readonly monitoring: ServerRemovalMonitoringControl,
+    private readonly credentials: CredentialRepository | null = null,
   ) {}
 
   async remove(serverId: string): Promise<void> {
@@ -29,6 +31,17 @@ export class ServerRemovalService {
     await this.monitoring.pause();
 
     try {
+      try {
+        if (this.credentials) {
+          this.credentials.deleteForServer(serverId);
+        }
+      } catch (error) {
+        throw new ServerRemovalError(
+          "PalCenter could not remove the saved PalDefender user credentials.",
+          { cause: error },
+        );
+      }
+
       try {
         await this.connections.delete(serverId);
       } catch (error) {

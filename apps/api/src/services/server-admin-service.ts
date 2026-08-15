@@ -1,12 +1,19 @@
 import { PalworldRestClient } from "../clients/palworld-rest-client.js";
 import type { ConnectionRepository } from "../repositories/connection-repository.js";
-import type { PalDefenderStatus } from "./paldefender-service.js";
+import type {
+  PalDefenderActor,
+  PalDefenderStatus,
+} from "./paldefender-service.js";
 
 export type BroadcastProvider = "paldefender" | "native";
 
 interface BroadcastCapability {
   status(serverId: string): Promise<PalDefenderStatus>;
-  broadcast(serverId: string, message: string): Promise<unknown>;
+  broadcast(
+    serverId: string,
+    message: string,
+    actor?: PalDefenderActor,
+  ): Promise<unknown>;
 }
 
 type NativeClient = Pick<
@@ -38,9 +45,10 @@ export class ServerAdminService {
   async announce(
     serverId: string,
     message: string,
+    actor?: PalDefenderActor,
   ): Promise<{ provider: BroadcastProvider }> {
     if (await this.palDefenderAvailable(serverId)) {
-      await this.palDefender!.broadcast(serverId, message);
+      await this.palDefender!.broadcast(serverId, message, actor);
       return { provider: "paldefender" };
     }
 

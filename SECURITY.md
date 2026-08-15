@@ -25,6 +25,14 @@ Credentials in `servers.json`, `notifications.json`, `users.sqlite`, and
 these files, `history.sqlite`, and backup archives are sensitive and should be
 protected by host access controls and encrypted backup storage.
 
+Per-user PalDefender bearer tokens are assigned by Administrators in User
+Management and stored in `users.sqlite` alongside account data. They are
+write-only: APIs and the frontend never return token material, list responses
+report configuration state only, and token values are redacted from logs.
+When a user has an assigned token, their PalDefender requests use it and fail
+closed on authentication or permission errors without falling back to the
+server token.
+
 The container runs as an unprivileged user. Compose drops Linux capabilities,
 enables `no-new-privileges`, and mounts only `/app/data`; PalCenter neither
 needs nor should receive the Docker socket or Palworld save directories.

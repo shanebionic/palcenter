@@ -109,15 +109,17 @@ export function ServerPlayerWorkspace({
   const unavailableMessage =
     status?.state === "authentication_failed"
       ? "PalDefender authentication failed. Update this server’s bearer token; native player information remains available."
-      : status?.state === "invalid_response"
-        ? "PalDefender returned an incompatible response. Native player information remains available."
-        : status?.state === "unreachable"
-          ? "PalDefender is temporarily unreachable. Native player information remains available."
-          : status?.state === "configuration_required"
-            ? "Complete the PalDefender connection settings to enable Inventory, Pals, Technology, Progression, and enhanced actions."
-            : status?.state === "disabled"
-              ? "Enable PalDefender for this server to add Inventory, Pals, Technology, Progression, and enhanced actions."
-              : "Enhanced player management is unavailable.";
+      : status?.state === "permission_failed"
+        ? "PalDefender rejected the bearer token: it is missing required permissions. Grant the needed permissions to this token; native player information remains available."
+        : status?.state === "invalid_response"
+          ? "PalDefender returned an incompatible response. Native player information remains available."
+          : status?.state === "unreachable"
+            ? "PalDefender is temporarily unreachable. Native player information remains available."
+            : status?.state === "configuration_required"
+              ? "Complete the PalDefender connection settings to enable Inventory, Pals, Technology, Progression, and enhanced actions."
+              : status?.state === "disabled"
+                ? "Enable PalDefender for this server to add Inventory, Pals, Technology, Progression, and enhanced actions."
+                : "Enhanced player management is unavailable.";
 
   return (
     <ApplicationShell>
