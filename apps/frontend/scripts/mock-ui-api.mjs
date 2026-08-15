@@ -104,6 +104,7 @@ let unlockedTechnologies = ["Arrow"];
 let grantedPals = [];
 let serverStatusMode = "populated";
 let addedServers = [];
+const palDefenderCredentials = new Map();
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
   const joined = index % 2 === 0;
@@ -275,6 +276,54 @@ export function startMockUiApi(port = 3198) {
       return json(response, { setupRequired: false });
     }
     if (url.pathname === "/api/users/me") return json(response, user);
+    if (url.pathname === "/api/users") {
+      return json(response, { users: [user] });
+    }
+    const credentialListMatch = url.pathname.match(
+      /^\/api\/servers\/[^/]+\/users\/paldefender-credentials$/,
+    );
+    if (credentialListMatch && request.method === "GET") {
+      return json(response, {
+        credentials: [
+          {
+            userId: user.id,
+            username: user.username,
+            role: user.role,
+            configured: palDefenderCredentials.get(user.id) === true,
+            updatedAt: palDefenderCredentials.get(user.id) ? now : null,
+          },
+        ],
+      });
+    }
+    const credentialMatch = url.pathname.match(
+      /^\/api\/servers\/[^/]+\/users\/[^/]+\/paldefender-credential$/,
+    );
+    if (credentialMatch && request.method === "PUT") {
+      const input = await readJson(request);
+      if (typeof input?.token !== "string" || input.token.trim().length === 0) {
+        return json(
+          response,
+          {
+            error: "invalid_paldefender_credential",
+            message: "A PalDefender bearer token is required.",
+          },
+          400,
+        );
+      }
+      palDefenderCredentials.set(user.id, true);
+      return json(response, {
+        userId: user.id,
+        username: user.username,
+        configured: true,
+        updatedAt: now,
+      });
+    }
+    if (credentialMatch && request.method === "DELETE") {
+      palDefenderCredentials.delete(user.id);
+      response.writeHead(204, { "cache-control": "no-store" });
+      response.end();
+      return;
+    }
     if (request.method === "POST" && url.pathname === "/api/servers/test") {
       return json(response, {
         info: {

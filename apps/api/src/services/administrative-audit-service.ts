@@ -155,6 +155,12 @@ export function administrativeAuditEntry(
     details.recipientCount = body.playerIds.length;
   if (typeof body.sendType === "string") details.messageType = body.sendType;
   if (typeof body.scope === "string") details.scope = body.scope;
+  if (
+    request.palDefenderCredentialSource === "user" ||
+    request.palDefenderCredentialSource === "server_default"
+  ) {
+    details.palDefenderCredentialSource = request.palDefenderCredentialSource;
+  }
   // Message text, reasons, Bearer tokens, and full IP addresses are deliberately excluded.
   return {
     serverId,

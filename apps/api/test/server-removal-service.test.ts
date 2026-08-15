@@ -4,9 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { JsonConnectionRepository } from "../src/repositories/json-connection-repository.js";
+import { SqliteCredentialRepository } from "../src/repositories/sqlite-credential-repository.js";
 import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
+import { SqliteUserRepository } from "../src/repositories/sqlite-user-repository.js";
 import {
   RemovalServerNotFoundError,
+  ServerRemovalError,
   ServerRemovalService,
 } from "../src/services/server-removal-service.js";
 import { SqliteTelemetryRepository } from "../src/telemetry/repositories/sqlite-telemetry-repository.js";
@@ -144,5 +147,122 @@ test("returns not found without changing unrelated data", async () => {
   } finally {
     history.close();
     await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+async function credentialFixture(prefix: string) {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), `palcenter-remove-${prefix}-`),
+  );
+  const connections = new JsonConnectionRepository(directory);
+  const history = new SqliteHistoryRepository(directory);
+  const users = new SqliteUserRepository(directory);
+  const credentials = new SqliteCredentialRepository(directory);
+  return { directory, connections, history, users, credentials };
+}
+
+const testUser = (id: string, username: string) => ({
+  id,
+  username,
+  email: `${username}@example.com`,
+  passwordHash: "hash",
+  role: "visitor" as const,
+  enabled: true,
+  mustChangePassword: false,
+  createdAt: new Date(0).toISOString(),
+  updatedAt: new Date(0).toISOString(),
+});
+
+test("restores connection and credential assignments when a later history removal step fails", async () => {
+  const context = await credentialFixture("history-fail");
+  try {
+    const { connections, history, users, credentials } = context;
+    await connections.initialize();
+    history.initialize();
+    users.initialize();
+
+    const server = connection("srv_rollback", "Rollback Me");
+    await connections.create(server);
+    const user = users.create(testUser("user-1", "rollback-player"));
+    credentials.upsert(
+      server.id,
+      user.id,
+      "secret-token",
+      "crd_1",
+      new Date().toISOString(),
+    );
+
+    history.deleteServerData = () => {
+      throw new Error("simulated history removal failure");
+    };
+
+    await assert.rejects(
+      () =>
+        new ServerRemovalService(
+          connections,
+          history,
+          monitoring,
+          credentials,
+        ).remove(server.id),
+      ServerRemovalError,
+    );
+
+    assert.equal((await connections.get(server.id))?.name, server.name);
+    assert.equal(
+      credentials.getForUser(server.id, user.id)?.token,
+      "secret-token",
+    );
+  } finally {
+    context.history.close();
+    context.users.close();
+    context.credentials.close();
+    await fs.rm(context.directory, { recursive: true, force: true });
+  }
+});
+
+test("restores credential assignments when the connection removal step fails", async () => {
+  const context = await credentialFixture("connection-fail");
+  try {
+    const { connections, history, users, credentials } = context;
+    await connections.initialize();
+    history.initialize();
+    users.initialize();
+
+    const server = connection("srv_conn_fail", "Connection Fail");
+    await connections.create(server);
+    const user = users.create(testUser("user-1", "conn-player"));
+    credentials.upsert(
+      server.id,
+      user.id,
+      "secret-token",
+      "crd_1",
+      new Date().toISOString(),
+    );
+
+    connections.delete = async () => {
+      throw new Error("simulated connection removal failure");
+    };
+
+    await assert.rejects(
+      () =>
+        new ServerRemovalService(
+          connections,
+          history,
+          monitoring,
+          credentials,
+        ).remove(server.id),
+      ServerRemovalError,
+    );
+
+    assert.equal((await connections.get(server.id))?.name, server.name);
+    assert.equal(
+      credentials.getForUser(server.id, user.id)?.token,
+      "secret-token",
+    );
+  } finally {
+    context.history.close();
+    context.users.close();
+    context.credentials.close();
+    await fs.rm(context.directory, { recursive: true, force: true });
   }
 });

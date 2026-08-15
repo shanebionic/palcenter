@@ -3,12 +3,14 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
 import { JsonConnectionRepository } from "../src/repositories/json-connection-repository.js";
 import { SqliteWorldEventRepository } from "../src/repositories/sqlite-world-event-repository.js";
 import { SqliteAutomationRepository } from "../src/repositories/sqlite-automation-repository.js";
 import { SqliteUserRepository } from "../src/repositories/sqlite-user-repository.js";
+import { SqliteCredentialRepository } from "../src/repositories/sqlite-credential-repository.js";
 import { SystemConfigurationRepository } from "../src/repositories/system-configuration-repository.js";
 import {
   BackupService,
@@ -348,6 +350,186 @@ test("creates and restores all PalCenter data", async () => {
       context.directory,
     ).read();
     assert.deepEqual(restoredSystem, context.system.configuration);
+  } finally {
+    context.history.close();
+    context.telemetry.close();
+    context.worldEvents.close();
+    context.automation.close();
+    context.users.close();
+    await fs.rm(context.directory, { recursive: true, force: true });
+  }
+});
+
+test("per-user PalDefender credentials survive backup and restore", async () => {
+  const context = await fixture();
+
+  try {
+    const credentials = new SqliteCredentialRepository(context.directory);
+    credentials.upsert(
+      "srv_test",
+      "usr_test",
+      "backed-up-token",
+      "crd_backup",
+      "2026-07-23T00:00:00.000Z",
+    );
+    credentials.close();
+
+    const backup = await context.service.create();
+    await context.service.restore(backup.contents);
+
+    const restored = new SqliteCredentialRepository(context.directory);
+    try {
+      assert.equal(
+        restored.getForUser("srv_test", "usr_test")?.token,
+        "backed-up-token",
+      );
+    } finally {
+      restored.close();
+    }
+    assert.equal(context.users.list().length, 1);
+  } finally {
+    context.history.close();
+    context.telemetry.close();
+    context.worldEvents.close();
+    context.automation.close();
+    context.users.close();
+    await fs.rm(context.directory, { recursive: true, force: true });
+  }
+});
+
+test("a schema version 1 users.sqlite in a backup restores and migrates to version 2", async () => {
+  const context = await fixture();
+
+  try {
+    const v1Directory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "palcenter-v1-users-"),
+    );
+    const legacyHash = await new PasswordService().hash("Legacy-Password-123!");
+    const v1 = new DatabaseSync(path.join(v1Directory, "users.sqlite"));
+    v1.exec(`
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+        email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('administrator', 'moderator', 'visitor')),
+        enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+        must_change_password INTEGER NOT NULL CHECK (must_change_password IN (0, 1)),
+        session_version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_login_at TEXT
+      );
+      CREATE TABLE authentication_metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+      INSERT INTO authentication_metadata (key, value)
+        VALUES ('setup_completed', 'true');
+      PRAGMA user_version = 1;
+    `);
+    v1.prepare(
+      `INSERT INTO users (
+          id, username, email, password_hash, role, enabled,
+          must_change_password, created_at, updated_at
+        ) VALUES ('usr_legacy', 'legacy', 'legacy@example.com', ?, 'administrator', 1, 0, '2026-07-01T00:00:00.000Z', '2026-07-01T00:00:00.000Z')`,
+    ).run(legacyHash);
+    v1.close();
+
+    const metadata = {
+      formatVersion: 3,
+      palcenterVersion: "1.4.0-legacy",
+      createdAt: "2026-07-10T00:00:00.000Z",
+    };
+    context.history.close();
+    context.telemetry.close();
+    context.worldEvents.close();
+    context.automation.close();
+    context.users.close();
+    let archive: Buffer;
+    try {
+      archive = createTarGzip([
+        {
+          name: "metadata.json",
+          contents: Buffer.from(`${JSON.stringify(metadata, null, 2)}\n`),
+        },
+        {
+          name: "servers.json",
+          contents: await fs.readFile(
+            path.join(context.directory, "servers.json"),
+          ),
+        },
+        {
+          name: "notifications.json",
+          contents: await fs.readFile(
+            path.join(context.directory, "notifications.json"),
+          ),
+        },
+        {
+          name: "history.sqlite",
+          contents: await fs.readFile(
+            path.join(context.directory, "history.sqlite"),
+          ),
+        },
+        {
+          name: "users.sqlite",
+          contents: await fs.readFile(path.join(v1Directory, "users.sqlite")),
+        },
+        {
+          name: "system.json",
+          contents: await fs.readFile(
+            path.join(context.directory, "system.json"),
+          ),
+        },
+      ]);
+    } finally {
+      context.history.reopen();
+      context.telemetry.reopen();
+      context.worldEvents.reopen();
+      context.automation.reopen();
+      context.users.reopen();
+    }
+    await fs.rm(v1Directory, { recursive: true, force: true });
+
+    await context.service.restore(archive);
+
+    assert.deepEqual(
+      context.users.list().map((user) => user.username),
+      ["legacy"],
+      "the legacy administrator must survive the restore",
+    );
+    const probe = new DatabaseSync(
+      path.join(context.directory, "users.sqlite"),
+    );
+    const userVersion = (
+      probe.prepare("PRAGMA user_version").get() as {
+        user_version: number;
+      }
+    ).user_version;
+    probe.close();
+    assert.equal(
+      userVersion,
+      2,
+      "restore must migrate users.sqlite to schema v2",
+    );
+
+    const credentials = new SqliteCredentialRepository(context.directory);
+    try {
+      credentials.upsert(
+        "srv_test",
+        "usr_legacy",
+        "post-restore-token",
+        "crd_post",
+        "2026-07-23T00:00:00.000Z",
+      );
+      assert.equal(
+        credentials.getForUser("srv_test", "usr_legacy")?.token,
+        "post-restore-token",
+        "the migrated table must be usable immediately",
+      );
+    } finally {
+      credentials.close();
+    }
   } finally {
     context.history.close();
     context.telemetry.close();

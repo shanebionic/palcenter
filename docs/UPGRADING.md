@@ -61,6 +61,12 @@ rows are preserved and backfilled with the default coordinate space value, so
 no manual database repair is required. Databases that already have the
 complete schema are unaffected (the repair is a no-op).
 
+`users.sqlite` supports schema versions 1 through 2. Version 2 adds the
+`paldefender_user_credentials` table for per-user PalDefender bearer tokens.
+Version-1 databases migrate in place on startup, and restoring a backup that
+contains a version-1 `users.sqlite` migrates it during restore validation;
+existing accounts are preserved and no action is required.
+
 The current backup format is version 3. Restore also accepts format 1 and 2:
 
 - format 1 preserves the installation's current users and system configuration;

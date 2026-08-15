@@ -28,7 +28,7 @@ interface UserRow {
   last_login_at: string | null;
 }
 
-const schemaVersion = 1;
+const schemaVersion = 2;
 
 export class SqliteUserRepository implements UserRepository {
   private database: DatabaseSync | null = null;
@@ -84,8 +84,23 @@ export class SqliteUserRepository implements UserRepository {
           key TEXT PRIMARY KEY,
           value TEXT NOT NULL
         );
-        PRAGMA user_version = 1;
       `);
+      if (version < 2) {
+        database.exec(`
+          CREATE TABLE IF NOT EXISTS paldefender_user_credentials (
+            id TEXT PRIMARY KEY,
+            server_id TEXT NOT NULL,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE (server_id, user_id)
+          );
+          CREATE INDEX IF NOT EXISTS paldefender_user_credentials_user
+            ON paldefender_user_credentials (user_id);
+        `);
+      }
+      database.exec("PRAGMA user_version = 2;");
       database.exec("COMMIT");
     } catch (error) {
       database.exec("ROLLBACK");
