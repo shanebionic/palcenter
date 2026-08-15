@@ -1709,7 +1709,7 @@ function Technology({
         color: "green",
         title:
           action === "learn" ? "Technology learned" : "Technology forgotten",
-        message: `${result.changedCount} technolog${result.changedCount === 1 ? "y" : "ies"} changed. Refreshing authoritative state.`,
+        message: `${result.changedCount} technolog${result.changedCount === 1 ? "y" : "ies"} changed.`,
       });
       await refresh();
       resetAction();
