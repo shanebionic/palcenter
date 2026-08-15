@@ -446,16 +446,19 @@ test("bundles attributed responsive World Tree derivatives with verified metadat
     "/world-maps/world-tree/world-tree-2048.webp",
   );
   assert.equal(worldTreeMapAssetSrcSet.includes("https://"), false);
-  assert.equal(metadata.upstreamSource.installedBuild, "1.10.1283.0 (Xbox/WinGDK)");
+  assert.equal(
+    metadata.upstreamSource.installedBuild,
+    "1.10.1283.0 (Xbox/WinGDK)",
+  );
   assert.equal(metadata.upstreamSource.dtRow, "Tree");
-  assert.deepEqual(metadata.upstreamSource.landScapeRealPositionMin, [
-    347351.5,
-    -818197,
-  ]);
-  assert.deepEqual(metadata.upstreamSource.landScapeRealPositionMax, [
-    689148.5,
-    -476400,
-  ]);
+  assert.deepEqual(
+    metadata.upstreamSource.landScapeRealPositionMin,
+    [347351.5, -818197],
+  );
+  assert.deepEqual(
+    metadata.upstreamSource.landScapeRealPositionMax,
+    [689148.5, -476400],
+  );
   assert.deepEqual(metadata.upstreamSource.dimensions, {
     width: 8192,
     height: 8192,
@@ -990,7 +993,10 @@ test("authoritative coordinate spaces isolate players before bounds projection",
   assert.equal(treeOnPalpagos.markers.length, 0);
   assert.equal(treeOnPalpagos.unmappedPlayers.length, 1);
   assert.equal(treeOnPalpagos.unmappedPlayers[0]?.reason, "world_tree");
-  assert.equal(treeOnPalpagos.unmappedPlayers[0]?.spatialState, "world_tree_live");
+  assert.equal(
+    treeOnPalpagos.unmappedPlayers[0]?.spatialState,
+    "world_tree_live",
+  );
 
   // The same sample plots on the World Tree map itself.
   const treeOnTree = buildLivePlayerMapModel(

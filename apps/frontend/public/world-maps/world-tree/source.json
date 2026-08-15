@@ -7,14 +7,8 @@
     "engine": "UE5.1",
     "dataTable": "Pal/Content/Pal/DataTable/WorldMapUIData/DT_WorldMapUIData",
     "dtRow": "Tree",
-    "landScapeRealPositionMin": [
-      347351.5,
-      -818197
-    ],
-    "landScapeRealPositionMax": [
-      689148.5,
-      -476400
-    ],
+    "landScapeRealPositionMin": [347351.5, -818197],
+    "landScapeRealPositionMax": [689148.5, -476400],
     "textureAsset": "T_TreeMap",
     "texturePath": "Pal/Content/Pal/Texture/UI/Map/T_TreeMap",
     "retrievedAt": "2026-08-13",

@@ -591,7 +591,11 @@ export function ServerWorldMap({
       setPendingCenterUserId(null);
       return;
     }
-    const view = centerMapOnPosition(selected.position, viewportSize, surfaceSize);
+    const view = centerMapOnPosition(
+      selected.position,
+      viewportSize,
+      surfaceSize,
+    );
     setZoom(view.zoom);
     setPan(view.pan);
     setFocusedPlayerId(selected.userId);
@@ -1015,162 +1019,162 @@ export function ServerWorldMap({
                     draggable={false}
                   />
                 </picture>
-                  {trailEnabled && trail && (
-                    <svg
-                      className="pc-world-map-trail"
-                      viewBox="0 0 100 100"
-                      preserveAspectRatio="none"
-                      aria-label={`Movement trail for ${selectedPlayerName ?? "selected player"}`}
-                      role="img"
-                    >
-                      {renderedTrailSegments.map((segment, index) => (
-                        <line
-                          key={`${segment.end.capturedAt}-${index}`}
-                          className="pc-world-map-trail-segment"
-                          data-age-ratio={segment.ageRatio}
-                          x1={segment.start.x * 100}
-                          y1={segment.start.y * 100}
-                          x2={segment.end.x * 100}
-                          y2={segment.end.y * 100}
-                          vectorEffect="non-scaling-stroke"
-                          stroke={selectedPlayerColor}
-                          opacity={segment.style.opacity}
-                          strokeWidth={segment.style.strokeWidth}
-                          style={{
-                            filter: `brightness(${segment.style.brightness}) drop-shadow(0 0 2px rgba(6, 16, 25, 0.95))`,
-                          }}
-                        />
-                      ))}
-                      {trail.segments[0]?.[0] && (
-                        <circle
-                          className="pc-world-map-trail-start"
-                          cx={trail.segments[0][0].x * 100}
-                          cy={trail.segments[0][0].y * 100}
-                          r="0.7"
-                          vectorEffect="non-scaling-stroke"
-                          style={{ fill: selectedPlayerColor }}
-                        >
-                          <title>Trail start</title>
-                        </circle>
-                      )}
-                      {trail.segments.at(-1)?.at(-1) && (
-                        <circle
-                          className="pc-world-map-trail-end"
-                          cx={trail.segments.at(-1)!.at(-1)!.x * 100}
-                          cy={trail.segments.at(-1)!.at(-1)!.y * 100}
-                          r="0.7"
-                          vectorEffect="non-scaling-stroke"
-                          style={{ fill: selectedPlayerColor }}
-                        >
-                          <title>Trail end</title>
-                        </circle>
-                      )}
-                    </svg>
-                  )}
-                  {showPlayers &&
-                    model.markers.map((marker) => {
-                      const presentation = playerMarkerPresentation(
-                        marker.playerName,
-                      );
-                      return (
+                {trailEnabled && trail && (
+                  <svg
+                    className="pc-world-map-trail"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                    aria-label={`Movement trail for ${selectedPlayerName ?? "selected player"}`}
+                    role="img"
+                  >
+                    {renderedTrailSegments.map((segment, index) => (
+                      <line
+                        key={`${segment.end.capturedAt}-${index}`}
+                        className="pc-world-map-trail-segment"
+                        data-age-ratio={segment.ageRatio}
+                        x1={segment.start.x * 100}
+                        y1={segment.start.y * 100}
+                        x2={segment.end.x * 100}
+                        y2={segment.end.y * 100}
+                        vectorEffect="non-scaling-stroke"
+                        stroke={selectedPlayerColor}
+                        opacity={segment.style.opacity}
+                        strokeWidth={segment.style.strokeWidth}
+                        style={{
+                          filter: `brightness(${segment.style.brightness}) drop-shadow(0 0 2px rgba(6, 16, 25, 0.95))`,
+                        }}
+                      />
+                    ))}
+                    {trail.segments[0]?.[0] && (
+                      <circle
+                        className="pc-world-map-trail-start"
+                        cx={trail.segments[0][0].x * 100}
+                        cy={trail.segments[0][0].y * 100}
+                        r="0.7"
+                        vectorEffect="non-scaling-stroke"
+                        style={{ fill: selectedPlayerColor }}
+                      >
+                        <title>Trail start</title>
+                      </circle>
+                    )}
+                    {trail.segments.at(-1)?.at(-1) && (
+                      <circle
+                        className="pc-world-map-trail-end"
+                        cx={trail.segments.at(-1)!.at(-1)!.x * 100}
+                        cy={trail.segments.at(-1)!.at(-1)!.y * 100}
+                        r="0.7"
+                        vectorEffect="non-scaling-stroke"
+                        style={{ fill: selectedPlayerColor }}
+                      >
+                        <title>Trail end</title>
+                      </circle>
+                    )}
+                  </svg>
+                )}
+                {showPlayers &&
+                  model.markers.map((marker) => {
+                    const presentation = playerMarkerPresentation(
+                      marker.playerName,
+                    );
+                    return (
+                      <div
+                        key={marker.userId}
+                        className="pc-world-map-marker-position"
+                        style={{
+                          left: `${marker.position.x * 100}%`,
+                          top: `${marker.position.y * 100}%`,
+                        }}
+                      >
                         <div
-                          key={marker.userId}
-                          className="pc-world-map-marker-position"
+                          className="pc-world-map-marker-visual"
                           style={{
-                            left: `${marker.position.x * 100}%`,
-                            top: `${marker.position.y * 100}%`,
+                            transform: `scale(${markerInverseScale(zoom)})`,
                           }}
                         >
-                          <div
-                            className="pc-world-map-marker-visual"
+                          <button
+                            type="button"
+                            data-player-id={marker.userId}
+                            className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${marker.displayKind === "last_trusted_instance" ? " pc-world-map-marker-portal" : ""}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
                             style={{
-                              transform: `scale(${markerInverseScale(zoom)})`,
+                              backgroundColor: playerColor(marker.userId),
                             }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedId(marker.userId);
+                            }}
+                            aria-label={
+                              marker.displayKind === "last_trusted_instance"
+                                ? `View ${presentation.displayName}'s last trusted Palpagos location; currently inside an instance`
+                                : presentation.accessibleName
+                            }
+                            aria-pressed={selected?.userId === marker.userId}
                           >
-                            <button
-                              type="button"
-                              data-player-id={marker.userId}
-                              className={`pc-world-map-marker pc-world-map-marker-${marker.freshness}${marker.displayKind === "last_trusted_instance" ? " pc-world-map-marker-portal" : ""}${focusedPlayerId === marker.userId ? " pc-world-map-marker-focused" : ""}`}
-                              style={{
-                                backgroundColor: playerColor(marker.userId),
-                              }}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setSelectedId(marker.userId);
-                              }}
-                              aria-label={
-                                marker.displayKind === "last_trusted_instance"
-                                  ? `View ${presentation.displayName}'s last trusted Palpagos location; currently inside an instance`
-                                  : presentation.accessibleName
-                              }
-                              aria-pressed={selected?.userId === marker.userId}
-                            >
-                              <span aria-hidden="true">
-                                {marker.displayKind ===
-                                "last_trusted_instance" ? (
-                                  <IconDoorEnter size={17} />
-                                ) : (
-                                  presentation.initial
-                                )}
-                              </span>
-                            </button>
-                            <span
-                              className="pc-world-map-marker-label"
-                              aria-hidden="true"
-                            >
-                              {presentation.displayName}
-                              {marker.displayKind === "last_trusted_instance"
-                                ? " · Inside instance"
-                                : ""}
+                            <span aria-hidden="true">
+                              {marker.displayKind ===
+                              "last_trusted_instance" ? (
+                                <IconDoorEnter size={17} />
+                              ) : (
+                                presentation.initial
+                              )}
                             </span>
-                          </div>
+                          </button>
+                          <span
+                            className="pc-world-map-marker-label"
+                            aria-hidden="true"
+                          >
+                            {presentation.displayName}
+                            {marker.displayKind === "last_trusted_instance"
+                              ? " · Inside instance"
+                              : ""}
+                          </span>
                         </div>
-                      );
-                    })}
-                  {showBases &&
-                    baseMarkers.map((marker) => {
-                      const displayName = marker.guildName ?? "Unnamed Guild";
-                      return (
+                      </div>
+                    );
+                  })}
+                {showBases &&
+                  baseMarkers.map((marker) => {
+                    const displayName = marker.guildName ?? "Unnamed Guild";
+                    return (
+                      <div
+                        key={marker.baseId}
+                        className="pc-world-map-base-position"
+                        style={{
+                          left: `${marker.position.x * 100}%`,
+                          top: `${marker.position.y * 100}%`,
+                        }}
+                      >
                         <div
-                          key={marker.baseId}
-                          className="pc-world-map-base-position"
+                          className="pc-world-map-base-visual"
                           style={{
-                            left: `${marker.position.x * 100}%`,
-                            top: `${marker.position.y * 100}%`,
+                            transform: `scale(${markerInverseScale(zoom)})`,
                           }}
                         >
-                          <div
-                            className="pc-world-map-base-visual"
-                            style={{
-                              transform: `scale(${markerInverseScale(zoom)})`,
+                          <button
+                            type="button"
+                            data-base-id={marker.baseId}
+                            className={`pc-world-map-base-marker${selectedBase?.baseId === marker.baseId ? " pc-world-map-base-marker-selected" : ""}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedId(marker.baseId);
                             }}
+                            aria-label={`View ${displayName} at base ${marker.baseId}`}
+                            aria-pressed={
+                              selectedBase?.baseId === marker.baseId
+                            }
                           >
-                            <button
-                              type="button"
-                              data-base-id={marker.baseId}
-                              className={`pc-world-map-base-marker${selectedBase?.baseId === marker.baseId ? " pc-world-map-base-marker-selected" : ""}`}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setSelectedId(marker.baseId);
-                              }}
-                              aria-label={`View ${displayName} at base ${marker.baseId}`}
-                              aria-pressed={
-                                selectedBase?.baseId === marker.baseId
-                              }
-                            >
-                              <span aria-hidden="true">&#9670;</span>
-                            </button>
-                            <span
-                              className="pc-world-map-base-label"
-                              aria-hidden="true"
-                            >
-                              {displayName}
-                            </span>
-                          </div>
+                            <span aria-hidden="true">&#9670;</span>
+                          </button>
+                          <span
+                            className="pc-world-map-base-label"
+                            aria-hidden="true"
+                          >
+                            {displayName}
+                          </span>
                         </div>
-                      );
-                    })}
-                </div>
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
             <Text size="xs" c="dimmed" mt="xs">
               Scroll to zoom. Drag while zoomed to pan. Use marker buttons for
