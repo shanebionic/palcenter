@@ -18,7 +18,7 @@ in place. Create and verify a backup before changing the image.
 6. Confirm adequate free space on the Docker host.
 
 For predictable production deployments, use a versioned tag such as
-`ghcr.io/shanebionic/palcenter:v1.5.1` rather than `latest`.
+`ghcr.io/shanebionic/palcenter:v1.5.2` rather than `latest`.
 
 ## Docker Compose upgrade
 
