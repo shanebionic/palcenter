@@ -15,7 +15,12 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconRefresh, IconTrash } from "@tabler/icons-react";
+import {
+  IconArrowLeft,
+  IconMap,
+  IconRefresh,
+  IconTrash,
+} from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -24,6 +29,7 @@ import {
   deletePalDefenderBase,
   getPalDefenderBase,
   getPalDefenderBases,
+  getSession,
   type PalDefenderBaseDetails,
 } from "../lib/api";
 import { catalogLabel, findPalEntry } from "../lib/game-catalogs";
@@ -32,7 +38,7 @@ import {
   deleteBaseConfirmation,
   deleteBaseWarning,
 } from "../lib/paldefender-bases";
-import { palDefenderGuildHref } from "../lib/paldefender";
+import { baseMapDeepLinkHref, palDefenderGuildHref } from "../lib/paldefender";
 import { detailBackTarget } from "../lib/navigation";
 import { SectionCard } from "./ui/SectionCard";
 
@@ -73,6 +79,15 @@ export function ServerBaseWorkspace({
   const [deleteOpened, setDeleteOpened] = useState(false);
   const [deleteConfirmationValue, setDeleteConfirmationValue] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [canOperate, setCanOperate] = useState(false);
+
+  useEffect(() => {
+    void getSession()
+      .then((session) => {
+        setCanOperate(session.user.role !== "visitor");
+      })
+      .catch(() => undefined);
+  }, []);
 
   const loadBase = useCallback(
     async (refresh = false) => {
@@ -161,14 +176,27 @@ export function ServerBaseWorkspace({
         title="Base Details"
         description="Live base camp ownership, position, state, and worker data."
         action={
-          <Button
-            variant="light"
-            leftSection={<IconRefresh size={18} />}
-            loading={refreshing}
-            onClick={() => void loadBase(true)}
-          >
-            Refresh
-          </Button>
+          <Group gap="sm">
+            {canOperate && (
+              <Button
+                variant="light"
+                leftSection={<IconMap size={18} />}
+                onClick={() =>
+                  router.push(baseMapDeepLinkHref(serverId, baseId))
+                }
+              >
+                View on map
+              </Button>
+            )}
+            <Button
+              variant="light"
+              leftSection={<IconRefresh size={18} />}
+              loading={refreshing}
+              onClick={() => void loadBase(true)}
+            >
+              Refresh
+            </Button>
+          </Group>
         }
       />
       {error && <Alert color="red">{error}</Alert>}

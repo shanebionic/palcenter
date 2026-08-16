@@ -49,6 +49,37 @@ test("paldefender technology toast reports the concrete result", async () => {
   );
 });
 
+test("base deep link states use plain language", async () => {
+  const labels = await readFile(
+    new URL("../lib/world-map/base-location.ts", import.meta.url),
+    "utf8",
+  );
+  for (const copy of [
+    "Base not found",
+    "Location unavailable",
+    "Location unavailable on this map",
+    "View on Palpagos",
+  ]) {
+    assert.ok(
+      labels.includes(`"${copy}"`),
+      `expected base-location.ts to define ${copy}`,
+    );
+  }
+
+  const baseWorkspace = await readFile(
+    new URL("../components/ServerBaseWorkspace.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(baseWorkspace.includes("View on map"));
+
+  const map = await readFile(
+    new URL("../components/ServerWorldMap.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(map, /Base not found: /);
+  assert.doesNotMatch(map, /Could not center/i);
+});
+
 test("preserved REST terminology stays intact", async () => {
   const connection = await readFile(
     new URL("../components/ServerConnectionSettings.tsx", import.meta.url),

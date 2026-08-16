@@ -6,6 +6,7 @@ export default defineConfig({
     "design-system.spec.ts",
     "add-server.spec.ts",
     "paldefender-token-generation.spec.ts",
+    "base-map-navigation.spec.ts",
   ],
   workers: 1,
   timeout: 30_000,
