@@ -65,13 +65,18 @@ eggs, and technology.
 
 The Guilds tab lists all guilds on the server. Select a guild to see its
 administrator, member roster with levels, status, and associated base camps.
-This is a read-only view.
+The Base Camps rows link to the linked base's Base Details page. This is a
+read-only view.
 
 ## Base camps (PalDefender)
 
 The Bases tab lists all base camps. Select a base to see its level, position,
 guild, and member roster. Administrators can delete a base camp with a
-confirmation dialog.
+confirmation dialog. Operators can open **View on map** from Base Details to
+jump straight to the living world map with that base selected and centered
+(`?tab=map&base={baseId}` links carry the base ID only, never coordinates).
+On the World Tree view, a known base shows **View on Palpagos** instead,
+because base positions are located on Palpagos.
 
 ## World Map
 
@@ -91,6 +96,13 @@ other supported map are listed under **Players on other maps** with a
 **Location unavailable**. Selecting a player never changes the active map;
 explicit **View on ...**, **Follow Player**, or **Center Player** switches to
 the selected player's map.
+
+A base deep link (`?tab=map&base={baseId}`) selects and centers that base on
+the active map when it can be shown, or explains why it cannot: **Base not
+found** (the base is no longer in the PalDefender base data) or **Location
+unavailable** (the base layer is unavailable, the coordinates are unusable, or
+the active map cannot display bases). See
+[docs/WORLD-MAP.md](WORLD-MAP.md).
 
 Administrators and Moderators can view map/history data.
 

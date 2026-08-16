@@ -100,6 +100,98 @@ const connectedPlayers = [
   },
 ];
 
+const pdBase1 = {
+  baseId: "Base-Camp_1",
+  guildId: "guild-tamers",
+  guildName: "Pal Tamers",
+  guildAdministrator: {
+    playerId: "0094A2FA000000000000000000000000",
+    name: "Denalb",
+  },
+  worldPosition: { x: -100000, y: -200000, z: 0 },
+  mapPosition: { x: 0, y: 0, z: 0 },
+};
+
+const pdBase2 = {
+  baseId: "Base-Camp_2",
+  guildId: "guild-tamers",
+  guildName: "Pal Tamers",
+  guildAdministrator: {
+    playerId: "0094A2FA000000000000000000000000",
+    name: "Denalb",
+  },
+  worldPosition: { x: 300000, y: 400000, z: 0 },
+  mapPosition: { x: 1, y: 2, z: 0 },
+};
+
+const pdBases = [pdBase1, pdBase2];
+
+const pdGuildDetails = {
+  guildId: "guild-tamers",
+  name: "Pal Tamers",
+  level: 12,
+  administrator: {
+    playerId: "0094A2FA000000000000000000000000",
+    name: "Denalb",
+  },
+  memberCount: 1,
+  members: [
+    {
+      playerId: "0094A2FA000000000000000000000000",
+      name: "Denalb",
+      status: "online",
+    },
+  ],
+  baseCount: 2,
+  camps: [
+    {
+      id: pdBase1.baseId,
+      level: 5,
+      state: "Active",
+      worldPosition: pdBase1.worldPosition,
+      mapPosition: pdBase1.mapPosition,
+      buildings: "24",
+      pals: [],
+    },
+    {
+      id: pdBase2.baseId,
+      level: 5,
+      state: "Active",
+      worldPosition: pdBase2.worldPosition,
+      mapPosition: pdBase2.mapPosition,
+      buildings: "24",
+      pals: [],
+    },
+  ],
+};
+
+const pdGuilds = [
+  {
+    guildId: "guild-tamers",
+    name: "Pal Tamers",
+    level: 12,
+    administrator: {
+      playerId: "0094A2FA000000000000000000000000",
+      name: "Denalb",
+    },
+    baseCount: 2,
+    camps: [
+      {
+        id: pdBase1.baseId,
+        worldPosition: pdBase1.worldPosition,
+        mapPosition: pdBase1.mapPosition,
+      },
+      {
+        id: pdBase2.baseId,
+        worldPosition: pdBase2.worldPosition,
+        mapPosition: pdBase2.mapPosition,
+      },
+    ],
+    memberCount: 1,
+    memberIds: ["gdk_2533274899179326"],
+  },
+];
+
 const baseServerStatus = {
   id: connection.id,
   name: connection.name,
@@ -138,6 +230,7 @@ const telemetryPlayer = {
 let playerMode = "populated";
 let eventMode = "populated";
 let palDefenderMode = "disabled";
+let palDefenderBaseMode = "populated";
 let sessionRole = "administrator";
 let broadcasts = [];
 let moderationIpBanned = true;
@@ -297,6 +390,10 @@ export function startMockUiApi(port = 3198) {
     if (url.pathname === "/__test/paldefender") {
       palDefenderMode = url.searchParams.get("mode") ?? "disabled";
       return json(response, { mode: palDefenderMode });
+    }
+    if (url.pathname === "/__test/paldefender/bases") {
+      palDefenderBaseMode = url.searchParams.get("mode") ?? "populated";
+      return json(response, { mode: palDefenderBaseMode });
     }
     if (url.pathname === "/__test/broadcasts") {
       if (url.searchParams.get("reset") === "true") broadcasts = [];
@@ -614,6 +711,49 @@ export function startMockUiApi(port = 3198) {
             level: 42,
           },
         ],
+      });
+    }
+    if (url.pathname === `/api/servers/${connection.id}/paldefender/guilds`) {
+      return json(response, { guilds: pdGuilds });
+    }
+    if (
+      url.pathname ===
+      `/api/servers/${connection.id}/paldefender/guilds/guild-tamers`
+    ) {
+      return json(response, pdGuildDetails);
+    }
+    if (url.pathname === `/api/servers/${connection.id}/paldefender/bases`) {
+      if (palDefenderBaseMode === "error") {
+        return json(
+          response,
+          { error: "paldefender_unavailable", message: "fetch failed" },
+          503,
+        );
+      }
+      return json(response, {
+        bases: palDefenderBaseMode === "populated" ? pdBases : [],
+      });
+    }
+    const pdBaseDetailsMatch = url.pathname.match(
+      `^/api/servers/${connection.id}/paldefender/bases/([^/]+)$`,
+    );
+    if (pdBaseDetailsMatch && request.method === "GET") {
+      const base = pdBases.find(
+        (item) => item.baseId === decodeURIComponent(pdBaseDetailsMatch[1]),
+      );
+      if (!base) {
+        return json(
+          response,
+          { error: "not_found", message: "Base camp not found." },
+          404,
+        );
+      }
+      return json(response, {
+        ...base,
+        level: 5,
+        state: "Active",
+        buildings: "24",
+        pals: [],
       });
     }
     const enhancedPlayerPath = `/api/servers/${connection.id}/paldefender/players/0094A2FA-00000000-00000000-00000000`;

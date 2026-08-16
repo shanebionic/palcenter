@@ -1982,7 +1982,7 @@ test("toolbar Group renders inside Card element", async () => {
     /<\/Card>(?=\s*<Stack gap="md" className="pc-world-map-details")/,
   );
   assert.ok(cardCloseMatch, "Card close tag not found");
-  const cardCloseIndex = source.indexOf(cardCloseMatch[0]);
+  const cardCloseIndex = cardCloseMatch.index ?? -1;
 
   assert.ok(
     toolbarIndex > cardIndex && toolbarIndex < cardCloseIndex,

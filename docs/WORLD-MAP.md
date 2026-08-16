@@ -29,6 +29,40 @@ map and can be toggled with the **Layers** menu alongside the Players and
 Trails layers. The position pipeline, controls, and freshness indicators
 remain independent from the bundled image layer.
 
+## Base deep links
+
+Base camp pages provide direct map links:
+
+- **Base Details → View on map** (operators and above);
+- **Guild Details → Base Camps** row links open the linked base's Base
+  Details page, which reaches the map the same way.
+
+The URL form is `/servers/{serverId}?tab=map&base={baseId}`. The server is
+identified by the path and the base by the `base` query parameter; **no map
+coordinates travel in the link**. The map reads the base's position from the
+PalDefender base list, which is authoritative for placement.
+
+The map is the single source of truth for where the base can be shown:
+
+- When the active map is **Palpagos** and the base is in the loaded base data
+  with usable coordinates, the map selects and centers the base marker.
+- **Base not found** — the base list loaded successfully but does not contain
+  this base (for example it was deleted).
+- **Location unavailable** — the base layer failed to load, PalDefender is
+  unavailable, the coordinates are unusable, or the active map cannot display
+  bases. A failed base request never reports _Base not found_.
+- **Location unavailable on this map** with a **View on Palpagos** button —
+  the base is known with a valid Palpagos position but the administrator has
+  switched to the World Tree. Base positions are interpreted exclusively in
+  the Palpagos coordinate space because base data carries no
+  coordinate-space identifier; the button switches the map and re-centers the
+  base.
+
+Base markers keep the map visible even when no players are connected. The map
+re-evaluates the linked base when the base data refreshes or when the
+administrator switches maps, so the linked base stays explained (centered or
+unavailable) on the active map.
+
 ## Asset and licensing decision
 
 The repository bundles 2048×2048 and 4096×4096 WebP derivatives of the

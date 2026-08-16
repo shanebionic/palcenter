@@ -47,3 +47,10 @@ export function palDefenderBaseHref(
   const base = `/servers/${encodeURIComponent(serverId)}/bases/${encodeURIComponent(baseId)}`;
   return source ? `${base}?from=${source}` : base;
 }
+
+// Deep link into the Living World Map for one base. The URL identifies the
+// base by server (path) + baseId (query) only; no coordinates travel in the
+// link. Consumed once as an initial value by the map.
+export function baseMapDeepLinkHref(serverId: string, baseId: string): string {
+  return `/servers/${encodeURIComponent(serverId)}?tab=map&base=${encodeURIComponent(baseId)}`;
+}

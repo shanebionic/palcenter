@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { PageHeader } from "./PageHeader";
 import { detailBackTarget } from "../lib/navigation";
 import { getPalDefenderGuild, type PalDefenderGuildDetails } from "../lib/api";
+import { palDefenderBaseHref } from "../lib/paldefender";
 import { SectionCard } from "./ui/SectionCard";
 
 function Value({ label, children }: { label: string; children: ReactNode }) {
@@ -181,7 +182,20 @@ export function ServerGuildWorkspace({
                     <Table.Tbody>
                       {guild.camps.map((camp) => (
                         <Table.Tr key={camp.id}>
-                          <Table.Td>{camp.id}</Table.Td>
+                          <Table.Td>
+                            <Text
+                              component={Link}
+                              href={palDefenderBaseHref(
+                                serverId,
+                                camp.id,
+                                "guilds",
+                              )}
+                              c="cyan.4"
+                              ff="monospace"
+                            >
+                              {camp.id}
+                            </Text>
+                          </Table.Td>
                           <Table.Td>{camp.state ?? "—"}</Table.Td>
                           <Table.Td>{camp.level ?? "—"}</Table.Td>
                           <Table.Td>{camp.pals?.length ?? 0}</Table.Td>

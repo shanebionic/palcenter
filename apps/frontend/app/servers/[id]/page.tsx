@@ -7,6 +7,7 @@ interface ServerPageProps {
   }>;
   searchParams: Promise<{
     tab?: string;
+    base?: string;
   }>;
 }
 
@@ -15,7 +16,7 @@ export default async function ServerPage({
   searchParams,
 }: ServerPageProps) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { tab, base } = await searchParams;
 
   return (
     <ApplicationShell>
@@ -32,6 +33,7 @@ export default async function ServerPage({
                   ? "map"
                   : "overview"
         }
+        initialBaseId={base && base.length > 0 ? base : undefined}
       />
     </ApplicationShell>
   );

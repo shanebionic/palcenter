@@ -96,6 +96,14 @@ import {
   worldTreeMapDefinition,
 } from "../lib/world-map/map-definitions";
 import {
+  BASE_LOCATION_UNAVAILABLE_LABEL,
+  BASE_LOCATION_UNAVAILABLE_ON_MAP_LABEL,
+  BASE_NOT_FOUND_LABEL,
+  resolveLinkedBaseLocation,
+  VIEW_ON_PALPAGOS_LABEL,
+  type LinkedBaseOutcome,
+} from "../lib/world-map/base-location";
+import {
   palDefenderBaseHref,
   palDefenderGuildHref,
   palDefenderPlayerHref,
@@ -105,6 +113,7 @@ import type { ConnectedPlayer, LatestPlayerTelemetry } from "../types/servers";
 interface ServerWorldMapProps {
   serverId: string;
   serverOnline: boolean;
+  initialBaseId?: string;
 }
 
 const defaultTelemetry: LatestPlayerTelemetry = {
@@ -126,6 +135,7 @@ const trailRangeMilliseconds: Record<TrailRange, number> = {
 export function ServerWorldMap({
   serverId,
   serverOnline,
+  initialBaseId,
 }: ServerWorldMapProps) {
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [telemetry, setTelemetry] =
@@ -174,7 +184,15 @@ export function ServerWorldMap({
   } | null>(null);
   const [bases, setBases] = useState<PalDefenderBase[]>([]);
   const [basesLoading, setBasesLoading] = useState(true);
+  const [basesLoaded, setBasesLoaded] = useState(false);
   const [basesError, setBasesError] = useState<string | null>(null);
+  const [linkedBaseState, setLinkedBaseState] = useState<{
+    baseId: string;
+    outcome: Exclude<LinkedBaseOutcome, { kind: "center" }>;
+  } | null>(null);
+  const [pendingCenterBaseId, setPendingCenterBaseId] = useState<string | null>(
+    null,
+  );
   const [enrichedPlayer, setEnrichedPlayer] =
     useState<PalDefenderPlayerDetails | null>(null);
   const [enrichedProgression, setEnrichedProgression] =
@@ -269,6 +287,8 @@ export function ServerWorldMap({
       return;
     }
 
+    setBasesLoaded(false);
+
     try {
       const status = await getPalDefenderStatus(serverId);
       if (!status.configured) {
@@ -286,6 +306,7 @@ export function ServerWorldMap({
       const result = await getPalDefenderBases(serverId);
       setBases(result);
       setBasesError(null);
+      setBasesLoaded(true);
     } catch (value) {
       setBases([]);
       setBasesError(
@@ -429,6 +450,11 @@ export function ServerWorldMap({
     contentState === "empty" && telemetry.players.length > 0
       ? "ready"
       : contentState;
+  // Loaded base markers keep the map visible even when no players are
+  // online; the base layer is independent of player data.
+  const displayMapLayout =
+    displayedContentState === "ready" ||
+    (displayedContentState === "empty" && baseMarkers.length > 0);
 
   const surfaceSize = mapSurfaceSize(viewportSize);
 
@@ -627,6 +653,71 @@ export function ServerWorldMap({
     setPendingCenterUserId(null);
   }, [selected, pendingCenterUserId, viewportSize, surfaceSize]);
 
+  // Apply the ?base= deep link for the active map. The link carries
+  // serverId (path) + baseId (query) only; no coordinates travel in the URL.
+  // It is re-evaluated when the base layer resolves and whenever the
+  // administrator switches maps, so a linked base the active map cannot show
+  // explains why and offers the Palpagos switch.
+  useEffect(() => {
+    if (!initialBaseId || basesLoading) return;
+
+    const outcome = resolveLinkedBaseLocation(
+      { loaded: basesLoaded, bases },
+      initialBaseId,
+      activeDefinition,
+    );
+
+    if (outcome.kind === "center") {
+      setSelectedId(initialBaseId);
+      setFollowPlayer(false);
+      setLinkedBaseState(null);
+      const marker = baseMarkers.find((item) => item.baseId === initialBaseId);
+      setPendingCenterBaseId(marker ? initialBaseId : null);
+    } else {
+      setSelectedId(null);
+      setFollowPlayer(false);
+      setPendingCenterBaseId(null);
+      setLinkedBaseState({ baseId: initialBaseId, outcome });
+    }
+  }, [
+    initialBaseId,
+    basesLoading,
+    basesLoaded,
+    bases,
+    activeDefinition,
+    baseMarkers,
+  ]);
+
+  // Center a deep-linked base once its marker is measured on the active map.
+  useEffect(() => {
+    if (pendingCenterBaseId === null) return;
+    const marker =
+      baseMarkers.find((item) => item.baseId === pendingCenterBaseId) ?? null;
+    if (!marker) {
+      setPendingCenterBaseId(null);
+      return;
+    }
+    if (viewportSize.width === 0 || surfaceSize === 0) return;
+    const view = centerMapOnPosition(
+      marker.position,
+      viewportSize,
+      surfaceSize,
+    );
+    setZoom(view.zoom);
+    setPan(view.pan);
+    setPendingCenterBaseId(null);
+  }, [pendingCenterBaseId, baseMarkers, viewportSize, surfaceSize]);
+
+  // Intentional, administrator-invoked action: switch to Palpagos, the only
+  // map that can display this base. The deep-link effect re-applies the
+  // selection and centering once the map switches.
+  const viewBaseOnPalpagos = () => {
+    setLinkedBaseState(null);
+    if (mapView !== "palpagos") {
+      switchToMap("palpagos");
+    }
+  };
+
   useEffect(() => {
     if (!followPlayer || !selected) return;
     const view = centerMapOnPosition(
@@ -755,6 +846,51 @@ export function ServerWorldMap({
         </Alert>
       )}
 
+      {linkedBaseState && !selectedBase && !selected && !selectedUnavailable ? (
+        <Card withBorder radius="md" padding="lg" className="pc-panel">
+          <Stack gap="md">
+            <Group justify="space-between">
+              <Title order={3}>
+                {linkedBaseState.outcome.kind === "not-found"
+                  ? BASE_NOT_FOUND_LABEL
+                  : linkedBaseState.outcome.actionable
+                    ? BASE_LOCATION_UNAVAILABLE_ON_MAP_LABEL
+                    : BASE_LOCATION_UNAVAILABLE_LABEL}
+              </Title>
+              <Badge color="violet" variant="light">
+                Base
+              </Badge>
+            </Group>
+            <div>
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                Base ID
+              </Text>
+              <Text size="sm" ff="monospace" className="pc-map-detail-value">
+                {linkedBaseState.baseId}
+              </Text>
+            </div>
+            {linkedBaseState.outcome.kind === "not-found" ? (
+              <Text size="sm" c="dimmed">
+                This base is not in the server&apos;s current base data.
+              </Text>
+            ) : linkedBaseState.outcome.actionable ? (
+              <Stack gap="sm" align="flex-start">
+                <Text size="sm" c="dimmed">
+                  This base lives on Palpagos.
+                </Text>
+                <Button size="compact-sm" onClick={viewBaseOnPalpagos}>
+                  {VIEW_ON_PALPAGOS_LABEL}
+                </Button>
+              </Stack>
+            ) : (
+              <Text size="sm" c="dimmed">
+                The base location cannot be shown on this map right now.
+              </Text>
+            )}
+          </Stack>
+        </Card>
+      ) : null}
+
       {displayedContentState === "loading" ? (
         <SectionCard>
           <BrandedLoader message="Loading the live player map" />
@@ -796,7 +932,7 @@ export function ServerWorldMap({
             </Stack>
           </Center>
         </SectionCard>
-      ) : displayedContentState === "ready" ? (
+      ) : displayMapLayout ? (
         <div
           className={`pc-world-map-layout${expanded ? " pc-world-map-expanded" : ""}`}
           role={expanded ? "dialog" : undefined}

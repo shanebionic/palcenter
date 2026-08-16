@@ -1,8 +1,9 @@
 "use client";
 
 import { Alert, Loader, Skeleton, Stack, Tabs } from "@mantine/core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getServer, getSession } from "../lib/api";
+import { normalizeInitialTab } from "../lib/navigation";
 import type { ServerWorkspaceData } from "../types/servers";
 import { PageHeader } from "./PageHeader";
 import { ServerAdministration } from "./ServerAdministration";
@@ -20,11 +21,13 @@ import { ServerAuditLog } from "./ServerAuditLog";
 interface ServerWorkspaceProps {
   serverId: string;
   initialTab?: string;
+  initialBaseId?: string;
 }
 
 export function ServerWorkspace({
   serverId,
   initialTab = "overview",
+  initialBaseId,
 }: ServerWorkspaceProps) {
   const [server, setServer] = useState<ServerWorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,11 +61,24 @@ export function ServerWorkspace({
     [serverId],
   );
 
+  const initialTabChecked = useRef(false);
+
   useEffect(() => {
     void getSession()
       .then((session) => {
-        setCanOperate(session.user.role !== "visitor");
-        setCanManage(session.user.role === "administrator");
+        const nextCanOperate = session.user.role !== "visitor";
+        const nextCanManage = session.user.role === "administrator";
+        setCanOperate(nextCanOperate);
+        setCanManage(nextCanManage);
+        if (!initialTabChecked.current) {
+          initialTabChecked.current = true;
+          setActiveTab((current) =>
+            normalizeInitialTab(current, {
+              canOperate: nextCanOperate,
+              canManage: nextCanManage,
+            }),
+          );
+        }
       })
       .catch(() => undefined);
     let cancelled = false;
@@ -160,6 +176,7 @@ export function ServerWorkspace({
                 <ServerWorldMap
                   serverId={server.connection.id}
                   serverOnline={server.status.status === "online"}
+                  initialBaseId={initialBaseId}
                 />
               </Tabs.Panel>
             )}
