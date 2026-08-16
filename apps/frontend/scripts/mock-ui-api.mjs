@@ -1,10 +1,52 @@
 import { createServer } from "node:http";
 import { Buffer } from "node:buffer";
+import { randomUUID } from "node:crypto";
 
 async function readJson(request) {
   const chunks = [];
   for await (const chunk of request) chunks.push(chunk);
   return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+}
+
+function mockTokenPermissions(role) {
+  const read = [
+    "Items.Read",
+    "Pals.Read",
+    "Player.Read",
+    "Players.Read",
+    "Progression.Read",
+    "Techs.Read",
+    "Guild.Read",
+    "Guilds.Read",
+    "Banlist.Read",
+  ];
+  const operate = [
+    "Players.Kick",
+    "Players.Ban",
+    "Players.BanIP",
+    "Players.Unban",
+    "Players.UnbanIP",
+    "Items.Give",
+    "Pals.Give",
+    "PalTemplates.Give",
+    "PalEggs.Give",
+    "Progression.Give",
+    "Techs.Learn",
+    "Techs.Forget",
+    "Messages.Broadcast",
+    "Messages.Alert",
+    "Messages.Send.PlayerChat",
+    "Messages.Send.GlobalChat",
+    "Messages.Send.GuildChat",
+    "Messages.Send.Log.Normal",
+    "Messages.Send.Log.Important",
+    "Messages.Send.Log.VeryImportant",
+  ];
+  if (role === "administrator") {
+    return [...read, ...operate, "Base.Delete", "Reload.Config"].sort();
+  }
+  if (role === "moderator") return [...read, ...operate].sort();
+  return [...read].sort();
 }
 
 const now = "2026-07-29T22:30:00.000Z";
@@ -323,6 +365,43 @@ export function startMockUiApi(port = 3198) {
       response.writeHead(204, { "cache-control": "no-store" });
       response.end();
       return;
+    }
+    const generateMatch = url.pathname.match(
+      /^\/api\/servers\/[^/]+\/users\/[^/]+\/paldefender-credential\/generate$/,
+    );
+    if (generateMatch && request.method === "POST") {
+      const input = await readJson(request);
+      const assign = input?.assign === true;
+      const token =
+        randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", "");
+      const permissions = mockTokenPermissions(sessionRole);
+      const name = `PalCenter-ui-review-UITEST01`;
+      const fileName = `PalCenter-${user.id}.json`;
+      const fileContent =
+        JSON.stringify(
+          { Name: name, Token: token, Permissions: permissions },
+          null,
+          2,
+        ) + "\n";
+      const stored = assign
+        ? (() => {
+            palDefenderCredentials.set(user.id, true);
+            return {
+              userId: user.id,
+              username: user.username,
+              configured: true,
+              updatedAt: now,
+            };
+          })()
+        : null;
+      return json(response, {
+        name,
+        fileName,
+        fileContent,
+        permissions,
+        assigned: assign,
+        stored,
+      });
     }
     if (request.method === "POST" && url.pathname === "/api/servers/test") {
       return json(response, {

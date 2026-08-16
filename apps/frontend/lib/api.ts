@@ -1310,6 +1310,35 @@ export function revokePalDefenderCredential(
   );
 }
 
+export interface PalDefenderTokenArtifact {
+  name: string;
+  fileName: string;
+  fileContent: string;
+  permissions: string[];
+  assigned: boolean;
+  stored: {
+    userId: string;
+    username: string;
+    configured: true;
+    updatedAt: string;
+  } | null;
+}
+
+export function generatePalDefenderToken(
+  serverId: string,
+  userId: string,
+  options: { assign: boolean },
+): Promise<PalDefenderTokenArtifact> {
+  return request<PalDefenderTokenArtifact>(
+    `/api/servers/${encodeURIComponent(serverId)}/users/${encodeURIComponent(userId)}/paldefender-credential/generate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assign: options.assign }),
+    },
+  );
+}
+
 export async function getAutomationTasks(
   query: AutomationListQuery = {},
 ): Promise<AutomationTask[]> {

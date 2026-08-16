@@ -33,3 +33,11 @@ export interface AuditQuery {
   search?: string;
   limit: number;
 }
+
+declare module "fastify" {
+  interface FastifyRequest {
+    // Non-secret, route-supplied audit details. Routes must never put
+    // secrets (tokens, message text, reasons, full IPs) in here.
+    auditDetails?: Record<string, unknown>;
+  }
+}

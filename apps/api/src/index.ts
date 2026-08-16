@@ -64,6 +64,7 @@ import {
   CredentialManager,
   CredentialTokenError,
 } from "./services/credential-manager.js";
+import { generatePalDefenderToken } from "./services/paldefender-token-generator.js";
 import {
   initializeStorageDirectory,
   type StoragePermissionWarningHandler,
@@ -1793,6 +1794,9 @@ app.delete("/api/users/:id", async (request, reply) => {
 const palDefenderCredentialBodySchema = z
   .object({ token: z.string().min(1).max(4_096) })
   .strict();
+const palDefenderCredentialGenerateBodySchema = z
+  .object({ assign: z.boolean().default(false) })
+  .strict();
 const palDefenderUserServerParametersSchema = z.object({
   serverId: z.string().trim().min(1).max(128),
   userId: z.string().min(1),
@@ -1858,6 +1862,51 @@ app.delete(
       "PalDefender user credential removed.",
     );
     return reply.code(204).send();
+  },
+);
+
+app.post(
+  "/api/servers/:serverId/users/:userId/paldefender-credential/generate",
+  async (request, reply) => {
+    const { serverId, userId } = palDefenderUserServerParametersSchema.parse(
+      request.params,
+    );
+    if (!(await requireServerExists(serverId, reply))) return;
+    const input = palDefenderCredentialGenerateBodySchema.parse(
+      request.body ?? {},
+    );
+    const targetUser = userService.get(userId);
+    const actor = currentUser(request.headers.cookie);
+    const artifact = generatePalDefenderToken(
+      targetUser.id,
+      targetUser.username,
+      targetUser.role,
+    );
+    const stored = input.assign
+      ? credentialManager.assign(serverId, userId, artifact.token)
+      : null;
+    request.auditDetails = {
+      role: targetUser.role,
+      assigned: stored !== null,
+    };
+    request.log.info(
+      {
+        actorUserId: actor.id,
+        serverId,
+        userId,
+        role: targetUser.role,
+        assigned: stored !== null,
+      },
+      "PalDefender token file generated.",
+    );
+    return {
+      name: artifact.name,
+      fileName: artifact.fileName,
+      fileContent: artifact.fileContent,
+      permissions: artifact.permissions,
+      assigned: stored !== null,
+      stored,
+    };
   },
 );
 
