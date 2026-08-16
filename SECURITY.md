@@ -33,6 +33,21 @@ When a user has an assigned token, their PalDefender requests use it and fail
 closed on authentication or permission errors without falling back to the
 server token.
 
+PalCenter can also generate ready-to-install PalDefender token files. Token
+generation is Administrator-only. Each generated file grants the least
+privilege derived from the target user's current role, and never includes the
+`REST.*` wildcard. The token value is generated with the operating system
+cryptographic random source and is shown exactly once as the file content;
+PalCenter does not store or log the generated token value or file content.
+Optionally storing the token for the account reuses the write-only assignment
+behavior above. Generated files use a stable per-user file name; regenerating
+for the same user replaces the file with a new token and the user's current
+role permissions. Because PalDefender has no REST endpoint for token
+management, PalCenter cannot create, change, or remove the installed token
+file remotely: an Administrator installs the generated file in the PalDefender
+server's `RESTAPI\Tokens` folder, then restarts PalDefender or reloads its
+configuration.
+
 The container runs as an unprivileged user. Compose drops Linux capabilities,
 enables `no-new-privileges`, and mounts only `/app/data`; PalCenter neither
 needs nor should receive the Docker socket or Palworld save directories.
