@@ -85,8 +85,11 @@ Use the **Layers** menu to show or hide the Players, Bases, and Trails
 layers (Players and Bases are on by default; Trails follows the selected
 movement trail). Use Fit Map, zoom, pan, Center Player, and expanded mode to
 navigate. The world map selector offers Palpagos and World Tree. Each map
-plots only players from its own coordinate space; players located elsewhere
-are listed in the off-map panel, and an explicit Follow/Center switches to
+plots only players from its own coordinate space; players located in the
+other supported map are listed under **Players on other maps** with a
+**View on ...** action, and players PalCenter cannot locate are listed under
+**Location unavailable**. Selecting a player never changes the active map;
+explicit **View on ...**, **Follow Player**, or **Center Player** switches to
 the selected player's map.
 
 Administrators and Moderators can view map/history data.

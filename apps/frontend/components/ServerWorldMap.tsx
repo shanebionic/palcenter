@@ -9,7 +9,6 @@ import {
   Card,
   Center,
   Checkbox,
-  Code,
   Group,
   Loader,
   Menu,
@@ -54,13 +53,18 @@ import {
   buildBaseMapMarkers,
   buildLivePlayerMapModel,
   formatTelemetryAge,
+  isCrossMapUnmappedReason,
   mapContentState,
+  mapLocationStatus,
+  otherMapPlayerCopy,
   playerMapDetailValues,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
+  UNAVAILABLE_PLAYER_LOCATION_LABEL,
   type BaseMapMarker,
   type LivePlayerMapMarker,
   type PlayerEnrichment,
+  type UnmappedPlayer,
 } from "../lib/world-map/model";
 import {
   centerMapOnPosition,
@@ -366,6 +370,12 @@ export function ServerWorldMap({
   );
   const selected =
     model.markers.find((marker) => marker.userId === selectedId) ?? null;
+  const otherMapPlayers = model.unmappedPlayers.filter((player) =>
+    isCrossMapUnmappedReason(player.reason),
+  );
+  const unavailablePlayers = model.unmappedPlayers.filter(
+    (player) => !isCrossMapUnmappedReason(player.reason),
+  );
   const selectedBase =
     baseMarkers.find((marker) => marker.baseId === selectedId) ?? null;
   const selectedUnavailable =
@@ -584,6 +594,20 @@ export function ServerWorldMap({
       setPendingCenterUserId(selectedId);
     }
   };
+  // "View on ..." is an explicit administrator action: it selects the player
+  // and switches to the player's map. Passive selection (online row, detail
+  // cards) never changes the active map.
+  const viewPlayerOnMap = (
+    userId: string,
+    target: "palpagos" | "world_tree",
+  ) => {
+    setSelectedId(userId);
+    setFollowPlayer(false);
+    if (target !== mapView) {
+      switchToMap(target);
+      setPendingCenterUserId(userId);
+    }
+  };
 
   useEffect(() => {
     if (!selected || pendingCenterUserId === null) return;
@@ -733,7 +757,7 @@ export function ServerWorldMap({
 
       {displayedContentState === "loading" ? (
         <SectionCard>
-          <BrandedLoader message="Loading the Palpagos player map" />
+          <BrandedLoader message="Loading the live player map" />
         </SectionCard>
       ) : displayedContentState === "offline" ? (
         <SectionCard>
@@ -809,9 +833,14 @@ export function ServerWorldMap({
                     bases loading
                   </Badge>
                 )}
-                {model.unmappedPlayers.length > 0 && (
+                {otherMapPlayers.length > 0 && (
+                  <Badge color="blue" variant="light">
+                    {otherMapPlayers.length} on other maps
+                  </Badge>
+                )}
+                {unavailablePlayers.length > 0 && (
                   <Badge color="orange" variant="light">
-                    {model.unmappedPlayers.length} unavailable
+                    {unavailablePlayers.length} unavailable
                   </Badge>
                 )}
               </Group>
@@ -1190,30 +1219,26 @@ export function ServerWorldMap({
             <OnlinePlayersPanel
               players={players}
               markers={model.markers}
+              unmapped={model.unmappedPlayers}
               selectedId={selectedId}
+              activeMapId={mapView}
               activeMapName={activeDefinition.displayName}
               onSelect={(userId) => {
                 setSelectedId(userId);
                 setFollowPlayer(false);
               }}
             />
-            <OffMapPlayersPanel
-              players={model.unmappedPlayers}
+            <OtherMapPlayersPanel
+              players={otherMapPlayers}
+              serverId={serverId}
+              onViewOnMap={viewPlayerOnMap}
+            />
+            <UnavailablePlayersPanel
+              players={unavailablePlayers}
               serverId={serverId}
               onSelect={(userId) => {
-                const marker = model.markers.find(
-                  (candidate) => candidate.userId === userId,
-                );
                 setSelectedId(userId);
-                if (marker) {
-                  const view = centerMapOnPosition(
-                    marker.position,
-                    viewportSize,
-                    surfaceSize,
-                  );
-                  setZoom(view.zoom);
-                  setPan(view.pan);
-                }
+                setFollowPlayer(false);
               }}
             />
             {selected && diagnostics && !diagnostics.visible && (
@@ -1231,12 +1256,25 @@ export function ServerWorldMap({
             )}
             {selectedBase ? (
               <BaseMapDetails marker={selectedBase} serverId={serverId} />
-            ) : (
+            ) : selected ? (
               <PlayerMapDetails
                 marker={selected}
                 serverId={serverId}
                 enrichment={selectedEnrichment}
                 enrichmentLoading={enrichmentLoading}
+              />
+            ) : selectedUnavailable ? (
+              <UnmappedPlayerDetails
+                player={selectedUnavailable}
+                serverId={serverId}
+                onViewOnMap={viewPlayerOnMap}
+              />
+            ) : (
+              <PlayerMapDetails
+                marker={null}
+                serverId={serverId}
+                enrichment={null}
+                enrichmentLoading={false}
               />
             )}
             <TrailControls
@@ -1278,13 +1316,17 @@ export function ServerWorldMap({
 function OnlinePlayersPanel({
   players,
   markers,
+  unmapped,
   selectedId,
+  activeMapId,
   activeMapName,
   onSelect,
 }: {
   players: ConnectedPlayer[];
   markers: LivePlayerMapMarker[];
+  unmapped: UnmappedPlayer[];
   selectedId: string | null;
+  activeMapId: "palpagos" | "world_tree";
   activeMapName: string;
   onSelect: (userId: string) => void;
 }) {
@@ -1308,12 +1350,27 @@ function OnlinePlayersPanel({
             const marker = markers.find(
               (candidate) => candidate.userId === player.userId,
             );
+            const unmappedPlayer = unmapped.find(
+              (candidate) => candidate.userId === player.userId,
+            );
+            const location = mapLocationStatus({
+              onMap: marker !== undefined,
+              unmappedReason: unmappedPlayer?.reason ?? null,
+              activeMapId,
+              activeMapName,
+            });
             const name = player.name || player.userId;
             return (
               <Button
                 key={player.userId}
                 variant={selectedId === player.userId ? "light" : "subtle"}
-                color={marker ? "cyan" : "gray"}
+                color={
+                  marker
+                    ? "cyan"
+                    : location.kind === "other-map"
+                      ? "blue"
+                      : "gray"
+                }
                 justify="space-between"
                 fullWidth
                 onClick={() => onSelect(player.userId)}
@@ -1324,7 +1381,7 @@ function OnlinePlayersPanel({
                     {name}
                   </Text>
                   <Text span size="xs" c="dimmed">
-                    {marker ? `On ${activeMapName}` : "Off-map or locating"}
+                    {location.label}
                   </Text>
                 </span>
               </Button>
@@ -1336,72 +1393,103 @@ function OnlinePlayersPanel({
   );
 }
 
-function OffMapPlayersPanel({
+function OtherMapPlayersPanel({
+  players,
+  serverId,
+  onViewOnMap,
+}: {
+  players: UnmappedPlayer[];
+  serverId: string;
+  onViewOnMap: (userId: string, targetMapId: "palpagos" | "world_tree") => void;
+}) {
+  const router = useRouter();
+  if (players.length === 0) return null;
+  return (
+    <Card withBorder radius="md" padding="lg" className="pc-panel">
+      <Stack gap="sm">
+        <div>
+          <Title order={4}>Players on other maps</Title>
+          <Text size="sm" c="dimmed">
+            These players are online in a supported map that is not the one
+            being displayed.
+          </Text>
+        </div>
+        {players.map((player) => {
+          const copy = otherMapPlayerCopy(player.reason);
+          if (!copy) return null;
+          return (
+            <Paper key={player.userId} withBorder p="sm">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <div>
+                  <Text fw={700}>{player.playerName}</Text>
+                  <Text size="sm">{copy.statusLabel}</Text>
+                </div>
+                <Group gap={4}>
+                  <Button
+                    size="compact-xs"
+                    variant="light"
+                    onClick={() => onViewOnMap(player.userId, copy.targetMapId)}
+                  >
+                    {copy.viewLabel}
+                  </Button>
+                  {(() => {
+                    const snapPlayerId = player.snapshot?.playerId ?? null;
+                    if (!snapPlayerId) return null;
+                    return (
+                      <Button
+                        size="compact-xs"
+                        variant="subtle"
+                        onClick={() =>
+                          router.push(
+                            palDefenderPlayerHref(
+                              serverId,
+                              snapPlayerId,
+                              "map",
+                            ),
+                          )
+                        }
+                      >
+                        Workspace
+                      </Button>
+                    );
+                  })()}
+                </Group>
+              </Group>
+            </Paper>
+          );
+        })}
+      </Stack>
+    </Card>
+  );
+}
+
+function UnavailablePlayersPanel({
   players,
   serverId,
   onSelect,
 }: {
-  players: ReturnType<typeof buildLivePlayerMapModel>["unmappedPlayers"];
+  players: UnmappedPlayer[];
   serverId: string;
   onSelect: (userId: string) => void;
 }) {
   const router = useRouter();
   if (players.length === 0) return null;
-  const status = (reason: (typeof players)[number]["reason"]) => {
-    switch (reason) {
-      case "world_tree":
-        return "In World Tree — switch to World Tree map";
-      case "palpagos":
-        return "In Palpagos — switch to Palpagos map";
-      case "instanced_area":
-        return "Inside an instanced area";
-      case "stale_position":
-        return "Position stale";
-      case "unknown_space":
-        return "Map area unavailable";
-      case "unsupported_space":
-        return "Unsupported location";
-      case "missing_telemetry":
-        return "Waiting for position telemetry";
-      case "invalid_coordinates":
-        return "Position unavailable";
-      case "outside_bounds":
-        return "Outside this map";
-    }
-  };
   return (
     <Card withBorder radius="md" padding="lg" className="pc-panel">
       <Stack gap="sm">
         <div>
-          <Title order={4}>Off-map players</Title>
+          <Title order={4}>Location unavailable</Title>
           <Text size="sm" c="dimmed">
-            These players are not plotted because PalCenter does not have a
-            usable position for the active map.
+            PalCenter does not have a usable location for these players right
+            now.
           </Text>
         </div>
         {players.map((player) => (
-          <Paper key={`${player.userId}-${player.reason}`} withBorder p="sm">
+          <Paper key={player.userId} withBorder p="sm">
             <Group justify="space-between" align="flex-start" wrap="nowrap">
-              <div className="pc-world-map-off-map-copy">
+              <div>
                 <Text fw={700}>{player.playerName}</Text>
-                <Text size="sm">{status(player.reason)}</Text>
-                <Text size="xs" c="dimmed">
-                  {player.lastTrustedPosition
-                    ? `Last known Palpagos position updated ${formatTelemetryAge(player.lastTrustedPosition.capturedAt)}`
-                    : "No known Palpagos position is available."}
-                </Text>
-                <Accordion variant="contained">
-                  <Accordion.Item value="raw-location">
-                    <Accordion.Control>
-                      Advanced location details
-                    </Accordion.Control>
-                    <Accordion.Panel>
-                      <Code className="pc-map-detail-value">
-                        {`Space: ${player.coordinateSpaceId}\nRaw: X ${player.snapshot?.x ?? "—"}, Y ${player.snapshot?.y ?? "—"}`}
-                      </Code>
-                    </Accordion.Panel>
-                  </Accordion.Item>
-                </Accordion>
+                <Text size="sm">{UNAVAILABLE_PLAYER_LOCATION_LABEL}</Text>
               </div>
               <Group gap={4}>
                 <Button
@@ -1409,10 +1497,7 @@ function OffMapPlayersPanel({
                   variant="light"
                   onClick={() => onSelect(player.userId)}
                 >
-                  {player.reason === "instanced_area" &&
-                  player.lastTrustedPosition
-                    ? "View entrance"
-                    : "View details"}
+                  View details
                 </Button>
                 {(() => {
                   const snapPlayerId = player.snapshot?.playerId ?? null;
@@ -1435,6 +1520,59 @@ function OffMapPlayersPanel({
             </Group>
           </Paper>
         ))}
+      </Stack>
+    </Card>
+  );
+}
+
+function UnmappedPlayerDetails({
+  player,
+  serverId,
+  onViewOnMap,
+}: {
+  player: UnmappedPlayer;
+  serverId: string;
+  onViewOnMap: (userId: string, targetMapId: "palpagos" | "world_tree") => void;
+}) {
+  const router = useRouter();
+  const copy = otherMapPlayerCopy(player.reason);
+  return (
+    <Card withBorder radius="md" padding="lg" className="pc-panel">
+      <Stack gap="md">
+        <div>
+          <Title order={3}>{player.playerName}</Title>
+          <Text c="dimmed">
+            {copy ? copy.statusLabel : UNAVAILABLE_PLAYER_LOCATION_LABEL}
+          </Text>
+        </div>
+        <Group gap="sm">
+          {copy && (
+            <Button
+              variant="light"
+              size="compact-sm"
+              onClick={() => onViewOnMap(player.userId, copy.targetMapId)}
+            >
+              {copy.viewLabel}
+            </Button>
+          )}
+          {player.snapshot?.playerId && (
+            <Button
+              variant="light"
+              size="compact-sm"
+              onClick={() =>
+                router.push(
+                  palDefenderPlayerHref(
+                    serverId,
+                    player.snapshot!.playerId!,
+                    "map",
+                  ),
+                )
+              }
+            >
+              Player workspace
+            </Button>
+          )}
+        </Group>
       </Stack>
     </Card>
   );

@@ -444,3 +444,80 @@ export function buildBaseMapMarkers(
 
   return markers;
 }
+
+export type MapLocationKind = "on-map" | "other-map" | "unavailable";
+
+export interface MapLocationStatus {
+  kind: MapLocationKind;
+  label: string;
+  targetMapId: "palpagos" | "world_tree" | null;
+}
+
+export const UNAVAILABLE_PLAYER_LOCATION_LABEL = "Location unavailable";
+
+export interface OtherMapPlayerCopy {
+  statusLabel: string;
+  viewLabel: string;
+  targetMapId: "palpagos" | "world_tree";
+}
+
+const otherMapCopy: Record<"palpagos" | "world_tree", OtherMapPlayerCopy> = {
+  palpagos: {
+    statusLabel: "On Palpagos",
+    viewLabel: "View on Palpagos",
+    targetMapId: "palpagos",
+  },
+  world_tree: {
+    statusLabel: "In World Tree",
+    viewLabel: "View on World Tree",
+    targetMapId: "world_tree",
+  },
+};
+
+const onMapPreposition: Record<"palpagos" | "world_tree", string> = {
+  palpagos: "On",
+  world_tree: "In",
+};
+
+export function isCrossMapUnmappedReason(
+  reason: UnmappedPlayerReason,
+): reason is "palpagos" | "world_tree" {
+  return reason === "palpagos" || reason === "world_tree";
+}
+
+export function otherMapPlayerCopy(
+  reason: UnmappedPlayerReason,
+): OtherMapPlayerCopy | null {
+  if (isCrossMapUnmappedReason(reason)) return otherMapCopy[reason];
+  return null;
+}
+
+export function mapLocationStatus(input: {
+  onMap: boolean;
+  unmappedReason: UnmappedPlayerReason | null;
+  activeMapId: "palpagos" | "world_tree";
+  activeMapName: string;
+}): MapLocationStatus {
+  if (input.onMap) {
+    return {
+      kind: "on-map",
+      label: `${onMapPreposition[input.activeMapId]} ${input.activeMapName}`,
+      targetMapId: null,
+    };
+  }
+  if (
+    input.unmappedReason !== null &&
+    isCrossMapUnmappedReason(input.unmappedReason)
+  ) {
+    return {
+      kind: "other-map",
+      label: otherMapCopy[input.unmappedReason].statusLabel,
+      targetMapId: input.unmappedReason,
+    };
+  }
+  return {
+    kind: "unavailable",
+    label: UNAVAILABLE_PLAYER_LOCATION_LABEL,
+    targetMapId: null,
+  };
+}
