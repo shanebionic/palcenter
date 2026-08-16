@@ -49,11 +49,18 @@ export class AuthorizationService {
     ) {
       return "operate";
     }
+    // All PalDefender player operations are explicit `operate` actions
+    // (moderators perform operational server/player access). These routes
+    // were resolved to `operate` instead of relying on the generic
+    // non-GET fallback, which would have mapped them to `manage_users`.
     if (
       method === "POST" &&
       (/^\/api\/servers\/[^/]+\/admin\//.test(path) ||
         /^\/api\/servers\/[^/]+\/players\/[^/]+\//.test(path) ||
-        /^\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals)$/.test(
+        /^\/api\/servers\/[^/]+\/paldefender\/players\/[^/]+\/(kick|ban|items|pals|progression|pal-templates|pal-eggs|technology\/(learn|forget))$/.test(
+          path,
+        ) ||
+        /^\/api\/servers\/[^/]+\/moderation\/(users\/[^/]+\/unban|ip\/(ban|unban))$/.test(
           path,
         ) ||
         /^\/api\/servers\/[^/]+\/paldefender\/(broadcast|alert|player-message)$/.test(
@@ -64,7 +71,9 @@ export class AuthorizationService {
     }
     if (
       /^\/api\/servers\/[^/]+\/users\/paldefender-credentials$/.test(path) ||
-      /^\/api\/servers\/[^/]+\/users\/[^/]+\/paldefender-credential$/.test(path)
+      /^\/api\/servers\/[^/]+\/users\/[^/]+\/paldefender-credential($|\/generate)$/.test(
+        path,
+      )
     ) {
       return "manage_users";
     }

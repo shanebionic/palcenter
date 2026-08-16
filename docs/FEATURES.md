@@ -206,6 +206,31 @@ reports `paldefender_permission_denied` with the missing permission name.
 Tokens are write-only: assignment and list responses never return token
 material, and deleting a user or a server removes its credential rows.
 
+### Generated PalDefender token files
+
+Because PalDefender has no REST endpoint for creating its own tokens,
+Administrators can generate a ready-to-install PalDefender token file for any
+PalCenter user from the same **PalDefender user credentials** panel. Use
+**Generate Token** on a user's row.
+
+- The file grants the permission profile of the user's current role:
+  **Visitor** receives read-only permission, **Moderator** adds the
+  operating permissions (kick, ban, give, message, and so on), and
+  **Administrator** adds base deletion and configuration reload. Generated
+  files never include the `REST.*` wildcard.
+- The token value is random and is shown exactly once, as the file content,
+  in a one-time dialog. PalCenter does not store or log the token value or
+  the file content.
+- Optionally, the same action can assign the token to that user's PalDefender
+  requests immediately; by default it only creates the file.
+- To install, save the shown content as the file name PalCenter displays in
+  the PalDefender server's `RESTAPI\Tokens` folder, then restart PalDefender
+  or reload its configuration.
+- If the user's role changes later, generate again to replace the file. The
+  replacement uses the same file name, a new token, and the new role's
+  permissions, so the installed file's permissions always match the current
+  role.
+
 ## Settings and tools
 
 The application Settings area contains Administrator-facing user,

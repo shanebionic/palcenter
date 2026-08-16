@@ -585,3 +585,287 @@ test("deleting a server removes its credential rows", async () => {
   assert.equal(list.statusCode, 404);
   assert.equal(list.json().error, "server_not_found");
 });
+
+function credentialRow(serverId: string, userId: string) {
+  const probe = new DatabaseSync(path.join(directory, "users.sqlite"));
+  try {
+    return probe
+      .prepare(
+        "SELECT token, updated_at FROM paldefender_user_credentials WHERE server_id = ? AND user_id = ?",
+      )
+      .get(serverId, userId) as
+      | { token: string; updated_at: string }
+      | undefined;
+  } finally {
+    probe.close();
+  }
+}
+
+test("generate is administrator-only", async () => {
+  const moderatorId = await userIdFor("moderator");
+  const response = await app.inject({
+    method: "POST",
+    url: `/api/servers/server-a/users/${moderatorId}/paldefender-credential/generate`,
+    headers: { cookie: moderatorCookie },
+    payload: { assign: false },
+  });
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.json().error, "insufficient_permissions");
+});
+
+test("generate requires an existing server and user", async () => {
+  const moderatorId = await userIdFor("moderator");
+  const missingServer = await app.inject({
+    method: "POST",
+    url: `/api/servers/missing-server/users/${moderatorId}/paldefender-credential/generate`,
+    headers: { cookie: administratorCookie },
+    payload: { assign: false },
+  });
+  assert.equal(missingServer.statusCode, 404);
+  assert.equal(missingServer.json().error, "server_not_found");
+
+  const missingUser = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/users/missing-user/paldefender-credential/generate",
+    headers: { cookie: administratorCookie },
+    payload: { assign: false },
+  });
+  assert.equal(missingUser.statusCode, 404);
+  assert.equal(missingUser.json().error, "user_not_found");
+});
+
+test("generate returns a one-time artifact without a bare token field", async () => {
+  const moderatorId = await userIdFor("moderator");
+  const response = await app.inject({
+    method: "POST",
+    url: `/api/servers/server-a/users/${moderatorId}/paldefender-credential/generate`,
+    headers: { cookie: administratorCookie },
+    payload: { assign: false },
+  });
+  assert.equal(response.statusCode, 200);
+  const body = response.json() as Record<string, unknown>;
+  assert.ok(Array.isArray(body.permissions));
+  assert.equal(body.assigned, false);
+  assert.equal(body.stored, null);
+  assert.ok("fileContent" in body);
+  assert.ok(
+    typeof body.name === "string" &&
+      typeof body.fileName === "string" &&
+      typeof body.fileContent === "string",
+  );
+
+  // The response must not duplicate the bearer token into a separate field.
+  assert.ok(!("token" in body), "no separate token field");
+  assert.equal(body.fileName, `PalCenter-${moderatorId}.json`);
+  assert.match(body.name as string, /^PalCenter-moderator-[0-9A-F]{8}$/);
+  assert.equal((body.permissions as string[]).length, 29);
+  assert.ok(!(body.permissions as string[]).includes("REST.*"));
+  assert.ok(!(body.permissions as string[]).includes("REST.Version.Read"));
+
+  const parsed = JSON.parse(body.fileContent as string) as Record<
+    string,
+    unknown
+  >;
+  assert.deepEqual(Object.keys(parsed), ["Name", "Token", "Permissions"]);
+  const token = parsed.Token as string;
+  assert.match(token, /^[0-9a-f]{64}$/);
+  assert.deepEqual(
+    parsed.Permissions,
+    [...(body.permissions as string[])].sort(),
+  );
+  // The one-time secret appears exactly once in the whole response.
+  assert.equal(
+    response.payload.split(token).length - 1,
+    1,
+    "the token appears exactly once, in the artifact",
+  );
+  // The one-time secret response must not be cacheable.
+  assert.equal(response.headers["cache-control"], "no-store");
+});
+
+test("generate without assign stores no credential", async () => {
+  const created = await app.inject({
+    method: "POST",
+    url: "/api/users",
+    headers: { cookie: administratorCookie },
+    payload: {
+      username: "gen-noassign",
+      email: "gen-noassign@example.com",
+      password: "Generate-Password-123!",
+      role: "visitor",
+    },
+  });
+  assert.equal(created.statusCode, 201);
+  const user = created.json() as { id: string };
+  const response = await app.inject({
+    method: "POST",
+    url: `/api/servers/server-a/users/${user.id}/paldefender-credential/generate`,
+    headers: { cookie: administratorCookie },
+    payload: { assign: false },
+  });
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().assigned, false);
+  assert.equal(credentialRow("server-a", user.id), undefined);
+});
+
+test("generate with assign stores the token server-side and rotates it on regeneration", async () => {
+  const created = await app.inject({
+    method: "POST",
+    url: "/api/users",
+    headers: { cookie: administratorCookie },
+    payload: {
+      username: "gen-mod",
+      email: "gen-mod@example.com",
+      password: "Generate-Password-123!",
+      role: "moderator",
+    },
+  });
+  assert.equal(created.statusCode, 201);
+  const user = created.json() as { id: string };
+
+  const first = await app.inject({
+    method: "POST",
+    url: `/api/servers/server-a/users/${user.id}/paldefender-credential/generate`,
+    headers: { cookie: administratorCookie },
+    payload: { assign: true },
+  });
+  assert.equal(first.statusCode, 200);
+  const firstBody = first.json() as {
+    fileName: string;
+    assigned: boolean;
+    stored: { configured: boolean; updatedAt: string } | null;
+  };
+  assert.equal(firstBody.assigned, true);
+  assert.ok(firstBody.stored?.configured === true);
+  const firstToken = credentialRow("server-a", user.id)?.token;
+  assert.ok(firstToken && /^[0-9a-f]{64}$/.test(firstToken));
+  assert.equal(firstBody.fileName, `PalCenter-${user.id}.json`);
+
+  // Subsequent PalDefender operations for this user use the stored token.
+  upstreamRequests.length = 0;
+  const firstLogin = await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    payload: { username: "gen-mod", password: "Generate-Password-123!" },
+  });
+  assert.equal(firstLogin.statusCode, 200);
+  const temporaryGenCookie = cookie(firstLogin);
+  const genPasswordChange = await app.inject({
+    method: "POST",
+    url: "/api/users/me/password",
+    headers: { cookie: temporaryGenCookie },
+    payload: {
+      currentPassword: "Generate-Password-123!",
+      newPassword: "Generate-Replacement-456!",
+      passwordConfirmation: "Generate-Replacement-456!",
+    },
+  });
+  assert.equal(genPasswordChange.statusCode, 200);
+  const genModRelogin = await app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    payload: { username: "gen-mod", password: "Generate-Replacement-456!" },
+  });
+  assert.equal(genModRelogin.statusCode, 200);
+  const genModCookie = cookie(genModRelogin);
+  const firstKick = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/kick",
+    headers: { cookie: genModCookie },
+    payload: {},
+  });
+  assert.equal(firstKick.statusCode, 200);
+  assert.equal(
+    upstreamRequests[upstreamRequests.length - 1]?.token,
+    firstToken,
+  );
+
+  // Role downgrade: same file name, rotated token, exactly the visitor profile.
+  const downgrade = await app.inject({
+    method: "PATCH",
+    url: `/api/users/${user.id}`,
+    headers: { cookie: administratorCookie },
+    payload: {
+      username: "gen-mod",
+      email: "gen-mod@example.com",
+      role: "visitor",
+      enabled: true,
+    },
+  });
+  assert.equal(downgrade.statusCode, 200);
+  const regenerated = await app.inject({
+    method: "POST",
+    url: `/api/servers/server-a/users/${user.id}/paldefender-credential/generate`,
+    headers: { cookie: administratorCookie },
+    payload: { assign: true },
+  });
+  assert.equal(regenerated.statusCode, 200);
+  const secondBody = regenerated.json() as {
+    fileName: string;
+    permissions: string[];
+    fileContent: string;
+  };
+  assert.equal(secondBody.fileName, firstBody.fileName);
+  assert.equal((secondBody.permissions as string[]).length, 9);
+  const secondToken = credentialRow("server-a", user.id)?.token;
+  assert.ok(
+    secondToken && secondToken !== firstToken,
+    "regeneration must rotate the stored token",
+  );
+  const parsed = JSON.parse(secondBody.fileContent) as { Token: string };
+  assert.equal(parsed.Token, secondToken);
+
+  // Role changes invalidate that user's sessions, so the downgraded user
+  // cannot kick from their own PalCenter identity at all.
+  upstreamRequests.length = 0;
+  const secondKick = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/players/player-1/kick",
+    headers: { cookie: genModCookie },
+    payload: {},
+  });
+  assert.equal(secondKick.statusCode, 401);
+  assert.equal(secondKick.json().error, "authentication_required");
+  assert.equal(
+    upstreamRequests.length,
+    0,
+    "no upstream request after downgrade",
+  );
+});
+
+test("generate writes an audit entry without secret material", async () => {
+  const moderatorId = await userIdFor("moderator");
+  // Earlier access attempts (403/404 before the route runs) also record
+  // generate entries without a resolved role, so target the exact new row.
+  const earlier = auditEntries("server-a").filter(
+    (entry) => entry.action === "generate_paldefender_credential",
+  );
+  const maxId = earlier.reduce((max, entry) => Math.max(max, entry.id), 0);
+  const response = await app.inject({
+    method: "POST",
+    url: `/api/servers/server-a/users/${moderatorId}/paldefender-credential/generate`,
+    headers: { cookie: administratorCookie },
+    payload: { assign: false },
+  });
+  assert.equal(response.statusCode, 200);
+  const fileContent = response.json().fileContent as string;
+  const tokenMatch = fileContent.match(/"Token": "([0-9a-f]{64})"/);
+  assert.ok(tokenMatch);
+
+  const entries = auditEntries("server-a").filter(
+    (entry) =>
+      entry.action === "generate_paldefender_credential" && entry.id > maxId,
+  );
+  assert.equal(entries.length, 1);
+  const entry = entries[0];
+  assert.equal(entry.category, "server");
+  assert.equal(entry.targetId, moderatorId);
+  assert.equal(entry.targetType, "user");
+  assert.equal(entry.details.role, "moderator");
+  assert.equal(entry.details.assigned, false);
+  const detailsJson = JSON.stringify(entry.details);
+  assert.ok(!detailsJson.includes(tokenMatch[1]));
+  assert.ok(!detailsJson.includes(fileContent));
+  assert.ok(!detailsJson.includes("fileContent"));
+  assert.ok(!detailsJson.includes("fileName"));
+});

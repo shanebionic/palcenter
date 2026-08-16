@@ -188,6 +188,71 @@ test("central role permissions enforce administrator, moderator, and visitor sco
     ),
     "operate",
   );
+  // The eight formerly-fallback PalDefender write routes are explicit
+  // operate actions (resolved, not inferred from the generic fallback).
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/paldefender/players/player-1/technology/learn",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/paldefender/players/player-1/technology/forget",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/paldefender/players/player-1/progression",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/paldefender/players/player-1/pal-templates",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/paldefender/players/player-1/pal-eggs",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/moderation/users/user-1/unban",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/moderation/ip/ban",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/moderation/ip/unban",
+    ),
+    "operate",
+  );
+  assert.equal(
+    authorization.permissionFor(
+      "POST",
+      "/api/servers/server-a/users/user-1/paldefender-credential/generate",
+    ),
+    "manage_users",
+  );
   assert.equal(
     authorization.permissionFor(
       "POST",

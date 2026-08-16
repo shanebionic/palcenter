@@ -22,6 +22,7 @@ import { SectionCard } from "./ui/SectionCard";
 
 const labels: Record<string, string> = {
   delete_base: "Deleted base",
+  generate_paldefender_credential: "Generated PalDefender token",
   learn_technology: "Learned technology",
   forget_technology: "Forgot technology",
   give_progression: "Granted progression",
