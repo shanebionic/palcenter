@@ -1,6 +1,6 @@
 # Features and administration
 
-This guide describes the current v1.5.1 interface. Availability depends on the
+This guide describes the current v1.5.2 interface. Availability depends on the
 signed-in user's role.
 
 The desktop navigation sidebar can be collapsed to an icon rail using the
