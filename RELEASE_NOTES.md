@@ -74,10 +74,11 @@ If you are on 1.5.0 and the Map and telemetry work normally, upgrading to
 
 ## Accepted limitations
 
-- **World Tree remains a placeholder.** The map selector still offers
-  Palpagos and World Tree, but World Tree has no verified map image or
-  projection yet. Players located there are listed in the off-map panel
-  instead of being plotted.
+- **Each map plots only its own coordinate space.** A player in the World
+  Tree is listed under **Players on other maps** on the Palpagos view (and
+  vice versa), where **View on Palpagos** / **View on World Tree** switches
+  to that player's map. Players PalCenter cannot locate are listed under
+  **Location unavailable**.
 - **Legacy telemetry rows keep the default coordinate space.** Rows
   collected before coordinate-space tracking was introduced remain
   classified as the default (`unknown`) space. They are visible on the map

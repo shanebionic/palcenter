@@ -20,9 +20,9 @@ Projection source and validation status:
    projection exactly.
 2. Mathematically verified transform: the raster mapping from those world
    bounds to the 8192×8192 texture is verified by round-trip unit tests.
-3. Geographic/live-player validation: pending. The projection status is
-   "pending-geographic-validation" until live World Tree player UAT confirms
-   marker placement.
+3. Geographic/live-player validation: completed by owner UAT on 2026-08-15.
+   The projection status is "owner-validated"; live World Tree player UAT
+   confirmed marker placement.
 
 Source, retrieval, derivative conversion settings, and checksums are recorded
 in `source.json`. The upstream 8192×8192 binary is not shipped in PalCenter or

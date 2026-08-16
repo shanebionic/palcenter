@@ -10,9 +10,10 @@ is online, selected-player details, and recent joins or departures.
 - Use **Follow Player** to keep the selected player centered while they move.
 - Switch between **Palpagos** and **World Tree** manually. Each map plots
   only players from its own coordinate space: a player located in the World
-  Tree is listed in the off-map panel on the Palpagos view (and vice versa),
-  while an explicit **Follow Player** or **Center Player** on an off-map
-  player intentionally switches to that player's map.
+  Tree is listed under **Players on other maps** on the Palpagos view (and
+  vice versa). **View on Palpagos**, **View on World Tree**, **Follow Player**,
+  and **Center Player** intentionally switch to that player's map. Players
+  PalCenter cannot locate are listed under **Location unavailable**.
 - Players with unknown, legacy, special-area, or instance coordinate spaces
   keep the documented bounds-based behavior on the active map instead of
   being treated as authoritative map locations.
@@ -48,8 +49,8 @@ the repository-level [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md).
 The World Tree map receives the same treatment: 2048×2048 and 4096×4096 WebP
 derivatives of the 8192×8192 T_TreeMap texture extracted from the same
 installed build, with authoritative bounds from the DT_WorldMapUIData "Tree"
-row. Its projection status is pending-geographic-validation until live World
-Tree player UAT confirms marker placement. See the asset's
+row. Its projection status is owner-validated: live World Tree player UAT
+confirmed marker placement on 2026-08-15. See the asset's
 [`ASSET-NOTICE.md`](../apps/frontend/public/world-maps/world-tree/ASSET-NOTICE.md)
 and
 [`source.json`](../apps/frontend/public/world-maps/world-tree/source.json).
@@ -132,9 +133,8 @@ mapY = 1 - rawX
 
 `mapX` and `mapY` are unit coordinates from 0 through 1 and are rendered as
 percentages. Invalid, non-finite, or out-of-bounds coordinates are never
-clamped into a misleading marker. They are listed in the off-map panel with a
-clear reason (for example, "Position unavailable" or "Outside verified map
-bounds") instead of being plotted.
+clamped into a misleading marker. They are listed in the sidebar with the
+**Location unavailable** state instead of being plotted.
 
 All bounds, axis inversion, and rotation options live in one projection
 configuration in `apps/frontend/lib/world-map/projection.ts`. The forward and
@@ -367,8 +367,6 @@ Before release, verify in Chromium:
 
 The current release does not add or claim:
 
-- a verified geographic position for World Tree markers (the projection is
-  pending-geographic-validation until live World Tree player UAT);
 - World Tree base camp markers (base DTOs carry no coordinate-space field);
 - multiple islands or world/map variants with separate bounds;
 - heatmaps, analytics, or historical playback;

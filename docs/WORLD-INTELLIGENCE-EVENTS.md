@@ -158,7 +158,7 @@ The model reserves future classifications for `likely_fast_travel` and
 evidence. World Tree is modeled as the separate `world_tree` coordinate-space
 use case. Its points are never plotted on the Palpagos map (or vice versa);
 the World Tree map ships with a DT-derived projection whose geographic
-validation is pending live player UAT.
+validation was completed by owner live player UAT on 2026-08-15.
 
 When relocation ends Idle or prolonged inactivity, PalCenter first records the
 appropriate resumed-activity event and then the rapid-relocation event at the

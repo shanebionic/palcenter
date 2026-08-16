@@ -46,5 +46,5 @@
     }
   ],
   "attribution": "Palworld and the World Tree map are copyright Pocketpair, Inc. T_TreeMap extracted directly from the owner's installed Palworld build.",
-  "sourceNoticeSummary": "The source texture T_TreeMap was extracted from the owner's installed Palworld Xbox build (1.10.1283.0). The DT_WorldMapUIData Tree row supplies the game's World Tree map bounds; the game's MainMap row matches the owner-validated Palpagos telemetry projection exactly, so both rows share the same world reference frame. The raster transform is mathematically verified by round-trip unit tests; geographic/live-player validation is pending UAT (projection status: pending-geographic-validation)."
+  "sourceNoticeSummary": "The source texture T_TreeMap was extracted from the owner's installed Palworld Xbox build (1.10.1283.0). The DT_WorldMapUIData Tree row supplies the game's World Tree map bounds; the game's MainMap row matches the owner-validated Palpagos telemetry projection exactly, so both rows share the same world reference frame. The raster transform is mathematically verified by round-trip unit tests; geographic/live-player validation was completed by owner UAT on 2026-08-15 (projection status: owner-validated)."
 }

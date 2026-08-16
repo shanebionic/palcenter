@@ -12,10 +12,15 @@ import {
   buildBaseMapMarkers,
   buildLivePlayerMapModel,
   classifyTelemetryFreshness,
+  isCrossMapUnmappedReason,
   mapContentState,
+  mapLocationStatus,
+  otherMapPlayerCopy,
   playerMapDetailValues,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
+  UNAVAILABLE_PLAYER_LOCATION_LABEL,
+  type UnmappedPlayerReason,
 } from "../lib/world-map/model";
 import {
   centerMapOnPosition,
@@ -78,7 +83,7 @@ test("exposes only verified map definitions for selection", () => {
   assert.ok(worldTreeMapDefinition.projection !== null);
   assert.equal(
     worldTreeMapDefinition.projectionVersion,
-    "world-tree-dt-world-map-ui-v1-pending-geographic-validation",
+    "world-tree-dt-world-map-ui-v1-owner-validated",
   );
   assert.deepEqual(
     enabledWorldMapDefinitions().map(
@@ -86,6 +91,73 @@ test("exposes only verified map definitions for selection", () => {
     ),
     ["palpagos", "world_tree"],
   );
+});
+
+test("classifies online player location states symmetrically across maps", () => {
+  assert.deepEqual(
+    mapLocationStatus({
+      onMap: true,
+      unmappedReason: null,
+      activeMapId: "palpagos",
+      activeMapName: "Palpagos",
+    }),
+    { kind: "on-map", label: "On Palpagos", targetMapId: null },
+  );
+  assert.deepEqual(
+    mapLocationStatus({
+      onMap: true,
+      unmappedReason: null,
+      activeMapId: "world_tree",
+      activeMapName: "World Tree",
+    }),
+    { kind: "on-map", label: "In World Tree", targetMapId: null },
+  );
+  assert.deepEqual(
+    mapLocationStatus({
+      onMap: false,
+      unmappedReason: "world_tree",
+      activeMapId: "palpagos",
+      activeMapName: "Palpagos",
+    }),
+    { kind: "other-map", label: "In World Tree", targetMapId: "world_tree" },
+  );
+  assert.deepEqual(
+    mapLocationStatus({
+      onMap: false,
+      unmappedReason: "palpagos",
+      activeMapId: "world_tree",
+      activeMapName: "World Tree",
+    }),
+    { kind: "other-map", label: "On Palpagos", targetMapId: "palpagos" },
+  );
+  const unavailableReasons: UnmappedPlayerReason[] = [
+    "missing_telemetry",
+    "invalid_coordinates",
+    "outside_bounds",
+    "instanced_area",
+    "unsupported_space",
+    "unknown_space",
+    "stale_position",
+  ];
+  for (const reason of unavailableReasons) {
+    const status = mapLocationStatus({
+      onMap: false,
+      unmappedReason: reason,
+      activeMapId: "palpagos",
+      activeMapName: "Palpagos",
+    });
+    assert.equal(status.kind, "unavailable");
+    assert.equal(status.label, UNAVAILABLE_PLAYER_LOCATION_LABEL);
+    assert.equal(status.targetMapId, null);
+  }
+  assert.equal(isCrossMapUnmappedReason("world_tree"), true);
+  assert.equal(isCrossMapUnmappedReason("outside_bounds"), false);
+  assert.deepEqual(otherMapPlayerCopy("world_tree"), {
+    statusLabel: "In World Tree",
+    viewLabel: "View on World Tree",
+    targetMapId: "world_tree",
+  });
+  assert.equal(otherMapPlayerCopy("stale_position"), null);
 });
 
 test("calculates safe timestamp-based trail age and bounded styles", () => {

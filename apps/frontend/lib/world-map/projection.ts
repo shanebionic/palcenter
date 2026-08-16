@@ -42,7 +42,8 @@ export const palpagosProjection: MapProjectionConfiguration = {
  * build 1.10.1283.0). The game's MainMap row matches palpagosProjection
  * exactly, so both rows share the same world reference frame. The raster
  * transform is mathematically verified by round-trip tests; geographic
- * validation with live World Tree players is pending UAT.
+ * validation with live World Tree players was completed by owner UAT on
+ * 2026-08-15.
  */
 export const worldTreeProjection: MapProjectionConfiguration = {
   worldMinX: 347_351.5,
