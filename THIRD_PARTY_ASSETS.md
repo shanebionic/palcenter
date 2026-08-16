@@ -17,6 +17,20 @@ See the adjacent
 and [`source.json`](apps/frontend/public/world-maps/palpagos/source.json) for
 the source, attribution, retrieval metadata, and copyright notice.
 
+## World Tree map
+
+The responsive World Tree reference-map derivatives under
+`apps/frontend/public/world-maps/world-tree/` remain copyright Pocketpair,
+Inc. They are bundled solely as a functional reference layer in this free,
+noncommercial, unofficial Palworld dedicated-server administration tool. The
+upstream 8192×8192 binary is not distributed in PalCenter's production
+frontend.
+
+See the adjacent
+[`ASSET-NOTICE.md`](apps/frontend/public/world-maps/world-tree/ASSET-NOTICE.md)
+and [`source.json`](apps/frontend/public/world-maps/world-tree/source.json)
+for the source, attribution, retrieval metadata, and copyright notice.
+
 ## Rights and removal requests
 
 Pocketpair or another rights holder may request removal or correction by

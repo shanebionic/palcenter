@@ -45,6 +45,7 @@ export interface PalDefenderStatus {
     | "configuration_required"
     | "connected"
     | "authentication_failed"
+    | "permission_failed"
     | "unreachable"
     | "invalid_response";
   enabled: boolean;
@@ -1255,6 +1256,87 @@ export function deleteUser(id: string): Promise<void> {
   return request<void>(`/api/users/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
+}
+
+export interface PalDefenderCredentialAssignment {
+  userId: string;
+  username: string;
+  role: UserRole;
+  configured: boolean;
+  updatedAt: string | null;
+}
+
+export interface PalDefenderCredentialResult {
+  userId: string;
+  username: string;
+  configured: true;
+  updatedAt: string;
+}
+
+export async function getPalDefenderCredentialAssignments(
+  serverId: string,
+): Promise<PalDefenderCredentialAssignment[]> {
+  const result = await request<{
+    credentials: PalDefenderCredentialAssignment[];
+  }>(
+    `/api/servers/${encodeURIComponent(serverId)}/users/paldefender-credentials`,
+    { cache: "no-store" },
+  );
+  return result.credentials;
+}
+
+export function assignPalDefenderCredential(
+  serverId: string,
+  userId: string,
+  token: string,
+): Promise<PalDefenderCredentialResult> {
+  return request<PalDefenderCredentialResult>(
+    `/api/servers/${encodeURIComponent(serverId)}/users/${encodeURIComponent(userId)}/paldefender-credential`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    },
+  );
+}
+
+export function revokePalDefenderCredential(
+  serverId: string,
+  userId: string,
+): Promise<void> {
+  return request<void>(
+    `/api/servers/${encodeURIComponent(serverId)}/users/${encodeURIComponent(userId)}/paldefender-credential`,
+    { method: "DELETE" },
+  );
+}
+
+export interface PalDefenderTokenArtifact {
+  name: string;
+  fileName: string;
+  fileContent: string;
+  permissions: string[];
+  assigned: boolean;
+  stored: {
+    userId: string;
+    username: string;
+    configured: true;
+    updatedAt: string;
+  } | null;
+}
+
+export function generatePalDefenderToken(
+  serverId: string,
+  userId: string,
+  options: { assign: boolean },
+): Promise<PalDefenderTokenArtifact> {
+  return request<PalDefenderTokenArtifact>(
+    `/api/servers/${encodeURIComponent(serverId)}/users/${encodeURIComponent(userId)}/paldefender-credential/generate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assign: options.assign }),
+    },
+  );
 }
 
 export async function getAutomationTasks(

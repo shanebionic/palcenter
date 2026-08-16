@@ -37,6 +37,24 @@ export const palpagosProjection: MapProjectionConfiguration = {
   rotationDegrees: -90,
 };
 
+/**
+ * World Tree bounds from the DT_WorldMapUIData "Tree" row (T_TreeMap, game
+ * build 1.10.1283.0). The game's MainMap row matches palpagosProjection
+ * exactly, so both rows share the same world reference frame. The raster
+ * transform is mathematically verified by round-trip tests; geographic
+ * validation with live World Tree players was completed by owner UAT on
+ * 2026-08-15.
+ */
+export const worldTreeProjection: MapProjectionConfiguration = {
+  worldMinX: 347_351.5,
+  worldMaxX: 689_148.5,
+  worldMinY: -818_197,
+  worldMaxY: -476_400,
+  invertX: false,
+  invertY: false,
+  rotationDegrees: -90,
+};
+
 export function isValidProjectionConfiguration(
   configuration: MapProjectionConfiguration,
 ): boolean {

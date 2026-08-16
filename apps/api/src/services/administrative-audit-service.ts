@@ -102,6 +102,12 @@ const definitions: Record<string, Definition> = {
     action: "reload_paldefender",
     category: "server",
   },
+  "/api/servers/:serverId/users/:userId/paldefender-credential/generate": {
+    action: "generate_paldefender_credential",
+    category: "server",
+    targetType: "user",
+    targetParameter: "userId",
+  },
   "/api/servers/:id/admin/announce": {
     action: "native_broadcast",
     category: "messaging",
@@ -155,7 +161,16 @@ export function administrativeAuditEntry(
     details.recipientCount = body.playerIds.length;
   if (typeof body.sendType === "string") details.messageType = body.sendType;
   if (typeof body.scope === "string") details.scope = body.scope;
-  // Message text, reasons, Bearer tokens, and full IP addresses are deliberately excluded.
+  if (request.auditDetails) {
+    Object.assign(details, request.auditDetails);
+  }
+  if (
+    request.palDefenderCredentialSource === "user" ||
+    request.palDefenderCredentialSource === "server_default"
+  ) {
+    details.palDefenderCredentialSource = request.palDefenderCredentialSource;
+  }
+  // Message text, reasons, Bearer tokens, filenames, and full IP addresses are deliberately excluded. Route-supplied auditDetails must be non-secret.
   return {
     serverId,
     actorUserId: actor.id,

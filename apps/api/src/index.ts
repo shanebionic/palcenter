@@ -1,5 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { readFileSync } from "node:fs";
 import { isIP } from "node:net";
 import { z } from "zod";
@@ -12,6 +13,7 @@ import { SqliteAutomationRepository } from "./repositories/sqlite-automation-rep
 import { SqliteHistoryRepository } from "./repositories/sqlite-history-repository.js";
 import { SqliteWorldEventRepository } from "./repositories/sqlite-world-event-repository.js";
 import { SqliteUserRepository } from "./repositories/sqlite-user-repository.js";
+import { SqliteCredentialRepository } from "./repositories/sqlite-credential-repository.js";
 import { SystemConfigurationRepository } from "./repositories/system-configuration-repository.js";
 import {
   ConnectionManager,
@@ -58,6 +60,11 @@ import {
   UserSafetyError,
   UserService,
 } from "./services/user-service.js";
+import {
+  CredentialManager,
+  CredentialTokenError,
+} from "./services/credential-manager.js";
+import { generatePalDefenderToken } from "./services/paldefender-token-generator.js";
 import {
   initializeStorageDirectory,
   type StoragePermissionWarningHandler,
@@ -108,6 +115,7 @@ import {
   PalDefenderDisabledError,
   PalDefenderServerNotFoundError,
   PalDefenderService,
+  type PalDefenderActor,
 } from "./services/paldefender-service.js";
 
 const booleanEnvironmentValue = z
@@ -204,6 +212,7 @@ const app = Fastify({
         "res.headers.set-cookie",
         "req.body.adminPassword",
         "req.body.palDefenderToken",
+        "req.body.token",
         "req.body.password",
         "req.body.currentPassword",
         "req.body.newPassword",
@@ -282,6 +291,10 @@ const userRepository = new SqliteUserRepository(
   environment.CONFIG_DIR,
   storagePermissionWarningHandler,
 );
+const credentialRepository = new SqliteCredentialRepository(
+  environment.CONFIG_DIR,
+  storagePermissionWarningHandler,
+);
 const systemConfigurationRepository = new SystemConfigurationRepository(
   environment.CONFIG_DIR,
   storagePermissionWarningHandler,
@@ -303,6 +316,10 @@ const notificationRepository = new JsonNotificationRepository(
 );
 const passwordService = new PasswordService();
 const userService = new UserService(userRepository, passwordService);
+const credentialManager = new CredentialManager(
+  credentialRepository,
+  userRepository,
+);
 const authenticationService = new AuthenticationService(
   {
     sessionSecret: systemConfigurationResult.configuration.sessionSecret,
@@ -314,7 +331,11 @@ const authenticationService = new AuthenticationService(
 );
 const authorizationService = new AuthorizationService();
 const connectionManager = new ConnectionManager(repository);
-const palDefenderService = new PalDefenderService(repository);
+const palDefenderService = new PalDefenderService(
+  repository,
+  undefined,
+  credentialRepository,
+);
 const notificationService = new NotificationService(
   notificationRepository,
   repository,
@@ -427,6 +448,7 @@ const serverRemovalService = new ServerRemovalService(
       telemetryService.start(false);
     },
   },
+  credentialRepository,
 );
 const backupService = new BackupService(
   environment.CONFIG_DIR,
@@ -441,6 +463,7 @@ const backupService = new BackupService(
       telemetryRepository.close();
       worldEventRepository.close();
       userRepository.close();
+      credentialRepository.close();
     },
     async resume() {
       historyRepository.reopen();
@@ -448,6 +471,7 @@ const backupService = new BackupService(
       worldEventRepository.reopen();
       automationRepository.reopen();
       userRepository.reopen();
+      credentialRepository.reopen();
       authenticationService.replaceSessionSecret(
         (await systemConfigurationRepository.read()).sessionSecret,
       );
@@ -484,6 +508,7 @@ app.addHook("onClose", async () => {
   telemetryRepository.close();
   worldEventRepository.close();
   userRepository.close();
+  credentialRepository.close();
 });
 
 const publicApiRoutes = new Set([
@@ -775,6 +800,13 @@ const palDefenderServerParametersSchema = z.object({
   serverId: z.string().trim().min(1).max(128),
 });
 
+const palDefenderActorFor = (request: FastifyRequest): PalDefenderActor => ({
+  userId: currentUser(request.headers.cookie).id,
+  onCredentialSource(source) {
+    request.palDefenderCredentialSource = source;
+  },
+});
+
 app.get("/api/servers/:serverId/paldefender/status", async (request) => {
   const { serverId } = palDefenderServerParametersSchema.parse(request.params);
   return palDefenderService.status(serverId);
@@ -782,17 +814,32 @@ app.get("/api/servers/:serverId/paldefender/status", async (request) => {
 
 app.get("/api/servers/:serverId/paldefender/players", async (request) => {
   const { serverId } = palDefenderServerParametersSchema.parse(request.params);
-  return { players: await palDefenderService.players(serverId) };
+  return {
+    players: await palDefenderService.players(
+      serverId,
+      palDefenderActorFor(request),
+    ),
+  };
 });
 
 app.get("/api/servers/:serverId/paldefender/guilds", async (request) => {
   const { serverId } = palDefenderServerParametersSchema.parse(request.params);
-  return { guilds: await palDefenderService.guilds(serverId) };
+  return {
+    guilds: await palDefenderService.guilds(
+      serverId,
+      palDefenderActorFor(request),
+    ),
+  };
 });
 
 app.get("/api/servers/:serverId/paldefender/bases", async (request) => {
   const { serverId } = palDefenderServerParametersSchema.parse(request.params);
-  return { bases: await palDefenderService.bases(serverId) };
+  return {
+    bases: await palDefenderService.bases(
+      serverId,
+      palDefenderActorFor(request),
+    ),
+  };
 });
 
 const palDefenderBaseParametersSchema = z.object({
@@ -808,7 +855,11 @@ app.get("/api/servers/:serverId/paldefender/bases/:baseId", async (request) => {
   const { serverId, baseId } = palDefenderServerParametersSchema
     .extend(palDefenderBaseParametersSchema.shape)
     .parse(request.params);
-  return palDefenderService.base(serverId, baseId);
+  return palDefenderService.base(
+    serverId,
+    baseId,
+    palDefenderActorFor(request),
+  );
 });
 
 app.post(
@@ -823,7 +874,11 @@ app.post(
       "PalDefender base deletion requested.",
     );
     try {
-      const result = await palDefenderService.deleteBase(serverId, baseId);
+      const result = await palDefenderService.deleteBase(
+        serverId,
+        baseId,
+        palDefenderActorFor(request),
+      );
       request.log.info(
         {
           actorUserId: actor.id,
@@ -859,7 +914,11 @@ app.get(
     const { serverId, guildId } = palDefenderServerParametersSchema
       .extend(palDefenderGuildParametersSchema.shape)
       .parse(request.params);
-    return palDefenderService.guild(serverId, guildId);
+    return palDefenderService.guild(
+      serverId,
+      guildId,
+      palDefenderActorFor(request),
+    );
   },
 );
 
@@ -878,7 +937,11 @@ app.get(
     const { serverId, playerId } = palDefenderServerParametersSchema
       .extend(palDefenderPlayerParametersSchema.shape)
       .parse(request.params);
-    return palDefenderService.player(serverId, playerId);
+    return palDefenderService.player(
+      serverId,
+      playerId,
+      palDefenderActorFor(request),
+    );
   },
 );
 
@@ -888,7 +951,13 @@ app.get(
     const { serverId, playerId } = palDefenderServerParametersSchema
       .extend(palDefenderPlayerParametersSchema.shape)
       .parse(request.params);
-    return { items: await palDefenderService.inventory(serverId, playerId) };
+    return {
+      items: await palDefenderService.inventory(
+        serverId,
+        playerId,
+        palDefenderActorFor(request),
+      ),
+    };
   },
 );
 
@@ -898,7 +967,13 @@ app.get(
     const { serverId, playerId } = palDefenderServerParametersSchema
       .extend(palDefenderPlayerParametersSchema.shape)
       .parse(request.params);
-    return { pals: await palDefenderService.pals(serverId, playerId) };
+    return {
+      pals: await palDefenderService.pals(
+        serverId,
+        playerId,
+        palDefenderActorFor(request),
+      ),
+    };
   },
 );
 
@@ -909,7 +984,11 @@ app.get(
       .extend(palDefenderPlayerParametersSchema.shape)
       .parse(request.params);
     return {
-      technologies: await palDefenderService.technology(serverId, playerId),
+      technologies: await palDefenderService.technology(
+        serverId,
+        playerId,
+        palDefenderActorFor(request),
+      ),
     };
   },
 );
@@ -967,6 +1046,7 @@ app.post(
       serverId,
       playerId,
       technologySelection(input),
+      palDefenderActorFor(request),
     );
   },
 );
@@ -982,6 +1062,7 @@ app.post(
       serverId,
       playerId,
       technologySelection(input),
+      palDefenderActorFor(request),
     );
   },
 );
@@ -992,7 +1073,11 @@ app.get(
     const { serverId, playerId } = palDefenderServerParametersSchema
       .extend(palDefenderPlayerParametersSchema.shape)
       .parse(request.params);
-    return palDefenderService.progression(serverId, playerId);
+    return palDefenderService.progression(
+      serverId,
+      playerId,
+      palDefenderActorFor(request),
+    );
   },
 );
 
@@ -1040,6 +1125,7 @@ app.post(
       serverId,
       playerId,
       palDefenderProgressionGrantSchema.parse(request.body),
+      palDefenderActorFor(request),
     );
   },
 );
@@ -1155,6 +1241,7 @@ app.post(
         serverId,
         playerId,
         items,
+        palDefenderActorFor(request),
       );
       app.log.info(
         { actorUserId: actor.id, playerId, grantedItems: result.grantedItems },
@@ -1188,6 +1275,7 @@ app.post(
         serverId,
         playerId,
         pals,
+        palDefenderActorFor(request),
       );
       app.log.info(
         { actorUserId: actor.id, playerId, grantedPals: result.grantedPals },
@@ -1223,6 +1311,7 @@ app.post(
         serverId,
         playerId,
         palTemplates,
+        palDefenderActorFor(request),
       );
       app.log.info(
         {
@@ -1271,6 +1360,7 @@ app.post(
         serverId,
         playerId,
         grants,
+        palDefenderActorFor(request),
       );
       app.log.info(
         {
@@ -1347,7 +1437,13 @@ app.post(
       actorUserId: actor.id,
       playerId,
       metadata: { messageProvided: Boolean(message?.trim()) },
-      execute: () => palDefenderService.kick(serverId, playerId, message),
+      execute: () =>
+        palDefenderService.kick(
+          serverId,
+          playerId,
+          message,
+          palDefenderActorFor(request),
+        ),
       resultMetadata: (result) => ({ success: result.success }),
     });
   },
@@ -1369,7 +1465,12 @@ app.post(
       playerId,
       metadata: { reasonProvided: Boolean(reason?.trim()), ipBan },
       execute: () =>
-        palDefenderService.ban(serverId, playerId, { reason, ipBan }),
+        palDefenderService.ban(
+          serverId,
+          playerId,
+          { reason, ipBan },
+          palDefenderActorFor(request),
+        ),
       resultMetadata: (result) => ({
         success: result.success,
         ipBanned: result.ipBanned,
@@ -1400,7 +1501,7 @@ const moderationIpBodySchema = z.object({
 
 app.get("/api/servers/:serverId/moderation", async (request) => {
   const { serverId } = palDefenderServerParametersSchema.parse(request.params);
-  return palDefenderService.banlist(serverId);
+  return palDefenderService.banlist(serverId, palDefenderActorFor(request));
 });
 
 app.post(
@@ -1415,7 +1516,12 @@ app.post(
       { actorUserId: actor.id, reasonProvided: Boolean(reason?.trim()) },
       "User unban requested.",
     );
-    return palDefenderService.unbanUser(serverId, userId, reason);
+    return palDefenderService.unbanUser(
+      serverId,
+      userId,
+      reason,
+      palDefenderActorFor(request),
+    );
   },
 );
 
@@ -1427,7 +1533,12 @@ app.post("/api/servers/:serverId/moderation/ip/ban", async (request) => {
     { actorUserId: actor.id, reasonProvided: Boolean(reason?.trim()) },
     "IP ban requested.",
   );
-  return palDefenderService.banIp(serverId, ip, reason);
+  return palDefenderService.banIp(
+    serverId,
+    ip,
+    reason,
+    palDefenderActorFor(request),
+  );
 });
 
 app.post("/api/servers/:serverId/moderation/ip/unban", async (request) => {
@@ -1438,7 +1549,12 @@ app.post("/api/servers/:serverId/moderation/ip/unban", async (request) => {
     { actorUserId: actor.id, reasonProvided: Boolean(reason?.trim()) },
     "IP unban requested.",
   );
-  return palDefenderService.unbanIp(serverId, ip, reason);
+  return palDefenderService.unbanIp(
+    serverId,
+    ip,
+    reason,
+    palDefenderActorFor(request),
+  );
 });
 
 const palDefenderBroadcastBodySchema = z
@@ -1479,7 +1595,11 @@ app.post("/api/servers/:serverId/paldefender/broadcast", async (request) => {
     "PalDefender broadcast requested.",
   );
   try {
-    const result = await palDefenderService.broadcast(serverId, message);
+    const result = await palDefenderService.broadcast(
+      serverId,
+      message,
+      palDefenderActorFor(request),
+    );
     app.log.info(
       { actorUserId: actor.id, success: result.success },
       "PalDefender broadcast completed.",
@@ -1502,7 +1622,11 @@ app.post("/api/servers/:serverId/paldefender/alert", async (request) => {
     { actorUserId: actor.id, serverId, messageLength: [...message].length },
     "PalDefender alert requested.",
   );
-  const result = await palDefenderService.alert(serverId, message);
+  const result = await palDefenderService.alert(
+    serverId,
+    message,
+    palDefenderActorFor(request),
+  );
   request.log.info(
     { actorUserId: actor.id, serverId, success: result.success },
     "PalDefender alert completed.",
@@ -1522,7 +1646,10 @@ app.post(
       "PalDefender configuration reload requested.",
     );
     try {
-      const result = await palDefenderService.reloadConfig(serverId);
+      const result = await palDefenderService.reloadConfig(
+        serverId,
+        palDefenderActorFor(request),
+      );
       request.log.info(
         { actorUserId: actor.id, serverId, success: result.success },
         "PalDefender configuration reload completed.",
@@ -1562,6 +1689,7 @@ app.post(
       playerIds,
       sendType,
       message,
+      palDefenderActorFor(request),
     );
     request.log.info(
       {
@@ -1662,6 +1790,125 @@ app.delete("/api/users/:id", async (request, reply) => {
   userService.delete(parameters.id);
   return reply.code(204).send();
 });
+
+const palDefenderCredentialBodySchema = z
+  .object({ token: z.string().min(1).max(4_096) })
+  .strict();
+const palDefenderCredentialGenerateBodySchema = z
+  .object({ assign: z.boolean().default(false) })
+  .strict();
+const palDefenderUserServerParametersSchema = z.object({
+  serverId: z.string().trim().min(1).max(128),
+  userId: z.string().min(1),
+});
+
+const requireServerExists = async (serverId: string, reply: FastifyReply) => {
+  const server = await repository.get(serverId);
+  if (!server) {
+    reply.code(404).send({
+      error: "server_not_found",
+      message: "The requested server does not exist.",
+    });
+    return false;
+  }
+  return true;
+};
+
+app.get(
+  "/api/servers/:serverId/users/paldefender-credentials",
+  async (request, reply) => {
+    const { serverId } = palDefenderServerParametersSchema.parse(
+      request.params,
+    );
+    if (!(await requireServerExists(serverId, reply))) return;
+    return { credentials: credentialManager.listForServer(serverId) };
+  },
+);
+
+app.put(
+  "/api/servers/:serverId/users/:userId/paldefender-credential",
+  async (request, reply) => {
+    const { serverId, userId } = palDefenderUserServerParametersSchema.parse(
+      request.params,
+    );
+    if (!(await requireServerExists(serverId, reply))) return;
+    const input = palDefenderCredentialBodySchema.parse(request.body);
+    const actor = currentUser(request.headers.cookie);
+    const result = credentialManager.assign(serverId, userId, input.token);
+    request.log.info(
+      {
+        actorUserId: actor.id,
+        serverId,
+        userId,
+        palDefenderCredentialSource: "user",
+      },
+      "PalDefender user credential configured.",
+    );
+    return result;
+  },
+);
+
+app.delete(
+  "/api/servers/:serverId/users/:userId/paldefender-credential",
+  async (request, reply) => {
+    const { serverId, userId } = palDefenderUserServerParametersSchema.parse(
+      request.params,
+    );
+    if (!(await requireServerExists(serverId, reply))) return;
+    const actor = currentUser(request.headers.cookie);
+    credentialManager.revoke(serverId, userId);
+    request.log.info(
+      { actorUserId: actor.id, serverId, userId },
+      "PalDefender user credential removed.",
+    );
+    return reply.code(204).send();
+  },
+);
+
+app.post(
+  "/api/servers/:serverId/users/:userId/paldefender-credential/generate",
+  async (request, reply) => {
+    const { serverId, userId } = palDefenderUserServerParametersSchema.parse(
+      request.params,
+    );
+    if (!(await requireServerExists(serverId, reply))) return;
+    const input = palDefenderCredentialGenerateBodySchema.parse(
+      request.body ?? {},
+    );
+    const targetUser = userService.get(userId);
+    const actor = currentUser(request.headers.cookie);
+    const artifact = generatePalDefenderToken(
+      targetUser.id,
+      targetUser.username,
+      targetUser.role,
+    );
+    const stored = input.assign
+      ? credentialManager.assign(serverId, userId, artifact.token)
+      : null;
+    request.auditDetails = {
+      role: targetUser.role,
+      assigned: stored !== null,
+    };
+    request.log.info(
+      {
+        actorUserId: actor.id,
+        serverId,
+        userId,
+        role: targetUser.role,
+        assigned: stored !== null,
+      },
+      "PalDefender token file generated.",
+    );
+    return {
+      name: artifact.name,
+      fileName: artifact.fileName,
+      fileContent: artifact.fileContent,
+      permissions: artifact.permissions,
+      assigned: stored !== null,
+      stored,
+    };
+  },
+);
 
 app.get("/api/servers", async () => ({
   servers: await connectionManager.list(),
@@ -1790,6 +2037,7 @@ app.post("/api/servers/:id/admin/announce", async (request) => {
   const result = await serverAdminService.announce(
     parameters.id,
     input.message,
+    palDefenderActorFor(request),
   );
   request.log.info(
     { serverId: parameters.id, provider: result.provider },
@@ -2315,13 +2563,20 @@ app.setErrorHandler((error, request, reply) => {
                       ? "paldefender_request_failed"
                       : palDefenderTimedOut
                         ? "paldefender_timeout"
-                        : error.statusCode === 401 || error.statusCode === 403
-                          ? "paldefender_authentication_failed"
-                          : error.code === "MALFORMED_RESPONSE"
-                            ? "paldefender_malformed_response"
-                            : error.statusCode === 404
-                              ? "paldefender_endpoint_unavailable"
-                              : "paldefender_unavailable";
+                        : error.statusCode === 401 &&
+                            error.code === "INVALID_TOKEN"
+                          ? "paldefender_credential_invalid"
+                          : error.statusCode === 403 &&
+                              error.code === "MISSING_PERMISSION"
+                            ? "paldefender_permission_denied"
+                            : error.statusCode === 401 ||
+                                error.statusCode === 403
+                              ? "paldefender_authentication_failed"
+                              : error.code === "MALFORMED_RESPONSE"
+                                ? "paldefender_malformed_response"
+                                : error.statusCode === 404
+                                  ? "paldefender_endpoint_unavailable"
+                                  : "paldefender_unavailable";
     return reply.code(statusCode).send({
       error: errorCode,
       message: playerOffline
@@ -2414,6 +2669,13 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof UserNotFoundError) {
     return reply.code(404).send({
       error: "user_not_found",
+      message: error.message,
+    });
+  }
+
+  if (error instanceof CredentialTokenError) {
+    return reply.code(400).send({
+      error: "invalid_paldefender_credential",
       message: error.message,
     });
   }

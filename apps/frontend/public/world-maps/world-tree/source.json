@@ -1,0 +1,50 @@
+{
+  "title": "World Tree Map",
+  "copyrightHolder": "Pocketpair, Inc.",
+  "upstreamSource": {
+    "filePage": "DT_WorldMapUIData (installed Palworld build 1.10.1283.0, Xbox/WinGDK)",
+    "installedBuild": "1.10.1283.0 (Xbox/WinGDK)",
+    "engine": "UE5.1",
+    "dataTable": "Pal/Content/Pal/DataTable/WorldMapUIData/DT_WorldMapUIData",
+    "dtRow": "Tree",
+    "landScapeRealPositionMin": [347351.5, -818197],
+    "landScapeRealPositionMax": [689148.5, -476400],
+    "textureAsset": "T_TreeMap",
+    "texturePath": "Pal/Content/Pal/Texture/UI/Map/T_TreeMap",
+    "retrievedAt": "2026-08-13",
+    "dimensions": {
+      "width": 8192,
+      "height": 8192
+    }
+  },
+  "bundledDerivatives": [
+    {
+      "filename": "world-tree-2048.webp",
+      "dimensions": {
+        "width": 2048,
+        "height": 2048
+      },
+      "mediaType": "image/webp",
+      "sha256": "6921a23508c73a9fe9516ff7aa6737abb1f8a6d804e2beb149c0657f4be29265",
+      "compressedSizeBytes": 537200,
+      "conversionTool": "sharp-cli 5.2.0",
+      "conversionCommand": "pnpm dlx sharp-cli@5.2.0 -i Palworld-1.0-World-Tree-Map-8192.png -o world-tree-2048.webp -f webp -q 90 --effort 6 resize 2048 2048 --fit fill --kernel lanczos3",
+      "quality": 90
+    },
+    {
+      "filename": "world-tree-4096.webp",
+      "dimensions": {
+        "width": 4096,
+        "height": 4096
+      },
+      "mediaType": "image/webp",
+      "sha256": "90e4445dfac6fec838024b6d75ee889bd425f5ab055c5eb1eecfec07a7fc2c4a",
+      "compressedSizeBytes": 1945104,
+      "conversionTool": "sharp-cli 5.2.0",
+      "conversionCommand": "pnpm dlx sharp-cli@5.2.0 -i Palworld-1.0-World-Tree-Map-8192.png -o world-tree-4096.webp -f webp -q 90 --effort 6 resize 4096 4096 --fit fill --kernel lanczos3",
+      "quality": 90
+    }
+  ],
+  "attribution": "Palworld and the World Tree map are copyright Pocketpair, Inc. T_TreeMap extracted directly from the owner's installed Palworld build.",
+  "sourceNoticeSummary": "The source texture T_TreeMap was extracted from the owner's installed Palworld Xbox build (1.10.1283.0). The DT_WorldMapUIData Tree row supplies the game's World Tree map bounds; the game's MainMap row matches the owner-validated Palpagos telemetry projection exactly, so both rows share the same world reference frame. The raster transform is mathematically verified by round-trip unit tests; geographic/live-player validation was completed by owner UAT on 2026-08-15 (projection status: owner-validated)."
+}

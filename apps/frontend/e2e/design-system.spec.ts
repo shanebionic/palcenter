@@ -29,7 +29,12 @@ async function setSessionRole(
 
 async function setPalDefenderMode(
   page: Page,
-  mode: "connected" | "disabled" | "unreachable" | "authentication_failed",
+  mode:
+    | "connected"
+    | "disabled"
+    | "unreachable"
+    | "authentication_failed"
+    | "permission_failed",
 ) {
   const response = await page.request.get(
     `http://127.0.0.1:3198/__test/paldefender?mode=${mode}`,
@@ -263,6 +268,14 @@ test("normal Players progressively exposes enhanced player management", async ({
     page
       .getByRole("alert", { name: "Enhanced player management unavailable" })
       .getByText("PalDefender authentication failed"),
+  ).toBeVisible();
+
+  await setPalDefenderMode(page, "permission_failed");
+  await page.reload();
+  await expect(
+    page
+      .getByRole("alert", { name: "Enhanced player management unavailable" })
+      .getByText("PalDefender rejected the bearer token"),
   ).toBeVisible();
 });
 
@@ -535,7 +548,7 @@ test("world map controls remain reachable without page overflow at narrow width"
   ).toBe(true);
 });
 
-test("REST map fallback keeps unverified locations visible and authoritative locations off-map", async ({
+test("REST map fallback presents unverified, cross-map, and unavailable locations", async ({
   page,
 }) => {
   await setSessionRole(page, "administrator");
@@ -547,7 +560,13 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
   await expect(
     page.getByRole("button", { name: "View Denalb on the living world map" }),
   ).toBeVisible();
-  await expect(page.getByText("Off-map players")).toHaveCount(0);
+  await expect(page.getByText("On Palpagos").first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Players on other maps" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Location unavailable" }),
+  ).toHaveCount(0);
   await page.getByLabel("View Denalb on map").click();
   await expect(
     page.getByRole("button", { name: "Center Player" }),
@@ -565,32 +584,116 @@ test("REST map fallback keeps unverified locations visible and authoritative loc
     fullPage: true,
   });
 
+  const mapImage = page.locator("img.pc-world-map-image").first();
+  await expect(mapImage).toHaveAttribute("src", /world-map-2048\.webp/);
+
   await page.getByLabel("Choose world map").getByText("World Tree").click();
-  await expect(page.getByText("World Tree map coming later")).toBeVisible();
+  await expect(page.getByText("World Tree map coming later")).toHaveCount(0);
+  await expect(mapImage).toHaveAttribute("src", /world-tree-2048\.webp/);
+  // An unknown-space sample outside the tree bounds is genuinely
+  // unavailable for the active map — not a cross-map location.
+  await expect(page.getByLabel("View Denalb on map")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Location unavailable" }),
+  ).toBeVisible();
+  await expect(page.getByText("Advanced location details")).toHaveCount(0);
+  await expect(page.getByText(/Space:/)).toHaveCount(0);
+  // Switching maps resets the viewport to fit; zoom/pan work in tree view.
+  await expect(page.getByLabel("Zoom out")).toBeDisabled();
+  await page.getByLabel("Zoom in").click();
+  await expect(page.getByLabel("Zoom out")).toBeEnabled();
   await page.screenshot({
     path: "../../docs/screenshots/living-world-map-world-tree.png",
     fullPage: true,
   });
   await page.getByLabel("Choose world map").getByText("Palpagos").click();
+  await expect(mapImage).toHaveAttribute("src", /world-map-2048\.webp/);
+  await expect(page.getByLabel("Zoom out")).toBeDisabled();
 
   await setPlayerMode(page, "instance");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
-  await expect(page.getByText("Off-map players")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Players on other maps" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Location unavailable" }),
+  ).toHaveCount(0);
 
   await setPlayerMode(page, "world-tree");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  // The world_tree sample never plots on Palpagos even though its
+  // coordinates fall inside the tree bounds; it is a cross-map player.
+  await expect(page.getByLabel("View Denalb on map")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Players on other maps" }),
+  ).toBeVisible();
+  await expect(page.getByText("In World Tree").first()).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "View on World Tree" }),
+  ).not.toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Location unavailable" }),
+  ).toHaveCount(0);
+  await expect(page.getByText("Advanced location details")).toHaveCount(0);
+  await expect(page.getByText(/Space:/)).toHaveCount(0);
+  // Passive selection never switches the active map.
+  await page
+    .getByRole("button", { name: "View Denalb on the living world map" })
+    .click();
+  await expect(mapImage).toHaveAttribute("src", /world-map-2048\.webp/);
+  // An explicit Follow is an intentional transition to the player's map.
+  const treeFollow = page.getByRole("button", { name: "Follow Player" });
+  await expect(treeFollow).toBeEnabled();
+  await treeFollow.click();
+  await expect(treeFollow).toHaveAttribute("aria-pressed", "true");
+  await expect(mapImage).toHaveAttribute("src", /world-tree-2048\.webp/);
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Players on other maps" }),
+  ).toHaveCount(0);
   await page.screenshot({
     path: "../../docs/screenshots/rest-map-authoritative-off-map.png",
     fullPage: true,
   });
+  await page.getByLabel("Choose world map").getByText("Palpagos").click();
+  await expect(mapImage).toHaveAttribute("src", /world-map-2048\.webp/);
+
+  // Reverse direction: a Palpagos player viewed on the World Tree map.
+  await setPlayerMode(page, "populated");
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await page.getByLabel("Choose world map").getByText("World Tree").click();
+  await expect(mapImage).toHaveAttribute("src", /world-tree-2048\.webp/);
+  await expect(page.getByLabel("View Denalb on map")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Players on other maps" }),
+  ).toBeVisible();
+  await expect(page.getByText("On Palpagos").first()).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "View on Palpagos" }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Location unavailable" }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: "../../docs/screenshots/rest-map-cross-map-other-direction.png",
+    fullPage: true,
+  });
+  // The explicit View on Palpagos action switches back and centers the player.
+  await page.getByRole("button", { name: "View on Palpagos" }).first().click();
+  await expect(mapImage).toHaveAttribute("src", /world-map-2048\.webp/);
+  await expect(page.getByLabel("View Denalb on map")).toBeVisible();
 
   await setPlayerMode(page, "stale");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(page.getByLabel("View Denalb on map")).toBeVisible();
   await expect(page.getByText("Stale").first()).toBeVisible();
-  await expect(page.getByText("Off-map players")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Players on other maps" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Location unavailable" }),
+  ).toHaveCount(0);
   await setPlayerMode(page, "unknown");
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await page.setViewportSize({ width: 720, height: 900 });

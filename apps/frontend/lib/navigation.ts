@@ -89,3 +89,25 @@ export function detailBackTarget(
     label: `Back to ${RESOURCE_LABEL[resource]}`,
   };
 }
+
+const OPERATED_TABS = new Set([
+  "players",
+  "guilds",
+  "bases",
+  "map",
+  "audit",
+  "administration",
+]);
+
+export function normalizeInitialTab(
+  tab: string,
+  permissions: { canOperate: boolean; canManage: boolean },
+): string {
+  if (!permissions.canOperate && OPERATED_TABS.has(tab)) {
+    return "overview";
+  }
+  if (!permissions.canManage && tab === "connection") {
+    return "overview";
+  }
+  return tab;
+}

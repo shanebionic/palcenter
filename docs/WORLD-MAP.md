@@ -8,11 +8,15 @@ is online, selected-player details, and recent joins or departures.
 
 - Select a player to open their details.
 - Use **Follow Player** to keep the selected player centered while they move.
-- Switch between **Palpagos** and **World Tree** manually. World Tree is a
-  placeholder: it has no verified map image or projection yet, so players
-  located there are listed in the off-map panel instead of being plotted.
-- Players in a confirmed special area receive a clear off-map view instead of
-  misleading Palpagos coordinates.
+- Switch between **Palpagos** and **World Tree** manually. Each map plots
+  only players from its own coordinate space: a player located in the World
+  Tree is listed under **Players on other maps** on the Palpagos view (and
+  vice versa). **View on Palpagos**, **View on World Tree**, **Follow Player**,
+  and **Center Player** intentionally switch to that player's map. Players
+  PalCenter cannot locate are listed under **Location unavailable**.
+- Players with unknown, legacy, special-area, or instance coordinate spaces
+  keep the documented bounds-based behavior on the active map instead of
+  being treated as authoritative map locations.
 
 PalCenter obtains player positions from the official Palworld REST API, or
 from PalDefender when PalDefender is configured for the server. Neither
@@ -24,6 +28,40 @@ players. When PalDefender is configured, base camp markers appear on the same
 map and can be toggled with the **Layers** menu alongside the Players and
 Trails layers. The position pipeline, controls, and freshness indicators
 remain independent from the bundled image layer.
+
+## Base deep links
+
+Base camp pages provide direct map links:
+
+- **Base Details → View on map** (operators and above);
+- **Guild Details → Base Camps** row links open the linked base's Base
+  Details page, which reaches the map the same way.
+
+The URL form is `/servers/{serverId}?tab=map&base={baseId}`. The server is
+identified by the path and the base by the `base` query parameter; **no map
+coordinates travel in the link**. The map reads the base's position from the
+PalDefender base list, which is authoritative for placement.
+
+The map is the single source of truth for where the base can be shown:
+
+- When the active map is **Palpagos** and the base is in the loaded base data
+  with usable coordinates, the map selects and centers the base marker.
+- **Base not found** — the base list loaded successfully but does not contain
+  this base (for example it was deleted).
+- **Location unavailable** — the base layer failed to load, PalDefender is
+  unavailable, the coordinates are unusable, or the active map cannot display
+  bases. A failed base request never reports _Base not found_.
+- **Location unavailable on this map** with a **View on Palpagos** button —
+  the base is known with a valid Palpagos position but the administrator has
+  switched to the World Tree. Base positions are interpreted exclusively in
+  the Palpagos coordinate space because base data carries no
+  coordinate-space identifier; the button switches the map and re-centers the
+  base.
+
+Base markers keep the map visible even when no players are connected. The map
+re-evaluates the linked base when the base data refreshes or when the
+administrator switches maps, so the linked base stays explained (centered or
+unavailable) on the active map.
 
 ## Asset and licensing decision
 
@@ -41,6 +79,15 @@ attribution, and removal policy are in the asset's
 [`ASSET-NOTICE.md`](../apps/frontend/public/world-maps/palpagos/ASSET-NOTICE.md),
 [`source.json`](../apps/frontend/public/world-maps/palpagos/source.json), and
 the repository-level [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md).
+
+The World Tree map receives the same treatment: 2048×2048 and 4096×4096 WebP
+derivatives of the 8192×8192 T_TreeMap texture extracted from the same
+installed build, with authoritative bounds from the DT_WorldMapUIData "Tree"
+row. Its projection status is owner-validated: live World Tree player UAT
+confirmed marker placement on 2026-08-15. See the asset's
+[`ASSET-NOTICE.md`](../apps/frontend/public/world-maps/world-tree/ASSET-NOTICE.md)
+and
+[`source.json`](../apps/frontend/public/world-maps/world-tree/source.json).
 
 The upstream 8192×8192 binary is not shipped in the production frontend.
 Ordinary clients default to the 2048×2048 derivative; browsers can select the
@@ -120,9 +167,8 @@ mapY = 1 - rawX
 
 `mapX` and `mapY` are unit coordinates from 0 through 1 and are rendered as
 percentages. Invalid, non-finite, or out-of-bounds coordinates are never
-clamped into a misleading marker. They are listed in the off-map panel with a
-clear reason (for example, "Position unavailable" or "Outside verified map
-bounds") instead of being plotted.
+clamped into a misleading marker. They are listed in the sidebar with the
+**Location unavailable** state instead of being plotted.
 
 All bounds, axis inversion, and rotation options live in one projection
 configuration in `apps/frontend/lib/world-map/projection.ts`. The forward and
@@ -355,8 +401,7 @@ Before release, verify in Chromium:
 
 The current release does not add or claim:
 
-- a World Tree map image or projection (the World Tree view remains a
-  placeholder);
+- World Tree base camp markers (base DTOs carry no coordinate-space field);
 - multiple islands or world/map variants with separate bounds;
 - heatmaps, analytics, or historical playback;
 - `/game-data` collection, Z-axis display for native-source players, guild

@@ -156,8 +156,9 @@ can appear identical in position telemetry and remain neutral.
 The model reserves future classifications for `likely_fast_travel` and
 `likely_admin_teleport`, but neither is generated without verified supporting
 evidence. World Tree is modeled as the separate `world_tree` coordinate-space
-use case. No World Tree projection or map asset is included, and its points are
-never plotted on the Palpagos map.
+use case. Its points are never plotted on the Palpagos map (or vice versa);
+the World Tree map ships with a DT-derived projection whose geographic
+validation was completed by owner live player UAT on 2026-08-15.
 
 When relocation ends Idle or prolonged inactivity, PalCenter first records the
 appropriate resumed-activity event and then the rapid-relocation event at the

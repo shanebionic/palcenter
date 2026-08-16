@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 import { deleteUser, getUsers, resetUserPassword } from "../lib/api";
 import type { UserProfile } from "../types/servers";
 import { PageHeader } from "./PageHeader";
+import { PalDefenderCredentialPanel } from "./PalDefenderCredentialPanel";
 import { UserDialog } from "./UserDialog";
 import { SectionCard } from "./ui/SectionCard";
 
@@ -189,6 +190,7 @@ export function UserManagement() {
             ))}
           </SimpleGrid>
         )}
+        {!loading && <PalDefenderCredentialPanel />}
       </Stack>
 
       <UserDialog

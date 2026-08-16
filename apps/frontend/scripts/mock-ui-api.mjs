@@ -1,10 +1,52 @@
 import { createServer } from "node:http";
 import { Buffer } from "node:buffer";
+import { randomUUID } from "node:crypto";
 
 async function readJson(request) {
   const chunks = [];
   for await (const chunk of request) chunks.push(chunk);
   return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+}
+
+function mockTokenPermissions(role) {
+  const read = [
+    "Items.Read",
+    "Pals.Read",
+    "Player.Read",
+    "Players.Read",
+    "Progression.Read",
+    "Techs.Read",
+    "Guild.Read",
+    "Guilds.Read",
+    "Banlist.Read",
+  ];
+  const operate = [
+    "Players.Kick",
+    "Players.Ban",
+    "Players.BanIP",
+    "Players.Unban",
+    "Players.UnbanIP",
+    "Items.Give",
+    "Pals.Give",
+    "PalTemplates.Give",
+    "PalEggs.Give",
+    "Progression.Give",
+    "Techs.Learn",
+    "Techs.Forget",
+    "Messages.Broadcast",
+    "Messages.Alert",
+    "Messages.Send.PlayerChat",
+    "Messages.Send.GlobalChat",
+    "Messages.Send.GuildChat",
+    "Messages.Send.Log.Normal",
+    "Messages.Send.Log.Important",
+    "Messages.Send.Log.VeryImportant",
+  ];
+  if (role === "administrator") {
+    return [...read, ...operate, "Base.Delete", "Reload.Config"].sort();
+  }
+  if (role === "moderator") return [...read, ...operate].sort();
+  return [...read].sort();
 }
 
 const now = "2026-07-29T22:30:00.000Z";
@@ -58,6 +100,98 @@ const connectedPlayers = [
   },
 ];
 
+const pdBase1 = {
+  baseId: "Base-Camp_1",
+  guildId: "guild-tamers",
+  guildName: "Pal Tamers",
+  guildAdministrator: {
+    playerId: "0094A2FA000000000000000000000000",
+    name: "Denalb",
+  },
+  worldPosition: { x: -100000, y: -200000, z: 0 },
+  mapPosition: { x: 0, y: 0, z: 0 },
+};
+
+const pdBase2 = {
+  baseId: "Base-Camp_2",
+  guildId: "guild-tamers",
+  guildName: "Pal Tamers",
+  guildAdministrator: {
+    playerId: "0094A2FA000000000000000000000000",
+    name: "Denalb",
+  },
+  worldPosition: { x: 300000, y: 400000, z: 0 },
+  mapPosition: { x: 1, y: 2, z: 0 },
+};
+
+const pdBases = [pdBase1, pdBase2];
+
+const pdGuildDetails = {
+  guildId: "guild-tamers",
+  name: "Pal Tamers",
+  level: 12,
+  administrator: {
+    playerId: "0094A2FA000000000000000000000000",
+    name: "Denalb",
+  },
+  memberCount: 1,
+  members: [
+    {
+      playerId: "0094A2FA000000000000000000000000",
+      name: "Denalb",
+      status: "online",
+    },
+  ],
+  baseCount: 2,
+  camps: [
+    {
+      id: pdBase1.baseId,
+      level: 5,
+      state: "Active",
+      worldPosition: pdBase1.worldPosition,
+      mapPosition: pdBase1.mapPosition,
+      buildings: "24",
+      pals: [],
+    },
+    {
+      id: pdBase2.baseId,
+      level: 5,
+      state: "Active",
+      worldPosition: pdBase2.worldPosition,
+      mapPosition: pdBase2.mapPosition,
+      buildings: "24",
+      pals: [],
+    },
+  ],
+};
+
+const pdGuilds = [
+  {
+    guildId: "guild-tamers",
+    name: "Pal Tamers",
+    level: 12,
+    administrator: {
+      playerId: "0094A2FA000000000000000000000000",
+      name: "Denalb",
+    },
+    baseCount: 2,
+    camps: [
+      {
+        id: pdBase1.baseId,
+        worldPosition: pdBase1.worldPosition,
+        mapPosition: pdBase1.mapPosition,
+      },
+      {
+        id: pdBase2.baseId,
+        worldPosition: pdBase2.worldPosition,
+        mapPosition: pdBase2.mapPosition,
+      },
+    ],
+    memberCount: 1,
+    memberIds: ["gdk_2533274899179326"],
+  },
+];
+
 const baseServerStatus = {
   id: connection.id,
   name: connection.name,
@@ -96,6 +230,7 @@ const telemetryPlayer = {
 let playerMode = "populated";
 let eventMode = "populated";
 let palDefenderMode = "disabled";
+let palDefenderBaseMode = "populated";
 let sessionRole = "administrator";
 let broadcasts = [];
 let moderationIpBanned = true;
@@ -104,6 +239,7 @@ let unlockedTechnologies = ["Arrow"];
 let grantedPals = [];
 let serverStatusMode = "populated";
 let addedServers = [];
+const palDefenderCredentials = new Map();
 
 const worldEvents = Array.from({ length: 55 }, (_, index) => {
   const joined = index % 2 === 0;
@@ -255,6 +391,10 @@ export function startMockUiApi(port = 3198) {
       palDefenderMode = url.searchParams.get("mode") ?? "disabled";
       return json(response, { mode: palDefenderMode });
     }
+    if (url.pathname === "/__test/paldefender/bases") {
+      palDefenderBaseMode = url.searchParams.get("mode") ?? "populated";
+      return json(response, { mode: palDefenderBaseMode });
+    }
     if (url.pathname === "/__test/broadcasts") {
       if (url.searchParams.get("reset") === "true") broadcasts = [];
       return json(response, { broadcasts });
@@ -275,6 +415,91 @@ export function startMockUiApi(port = 3198) {
       return json(response, { setupRequired: false });
     }
     if (url.pathname === "/api/users/me") return json(response, user);
+    if (url.pathname === "/api/users") {
+      return json(response, { users: [user] });
+    }
+    const credentialListMatch = url.pathname.match(
+      /^\/api\/servers\/[^/]+\/users\/paldefender-credentials$/,
+    );
+    if (credentialListMatch && request.method === "GET") {
+      return json(response, {
+        credentials: [
+          {
+            userId: user.id,
+            username: user.username,
+            role: user.role,
+            configured: palDefenderCredentials.get(user.id) === true,
+            updatedAt: palDefenderCredentials.get(user.id) ? now : null,
+          },
+        ],
+      });
+    }
+    const credentialMatch = url.pathname.match(
+      /^\/api\/servers\/[^/]+\/users\/[^/]+\/paldefender-credential$/,
+    );
+    if (credentialMatch && request.method === "PUT") {
+      const input = await readJson(request);
+      if (typeof input?.token !== "string" || input.token.trim().length === 0) {
+        return json(
+          response,
+          {
+            error: "invalid_paldefender_credential",
+            message: "A PalDefender bearer token is required.",
+          },
+          400,
+        );
+      }
+      palDefenderCredentials.set(user.id, true);
+      return json(response, {
+        userId: user.id,
+        username: user.username,
+        configured: true,
+        updatedAt: now,
+      });
+    }
+    if (credentialMatch && request.method === "DELETE") {
+      palDefenderCredentials.delete(user.id);
+      response.writeHead(204, { "cache-control": "no-store" });
+      response.end();
+      return;
+    }
+    const generateMatch = url.pathname.match(
+      /^\/api\/servers\/[^/]+\/users\/[^/]+\/paldefender-credential\/generate$/,
+    );
+    if (generateMatch && request.method === "POST") {
+      const input = await readJson(request);
+      const assign = input?.assign === true;
+      const token =
+        randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", "");
+      const permissions = mockTokenPermissions(sessionRole);
+      const name = `PalCenter-ui-review-UITEST01`;
+      const fileName = `PalCenter-${user.id}.json`;
+      const fileContent =
+        JSON.stringify(
+          { Name: name, Token: token, Permissions: permissions },
+          null,
+          2,
+        ) + "\n";
+      const stored = assign
+        ? (() => {
+            palDefenderCredentials.set(user.id, true);
+            return {
+              userId: user.id,
+              username: user.username,
+              configured: true,
+              updatedAt: now,
+            };
+          })()
+        : null;
+      return json(response, {
+        name,
+        fileName,
+        fileContent,
+        permissions,
+        assigned: assign,
+        stored,
+      });
+    }
     if (request.method === "POST" && url.pathname === "/api/servers/test") {
       return json(response, {
         info: {
@@ -486,6 +711,49 @@ export function startMockUiApi(port = 3198) {
             level: 42,
           },
         ],
+      });
+    }
+    if (url.pathname === `/api/servers/${connection.id}/paldefender/guilds`) {
+      return json(response, { guilds: pdGuilds });
+    }
+    if (
+      url.pathname ===
+      `/api/servers/${connection.id}/paldefender/guilds/guild-tamers`
+    ) {
+      return json(response, pdGuildDetails);
+    }
+    if (url.pathname === `/api/servers/${connection.id}/paldefender/bases`) {
+      if (palDefenderBaseMode === "error") {
+        return json(
+          response,
+          { error: "paldefender_unavailable", message: "fetch failed" },
+          503,
+        );
+      }
+      return json(response, {
+        bases: palDefenderBaseMode === "populated" ? pdBases : [],
+      });
+    }
+    const pdBaseDetailsMatch = url.pathname.match(
+      `^/api/servers/${connection.id}/paldefender/bases/([^/]+)$`,
+    );
+    if (pdBaseDetailsMatch && request.method === "GET") {
+      const base = pdBases.find(
+        (item) => item.baseId === decodeURIComponent(pdBaseDetailsMatch[1]),
+      );
+      if (!base) {
+        return json(
+          response,
+          { error: "not_found", message: "Base camp not found." },
+          404,
+        );
+      }
+      return json(response, {
+        ...base,
+        level: 5,
+        state: "Active",
+        buildings: "24",
+        pals: [],
       });
     }
     const enhancedPlayerPath = `/api/servers/${connection.id}/paldefender/players/0094A2FA-00000000-00000000-00000000`;
@@ -739,8 +1007,8 @@ export function startMockUiApi(port = 3198) {
           : playerMode === "world-tree"
             ? {
                 ...liveTelemetry,
-                x: -42000,
-                y: 91000,
+                x: 518250,
+                y: -647298.5,
                 coordinateSpaceId: "world_tree",
               }
             : playerMode === "unknown"

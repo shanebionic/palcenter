@@ -2,6 +2,7 @@ import {
   normalizedMapPositionToWorld,
   palpagosProjection,
   worldToNormalizedMapPosition,
+  worldTreeProjection,
   type MapProjectionConfiguration,
   type NormalizedMapPosition,
   type WorldCoordinate,
@@ -36,14 +37,15 @@ export const palpagosMapDefinition: WorldMapDefinition = {
 export const worldTreeMapDefinition: WorldMapDefinition = {
   coordinateSpaceId: "world_tree",
   displayName: "World Tree",
-  assetPath: null,
-  projection: null,
-  projectionVersion: "unverified",
-  source: "No verified asset or coordinate transform is currently available.",
-  enabled: false,
-  supportsLivePlotting: false,
-  supportsTrails: false,
-  supportsCentering: false,
+  assetPath: "/world-maps/world-tree/world-tree-2048.webp",
+  projection: worldTreeProjection,
+  projectionVersion: "world-tree-dt-world-map-ui-v1-owner-validated",
+  source:
+    "DT_WorldMapUIData Tree row bounds (game build 1.10.1283.0); transform mathematically verified, geographic validation owner completed 2026-08-15",
+  enabled: true,
+  supportsLivePlotting: true,
+  supportsTrails: true,
+  supportsCentering: true,
 };
 
 export const worldMapDefinitions = [

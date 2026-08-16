@@ -2,6 +2,42 @@
 
 All notable PalCenter changes are documented here.
 
+## 1.5.2
+
+### Added
+
+- World Tree map with a map switcher in the World Map header. Player and
+  trail rendering is coordinate-space isolated: each map renders only data
+  that belongs to its coordinate space, and cross-map or unavailable players
+  are presented explicitly. Base camp markers remain Palpagos-only (see the
+  known limitations in RELEASE_NOTES.md).
+- Per-user PalDefender credentials with fail-closed selection: each operator
+  can register their own PalDefender API token, and PalDefender actions run
+  with the acting user's credential.
+- Role-based PalDefender token file generator in the PalDefender credentials
+  panel: Administrators can generate least-privilege PalDefender token files
+  for the Visitor, Moderator, and Administrator roles (9/29/31 permissions),
+  server-scoped to the generated user, with security properties documented in
+  SECURITY.md.
+- Base deep-link navigation: Guild Base Camps link into Base Details; Base
+  Details has a "View on map" action available to Moderators and
+  Administrators (operators, i.e. every role except Visitor, the same gate as
+  the World Map tab). /servers/{id}?tab=map&base={baseId} deep links center
+  the map on a base with three explicit outcomes: "Base not found" (the
+  loaded base list does not contain the requested base), "Location
+  unavailable on this map" (a known, Palpagos-plottable base while the World
+  Tree map is active, with a "View on Palpagos" action), and "Location
+  unavailable" (base data missing or coordinates unusable, without asserting
+  the base does not exist).
+- Cross-map and unavailable players are presented explicitly on the World Map
+  instead of disappearing or misplacing.
+
+### Changed
+
+- Plain-language terminology across user-facing UI copy and documentation.
+- The World Map layout now renders when PalDefender base camps are loaded
+  even if no players are online.
+
 ## 1.5.1
 
 ### Added

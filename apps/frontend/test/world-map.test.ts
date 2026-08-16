@@ -5,15 +5,22 @@ import test from "node:test";
 import {
   worldMapAssetPath,
   worldMapAssetSrcSet,
+  worldTreeMapAssetPath,
+  worldTreeMapAssetSrcSet,
 } from "../lib/world-map/layers";
 import {
   buildBaseMapMarkers,
   buildLivePlayerMapModel,
   classifyTelemetryFreshness,
+  isCrossMapUnmappedReason,
   mapContentState,
+  mapLocationStatus,
+  otherMapPlayerCopy,
   playerMapDetailValues,
   playerMarkerPresentation,
   telemetryFreshnessLabel,
+  UNAVAILABLE_PLAYER_LOCATION_LABEL,
+  type UnmappedPlayerReason,
 } from "../lib/world-map/model";
 import {
   centerMapOnPosition,
@@ -29,6 +36,7 @@ import {
   normalizedMapPositionToWorld,
   palpagosProjection,
   worldToNormalizedMapPosition,
+  worldTreeProjection,
   type MapProjectionConfiguration,
 } from "../lib/world-map/projection";
 import {
@@ -70,14 +78,86 @@ test("assigns stable readable player colors from userId", () => {
 
 test("exposes only verified map definitions for selection", () => {
   assert.equal(palpagosMapDefinition.supportsLivePlotting, true);
-  assert.equal(worldTreeMapDefinition.enabled, false);
-  assert.equal(worldTreeMapDefinition.projection, null);
+  assert.equal(palpagosMapDefinition.enabled, true);
+  assert.equal(worldTreeMapDefinition.enabled, true);
+  assert.ok(worldTreeMapDefinition.projection !== null);
+  assert.equal(
+    worldTreeMapDefinition.projectionVersion,
+    "world-tree-dt-world-map-ui-v1-owner-validated",
+  );
   assert.deepEqual(
     enabledWorldMapDefinitions().map(
       ({ coordinateSpaceId }) => coordinateSpaceId,
     ),
-    ["palpagos"],
+    ["palpagos", "world_tree"],
   );
+});
+
+test("classifies online player location states symmetrically across maps", () => {
+  assert.deepEqual(
+    mapLocationStatus({
+      onMap: true,
+      unmappedReason: null,
+      activeMapId: "palpagos",
+      activeMapName: "Palpagos",
+    }),
+    { kind: "on-map", label: "On Palpagos", targetMapId: null },
+  );
+  assert.deepEqual(
+    mapLocationStatus({
+      onMap: true,
+      unmappedReason: null,
+      activeMapId: "world_tree",
+      activeMapName: "World Tree",
+    }),
+    { kind: "on-map", label: "In World Tree", targetMapId: null },
+  );
+  assert.deepEqual(
+    mapLocationStatus({
+      onMap: false,
+      unmappedReason: "world_tree",
+      activeMapId: "palpagos",
+      activeMapName: "Palpagos",
+    }),
+    { kind: "other-map", label: "In World Tree", targetMapId: "world_tree" },
+  );
+  assert.deepEqual(
+    mapLocationStatus({
+      onMap: false,
+      unmappedReason: "palpagos",
+      activeMapId: "world_tree",
+      activeMapName: "World Tree",
+    }),
+    { kind: "other-map", label: "On Palpagos", targetMapId: "palpagos" },
+  );
+  const unavailableReasons: UnmappedPlayerReason[] = [
+    "missing_telemetry",
+    "invalid_coordinates",
+    "outside_bounds",
+    "instanced_area",
+    "unsupported_space",
+    "unknown_space",
+    "stale_position",
+  ];
+  for (const reason of unavailableReasons) {
+    const status = mapLocationStatus({
+      onMap: false,
+      unmappedReason: reason,
+      activeMapId: "palpagos",
+      activeMapName: "Palpagos",
+    });
+    assert.equal(status.kind, "unavailable");
+    assert.equal(status.label, UNAVAILABLE_PLAYER_LOCATION_LABEL);
+    assert.equal(status.targetMapId, null);
+  }
+  assert.equal(isCrossMapUnmappedReason("world_tree"), true);
+  assert.equal(isCrossMapUnmappedReason("outside_bounds"), false);
+  assert.deepEqual(otherMapPlayerCopy("world_tree"), {
+    statusLabel: "In World Tree",
+    viewLabel: "View on World Tree",
+    targetMapId: "world_tree",
+  });
+  assert.equal(otherMapPlayerCopy("stale_position"), null);
 });
 
 test("calculates safe timestamp-based trail age and bounded styles", () => {
@@ -410,6 +490,92 @@ test("bundles attributed responsive Palpagos derivatives with verified metadata"
   );
 });
 
+test("bundles attributed responsive World Tree derivatives with verified metadata", async () => {
+  const assetDirectory = new URL(
+    "../public/world-maps/world-tree/",
+    import.meta.url,
+  );
+  const source = await readFile(new URL("source.json", assetDirectory), "utf8");
+  const metadata = JSON.parse(source) as {
+    upstreamSource: {
+      installedBuild: string;
+      dtRow: string;
+      landScapeRealPositionMin: [number, number];
+      landScapeRealPositionMax: [number, number];
+      dimensions: { width: number; height: number };
+    };
+    bundledDerivatives: Array<{
+      filename: string;
+      dimensions: { width: number; height: number };
+      sha256: string;
+      compressedSizeBytes: number;
+      conversionCommand: string;
+    }>;
+  };
+
+  assert.equal(
+    worldTreeMapAssetPath,
+    "/world-maps/world-tree/world-tree-2048.webp",
+  );
+  assert.equal(worldTreeMapAssetSrcSet.includes("https://"), false);
+  assert.equal(
+    metadata.upstreamSource.installedBuild,
+    "1.10.1283.0 (Xbox/WinGDK)",
+  );
+  assert.equal(metadata.upstreamSource.dtRow, "Tree");
+  assert.deepEqual(
+    metadata.upstreamSource.landScapeRealPositionMin,
+    [347351.5, -818197],
+  );
+  assert.deepEqual(
+    metadata.upstreamSource.landScapeRealPositionMax,
+    [689148.5, -476400],
+  );
+  assert.deepEqual(metadata.upstreamSource.dimensions, {
+    width: 8192,
+    height: 8192,
+  });
+  assert.equal(metadata.bundledDerivatives.length, 2);
+
+  for (const derivative of metadata.bundledDerivatives) {
+    const asset = await readFile(new URL(derivative.filename, assetDirectory));
+    assert.deepEqual(readWebpDimensions(asset), derivative.dimensions);
+    assert.equal(asset.byteLength, derivative.compressedSizeBytes);
+    assert.equal(
+      createHash("sha256").update(asset).digest("hex"),
+      derivative.sha256,
+    );
+    assert.match(derivative.conversionCommand, /sharp-cli@5\.2\.0/);
+    assert.ok(
+      !derivative.conversionCommand.includes("http"),
+      "deterministic conversion command must not fetch remote content",
+    );
+  }
+
+  // The projection constants must match the recorded DT bounds.
+  assert.equal(
+    worldTreeProjection.worldMinX,
+    metadata.upstreamSource.landScapeRealPositionMin[0],
+  );
+  assert.equal(
+    worldTreeProjection.worldMaxX,
+    metadata.upstreamSource.landScapeRealPositionMax[0],
+  );
+  assert.equal(
+    worldTreeProjection.worldMinY,
+    metadata.upstreamSource.landScapeRealPositionMin[1],
+  );
+  assert.equal(
+    worldTreeProjection.worldMaxY,
+    metadata.upstreamSource.landScapeRealPositionMax[1],
+  );
+
+  await assert.rejects(
+    readFile(new URL("world-tree-8192.webp", assetDirectory)),
+    (error: NodeJS.ErrnoException) => error.code === "ENOENT",
+  );
+});
+
 test("serves bundled world maps without an authentication redirect", async () => {
   const proxySource = await readFile(
     new URL("../proxy.ts", import.meta.url),
@@ -521,6 +687,57 @@ test("round trips a negative world coordinate through the projection", () => {
   assert.ok(result);
   assert.ok(Math.abs(result.x - world.x) < 0.001);
   assert.ok(Math.abs(result.y - world.y) < 0.001);
+});
+
+test("round trips World Tree world coordinates through the projection", () => {
+  const projection = worldTreeProjection;
+  const toleranceX = 1e-6 * (projection.worldMaxX - projection.worldMinX);
+  const toleranceY = 1e-6 * (projection.worldMaxY - projection.worldMinY);
+  const center = {
+    x: (projection.worldMinX + projection.worldMaxX) / 2,
+    y: (projection.worldMinY + projection.worldMaxY) / 2,
+  };
+  const points = [
+    { x: projection.worldMinX, y: projection.worldMinY },
+    { x: projection.worldMinX, y: projection.worldMaxY },
+    { x: projection.worldMaxX, y: projection.worldMinY },
+    { x: projection.worldMaxX, y: projection.worldMaxY },
+    center,
+    { x: 500_000, y: -700_000 },
+    { x: 400_000, y: -500_000 },
+    { x: 600_000, y: -550_000 },
+  ];
+  for (const world of points) {
+    const normalized = worldToNormalizedMapPosition(world, projection);
+    assert.ok(normalized, `project ${world.x}, ${world.y}`);
+    const back = normalizedMapPositionToWorld(normalized, projection);
+    assert.ok(back, `unproject ${world.x}, ${world.y}`);
+    assert.ok(
+      Math.abs(back.x - world.x) <= toleranceX,
+      `x round trip ${world.x}`,
+    );
+    assert.ok(
+      Math.abs(back.y - world.y) <= toleranceY,
+      `y round trip ${world.y}`,
+    );
+  }
+});
+
+test("rejects World Tree out-of-bounds coordinates", () => {
+  assert.equal(
+    worldToNormalizedMapPosition(
+      { x: worldTreeProjection.worldMinX - 1, y: 0 },
+      worldTreeProjection,
+    ),
+    null,
+  );
+  assert.equal(
+    worldToNormalizedMapPosition(
+      { x: 500_000, y: worldTreeProjection.worldMaxY + 1 },
+      worldTreeProjection,
+    ),
+    null,
+  );
 });
 
 test("classifies telemetry freshness at the documented thresholds", () => {
@@ -794,8 +1011,8 @@ test("marker guild fields are null when telemetry has no guild", () => {
   assert.equal(model.markers[0]?.guildName, null);
 });
 
-test("standard REST positions remain visible when their coordinate space is unknown, null, or unverified", () => {
-  for (const coordinateSpaceId of ["unknown", null, "world_tree"]) {
+test("standard REST positions remain visible when their coordinate space is unknown or null", () => {
+  for (const coordinateSpaceId of ["unknown", null]) {
     const player = connectedPlayer("uid-rest", "pid-rest", "Explorer");
     const current = {
       ...snapshot({
@@ -817,6 +1034,119 @@ test("standard REST positions remain visible when their coordinate space is unkn
     assert.equal(model.markers.length, 1);
     assert.equal(model.markers[0]?.locationAuthority, "standard");
     assert.equal(model.unmappedPlayers.length, 0);
+  }
+});
+
+test("authoritative coordinate spaces isolate players before bounds projection", () => {
+  // A point inside BOTH maps' bounds (the overlapping strip).
+  const overlap = { x: 348_000, y: -500_000 };
+  const treePlayer = connectedPlayer("uid-tree", "pid-tree", "Treewalker");
+  const treeSnapshot = {
+    ...snapshot({
+      userId: treePlayer.userId,
+      playerId: treePlayer.playerId,
+      x: overlap.x,
+      y: overlap.y,
+      coordinateSpaceId: "world_tree",
+    }),
+  };
+
+  // Explicit world_tree sample never plots on Palpagos, even in bounds.
+  const treeOnPalpagos = buildLivePlayerMapModel(
+    [treePlayer],
+    [treeSnapshot],
+    palpagosProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+    [],
+    palpagosMapDefinition,
+  );
+  assert.equal(treeOnPalpagos.markers.length, 0);
+  assert.equal(treeOnPalpagos.unmappedPlayers.length, 1);
+  assert.equal(treeOnPalpagos.unmappedPlayers[0]?.reason, "world_tree");
+  assert.equal(
+    treeOnPalpagos.unmappedPlayers[0]?.spatialState,
+    "world_tree_live",
+  );
+
+  // The same sample plots on the World Tree map itself.
+  const treeOnTree = buildLivePlayerMapModel(
+    [treePlayer],
+    [treeSnapshot],
+    worldTreeProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+    [],
+    worldTreeMapDefinition,
+  );
+  assert.equal(treeOnTree.markers.length, 1);
+  assert.equal(treeOnTree.unmappedPlayers.length, 0);
+
+  // Explicit palpagos sample never plots on the World Tree, even in bounds.
+  const palPlayer = connectedPlayer("uid-pal", "pid-pal", "Islander");
+  const palOnTree = buildLivePlayerMapModel(
+    [palPlayer],
+    [
+      snapshot({
+        userId: palPlayer.userId,
+        playerId: palPlayer.playerId,
+        x: overlap.x,
+        y: overlap.y,
+        coordinateSpaceId: "palpagos",
+      }),
+    ],
+    worldTreeProjection,
+    30,
+    null,
+    new Date("2026-07-28T12:00:30.000Z"),
+    [],
+    worldTreeMapDefinition,
+  );
+  assert.equal(palOnTree.markers.length, 0);
+  assert.equal(palOnTree.unmappedPlayers[0]?.reason, "palpagos");
+});
+
+test("unknown and non-mappable coordinate spaces keep bounds-based plotting on every map", () => {
+  const overlap = { x: 348_000, y: -500_000 };
+  for (const coordinateSpaceId of [
+    "unknown",
+    "instance:fixture-dungeon",
+    "special_area",
+  ]) {
+    for (const definition of [palpagosMapDefinition, worldTreeMapDefinition]) {
+      const projection =
+        definition.coordinateSpaceId === "world_tree"
+          ? worldTreeProjection
+          : palpagosProjection;
+      const player = connectedPlayer("uid-x", "pid-x", "Wanderer");
+      const model = buildLivePlayerMapModel(
+        [player],
+        [
+          {
+            ...snapshot({
+              userId: player.userId,
+              playerId: player.playerId,
+              x: overlap.x,
+              y: overlap.y,
+            }),
+            coordinateSpaceId,
+          },
+        ],
+        projection,
+        30,
+        null,
+        new Date("2026-07-28T12:00:30.000Z"),
+        [],
+        definition,
+      );
+      assert.equal(
+        model.markers.length,
+        1,
+        `${coordinateSpaceId} on ${definition.coordinateSpaceId}`,
+      );
+    }
   }
 });
 
@@ -916,6 +1246,8 @@ test("standard REST trails retain unknown history while authoritative trails spl
     pollingIntervalSeconds: 30,
     coordinateSpaceId: "palpagos",
   });
+  // Authoritative non-strict trails (the Palpagos policy) keep unknown/legacy
+  // samples so main-map history stays continuous.
   const exact = processMovementTrail(points, palpagosProjection, {
     pollingIntervalSeconds: 30,
     coordinateSpaceId: "palpagos",
@@ -923,8 +1255,100 @@ test("standard REST trails retain unknown history while authoritative trails spl
   });
   assert.equal(standard.pointCount, 3);
   assert.equal(standard.approximateDistance, 2_000);
-  assert.equal(exact.pointCount, 1);
-  assert.equal(exact.exclusions.coordinateSpace, 2);
+  assert.equal(exact.pointCount, 3);
+  assert.equal(exact.exclusions.coordinateSpace, 0);
+  // The same unknown history renders nothing in strict World Tree mode.
+  const treeStrict = processMovementTrail(points, worldTreeProjection, {
+    pollingIntervalSeconds: 30,
+    coordinateSpaceId: "world_tree",
+    coordinateSpacesAuthoritative: true,
+    strictCoordinateSpace: true,
+  });
+  assert.equal(treeStrict.pointCount, 0);
+  assert.equal(treeStrict.exclusions.coordinateSpace, 3);
+});
+
+test("strict trails render only explicitly tagged samples and never bridge spaces", () => {
+  const points = [
+    {
+      capturedAt: "2026-07-28T12:00:00Z",
+      x: 500_000,
+      y: -700_000,
+      coordinateSpaceId: "world_tree",
+    },
+    {
+      capturedAt: "2026-07-28T12:01:00Z",
+      x: 510_000,
+      y: -690_000,
+      coordinateSpaceId: null,
+    },
+    {
+      capturedAt: "2026-07-28T12:02:00Z",
+      x: 520_000,
+      y: -680_000,
+      coordinateSpaceId: "world_tree",
+    },
+    {
+      capturedAt: "2026-07-28T12:03:00Z",
+      x: 530_000,
+      y: -670_000,
+      coordinateSpaceId: "palpagos",
+    },
+    {
+      capturedAt: "2026-07-28T12:04:00Z",
+      x: 540_000,
+      y: -660_000,
+      coordinateSpaceId: "world_tree",
+    },
+  ];
+  const strict = processMovementTrail(points, worldTreeProjection, {
+    pollingIntervalSeconds: 30,
+    coordinateSpaceId: "world_tree",
+    coordinateSpacesAuthoritative: true,
+    strictCoordinateSpace: true,
+  });
+  assert.equal(strict.exclusions.coordinateSpace, 2);
+  assert.equal(strict.segments.length, 3);
+  assert.equal(strict.pointCount, 3);
+
+  // Non-strict retains the untagged sample (Palpagos policy) but still
+  // excludes the explicit palpagos sample and splits the segment.
+  const lenient = processMovementTrail(points, worldTreeProjection, {
+    pollingIntervalSeconds: 30,
+    coordinateSpaceId: "world_tree",
+    coordinateSpacesAuthoritative: true,
+  });
+  assert.equal(lenient.exclusions.coordinateSpace, 1);
+  assert.equal(lenient.pointCount, 4);
+  assert.equal(lenient.segments.length, 2);
+
+  // A palpagos -> world_tree transition never connects into one line.
+  const transition = processMovementTrail(
+    [
+      {
+        capturedAt: "2026-07-28T12:00:00Z",
+        x: 0,
+        y: 0,
+        coordinateSpaceId: "palpagos",
+      },
+      {
+        capturedAt: "2026-07-28T12:01:00Z",
+        x: 500_000,
+        y: -700_000,
+        coordinateSpaceId: "world_tree",
+      },
+    ],
+    worldTreeProjection,
+    {
+      pollingIntervalSeconds: 30,
+      coordinateSpaceId: "world_tree",
+      coordinateSpacesAuthoritative: true,
+      strictCoordinateSpace: true,
+    },
+  );
+  assert.equal(transition.pointCount, 1);
+  assert.equal(transition.segments.length, 1);
+  assert.equal(transition.segments[0]?.length, 1);
 });
 
 test("marks out-of-bounds current players as unavailable", () => {
@@ -1290,6 +1714,23 @@ test("buildBaseMapMarkers: projects valid bases", () => {
   assert.ok(Number.isFinite(marker.position.y));
 });
 
+test("buildBaseMapMarkers: yields no World Tree markers until base space is verified", () => {
+  // A base whose Palpagos coordinates also fall inside the World Tree bounds
+  // must not be reinterpreted as a World Tree position.
+  const bases = [
+    makeBase({ worldPosition: { x: 348_000, y: -500_000, z: 0 } }),
+  ];
+  assert.equal(
+    buildBaseMapMarkers(bases, palpagosProjection, palpagosMapDefinition)
+      .length,
+    1,
+  );
+  assert.deepEqual(
+    buildBaseMapMarkers(bases, worldTreeProjection, worldTreeMapDefinition),
+    [],
+  );
+});
+
 test("buildBaseMapMarkers: skips out-of-bounds coordinates", () => {
   const bases = [
     makeBase({
@@ -1541,7 +1982,7 @@ test("toolbar Group renders inside Card element", async () => {
     /<\/Card>(?=\s*<Stack gap="md" className="pc-world-map-details")/,
   );
   assert.ok(cardCloseMatch, "Card close tag not found");
-  const cardCloseIndex = source.indexOf(cardCloseMatch[0]);
+  const cardCloseIndex = cardCloseMatch.index ?? -1;
 
   assert.ok(
     toolbarIndex > cardIndex && toolbarIndex < cardCloseIndex,

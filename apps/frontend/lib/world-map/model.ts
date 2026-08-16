@@ -21,6 +21,7 @@ export type UnmappedPlayerReason =
   | "invalid_coordinates"
   | "outside_bounds"
   | "world_tree"
+  | "palpagos"
   | "instanced_area"
   | "unsupported_space"
   | "unknown_space"
@@ -257,7 +258,8 @@ export function buildLivePlayerMapModel(
     const isInstance =
       coordinateSpaceId === "special_area" ||
       coordinateSpaceId.startsWith("instance:");
-    const hasAuthoritativeSpace = false;
+    const isMappableAuthoritativeSpace =
+      coordinateSpaceId === "palpagos" || coordinateSpaceId === "world_tree";
     const spatialState: PlayerSpatialState =
       freshness === "stale"
         ? "stale_position"
@@ -271,20 +273,14 @@ export function buildLivePlayerMapModel(
                 ? "unknown_space"
                 : "unsupported_space";
     if (
-      hasAuthoritativeSpace &&
+      isMappableAuthoritativeSpace &&
       coordinateSpaceId !== mapDefinition.coordinateSpaceId
     ) {
       const lastTrustedPosition = trustedByUserId.get(player.userId) ?? null;
       unmappedPlayers.push({
         userId: player.userId,
         playerName: player.name,
-        reason: isInstance
-          ? "instanced_area"
-          : coordinateSpaceId === "world_tree"
-            ? "world_tree"
-            : coordinateSpaceId === "unknown"
-              ? "unknown_space"
-              : "unsupported_space",
+        reason: coordinateSpaceId === "world_tree" ? "world_tree" : "palpagos",
         snapshot,
         coordinateSpaceId,
         spatialState,
@@ -408,6 +404,12 @@ export function buildBaseMapMarkers(
   projection: MapProjectionConfiguration,
   mapDefinition: WorldMapDefinition = palpagosMapDefinition,
 ): BaseMapMarker[] {
+  // Base DTOs carry no coordinate-space field, so base positions are only
+  // interpreted on maps whose coordinate space is verified for bases —
+  // currently Palpagos. World Tree base markers must not be guessed from
+  // Palpagos coordinates that happen to fall inside the tree bounds.
+  if (mapDefinition.coordinateSpaceId !== "palpagos") return [];
+
   const markers: BaseMapMarker[] = [];
 
   for (const base of bases) {
@@ -441,4 +443,81 @@ export function buildBaseMapMarkers(
   }
 
   return markers;
+}
+
+export type MapLocationKind = "on-map" | "other-map" | "unavailable";
+
+export interface MapLocationStatus {
+  kind: MapLocationKind;
+  label: string;
+  targetMapId: "palpagos" | "world_tree" | null;
+}
+
+export const UNAVAILABLE_PLAYER_LOCATION_LABEL = "Location unavailable";
+
+export interface OtherMapPlayerCopy {
+  statusLabel: string;
+  viewLabel: string;
+  targetMapId: "palpagos" | "world_tree";
+}
+
+const otherMapCopy: Record<"palpagos" | "world_tree", OtherMapPlayerCopy> = {
+  palpagos: {
+    statusLabel: "On Palpagos",
+    viewLabel: "View on Palpagos",
+    targetMapId: "palpagos",
+  },
+  world_tree: {
+    statusLabel: "In World Tree",
+    viewLabel: "View on World Tree",
+    targetMapId: "world_tree",
+  },
+};
+
+const onMapPreposition: Record<"palpagos" | "world_tree", string> = {
+  palpagos: "On",
+  world_tree: "In",
+};
+
+export function isCrossMapUnmappedReason(
+  reason: UnmappedPlayerReason,
+): reason is "palpagos" | "world_tree" {
+  return reason === "palpagos" || reason === "world_tree";
+}
+
+export function otherMapPlayerCopy(
+  reason: UnmappedPlayerReason,
+): OtherMapPlayerCopy | null {
+  if (isCrossMapUnmappedReason(reason)) return otherMapCopy[reason];
+  return null;
+}
+
+export function mapLocationStatus(input: {
+  onMap: boolean;
+  unmappedReason: UnmappedPlayerReason | null;
+  activeMapId: "palpagos" | "world_tree";
+  activeMapName: string;
+}): MapLocationStatus {
+  if (input.onMap) {
+    return {
+      kind: "on-map",
+      label: `${onMapPreposition[input.activeMapId]} ${input.activeMapName}`,
+      targetMapId: null,
+    };
+  }
+  if (
+    input.unmappedReason !== null &&
+    isCrossMapUnmappedReason(input.unmappedReason)
+  ) {
+    return {
+      kind: "other-map",
+      label: otherMapCopy[input.unmappedReason].statusLabel,
+      targetMapId: input.unmappedReason,
+    };
+  }
+  return {
+    kind: "unavailable",
+    label: UNAVAILABLE_PLAYER_LOCATION_LABEL,
+    targetMapId: null,
+  };
 }

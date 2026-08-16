@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { detailBackTarget, type BackTarget } from "../lib/navigation";
 import {
+  detailBackTarget,
+  normalizeInitialTab,
+  type BackTarget,
+} from "../lib/navigation";
+import {
+  baseMapDeepLinkHref,
   isDetailSource,
   palDefenderBaseHref,
   palDefenderGuildHref,
@@ -149,6 +154,67 @@ test("palDefender*Href helpers omit query string when no source", () => {
     palDefenderGuildHref("server-1", "guild-1"),
     "/servers/server-1/guilds/guild-1",
   );
+});
+
+test("normalizeInitialTab hides operated tabs from nonoperators", () => {
+  const noPerms = { canOperate: false, canManage: false };
+  for (const tab of [
+    "players",
+    "guilds",
+    "bases",
+    "map",
+    "audit",
+    "administration",
+  ]) {
+    assert.equal(
+      normalizeInitialTab(tab, noPerms),
+      "overview",
+      `${tab} should be hidden from visitors`,
+    );
+  }
+  assert.equal(normalizeInitialTab("connection", noPerms), "overview");
+  assert.equal(normalizeInitialTab("overview", noPerms), "overview");
+  assert.equal(normalizeInitialTab("settings", noPerms), "settings");
+  assert.equal(normalizeInitialTab("monitoring", noPerms), "monitoring");
+});
+
+test("normalizeInitialTab preserves permitted tabs", () => {
+  const full = { canOperate: true, canManage: true };
+  for (const tab of [
+    "players",
+    "guilds",
+    "bases",
+    "map",
+    "audit",
+    "administration",
+    "connection",
+    "overview",
+    "settings",
+    "monitoring",
+  ]) {
+    assert.equal(
+      normalizeInitialTab(tab, full),
+      tab,
+      `${tab} should be preserved for admins`,
+    );
+  }
+
+  const operator = { canOperate: true, canManage: false };
+  assert.equal(normalizeInitialTab("map", operator), "map");
+  assert.equal(normalizeInitialTab("connection", operator), "overview");
+});
+
+test("baseMapDeepLinkHref carries serverId and baseId only", () => {
+  const href = baseMapDeepLinkHref("srv-1", "Base-Camp_1");
+  assert.equal(href, "/servers/srv-1?tab=map&base=Base-Camp_1");
+
+  const parsed = new URL(href, "http://localhost");
+  assert.equal(parsed.pathname, "/servers/srv-1");
+  assert.equal(parsed.searchParams.get("tab"), "map");
+  assert.equal(parsed.searchParams.get("base"), "Base-Camp_1");
+  assert.equal(parsed.searchParams.has("x"), false);
+  assert.equal(parsed.searchParams.has("y"), false);
+  assert.equal(parsed.searchParams.has("z"), false);
 });
 
 function assertBackTarget(
