@@ -1235,6 +1235,38 @@ test("PalDefender reload-config rejections keep sibling parsing and skip upstrea
   assert.equal(unauthenticated.statusCode, 401);
 });
 
+test("PalDefender reload-config rejects prototype/constructor poisoning JSON without invoking upstream", async () => {
+  // (e') Prototype- and constructor-poisoning payloads are non-empty application/json
+  // bodies. The delegated secure parser (protoAction/constructorAction 'error') throws
+  // and maps them to a 400 before the handler runs, so the administrative upstream
+  // reload action is never invoked for either payload.
+  reloadConfigCalls = 0;
+  const protoPoison = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/reload-config",
+    headers: {
+      cookie: administratorCookie,
+      "content-type": "application/json",
+    },
+    payload: '{"__proto__": {"isAdmin": true}}',
+  });
+  assert.equal(protoPoison.statusCode, 400);
+  assert.equal(reloadConfigCalls, 0);
+
+  reloadConfigCalls = 0;
+  const constructorPoison = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/reload-config",
+    headers: {
+      cookie: administratorCookie,
+      "content-type": "application/json",
+    },
+    payload: '{"constructor": {"prototype": {"isAdmin": true}}}',
+  });
+  assert.equal(constructorPoison.statusCode, 400);
+  assert.equal(reloadConfigCalls, 0);
+});
+
 test("PalDefender reload-config keeps the normalized upstream-failure response", async () => {
   // (g) An upstream failure still surfaces through the root error handler's
   // normalized PalDefender error shape (not Fastify's default handler).
