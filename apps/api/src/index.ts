@@ -1634,36 +1634,62 @@ app.post("/api/servers/:serverId/paldefender/alert", async (request) => {
   return result;
 });
 
-app.post(
-  "/api/servers/:serverId/paldefender/reload-config",
-  async (request) => {
-    const { serverId } = palDefenderServerParametersSchema.parse(
-      request.params,
-    );
-    const actor = currentUser(request.headers.cookie);
-    request.log.info(
-      { actorUserId: actor.id, serverId },
-      "PalDefender configuration reload requested.",
-    );
-    try {
-      const result = await palDefenderService.reloadConfig(
-        serverId,
-        palDefenderActorFor(request),
+// The PalDefender reload-config endpoint ignores its request body, but Fastify's
+// JSON content-type parser rejects a zero-length application/json payload with a
+// 400 before the handler runs. Existing PalCenter clients send {}, so a
+// bodyless request should behave the same as sending {}. This encapsulated
+// plugin replaces only the JSON parser for this route's context: an empty body
+// resolves to {}, and every non-empty body is delegated to the inherited default
+// JSON parser (preserving secure parsing and error mapping). The plugin is
+// registered without awaiting it so the child context is finalized during the
+// ready cycle - after this file's root error handler is installed - letting the
+// route keep PalCenter's normalized PalDefender error responses.
+app.register(async (sub) => {
+  const defaultJsonParser = sub.getDefaultJsonParser("error", "error");
+  sub.removeContentTypeParser("application/json");
+  sub.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    (request, body, done) => {
+      if (body.length === 0) {
+        done(null, {});
+        return;
+      }
+      defaultJsonParser(request, body as string, done);
+    },
+  );
+
+  sub.post(
+    "/api/servers/:serverId/paldefender/reload-config",
+    async (request) => {
+      const { serverId } = palDefenderServerParametersSchema.parse(
+        request.params,
       );
+      const actor = currentUser(request.headers.cookie);
       request.log.info(
-        { actorUserId: actor.id, serverId, success: result.success },
-        "PalDefender configuration reload completed.",
+        { actorUserId: actor.id, serverId },
+        "PalDefender configuration reload requested.",
       );
-      return result;
-    } catch (error) {
-      request.log.warn(
-        { err: error, actorUserId: actor.id, serverId },
-        "PalDefender configuration reload failed.",
-      );
-      throw error;
-    }
-  },
-);
+      try {
+        const result = await palDefenderService.reloadConfig(
+          serverId,
+          palDefenderActorFor(request),
+        );
+        request.log.info(
+          { actorUserId: actor.id, serverId, success: result.success },
+          "PalDefender configuration reload completed.",
+        );
+        return result;
+      } catch (error) {
+        request.log.warn(
+          { err: error, actorUserId: actor.id, serverId },
+          "PalDefender configuration reload failed.",
+        );
+        throw error;
+      }
+    },
+  );
+});
 
 app.post(
   "/api/servers/:serverId/paldefender/player-message",
