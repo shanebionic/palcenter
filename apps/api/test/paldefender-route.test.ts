@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
 import type { FastifyInstance } from "fastify";
+import { SqliteHistoryRepository } from "../src/repositories/sqlite-history-repository.js";
 
 const directory = await fs.mkdtemp(
   path.join(os.tmpdir(), "palcenter-pd-route-"),
@@ -16,6 +17,7 @@ process.env.PALCENTER_CORS_ORIGINS = "http://localhost:3000";
 
 let app: FastifyInstance;
 let administratorCookie = "";
+let reloadConfigCalls = 0;
 const originalFetch = globalThis.fetch;
 
 function cookie(response: {
@@ -284,6 +286,7 @@ before(async () => {
     if (url.endsWith("/ReloadConfig")) {
       assert.equal(init?.method, "POST");
       assert.equal(init?.body, undefined);
+      reloadConfigCalls += 1;
       return Response.json({ Success: true });
     }
     if (url.endsWith("/deletebase/base-1")) {
@@ -1112,6 +1115,153 @@ test("PalDefender configuration reload is administrator-only and normalized", as
     payload: {},
   });
   assert.equal(unauthenticated.statusCode, 401);
+});
+
+test("PalDefender reload-config treats {} and a bodyless request the same", async () => {
+  const reader = new SqliteHistoryRepository(directory);
+  const listReloadEntries = () =>
+    reader
+      .listAudit("server-a", {
+        category: "server",
+        result: "success",
+        limit: 200,
+      })
+      .filter((entry) => entry.action === "reload_paldefender");
+  const nextId = listReloadEntries().reduce(
+    (max, entry) => Math.max(max, entry.id),
+    0,
+  );
+
+  const expectOneUpstreamCall = (
+    label: string,
+    response: { statusCode: number; json(): unknown },
+  ) => {
+    assert.equal(
+      response.statusCode,
+      200,
+      `${label}: expected 200, got ${response.statusCode}`,
+    );
+    assert.deepEqual(response.json(), { success: true }, `${label}: body`);
+    assert.equal(
+      reloadConfigCalls,
+      1,
+      `${label}: upstream reload invoked exactly once`,
+    );
+  };
+
+  // (a) An authorized {} body still succeeds and invokes the upstream action once.
+  reloadConfigCalls = 0;
+  const object = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/reload-config",
+    headers: { cookie: administratorCookie },
+    payload: {},
+  });
+  expectOneUpstreamCall("body {}", object);
+
+  // (b) A bodyless request (empty application/json payload) succeeds the same way.
+  reloadConfigCalls = 0;
+  const empty = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/reload-config",
+    headers: {
+      cookie: administratorCookie,
+      "content-type": "application/json",
+    },
+    payload: "",
+  });
+  expectOneUpstreamCall("bodyless application/json", empty);
+
+  // (h) Both successful reloads record a `reload_paldefender` audit entry
+  // (server + actor) with the server-default credential source.
+  const recorded = listReloadEntries().filter((entry) => entry.id > nextId);
+  assert.equal(
+    recorded.length,
+    2,
+    "both the {} and bodyless reloads recorded an audit entry",
+  );
+  for (const entry of recorded) {
+    assert.equal(entry.result, "success");
+    assert.equal(entry.actorUsername, "administrator");
+    assert.equal(entry.details.palDefenderCredentialSource, "server_default");
+  }
+  reader.close();
+
+  // (c) An empty request without a content type still succeeds (pre-existing path).
+  reloadConfigCalls = 0;
+  const noContentType = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/reload-config",
+    headers: { cookie: administratorCookie },
+  });
+  expectOneUpstreamCall("bodyless without content type", noContentType);
+});
+
+test("PalDefender reload-config rejections keep sibling parsing and skip upstream", async () => {
+  // (e) A malformed non-empty JSON body is rejected and the upstream action is NOT invoked.
+  reloadConfigCalls = 0;
+  const malformed = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/reload-config",
+    headers: {
+      cookie: administratorCookie,
+      "content-type": "application/json",
+    },
+    payload: "{ not valid json",
+  });
+  assert.equal(malformed.statusCode, 400);
+  assert.equal(reloadConfigCalls, 0);
+
+  // (f) An unrelated action route with an empty application/json body is still
+  // rejected, proving the empty-tolerant parser is scoped to reload-config only.
+  const sibling = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/player-message",
+    headers: {
+      cookie: administratorCookie,
+      "content-type": "application/json",
+    },
+    payload: "",
+  });
+  assert.equal(sibling.statusCode, 400);
+
+  // (d) Authorization is preserved: an unauthenticated bodyless reload is rejected.
+  const unauthenticated = await app.inject({
+    method: "POST",
+    url: "/api/servers/server-a/paldefender/reload-config",
+    headers: { "content-type": "application/json" },
+    payload: "",
+  });
+  assert.equal(unauthenticated.statusCode, 401);
+});
+
+test("PalDefender reload-config keeps the normalized upstream-failure response", async () => {
+  // (g) An upstream failure still surfaces through the root error handler's
+  // normalized PalDefender error shape (not Fastify's default handler).
+  const originalFetchLocal = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("connect ECONNREFUSED");
+  };
+  try {
+    const failed = await app.inject({
+      method: "POST",
+      url: "/api/servers/server-a/paldefender/reload-config",
+      headers: {
+        cookie: administratorCookie,
+        "content-type": "application/json",
+      },
+      payload: "",
+    });
+    assert.equal(failed.statusCode, 502);
+    assert.ok(
+      ["paldefender_unavailable", "paldefender_endpoint_unavailable"].includes(
+        failed.json().error,
+      ),
+      `Expected a normalized PalDefender error code, got: ${failed.json().error}`,
+    );
+  } finally {
+    globalThis.fetch = originalFetchLocal;
+  }
 });
 
 test("PalDefender ban route normalizes success and unavailable IP errors", async () => {
